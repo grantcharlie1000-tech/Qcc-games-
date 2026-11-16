@@ -1,0 +1,677 @@
+{
+  "generatedAt": "2026-11-16T03:42:27.479Z",
+  "modelSha256": "405bf76c15727dad8728b352c06a8f3c1b80fb2760e8d666b32485c63d75b856",
+  "encodingSha256": "07638034192cf5a00fdac3ae4072ba714763407230156588bd7bfb61f25d2dbf",
+  "modelBytes": 45683686,
+  "initializationMs": 3168.193684,
+  "elapsedMs": 27427.519219,
+  "cpuMs": 16805.257,
+  "rssBytes": 593059840,
+  "inference": {
+    "count": 167,
+    "firstMs": 422.0163339999999,
+    "meanMs": 161.50931068263495,
+    "p50Ms": 134.88748599999963,
+    "p95Ms": 274.96235100000195,
+    "maxMs": 422.0163339999999
+  },
+  "config": {
+    "gamesCount": 2,
+    "maxPlies": 160,
+    "seed": 87654321,
+    "selfAndOpponentConditioningEqual": true,
+    "temperature": 1,
+    "threads": 1,
+    "runtime": "vendored onnxruntime-web WASM in Node, SIMD"
+  },
+  "note": "Tiny balanced-color1100vs1900 sample is a smoke test for conditioning/legal play only, statistically insufficient to verify Elo or order adjacent Maia tiers. Model ratings are conditioning inputs, not demonstrated QCC strength. Initialization excludes reading model parts. Timings include contended CPU, exclude browser Worker transfer and pacing.",
+  "probes": [
+    {
+      "position": "start",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "rating": 1100,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e2e4",
+          "probability": 0.6423195934871619
+        },
+        {
+          "moveUci": "d2d4",
+          "probability": 0.24379701881889232
+        },
+        {
+          "moveUci": "g1f3",
+          "probability": 0.028665978141985324
+        },
+        {
+          "moveUci": "c2c4",
+          "probability": 0.023396489482506753
+        },
+        {
+          "moveUci": "e2e3",
+          "probability": 0.014641148999034721
+        }
+      ],
+      "entropyNats": 1.1311515311363105
+    },
+    {
+      "position": "start",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "rating": 1300,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e2e4",
+          "probability": 0.631537284569575
+        },
+        {
+          "moveUci": "d2d4",
+          "probability": 0.2551641290212779
+        },
+        {
+          "moveUci": "c2c4",
+          "probability": 0.028184776206242323
+        },
+        {
+          "moveUci": "g1f3",
+          "probability": 0.028184776206242323
+        },
+        {
+          "moveUci": "e2e3",
+          "probability": 0.01156700884894809
+        }
+      ],
+      "entropyNats": 1.1316111139920426
+    },
+    {
+      "position": "start",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "rating": 1600,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e2e4",
+          "probability": 0.6086357056395012
+        },
+        {
+          "moveUci": "d2d4",
+          "probability": 0.2700804571968286
+        },
+        {
+          "moveUci": "c2c4",
+          "probability": 0.035984738003755276
+        },
+        {
+          "moveUci": "g1f3",
+          "probability": 0.030302187487796964
+        },
+        {
+          "moveUci": "b2b3",
+          "probability": 0.010472155778636333
+        }
+      ],
+      "entropyNats": 1.1636243285373102
+    },
+    {
+      "position": "start",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "rating": 1900,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e2e4",
+          "probability": 0.5650821000322005
+        },
+        {
+          "moveUci": "d2d4",
+          "probability": 0.29316073153005306
+        },
+        {
+          "moveUci": "c2c4",
+          "probability": 0.047857173850000836
+        },
+        {
+          "moveUci": "g1f3",
+          "probability": 0.04157903319106914
+        },
+        {
+          "moveUci": "f2f4",
+          "probability": 0.012484289706727986
+        }
+      ],
+      "entropyNats": 1.2291050531796917
+    },
+    {
+      "position": "black-after-e4",
+      "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "rating": 1100,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e7e5",
+          "probability": 0.5147000226708216
+        },
+        {
+          "moveUci": "d7d5",
+          "probability": 0.16450800813716066
+        },
+        {
+          "moveUci": "e7e6",
+          "probability": 0.06646724372251919
+        },
+        {
+          "moveUci": "c7c5",
+          "probability": 0.05340793074193668
+        },
+        {
+          "moveUci": "c7c6",
+          "probability": 0.04568222400127398
+        }
+      ],
+      "entropyNats": 1.708877811765809
+    },
+    {
+      "position": "black-after-e4",
+      "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "rating": 1300,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e7e5",
+          "probability": 0.4647665416057497
+        },
+        {
+          "moveUci": "d7d5",
+          "probability": 0.16832728654540255
+        },
+        {
+          "moveUci": "c7c5",
+          "probability": 0.07706584747697548
+        },
+        {
+          "moveUci": "e7e6",
+          "probability": 0.0758710522558846
+        },
+        {
+          "moveUci": "c7c6",
+          "probability": 0.0590884349093344
+        }
+      ],
+      "entropyNats": 1.800500895068416
+    },
+    {
+      "position": "black-after-e4",
+      "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "rating": 1600,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e7e5",
+          "probability": 0.36325304557064514
+        },
+        {
+          "moveUci": "d7d5",
+          "probability": 0.1855315014268906
+        },
+        {
+          "moveUci": "c7c5",
+          "probability": 0.12167452923099628
+        },
+        {
+          "moveUci": "e7e6",
+          "probability": 0.08901898723012189
+        },
+        {
+          "moveUci": "c7c6",
+          "probability": 0.07614197476892388
+        }
+      ],
+      "entropyNats": 1.9492797594776394
+    },
+    {
+      "position": "black-after-e4",
+      "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "rating": 1900,
+      "legalMoves": 20,
+      "topMoves": [
+        {
+          "moveUci": "e7e5",
+          "probability": 0.2496065501532328
+        },
+        {
+          "moveUci": "c7c5",
+          "probability": 0.1913799805559686
+        },
+        {
+          "moveUci": "d7d5",
+          "probability": 0.16627380857431567
+        },
+        {
+          "moveUci": "e7e6",
+          "probability": 0.10735443948956033
+        },
+        {
+          "moveUci": "c7c6",
+          "probability": 0.09928662595541075
+        }
+      ],
+      "entropyNats": 2.0608356667895382
+    },
+    {
+      "position": "mate-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "rating": 1100,
+      "legalMoves": 23,
+      "topMoves": [
+        {
+          "moveUci": "g6g7",
+          "probability": 0.8205662903554831
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.04417326314797623
+        },
+        {
+          "moveUci": "g6e8",
+          "probability": 0.028969533242552185
+        },
+        {
+          "moveUci": "f6f7",
+          "probability": 0.025565523355873775
+        },
+        {
+          "moveUci": "g6g1",
+          "probability": 0.017298498397422382
+        }
+      ],
+      "entropyNats": 0.8955754573232496
+    },
+    {
+      "position": "mate-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "rating": 1300,
+      "legalMoves": 23,
+      "topMoves": [
+        {
+          "moveUci": "g6g7",
+          "probability": 0.8721264595886822
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.029379860889337302
+        },
+        {
+          "moveUci": "g6e8",
+          "probability": 0.01896906388985709
+        },
+        {
+          "moveUci": "f6f7",
+          "probability": 0.01622510016158522
+        },
+        {
+          "moveUci": "g6g1",
+          "probability": 0.014096611309757928
+        }
+      ],
+      "entropyNats": 0.694895584275406
+    },
+    {
+      "position": "mate-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "rating": 1600,
+      "legalMoves": 23,
+      "topMoves": [
+        {
+          "moveUci": "g6g7",
+          "probability": 0.9098200117965575
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.019180071373864713
+        },
+        {
+          "moveUci": "f6f7",
+          "probability": 0.01163330134372556
+        },
+        {
+          "moveUci": "g6e8",
+          "probability": 0.01026635240267102
+        },
+        {
+          "moveUci": "g6g1",
+          "probability": 0.009950489945514819
+        }
+      ],
+      "entropyNats": 0.5298697916419226
+    },
+    {
+      "position": "mate-one",
+      "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+      "rating": 1900,
+      "legalMoves": 23,
+      "topMoves": [
+        {
+          "moveUci": "g6g7",
+          "probability": 0.919842500992261
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.0151020041595861
+        },
+        {
+          "moveUci": "f6f7",
+          "probability": 0.011761452665433268
+        },
+        {
+          "moveUci": "g6h5",
+          "probability": 0.0073601290077494365
+        },
+        {
+          "moveUci": "g6g1",
+          "probability": 0.0073601290077494365
+        }
+      ],
+      "entropyNats": 0.48335073774018966
+    },
+    {
+      "position": "promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "rating": 1100,
+      "legalMoves": 10,
+      "topMoves": [
+        {
+          "moveUci": "a7a8q",
+          "probability": 0.6851050218200821
+        },
+        {
+          "moveUci": "a7a8r",
+          "probability": 0.13281366661915067
+        },
+        {
+          "moveUci": "g6f7",
+          "probability": 0.06472821156579292
+        },
+        {
+          "moveUci": "g6f6",
+          "probability": 0.04179167441576704
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.03925964486301929
+        }
+      ],
+      "entropyNats": 1.1372063462468833
+    },
+    {
+      "position": "promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "rating": 1300,
+      "legalMoves": 10,
+      "topMoves": [
+        {
+          "moveUci": "a7a8q",
+          "probability": 0.6385650198384666
+        },
+        {
+          "moveUci": "a7a8r",
+          "probability": 0.18583301514765976
+        },
+        {
+          "moveUci": "g6f7",
+          "probability": 0.06523352360103589
+        },
+        {
+          "moveUci": "g6f6",
+          "probability": 0.044139209972850826
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.03229293586549514
+        }
+      ],
+      "entropyNats": 1.1886319793016735
+    },
+    {
+      "position": "promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "rating": 1600,
+      "legalMoves": 10,
+      "topMoves": [
+        {
+          "moveUci": "a7a8q",
+          "probability": 0.5826358866050206
+        },
+        {
+          "moveUci": "a7a8r",
+          "probability": 0.2626145689507078
+        },
+        {
+          "moveUci": "g6f7",
+          "probability": 0.06335871332689254
+        },
+        {
+          "moveUci": "g6f6",
+          "probability": 0.03903417092051155
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.025599234276379924
+        }
+      ],
+      "entropyNats": 1.195513324010024
+    },
+    {
+      "position": "promotion",
+      "fen": "7k/P7/6K1/8/8/8/8/8 w - - 0 1",
+      "rating": 1900,
+      "legalMoves": 10,
+      "topMoves": [
+        {
+          "moveUci": "a7a8q",
+          "probability": 0.571133335446518
+        },
+        {
+          "moveUci": "a7a8r",
+          "probability": 0.3105198084167769
+        },
+        {
+          "moveUci": "g6f7",
+          "probability": 0.05148923180086963
+        },
+        {
+          "moveUci": "g6f6",
+          "probability": 0.028882841369679585
+        },
+        {
+          "moveUci": "g6h6",
+          "probability": 0.019850867214401137
+        }
+      ],
+      "entropyNats": 1.1153057372446877
+    }
+  ],
+  "games": [
+    {
+      "index": 0,
+      "whiteRating": 1100,
+      "blackRating": 1900,
+      "result": "black",
+      "winnerRating": 1900,
+      "plies": 70,
+      "finalFen": "6rk/p1Q2p2/2p4p/2Pp4/4qK2/6P1/P1P5/8 w - - 7 36",
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "f8b4",
+        "d4c6",
+        "b4c3",
+        "b2c3",
+        "b7c6",
+        "f1d3",
+        "e8g8",
+        "e1g1",
+        "h7h6",
+        "c1h6",
+        "g7h6",
+        "e4e5",
+        "f6d5",
+        "c3c4",
+        "d5e7",
+        "c4c5",
+        "e7g6",
+        "f1e1",
+        "d8g5",
+        "d3g6",
+        "g5g6",
+        "e1e3",
+        "g8h7",
+        "e3g3",
+        "g6e6",
+        "d1d3",
+        "h7h8",
+        "g3h3",
+        "f8g8",
+        "d3e3",
+        "g8g6",
+        "a1e1",
+        "d7d5",
+        "h3g3",
+        "c8d7",
+        "g3g6",
+        "e6g6",
+        "h2h3",
+        "d7e6",
+        "g2g3",
+        "e6h3",
+        "e5e6",
+        "h3e6",
+        "e3e5",
+        "g6g7",
+        "e5c7",
+        "g7c3",
+        "g1f1",
+        "e6h3",
+        "f1g1",
+        "c3e1",
+        "g1h2",
+        "e1f2",
+        "h2h3",
+        "f2f1",
+        "h3h4",
+        "f1h1",
+        "h4g4",
+        "a8g8",
+        "g4f4",
+        "h1e4"
+      ]
+    },
+    {
+      "index": 1,
+      "whiteRating": 1900,
+      "blackRating": 1100,
+      "result": "white",
+      "winnerRating": 1900,
+      "plies": 89,
+      "finalFen": "Q7/1Rk3K1/8/1PPP2P1/8/8/7P/8 b - - 2 45",
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+        "f8e7",
+        "a2a3",
+        "g8f6",
+        "b1c3",
+        "e8g8",
+        "d2d3",
+        "d7d6",
+        "e1g1",
+        "c8e6",
+        "c4e6",
+        "f7e6",
+        "c3e2",
+        "d6d5",
+        "e2g3",
+        "d5d4",
+        "d1e1",
+        "f6g4",
+        "e1d2",
+        "e7h4",
+        "d2e1",
+        "d8f6",
+        "c2c4",
+        "h4g3",
+        "f2g3",
+        "g4e3",
+        "c1e3",
+        "d4e3",
+        "e1e3",
+        "c6d4",
+        "f3d4",
+        "e5d4",
+        "f1f6",
+        "d4e3",
+        "f6f8",
+        "a8f8",
+        "a1e1",
+        "f8f2",
+        "b2b4",
+        "f2g2",
+        "g1g2",
+        "g8f7",
+        "e1e3",
+        "f7e7",
+        "d3d4",
+        "b7b6",
+        "d4d5",
+        "e6d5",
+        "e4d5",
+        "e7d6",
+        "e3e6",
+        "d6d7",
+        "g2f3",
+        "c7c6",
+        "e6c6",
+        "g7g5",
+        "f3g4",
+        "a7a6",
+        "g4g5",
+        "b6b5",
+        "c4c5",
+        "h7h6",
+        "g5h6",
+        "a6a5",
+        "b4a5",
+        "d7d8",
+        "g3g4",
+        "d8d7",
+        "c6b6",
+        "d7c7",
+        "h6g7",
+        "b5b4",
+        "a3b4",
+        "c7d8",
+        "a5a6",
+        "d8e7",
+        "b4b5",
+        "e7d7",
+        "g4g5",
+        "d7c7",
+        "a6a7",
+        "c7c8",
+        "a7a8q",
+        "c8c7",
+        "b6b7"
+      ]
+    }
+  ]
+}

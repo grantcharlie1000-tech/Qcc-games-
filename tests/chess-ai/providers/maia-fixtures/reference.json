@@ -1,0 +1,179 @@
+{
+  "runtime": "onnxruntime Python CPU 1.23.0, graph optimization disabled, single thread",
+  "modelSha256": "405bf76c15727dad8728b352c06a8f3c1b80fb2760e8d666b32485c63d75b856",
+  "fixtures": [
+    {
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "rating": 1300,
+      "tokenSha256": "b6a6de0d454ab8bbd086d2e4824443d4c159e5d8ae8aa6b0043498236b3acbc7",
+      "selectedLogits": [
+        {
+          "moveUci": "e2e4",
+          "index": 796,
+          "logit": 22.359375
+        },
+        {
+          "moveUci": "d2d4",
+          "index": 731,
+          "logit": 21.453125
+        },
+        {
+          "moveUci": "b1c3",
+          "index": 82,
+          "logit": 17.015625
+        },
+        {
+          "moveUci": "g1f3",
+          "index": 405,
+          "logit": 19.25
+        },
+        {
+          "moveUci": "a2a3",
+          "index": 528,
+          "logit": 15.5390625
+        },
+        {
+          "moveUci": "a2a4",
+          "index": 536,
+          "logit": 15.578125
+        },
+        {
+          "moveUci": "h2h3",
+          "index": 983,
+          "logit": 15.203125
+        },
+        {
+          "moveUci": "h2h4",
+          "index": 991,
+          "logit": 15.5078125
+        }
+      ],
+      "ldw": [
+        0.857795000076294,
+        -2.1185519695281982,
+        0.9572474956512451
+      ]
+    },
+    {
+      "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+      "rating": 1900,
+      "tokenSha256": "d6345d21561af50741c9105aab298c2f3cc856b2f9ae0a6234fceaf014a8a53f",
+      "selectedLogits": [
+        {
+          "moveUci": "e7e5",
+          "index": 796,
+          "logit": 20.859375
+        },
+        {
+          "moveUci": "c7c5",
+          "index": 666,
+          "logit": 20.59375
+        },
+        {
+          "moveUci": "e7e6",
+          "index": 788,
+          "logit": 20.015625
+        },
+        {
+          "moveUci": "c7c6",
+          "index": 658,
+          "logit": 19.9375
+        },
+        {
+          "moveUci": "g8f6",
+          "index": 405,
+          "logit": 19.40625
+        },
+        {
+          "moveUci": "d7d5",
+          "index": 731,
+          "logit": 20.453125
+        }
+      ],
+      "ldw": [
+        0.7562192678451538,
+        -1.725885272026062,
+        0.7088544368743896
+      ]
+    },
+    {
+      "fen": "8/P6k/8/8/8/8/8/7K w - - 0 1",
+      "rating": 1100,
+      "tokenSha256": "97f37c19477b9afd812f96296f9d4e12ce32abec3d529f88ff082624f97a713b",
+      "selectedLogits": [
+        {
+          "moveUci": "a7a8q",
+          "index": 4096,
+          "logit": 20.9375
+        },
+        {
+          "moveUci": "a7a8r",
+          "index": 4097,
+          "logit": 18.34375
+        },
+        {
+          "moveUci": "a7a8b",
+          "index": 4098,
+          "logit": 15.734375
+        },
+        {
+          "moveUci": "a7a8n",
+          "index": 4099,
+          "logit": 15.359375
+        },
+        {
+          "moveUci": "h1g1",
+          "index": 454,
+          "logit": 16.859375
+        },
+        {
+          "moveUci": "h1g2",
+          "index": 462,
+          "logit": 17.4375
+        },
+        {
+          "moveUci": "h1h2",
+          "index": 463,
+          "logit": 16.96875
+        }
+      ],
+      "ldw": [
+        -4.384352684020996,
+        0.8298815488815308,
+        1.9296472072601318
+      ]
+    },
+    {
+      "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+      "rating": 1600,
+      "tokenSha256": "9ed5735feaa3afa84d463e727a5e74ea6ec3b2b27a908e3a91f2f5f8fcafd1e9",
+      "selectedLogits": [
+        {
+          "moveUci": "e1g1",
+          "index": 262,
+          "logit": 18.40625
+        },
+        {
+          "moveUci": "e1c1",
+          "index": 258,
+          "logit": 18.09375
+        },
+        {
+          "moveUci": "a1a8",
+          "index": 56,
+          "logit": 21.296875
+        },
+        {
+          "moveUci": "h1h8",
+          "index": 511,
+          "logit": 21.421875
+        }
+      ],
+      "ldw": [
+        -1.250832200050354,
+        0.45919328927993774,
+        0.5246453881263733
+      ]
+    }
+  ]
+}

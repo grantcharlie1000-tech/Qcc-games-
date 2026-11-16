@@ -1,0 +1,3193 @@
+{
+  "date": "2026-11-16T03:50:56.029Z",
+  "base": "/Qcc-games-/",
+  "fullGame": true,
+  "notes": [
+    "Mobile Chrome and iPhone runs are browser/device emulation, not physical phone tests.",
+    "Timings use the same-host localhost static server, with no network throttle; OS and file caches may be warm.",
+    "JS heap counters exclude native/WASM engine memory. Worker counts track actual constructed/terminated workers.",
+    "Optional Linux Chromium snapshots report aggregate renderer/worker RSS and full browser process RSS via CDP and /proc. Shared pages may be counted more than once. These are process observations, not isolated engine allocations; RSS need not immediately return after termination.",
+    "Tests build a separate fixture with production Vite chunking; the main production website is verified separately."
+  ],
+  "browsers": [
+    {
+      "results": [
+        {
+          "name": "discovery and honest metadata",
+          "ok": true,
+          "elapsedMs": 0.40000000002328306,
+          "detail": [
+            {
+              "id": "elo-300",
+              "targetElo": 300,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-500",
+              "targetElo": 500,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-700",
+              "targetElo": 700,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-900",
+              "targetElo": 900,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-1100",
+              "targetElo": 1100,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1300",
+              "targetElo": 1300,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1600",
+              "targetElo": 1600,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1900",
+              "targetElo": 1900,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-2200",
+              "targetElo": 2200,
+              "engine": "stockfish"
+            },
+            {
+              "id": "elo-2600",
+              "targetElo": 2600,
+              "engine": "stockfish"
+            },
+            {
+              "id": "elo-3000",
+              "targetElo": 3000,
+              "engine": "stockfish"
+            },
+            {
+              "id": "max",
+              "targetElo": null,
+              "engine": "stockfish"
+            },
+            {
+              "id": "leela-expert",
+              "targetElo": null,
+              "engine": "unavailable"
+            }
+          ]
+        },
+        {
+          "name": "elo-300: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 427,
+          "detail": {
+            "provider": {
+              "id": "qcc-beginner",
+              "name": "QCC Beginner",
+              "version": "1.0.0",
+              "engine": "custom",
+              "license": "MIT AND BSD-2-Clause",
+              "opponents": [
+                "elo-300",
+                "elo-500",
+                "elo-700",
+                "elo-900"
+              ],
+              "analysis": false,
+              "priority": 0,
+              "downloadBytes": 45000
+            },
+            "loadMs": 103.89999999990687,
+            "thinkingMs": 273,
+            "emergencyMs": 8.5,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "d2d4"
+            },
+            "progress": [
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "elo-700: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 489.79999999993015,
+          "detail": {
+            "provider": {
+              "id": "qcc-beginner",
+              "name": "QCC Beginner",
+              "version": "1.0.0",
+              "engine": "custom",
+              "license": "MIT AND BSD-2-Clause",
+              "opponents": [
+                "elo-300",
+                "elo-500",
+                "elo-700",
+                "elo-900"
+              ],
+              "analysis": false,
+              "priority": 0,
+              "downloadBytes": 45000
+            },
+            "loadMs": 22.79999999993015,
+            "thinkingMs": 392.19999999995343,
+            "emergencyMs": 2.599999999976717,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "d2d3"
+            },
+            "progress": [
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 560.7999999999302,
+          "detail": {
+            "provider": {
+              "id": "stockfish-wasm",
+              "name": "Stockfish 19 Lite",
+              "version": "19.0.1",
+              "engine": "stockfish",
+              "license": "GPL-3.0-only",
+              "opponents": [
+                "elo-2200",
+                "elo-2600",
+                "elo-3000",
+                "max"
+              ],
+              "analysis": true,
+              "downloadBytes": 1874201,
+              "priority": 10
+            },
+            "loadMs": 496.29999999993015,
+            "thinkingMs": 39.79999999993015,
+            "emergencyMs": 3.5,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "e2e4",
+              "evaluationCp": 33,
+              "depth": 9,
+              "pvUci": [
+                "e2e4",
+                "e7e5",
+                "b1c3",
+                "b8c6",
+                "g1f3",
+                "g8f6",
+                "d2d4",
+                "e5d4",
+                "f3d4"
+              ]
+            },
+            "progress": [
+              {
+                "phase": "download",
+                "fraction": 0,
+                "totalBytes": 1874201,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "download",
+                "fraction": 0.175656063935999,
+                "loadedBytes": 324256,
+                "totalBytes": 1845971,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "elo-300: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 854.0999999999767,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "g1h3"
+              },
+              {
+                "moveUci": "g2g4"
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "elo-700: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 872.1999999999534,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "b2b4"
+              },
+              {
+                "moveUci": "b2b4"
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "max: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 2089.9000000000233,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "e2e4",
+                "evaluationCp": 23,
+                "depth": 14,
+                "pvUci": [
+                  "e2e4",
+                  "e7e5",
+                  "g1f3",
+                  "b8c6",
+                  "d2d4",
+                  "e5d4",
+                  "f3d4",
+                  "g8f6",
+                  "d4c6",
+                  "d7c6",
+                  "d1d8",
+                  "e8d8",
+                  "b1c3",
+                  "f8d6",
+                  "f2f3",
+                  "c8e6",
+                  "c1e3",
+                  "a7a5"
+                ]
+              },
+              {
+                "moveUci": "e2e4",
+                "evaluationCp": 29,
+                "depth": 18,
+                "pvUci": [
+                  "e2e4",
+                  "e7e5",
+                  "g1f3",
+                  "b8c6",
+                  "d2d4",
+                  "e5d4",
+                  "f3d4",
+                  "g8f6",
+                  "d4c6",
+                  "b7c6",
+                  "e4e5",
+                  "d8e7",
+                  "d1e2",
+                  "f6d5",
+                  "c2c4",
+                  "d5b6",
+                  "b1c3",
+                  "e7e6"
+                ]
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "elo-300: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1151.3000000000466,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "elo-700: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1393.8000000000466,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "max: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 2217.5,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "Stockfish real analysis and White score orientation",
+          "ok": true,
+          "elapsedMs": 248.09999999997672,
+          "detail": {
+            "report": {
+              "depth": 11,
+              "lines": [
+                {
+                  "pvUci": [
+                    "h8h7",
+                    "f2f6",
+                    "h7g8",
+                    "g1g2",
+                    "g8h7",
+                    "g2g3"
+                  ],
+                  "evaluationCp": 691
+                },
+                {
+                  "pvUci": [
+                    "h8g7",
+                    "f2f5",
+                    "g7h6",
+                    "f5f6",
+                    "h6h5",
+                    "g1g2",
+                    "h5g4",
+                    "f6f8",
+                    "g4g5"
+                  ],
+                  "evaluationCp": 730
+                }
+              ]
+            },
+            "finished": {
+              "depth": 0,
+              "lines": []
+            }
+          }
+        },
+        {
+          "name": "Stockfish full legal game from standard start",
+          "ok": true,
+          "elapsedMs": 1905.4000000000233,
+          "detail": {
+            "plies": 69,
+            "averageThinkingMs": 17.000000000005063,
+            "maxThinkingMs": 45.699999999953434,
+            "checkmate": true,
+            "draw": false,
+            "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e4 c5 2. Nf3 a6 3. Be2 d6 4. d4 Nd7 5. dxc5 Nxc5 6. Nc3 e6 7. O-O Be7 8. e5 dxe5 9. Nxe5 Qxd1 10. Rxd1 Nh6 11. a4 f6 12. Nc4 Nf5 13. a5 Rb8 14. g4 b5 15. axb6 Nd6 16. Rxd6 h5 17. g5 Bb7 18. Rd1 O-O 19. g6 Rbc8 20. Kf1 f5 21. Bf4 Rcd8 22. Na5 Ba8 23. Bc7 Rc8 24. Nc4 Rcd8 25. Rxd8 Rxd8 26. Bxd8 Bxd8 27. Rd1 Be7 28. b4 Nb7 29. Bf3 Kf8 30. Ne2 Nd6 31. Bxa8 Nxc4 32. b7 Nd6 33. b8=Q+ Bd8 34. Rxd6 a5 35. Qxd8# *",
+            "history": [
+              "e2e4",
+              "c7c5",
+              "g1f3",
+              "a7a6",
+              "f1e2",
+              "d7d6",
+              "d2d4",
+              "b8d7",
+              "d4c5",
+              "d7c5",
+              "b1c3",
+              "e7e6",
+              "e1g1",
+              "f8e7",
+              "e4e5",
+              "d6e5",
+              "f3e5",
+              "d8d1",
+              "f1d1",
+              "g8h6",
+              "a2a4",
+              "f7f6",
+              "e5c4",
+              "h6f5",
+              "a4a5",
+              "a8b8",
+              "g2g4",
+              "b7b5",
+              "a5b6",
+              "f5d6",
+              "d1d6",
+              "h7h5",
+              "g4g5",
+              "c8b7",
+              "d6d1",
+              "e8g8",
+              "g5g6",
+              "b8c8",
+              "g1f1",
+              "f6f5",
+              "c1f4",
+              "c8d8",
+              "c4a5",
+              "b7a8",
+              "f4c7",
+              "d8c8",
+              "a5c4",
+              "c8d8",
+              "d1d8",
+              "f8d8",
+              "c7d8",
+              "e7d8",
+              "a1d1",
+              "d8e7",
+              "b2b4",
+              "c5b7",
+              "e2f3",
+              "g8f8",
+              "c3e2",
+              "b7d6",
+              "f3a8",
+              "d6c4",
+              "b6b7",
+              "c4d6",
+              "b7b8q",
+              "e7d8",
+              "d1d6",
+              "a6a5",
+              "b8d8"
+            ]
+          }
+        },
+        {
+          "name": "missing-wasm",
+          "ok": true,
+          "detail": {
+            "elapsedMs": 7.699999999953434,
+            "remainingWorkers": 0
+          }
+        },
+        {
+          "name": "crashed-engine-script",
+          "ok": true,
+          "detail": {
+            "elapsedMs": 25.20000000006985,
+            "remainingWorkers": 0
+          }
+        }
+      ],
+      "peakWorkers": 2,
+      "remainingWorkers": 0,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "crossOriginIsolated": false,
+      "memory": {
+        "usedJSHeapSize": 6129389,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "errors": [],
+      "requests": [
+        "/Qcc-games-/index.html",
+        "/Qcc-games-/assets/harness-DGzNrrNf.js",
+        "/Qcc-games-/assets/index-BLJ__mUT.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/index-vQ2r3lrz.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm"
+      ],
+      "name": "desktop-chromium",
+      "processMemorySamples": [
+        {
+          "label": "registry-ready-before-engines",
+          "at": "2026-11-16T03:50:57.088Z",
+          "rendererRssKiB": 166784,
+          "totalProcessRssKiB": 427352,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.43,
+              "rssKiB": 132112
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34272
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.09,
+              "rssKiB": 67376
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.28,
+              "rssKiB": 65136
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.05,
+              "rssKiB": 41660
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.06,
+              "rssKiB": 64112
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "elo-300:ready",
+          "at": "2026-11-16T03:50:57.226Z",
+          "rendererRssKiB": 176632,
+          "totalProcessRssKiB": 437204,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.46,
+              "rssKiB": 131692
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34272
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.12,
+              "rssKiB": 73472
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.35,
+              "rssKiB": 68888
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.06,
+              "rssKiB": 42040
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.06,
+              "rssKiB": 64156
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "elo-300:disposed",
+          "at": "2026-11-16T03:50:57.540Z",
+          "rendererRssKiB": 198952,
+          "totalProcessRssKiB": 460480,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.47,
+              "rssKiB": 132500
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34272
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.19,
+              "rssKiB": 80336
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.45,
+              "rssKiB": 84344
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.06,
+              "rssKiB": 42188
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.06,
+              "rssKiB": 64156
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "elo-700:ready",
+          "at": "2026-11-16T03:50:57.582Z",
+          "rendererRssKiB": 203932,
+          "totalProcessRssKiB": 465824,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.47,
+              "rssKiB": 132568
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34272
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.2,
+              "rssKiB": 81980
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.47,
+              "rssKiB": 87680
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.06,
+              "rssKiB": 42448
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.06,
+              "rssKiB": 64192
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "elo-700:disposed",
+          "at": "2026-11-16T03:50:58.022Z",
+          "rendererRssKiB": 208416,
+          "totalProcessRssKiB": 470684,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.49,
+              "rssKiB": 132532
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34284
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.24,
+              "rssKiB": 81804
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.52,
+              "rssKiB": 92328
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.06,
+              "rssKiB": 42452
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.06,
+              "rssKiB": 64600
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "max:ready",
+          "at": "2026-11-16T03:50:58.535Z",
+          "rendererRssKiB": 270916,
+          "totalProcessRssKiB": 533324,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.51,
+              "rssKiB": 132616
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34284
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.51,
+              "rssKiB": 144296
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.52,
+              "rssKiB": 92336
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.06,
+              "rssKiB": 42456
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.08,
+              "rssKiB": 64652
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "max:disposed",
+          "at": "2026-11-16T03:50:58.592Z",
+          "rendererRssKiB": 220100,
+          "totalProcessRssKiB": 482508,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.51,
+              "rssKiB": 132616
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 34284
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 0.58,
+              "rssKiB": 93480
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.52,
+              "rssKiB": 92336
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.06,
+              "rssKiB": 42456
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.08,
+              "rssKiB": 64652
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22684
+            }
+          ]
+        },
+        {
+          "label": "suite-idle-150ms-after-dispose",
+          "at": "2026-11-16T03:51:09.502Z",
+          "rendererRssKiB": 227828,
+          "totalProcessRssKiB": 492680,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23325,
+              "cpuSeconds": 0.66,
+              "rssKiB": 132944
+            },
+            {
+              "type": "renderer",
+              "pid": 23417,
+              "cpuSeconds": 0.03,
+              "rssKiB": 33952
+            },
+            {
+              "type": "renderer",
+              "pid": 23419,
+              "cpuSeconds": 5.81,
+              "rssKiB": 103516
+            },
+            {
+              "type": "renderer",
+              "pid": 23410,
+              "cpuSeconds": 0.52,
+              "rssKiB": 90360
+            },
+            {
+              "type": "GPU",
+              "pid": 23368,
+              "cpuSeconds": 0.08,
+              "rssKiB": 43660
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23369,
+              "cpuSeconds": 0.15,
+              "rssKiB": 65556
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23373,
+              "cpuSeconds": 0,
+              "rssKiB": 22692
+            }
+          ]
+        }
+      ],
+      "cpuThrottle": 1
+    },
+    {
+      "results": [
+        {
+          "name": "discovery and honest metadata",
+          "ok": true,
+          "elapsedMs": 0.2000000000698492,
+          "detail": [
+            {
+              "id": "elo-300",
+              "targetElo": 300,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-500",
+              "targetElo": 500,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-700",
+              "targetElo": 700,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-900",
+              "targetElo": 900,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-1100",
+              "targetElo": 1100,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1300",
+              "targetElo": 1300,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1600",
+              "targetElo": 1600,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1900",
+              "targetElo": 1900,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-2200",
+              "targetElo": 2200,
+              "engine": "stockfish"
+            },
+            {
+              "id": "elo-2600",
+              "targetElo": 2600,
+              "engine": "stockfish"
+            },
+            {
+              "id": "elo-3000",
+              "targetElo": 3000,
+              "engine": "stockfish"
+            },
+            {
+              "id": "max",
+              "targetElo": null,
+              "engine": "stockfish"
+            },
+            {
+              "id": "leela-expert",
+              "targetElo": null,
+              "engine": "unavailable"
+            }
+          ]
+        },
+        {
+          "name": "elo-300: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 360.4000000000233,
+          "detail": {
+            "provider": {
+              "id": "qcc-beginner",
+              "name": "QCC Beginner",
+              "version": "1.0.0",
+              "engine": "custom",
+              "license": "MIT AND BSD-2-Clause",
+              "opponents": [
+                "elo-300",
+                "elo-500",
+                "elo-700",
+                "elo-900"
+              ],
+              "analysis": false,
+              "priority": 0,
+              "downloadBytes": 45000
+            },
+            "loadMs": 26.79999999993015,
+            "thinkingMs": 291.30000000004657,
+            "emergencyMs": 3.300000000046566,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "g2g3"
+            },
+            "progress": [
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "elo-700: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 457.4000000000233,
+          "detail": {
+            "provider": {
+              "id": "qcc-beginner",
+              "name": "QCC Beginner",
+              "version": "1.0.0",
+              "engine": "custom",
+              "license": "MIT AND BSD-2-Clause",
+              "opponents": [
+                "elo-300",
+                "elo-500",
+                "elo-700",
+                "elo-900"
+              ],
+              "analysis": false,
+              "priority": 0,
+              "downloadBytes": 45000
+            },
+            "loadMs": 18.400000000023283,
+            "thinkingMs": 405.4000000000233,
+            "emergencyMs": 7.800000000046566,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "b2b3"
+            },
+            "progress": [
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 270,
+          "detail": {
+            "provider": {
+              "id": "stockfish-wasm",
+              "name": "Stockfish 19 Lite",
+              "version": "19.0.1",
+              "engine": "stockfish",
+              "license": "GPL-3.0-only",
+              "opponents": [
+                "elo-2200",
+                "elo-2600",
+                "elo-3000",
+                "max"
+              ],
+              "analysis": true,
+              "downloadBytes": 1874201,
+              "priority": 10
+            },
+            "loadMs": 172,
+            "thinkingMs": 42.20000000006985,
+            "emergencyMs": 25.899999999906868,
+            "emergencyOutcome": "timeout",
+            "reply": {
+              "moveUci": "e2e4",
+              "evaluationCp": 33,
+              "depth": 9,
+              "pvUci": [
+                "e2e4",
+                "e7e5",
+                "b1c3",
+                "b8c6",
+                "g1f3",
+                "g8f6",
+                "d2d4",
+                "e5d4",
+                "f3d4"
+              ]
+            },
+            "progress": [
+              {
+                "phase": "download",
+                "fraction": 0,
+                "totalBytes": 1874201,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "elo-300: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 966.6000000000931,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "a2a3"
+              },
+              {
+                "moveUci": "g1f3"
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "elo-700: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 836.6999999999534,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "g2g4"
+              },
+              {
+                "moveUci": "d2d3"
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "max: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 1339.2999999998137,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "e2e4",
+                "evaluationCp": 23,
+                "depth": 14,
+                "pvUci": [
+                  "e2e4",
+                  "e7e5",
+                  "g1f3",
+                  "b8c6",
+                  "d2d4",
+                  "e5d4",
+                  "f3d4",
+                  "g8f6",
+                  "d4c6",
+                  "d7c6",
+                  "d1d8",
+                  "e8d8",
+                  "b1c3",
+                  "f8d6",
+                  "f2f3",
+                  "c8e6",
+                  "c1e3",
+                  "a7a5"
+                ]
+              },
+              {
+                "moveUci": "e2e4",
+                "evaluationCp": 29,
+                "depth": 18,
+                "pvUci": [
+                  "e2e4",
+                  "e7e5",
+                  "g1f3",
+                  "b8c6",
+                  "d2d4",
+                  "e5d4",
+                  "f3d4",
+                  "g8f6",
+                  "d4c6",
+                  "b7c6",
+                  "e4e5",
+                  "d8e7",
+                  "d1e2",
+                  "f6d5",
+                  "c2c4",
+                  "d5b6",
+                  "b1c3",
+                  "e7e6"
+                ]
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "elo-300: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1337.9000000001397,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1c1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "elo-700: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1224.3999999999069,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1c1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "max: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1879.8000000000466,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "Stockfish real analysis and White score orientation",
+          "ok": true,
+          "elapsedMs": 260.19999999995343,
+          "detail": {
+            "report": {
+              "depth": 11,
+              "lines": [
+                {
+                  "pvUci": [
+                    "h8h7",
+                    "f2f6",
+                    "h7g8",
+                    "g1g2",
+                    "g8h7",
+                    "g2g3"
+                  ],
+                  "evaluationCp": 691
+                },
+                {
+                  "pvUci": [
+                    "h8g7",
+                    "f2f5",
+                    "g7h6",
+                    "f5f6",
+                    "h6h5",
+                    "g1g2",
+                    "h5g4",
+                    "f6f8",
+                    "g4g5"
+                  ],
+                  "evaluationCp": 730
+                }
+              ]
+            },
+            "finished": {
+              "depth": 0,
+              "lines": []
+            }
+          }
+        },
+        {
+          "name": "missing-wasm",
+          "ok": true,
+          "detail": {
+            "elapsedMs": 9.600000000093132,
+            "remainingWorkers": 0
+          }
+        },
+        {
+          "name": "crashed-engine-script",
+          "ok": true,
+          "detail": {
+            "elapsedMs": 33.699999999953434,
+            "remainingWorkers": 0
+          }
+        }
+      ],
+      "peakWorkers": 2,
+      "remainingWorkers": 0,
+      "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Mobile Safari/537.36",
+      "crossOriginIsolated": false,
+      "memory": {
+        "usedJSHeapSize": 4187009,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "errors": [],
+      "requests": [
+        "/Qcc-games-/index.html",
+        "/Qcc-games-/assets/harness-DGzNrrNf.js",
+        "/Qcc-games-/assets/index-BLJ__mUT.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/index-vQ2r3lrz.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm"
+      ],
+      "name": "mobile-chromium-emulated",
+      "processMemorySamples": [
+        {
+          "label": "registry-ready-before-engines",
+          "at": "2026-11-16T03:51:10.437Z",
+          "rendererRssKiB": 184416,
+          "totalProcessRssKiB": 439184,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.29,
+              "rssKiB": 131036
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 0.19,
+              "rssKiB": 67084
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.3,
+              "rssKiB": 83028
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.02,
+              "rssKiB": 36936
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64048
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "elo-300:ready",
+          "at": "2026-11-16T03:51:10.475Z",
+          "rendererRssKiB": 196060,
+          "totalProcessRssKiB": 451948,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.3,
+              "rssKiB": 131652
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 0.24,
+              "rssKiB": 73140
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.34,
+              "rssKiB": 88616
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.02,
+              "rssKiB": 37368
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64120
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "elo-300:disposed",
+          "at": "2026-11-16T03:51:10.798Z",
+          "rendererRssKiB": 205620,
+          "totalProcessRssKiB": 460508,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.32,
+              "rssKiB": 130600
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 0.52,
+              "rssKiB": 80516
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.36,
+              "rssKiB": 90800
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.03,
+              "rssKiB": 37420
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64120
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "elo-700:ready",
+          "at": "2026-11-16T03:51:10.824Z",
+          "rendererRssKiB": 207492,
+          "totalProcessRssKiB": 462552,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.32,
+              "rssKiB": 130608
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 0.55,
+              "rssKiB": 82388
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.36,
+              "rssKiB": 90800
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.03,
+              "rssKiB": 37560
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64144
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "elo-700:disposed",
+          "at": "2026-11-16T03:51:11.253Z",
+          "rendererRssKiB": 207540,
+          "totalProcessRssKiB": 463204,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.33,
+              "rssKiB": 130784
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 0.93,
+              "rssKiB": 82436
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.36,
+              "rssKiB": 90800
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.03,
+              "rssKiB": 37560
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64572
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "max:ready",
+          "at": "2026-11-16T03:51:11.440Z",
+          "rendererRssKiB": 276344,
+          "totalProcessRssKiB": 532172,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.34,
+              "rssKiB": 130712
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 1.2,
+              "rssKiB": 151240
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.36,
+              "rssKiB": 90800
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.03,
+              "rssKiB": 37784
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64584
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "max:disposed",
+          "at": "2026-11-16T03:51:11.525Z",
+          "rendererRssKiB": 223852,
+          "totalProcessRssKiB": 479680,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.34,
+              "rssKiB": 130712
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 1.34,
+              "rssKiB": 98748
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.36,
+              "rssKiB": 90800
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.03,
+              "rssKiB": 37784
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.04,
+              "rssKiB": 64584
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        },
+        {
+          "label": "suite-idle-150ms-after-dispose",
+          "at": "2026-11-16T03:51:19.554Z",
+          "rendererRssKiB": 224816,
+          "totalProcessRssKiB": 483592,
+          "processes": [
+            {
+              "type": "browser",
+              "pid": 23514,
+              "cpuSeconds": 0.47,
+              "rssKiB": 131408
+            },
+            {
+              "type": "renderer",
+              "pid": 23607,
+              "cpuSeconds": 0.01,
+              "rssKiB": 34304
+            },
+            {
+              "type": "renderer",
+              "pid": 23609,
+              "cpuSeconds": 10.97,
+              "rssKiB": 99692
+            },
+            {
+              "type": "renderer",
+              "pid": 23598,
+              "cpuSeconds": 0.36,
+              "rssKiB": 90820
+            },
+            {
+              "type": "GPU",
+              "pid": 23557,
+              "cpuSeconds": 0.04,
+              "rssKiB": 39188
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "pid": 23560,
+              "cpuSeconds": 0.1,
+              "rssKiB": 65432
+            },
+            {
+              "type": "storage.mojom.StorageService",
+              "pid": 23573,
+              "cpuSeconds": 0,
+              "rssKiB": 22748
+            }
+          ]
+        }
+      ],
+      "cpuThrottle": 4
+    },
+    {
+      "results": [
+        {
+          "name": "discovery and honest metadata",
+          "ok": true,
+          "elapsedMs": 0,
+          "detail": [
+            {
+              "id": "elo-300",
+              "targetElo": 300,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-500",
+              "targetElo": 500,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-700",
+              "targetElo": 700,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-900",
+              "targetElo": 900,
+              "engine": "custom"
+            },
+            {
+              "id": "elo-1100",
+              "targetElo": 1100,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1300",
+              "targetElo": 1300,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1600",
+              "targetElo": 1600,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-1900",
+              "targetElo": 1900,
+              "engine": "maia"
+            },
+            {
+              "id": "elo-2200",
+              "targetElo": 2200,
+              "engine": "stockfish"
+            },
+            {
+              "id": "elo-2600",
+              "targetElo": 2600,
+              "engine": "stockfish"
+            },
+            {
+              "id": "elo-3000",
+              "targetElo": 3000,
+              "engine": "stockfish"
+            },
+            {
+              "id": "max",
+              "targetElo": null,
+              "engine": "stockfish"
+            },
+            {
+              "id": "leela-expert",
+              "targetElo": null,
+              "engine": "unavailable"
+            }
+          ]
+        },
+        {
+          "name": "elo-300: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 306,
+          "detail": {
+            "provider": {
+              "id": "qcc-beginner",
+              "name": "QCC Beginner",
+              "version": "1.0.0",
+              "engine": "custom",
+              "license": "MIT AND BSD-2-Clause",
+              "opponents": [
+                "elo-300",
+                "elo-500",
+                "elo-700",
+                "elo-900"
+              ],
+              "analysis": false,
+              "priority": 0,
+              "downloadBytes": 45000
+            },
+            "loadMs": 18,
+            "thinkingMs": 272,
+            "emergencyMs": 6,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "g2g4"
+            },
+            "progress": [
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "elo-700: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 444,
+          "detail": {
+            "provider": {
+              "id": "qcc-beginner",
+              "name": "QCC Beginner",
+              "version": "1.0.0",
+              "engine": "custom",
+              "license": "MIT AND BSD-2-Clause",
+              "opponents": [
+                "elo-300",
+                "elo-500",
+                "elo-700",
+                "elo-900"
+              ],
+              "analysis": false,
+              "priority": 0,
+              "downloadBytes": 45000
+            },
+            "loadMs": 6,
+            "thinkingMs": 431,
+            "emergencyMs": 3,
+            "emergencyOutcome": "move",
+            "reply": {
+              "moveUci": "h2h4"
+            },
+            "progress": [
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "qcc-beginner",
+                  "name": "QCC Beginner",
+                  "version": "1.0.0",
+                  "engine": "custom",
+                  "license": "MIT AND BSD-2-Clause",
+                  "opponents": [
+                    "elo-300",
+                    "elo-500",
+                    "elo-700",
+                    "elo-900"
+                  ],
+                  "analysis": false,
+                  "priority": 0,
+                  "downloadBytes": 45000
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "max: real initialize, legal move, pacing, disposal",
+          "ok": true,
+          "elapsedMs": 176,
+          "detail": {
+            "provider": {
+              "id": "stockfish-wasm",
+              "name": "Stockfish 19 Lite",
+              "version": "19.0.1",
+              "engine": "stockfish",
+              "license": "GPL-3.0-only",
+              "opponents": [
+                "elo-2200",
+                "elo-2600",
+                "elo-3000",
+                "max"
+              ],
+              "analysis": true,
+              "downloadBytes": 1874201,
+              "priority": 10
+            },
+            "loadMs": 121,
+            "thinkingMs": 38,
+            "emergencyMs": 10,
+            "emergencyOutcome": "timeout",
+            "reply": {
+              "moveUci": "e2e4",
+              "evaluationCp": 31,
+              "depth": 10,
+              "pvUci": [
+                "e2e4",
+                "c7c5",
+                "g1f3",
+                "b8c6",
+                "b1c3",
+                "e7e6",
+                "d2d4",
+                "c5d4",
+                "f3d4"
+              ]
+            },
+            "progress": [
+              {
+                "phase": "download",
+                "fraction": 0,
+                "totalBytes": 1874201,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 0,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              },
+              {
+                "phase": "warmup",
+                "fraction": 1,
+                "provider": {
+                  "id": "stockfish-wasm",
+                  "name": "Stockfish 19 Lite",
+                  "version": "19.0.1",
+                  "engine": "stockfish",
+                  "license": "GPL-3.0-only",
+                  "opponents": [
+                    "elo-2200",
+                    "elo-2600",
+                    "elo-3000",
+                    "max"
+                  ],
+                  "analysis": true,
+                  "downloadBytes": 1874201,
+                  "priority": 10
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "elo-300: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 841,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "c2c3"
+              },
+              {
+                "moveUci": "g2g4"
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "elo-700: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 849,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "e2e3"
+              },
+              {
+                "moveUci": "b1a3"
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "max: abort, stale requests, restart and independent games",
+          "ok": true,
+          "elapsedMs": 1371,
+          "detail": {
+            "concurrentReplies": [
+              {
+                "moveUci": "e2e4",
+                "evaluationCp": 25,
+                "depth": 16,
+                "pvUci": [
+                  "e2e4",
+                  "e7e5",
+                  "g1f3",
+                  "b8c6",
+                  "d2d4",
+                  "e5d4",
+                  "f3d4",
+                  "g8f6",
+                  "b1c3",
+                  "f8b4",
+                  "d4c6",
+                  "b7c6",
+                  "f1d3",
+                  "d7d5",
+                  "e4d5",
+                  "c6d5"
+                ]
+              },
+              {
+                "moveUci": "e2e4",
+                "evaluationCp": 29,
+                "depth": 18,
+                "pvUci": [
+                  "e2e4",
+                  "e7e5",
+                  "g1f3",
+                  "b8c6",
+                  "d2d4",
+                  "e5d4",
+                  "f3d4",
+                  "g8f6",
+                  "d4c6",
+                  "b7c6",
+                  "e4e5",
+                  "d8e7",
+                  "d1e2",
+                  "f6d5",
+                  "c2c4",
+                  "d5b6",
+                  "b1c3",
+                  "e7e6"
+                ]
+              }
+            ],
+            "peakWorkers": 2
+          }
+        },
+        {
+          "name": "elo-300: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1146,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "elo-700: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1132,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "max: promotion, castling, en passant and invalid FEN",
+          "ok": true,
+          "elapsedMs": 1741,
+          "detail": [
+            {
+              "name": "promotion",
+              "move": "a7a8q"
+            },
+            {
+              "name": "castling",
+              "move": "e1g1"
+            },
+            {
+              "name": "en passant",
+              "move": "e5d6"
+            }
+          ]
+        },
+        {
+          "name": "Stockfish real analysis and White score orientation",
+          "ok": true,
+          "elapsedMs": 212,
+          "detail": {
+            "report": {
+              "depth": 12,
+              "lines": [
+                {
+                  "pvUci": [
+                    "h8g7",
+                    "f2f5",
+                    "g7h6",
+                    "f5f6",
+                    "h6h7",
+                    "g1f1",
+                    "h7g8",
+                    "f1e2",
+                    "g8h7",
+                    "e2d3",
+                    "h7g8"
+                  ],
+                  "evaluationCp": 689
+                },
+                {
+                  "pvUci": [
+                    "h8h7",
+                    "f2f6",
+                    "h7g8",
+                    "g1g2",
+                    "g8h7",
+                    "g2g3"
+                  ],
+                  "evaluationCp": 691
+                }
+              ]
+            },
+            "finished": {
+              "depth": 0,
+              "lines": []
+            }
+          }
+        },
+        {
+          "name": "missing-wasm",
+          "ok": true,
+          "detail": {
+            "elapsedMs": 13,
+            "remainingWorkers": 0
+          }
+        },
+        {
+          "name": "crashed-engine-script",
+          "ok": true,
+          "detail": {
+            "elapsedMs": 62,
+            "remainingWorkers": 0
+          }
+        }
+      ],
+      "peakWorkers": 2,
+      "remainingWorkers": 0,
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Mobile/15E148 Safari/604.1",
+      "crossOriginIsolated": false,
+      "memory": null,
+      "errors": [],
+      "requests": [
+        "/Qcc-games-/index.html",
+        "/Qcc-games-/assets/harness-DGzNrrNf.js",
+        "/Qcc-games-/assets/index-BLJ__mUT.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/index-vQ2r3lrz.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+        "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm"
+      ],
+      "name": "iphone-webkit-emulated",
+      "processMemorySamples": [],
+      "cpuThrottle": 1
+    }
+  ],
+  "failures": [],
+  "servedAssets": [
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-BLJ__mUT.js",
+      "bytes": 3659
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-BLJ__mUT.js",
+      "bytes": 3659
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-BLJ__mUT.js",
+      "bytes": 3659
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/assets/engine.worker-Ca2huSwG.js",
+      "bytes": 39568
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.js",
+      "bytes": 28230
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/assets/harness-DGzNrrNf.js",
+      "bytes": 58283
+    },
+    {
+      "path": "/Qcc-games-/assets/index-vQ2r3lrz.js",
+      "bytes": 6697
+    },
+    {
+      "path": "/Qcc-games-/chess-engines/stockfish/stockfish-19-lite-single.wasm",
+      "bytes": 1845971
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "sourceSha256": "c9c13cea80b9e539f7e9a3b7699a79cd344a6a0a958edde1dfaddba315f1a13d",
+  "note": "Early calibration stopped after clear excessive strength gaps. Superseded by final tuning results. Partial run used75ms root budget,240plycap,40gamesplannedperpair.",
+  "pairs": [
+    {
+      "weaker": "elo-300",
+      "stronger": "elo-500",
+      "gamesCompletedOrCapped": 40,
+      "wins": 31,
+      "losses": 1,
+      "draws": 3,
+      "unfinished": 5,
+      "finishedGameScore": 0.9285714285714286,
+      "allGamesScoreBounds": [
+        0.8125,
+        0.9375
+      ]
+    },
+    {
+      "weaker": "elo-500",
+      "stronger": "elo-700",
+      "gamesCompletedOrCapped": 40,
+      "wins": 39,
+      "losses": 0,
+      "draws": 0,
+      "unfinished": 1,
+      "finishedGameScore": 1.0,
+      "allGamesScoreBounds": [
+        0.975,
+        1.0
+      ]
+    },
+    {
+      "weaker": "elo-700",
+      "stronger": "elo-900",
+      "gamesCompletedOrCapped": 2,
+      "wins": 2,
+      "losses": 0,
+      "draws": 0,
+      "unfinished": 0,
+      "finishedGameScore": 1.0,
+      "allGamesScoreBounds": [
+        1.0,
+        1.0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2329 @@
+{
+  "generatedAt": "2026-11-16T03:46:37.043Z",
+  "sourceSha256": "c9c13cea80b9e539f7e9a3b7699a79cd344a6a0a958edde1dfaddba315f1a13d",
+  "sourceSha256After": "c9c13cea80b9e539f7e9a3b7699a79cd344a6a0a958edde1dfaddba315f1a13d",
+  "sourceUnchanged": true,
+  "rulesSha256": "6ec742c5b513c309938634dbc29b7fa302b37da6e8adebcded0694290582a22a",
+  "stockfishJsSha256": "ccb130d7ff29408531c47d859a49f91d59d4f482d05a53eb1a3231a4f624c91a",
+  "stockfishWasmSha256": "ee4f115bdb2d32cadf96cada104a05b5ec257d7ad6f57582190b49bc71f096de",
+  "config": {
+    "games": 6,
+    "customBudgetMs": 75,
+    "stockfishBudgetMs": 50,
+    "maxPlies": 300,
+    "baseSeed": 147331,
+    "hashMiB": 16,
+    "threads": 1,
+    "customOpponent": "elo-900",
+    "stockfishStrengthLimited": false,
+    "stockfishSkillLevel": 20,
+    "depthLimit": null,
+    "nodeLimit": null
+  },
+  "engine": "Stockfish 19 Lite WASM, stockfish.js19.0.1 unmodified bundled binary, child Node process",
+  "handshake": [
+    "id name Stockfish 19 Lite WASM",
+    "id author the Stockfish developers (see AUTHORS file)",
+    "",
+    "option name Threads type spin default 1 min 1 max 1",
+    "option name Hash type spin default 16 min 1 max 33554432",
+    "option name Clear Hash type button",
+    "option name Ponder type check default false",
+    "option name MultiPV type spin default 1 min 1 max 256",
+    "option name Skill Level type spin default 20 min 0 max 20",
+    "option name Move Overhead type spin default 10 min 0 max 5000",
+    "option name nodestime type spin default 0 min 0 max 10000",
+    "option name UCI_Chess960 type check default false",
+    "option name UCI_LimitStrength type check default false",
+    "option name UCI_Elo type spin default 1320 min 1320 max 3190",
+    "option name UCI_ShowWDL type check default false",
+    "option name EvalFile type string default nn-61e7af4bb97d.nnue",
+    "uciok"
+  ],
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "linux 6.18.57 x64",
+    "cpu": "AMD EPYC 9V45 96-Core Processor",
+    "logicalCpus": 5
+  },
+  "method": "Serial full legal games from three paired opening lines, colors reversed. Ordinary custom75ms core search versus genuine unrestricted Stockfish50ms movetime; no pacing or browser overhead. Shared fixed seeds; time-based cutoff makes sequences machine-load dependent. Draws use chess.js rules only. Unfinished caps are reported, never adjudicated as wins. Six games detect gross strength inversion, not online Elo equivalence; the score interval is approximate Wilson, and opening-paired games are correlated.",
+  "summary": {
+    "wins": 6,
+    "losses": 0,
+    "draws": 0,
+    "failures": 0,
+    "unfinished": 0,
+    "finished": 6,
+    "stockfishScore": 1,
+    "approximate95PercentScoreInterval": [
+      0.6096569663469354,
+      0.9999999999999999
+    ]
+  },
+  "elapsedMs": 10222.321648,
+  "nodeParentCpuMs": 5638.967,
+  "nodeParentCpuCaveat": "Includes custom core/rules/Vite but excludes child Stockfish CPU.",
+  "rssBeforeBytes": 67301376,
+  "rssAfterBytes": 256598016,
+  "stockfishPeakSampledRssBytes": 121229312,
+  "memoryCaveat": "Sampled Linux child-process RSS after each Stockfish move, not total browser memory or allocated WASM capacity.",
+  "timing": {
+    "stockfish": {
+      "moves": 119,
+      "meanMs": 46.7598696638656,
+      "p50Ms": 50.23231200000009,
+      "p95Ms": 52.44833100000005,
+      "maxMs": 78.29176999999999
+    },
+    "custom": {
+      "moves": 116,
+      "meanMs": 33.86319409482766,
+      "p50Ms": 35.015480000000025,
+      "p95Ms": 66.23285000000033,
+      "maxMs": 106.87272799999982
+    }
+  },
+  "games": [
+    {
+      "index": 0,
+      "opening": [],
+      "white": "stockfish-max",
+      "black": "elo-900",
+      "result": "white",
+      "winner": "stockfish-max",
+      "elapsedMs": 2023.429234,
+      "plies": 41,
+      "finalFen": "r2q1r2/4k1pp/p3Qp2/p3R1B1/8/P1N2N2/1PP2PPP/2K4R b - - 0 21",
+      "moves": [
+        "e2e4",
+        "g8f6",
+        "e4e5",
+        "f6e4",
+        "d2d3",
+        "e4c5",
+        "d3d4",
+        "c5e6",
+        "d4d5",
+        "e6c5",
+        "g1f3",
+        "a7a5",
+        "c1e3",
+        "b8a6",
+        "b1c3",
+        "d7d6",
+        "a2a3",
+        "c8d7",
+        "d1d4",
+        "c7c6",
+        "f1a6",
+        "b7a6",
+        "e5d6",
+        "d8c8",
+        "d6e7",
+        "c6d5",
+        "e7f8q",
+        "h8f8",
+        "d4c5",
+        "d7f5",
+        "e1c1",
+        "c8d8",
+        "d1d5",
+        "f5d7",
+        "d5e5",
+        "d7e6",
+        "c5c6",
+        "e8e7",
+        "e3g5",
+        "f7f6",
+        "c6e6"
+      ],
+      "moveMetrics": [
+        {
+          "ply": 0,
+          "engine": "stockfish-max",
+          "moveUci": "e2e4",
+          "elapsedMs": 78.29176999999999,
+          "depth": 14,
+          "nodes": 30223
+        },
+        {
+          "ply": 1,
+          "engine": "elo-900",
+          "moveUci": "g8f6",
+          "elapsedMs": 62.83758800000004,
+          "nodes": 260,
+          "seed": 155522
+        },
+        {
+          "ply": 2,
+          "engine": "stockfish-max",
+          "moveUci": "e4e5",
+          "elapsedMs": 52.961321,
+          "depth": 14,
+          "nodes": 41006
+        },
+        {
+          "ply": 3,
+          "engine": "elo-900",
+          "moveUci": "f6e4",
+          "elapsedMs": 28.22416499999997,
+          "nodes": 273,
+          "seed": 171904
+        },
+        {
+          "ply": 4,
+          "engine": "stockfish-max",
+          "moveUci": "d2d3",
+          "elapsedMs": 51.12335899999994,
+          "depth": 14,
+          "nodes": 46602
+        },
+        {
+          "ply": 5,
+          "engine": "elo-900",
+          "moveUci": "e4c5",
+          "elapsedMs": 27.307398000000035,
+          "nodes": 338,
+          "seed": 188286
+        },
+        {
+          "ply": 6,
+          "engine": "stockfish-max",
+          "moveUci": "d3d4",
+          "elapsedMs": 50.63453000000004,
+          "depth": 15,
+          "nodes": 46466
+        },
+        {
+          "ply": 7,
+          "engine": "elo-900",
+          "moveUci": "c5e6",
+          "elapsedMs": 28.046719999999937,
+          "nodes": 292,
+          "seed": 204668
+        },
+        {
+          "ply": 8,
+          "engine": "stockfish-max",
+          "moveUci": "d4d5",
+          "elapsedMs": 50.97495900000001,
+          "depth": 14,
+          "nodes": 45820
+        },
+        {
+          "ply": 9,
+          "engine": "elo-900",
+          "moveUci": "e6c5",
+          "elapsedMs": 23.408113999999955,
+          "nodes": 260,
+          "seed": 221050
+        },
+        {
+          "ply": 10,
+          "engine": "stockfish-max",
+          "moveUci": "g1f3",
+          "elapsedMs": 49.91878299999996,
+          "depth": 15,
+          "nodes": 46840
+        },
+        {
+          "ply": 11,
+          "engine": "elo-900",
+          "moveUci": "a7a5",
+          "elapsedMs": 31.562562999999955,
+          "nodes": 279,
+          "seed": 237432
+        },
+        {
+          "ply": 12,
+          "engine": "stockfish-max",
+          "moveUci": "c1e3",
+          "elapsedMs": 50.896621000000096,
+          "depth": 13,
+          "nodes": 44754
+        },
+        {
+          "ply": 13,
+          "engine": "elo-900",
+          "moveUci": "b8a6",
+          "elapsedMs": 31.965332999999987,
+          "nodes": 292,
+          "seed": 253814
+        },
+        {
+          "ply": 14,
+          "engine": "stockfish-max",
+          "moveUci": "b1c3",
+          "elapsedMs": 50.63079400000015,
+          "depth": 13,
+          "nodes": 45376
+        },
+        {
+          "ply": 15,
+          "engine": "elo-900",
+          "moveUci": "d7d6",
+          "elapsedMs": 39.00606199999993,
+          "nodes": 279,
+          "seed": 270196
+        },
+        {
+          "ply": 16,
+          "engine": "stockfish-max",
+          "moveUci": "a2a3",
+          "elapsedMs": 51.12791600000014,
+          "depth": 13,
+          "nodes": 41552
+        },
+        {
+          "ply": 17,
+          "engine": "elo-900",
+          "moveUci": "c8d7",
+          "elapsedMs": 48.314742000000024,
+          "nodes": 383,
+          "seed": 286578
+        },
+        {
+          "ply": 18,
+          "engine": "stockfish-max",
+          "moveUci": "d1d4",
+          "elapsedMs": 53.07465900000011,
+          "depth": 14,
+          "nodes": 35123
+        },
+        {
+          "ply": 19,
+          "engine": "elo-900",
+          "moveUci": "c7c6",
+          "elapsedMs": 106.87272799999982,
+          "nodes": 78,
+          "seed": 302960
+        },
+        {
+          "ply": 20,
+          "engine": "stockfish-max",
+          "moveUci": "f1a6",
+          "elapsedMs": 52.44833100000005,
+          "depth": 15,
+          "nodes": 37602
+        },
+        {
+          "ply": 21,
+          "engine": "elo-900",
+          "moveUci": "b7a6",
+          "elapsedMs": 78.73475000000008,
+          "nodes": 190,
+          "seed": 319342
+        },
+        {
+          "ply": 22,
+          "engine": "stockfish-max",
+          "moveUci": "e5d6",
+          "elapsedMs": 50.14241700000002,
+          "depth": 15,
+          "nodes": 39454
+        },
+        {
+          "ply": 23,
+          "engine": "elo-900",
+          "moveUci": "d8c8",
+          "elapsedMs": 75.67310100000009,
+          "nodes": 150,
+          "seed": 335724
+        },
+        {
+          "ply": 24,
+          "engine": "stockfish-max",
+          "moveUci": "d6e7",
+          "elapsedMs": 50.563584999999875,
+          "depth": 21,
+          "nodes": 43323
+        },
+        {
+          "ply": 25,
+          "engine": "elo-900",
+          "moveUci": "c6d5",
+          "elapsedMs": 76.6599470000001,
+          "nodes": 215,
+          "seed": 352106
+        },
+        {
+          "ply": 26,
+          "engine": "stockfish-max",
+          "moveUci": "e7f8q",
+          "elapsedMs": 50.39498500000013,
+          "depth": 17,
+          "nodes": 45677
+        },
+        {
+          "ply": 27,
+          "engine": "elo-900",
+          "moveUci": "h8f8",
+          "elapsedMs": 4.051520999999866,
+          "nodes": 26,
+          "seed": 368488
+        },
+        {
+          "ply": 28,
+          "engine": "stockfish-max",
+          "moveUci": "d4c5",
+          "elapsedMs": 49.99128200000018,
+          "depth": 20,
+          "nodes": 51207
+        },
+        {
+          "ply": 29,
+          "engine": "elo-900",
+          "moveUci": "d7f5",
+          "elapsedMs": 66.35363899999993,
+          "nodes": 338,
+          "seed": 384870
+        },
+        {
+          "ply": 30,
+          "engine": "stockfish-max",
+          "moveUci": "e1c1",
+          "elapsedMs": 51.462625000000116,
+          "depth": 15,
+          "nodes": 44463
+        },
+        {
+          "ply": 31,
+          "engine": "elo-900",
+          "moveUci": "c8d8",
+          "elapsedMs": 56.79678899999999,
+          "nodes": 377,
+          "seed": 401252
+        },
+        {
+          "ply": 32,
+          "engine": "stockfish-max",
+          "moveUci": "d1d5",
+          "elapsedMs": 50.12768599999981,
+          "depth": 15,
+          "nodes": 46340
+        },
+        {
+          "ply": 33,
+          "engine": "elo-900",
+          "moveUci": "f5d7",
+          "elapsedMs": 64.57022000000006,
+          "nodes": 403,
+          "seed": 417634
+        },
+        {
+          "ply": 34,
+          "engine": "stockfish-max",
+          "moveUci": "d5e5",
+          "elapsedMs": 50.527712000000065,
+          "depth": 21,
+          "nodes": 47126
+        },
+        {
+          "ply": 35,
+          "engine": "elo-900",
+          "moveUci": "d7e6",
+          "elapsedMs": 3.8635220000001027,
+          "nodes": 26,
+          "seed": 434016
+        },
+        {
+          "ply": 36,
+          "engine": "stockfish-max",
+          "moveUci": "c5c6",
+          "elapsedMs": 50.18801500000018,
+          "depth": 17,
+          "nodes": 51302
+        },
+        {
+          "ply": 37,
+          "engine": "elo-900",
+          "moveUci": "e8e7",
+          "elapsedMs": 4.897932999999739,
+          "nodes": 26,
+          "seed": 450398
+        },
+        {
+          "ply": 38,
+          "engine": "stockfish-max",
+          "moveUci": "e3g5",
+          "elapsedMs": 8.18728800000008,
+          "depth": 245,
+          "nodes": 25900
+        },
+        {
+          "ply": 39,
+          "engine": "elo-900",
+          "moveUci": "f7f6",
+          "elapsedMs": 2.4218409999998585,
+          "nodes": 13,
+          "seed": 466780
+        },
+        {
+          "ply": 40,
+          "engine": "stockfish-max",
+          "moveUci": "c6e6",
+          "elapsedMs": 5.33523600000035,
+          "depth": 245,
+          "nodes": 14007
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "opening": [],
+      "white": "elo-900",
+      "black": "stockfish-max",
+      "result": "black",
+      "winner": "stockfish-max",
+      "elapsedMs": 886.8812290000001,
+      "plies": 22,
+      "finalFen": "r1b1k2r/ppp2ppp/2n5/8/2Pp2PN/P2Pp1P1/P2BPq1P/R2QKB1R w KQkq - 1 12",
+      "moves": [
+        "g1f3",
+        "d7d5",
+        "b1a3",
+        "b8c6",
+        "d2d3",
+        "e7e5",
+        "c1e3",
+        "g8f6",
+        "c2c4",
+        "d5d4",
+        "e3d2",
+        "f8a3",
+        "b2a3",
+        "e5e4",
+        "f3h4",
+        "f6g4",
+        "g2g3",
+        "d8f6",
+        "f2f3",
+        "e4e3",
+        "f3g4",
+        "f6f2"
+      ],
+      "moveMetrics": [
+        {
+          "ply": 0,
+          "engine": "elo-900",
+          "moveUci": "g1f3",
+          "elapsedMs": 8.550328999999692,
+          "nodes": 260,
+          "seed": 147331
+        },
+        {
+          "ply": 1,
+          "engine": "stockfish-max",
+          "moveUci": "d7d5",
+          "elapsedMs": 50.048527999999806,
+          "depth": 14,
+          "nodes": 51935
+        },
+        {
+          "ply": 2,
+          "engine": "elo-900",
+          "moveUci": "b1a3",
+          "elapsedMs": 14.903913000000102,
+          "nodes": 286,
+          "seed": 163713
+        },
+        {
+          "ply": 3,
+          "engine": "stockfish-max",
+          "moveUci": "b8c6",
+          "elapsedMs": 49.46994900000027,
+          "depth": 14,
+          "nodes": 49553
+        },
+        {
+          "ply": 4,
+          "engine": "elo-900",
+          "moveUci": "d2d3",
+          "elapsedMs": 15.955981999999949,
+          "nodes": 286,
+          "seed": 180095
+        },
+        {
+          "ply": 5,
+          "engine": "stockfish-max",
+          "moveUci": "e7e5",
+          "elapsedMs": 50.286923000000115,
+          "depth": 14,
+          "nodes": 51931
+        },
+        {
+          "ply": 6,
+          "engine": "elo-900",
+          "moveUci": "c1e3",
+          "elapsedMs": 36.09987799999999,
+          "nodes": 377,
+          "seed": 196477
+        },
+        {
+          "ply": 7,
+          "engine": "stockfish-max",
+          "moveUci": "g8f6",
+          "elapsedMs": 50.41401199999973,
+          "depth": 14,
+          "nodes": 47285
+        },
+        {
+          "ply": 8,
+          "engine": "elo-900",
+          "moveUci": "c2c4",
+          "elapsedMs": 43.13826300000028,
+          "nodes": 442,
+          "seed": 212859
+        },
+        {
+          "ply": 9,
+          "engine": "stockfish-max",
+          "moveUci": "d5d4",
+          "elapsedMs": 50.51597899999979,
+          "depth": 14,
+          "nodes": 46940
+        },
+        {
+          "ply": 10,
+          "engine": "elo-900",
+          "moveUci": "e3d2",
+          "elapsedMs": 36.45609999999988,
+          "nodes": 416,
+          "seed": 229241
+        },
+        {
+          "ply": 11,
+          "engine": "stockfish-max",
+          "moveUci": "f8a3",
+          "elapsedMs": 50.806576999999834,
+          "depth": 15,
+          "nodes": 49444
+        },
+        {
+          "ply": 12,
+          "engine": "elo-900",
+          "moveUci": "b2a3",
+          "elapsedMs": 41.94998100000021,
+          "nodes": 403,
+          "seed": 245623
+        },
+        {
+          "ply": 13,
+          "engine": "stockfish-max",
+          "moveUci": "e5e4",
+          "elapsedMs": 50.74529600000005,
+          "depth": 16,
+          "nodes": 47012
+        },
+        {
+          "ply": 14,
+          "engine": "elo-900",
+          "moveUci": "f3h4",
+          "elapsedMs": 31.853806000000077,
+          "nodes": 377,
+          "seed": 262005
+        },
+        {
+          "ply": 15,
+          "engine": "stockfish-max",
+          "moveUci": "f6g4",
+          "elapsedMs": 50.671276000000034,
+          "depth": 16,
+          "nodes": 47050
+        },
+        {
+          "ply": 16,
+          "engine": "elo-900",
+          "moveUci": "g2g3",
+          "elapsedMs": 34.04266000000007,
+          "nodes": 351,
+          "seed": 278387
+        },
+        {
+          "ply": 17,
+          "engine": "stockfish-max",
+          "moveUci": "d8f6",
+          "elapsedMs": 49.94584399999985,
+          "depth": 16,
+          "nodes": 46242
+        },
+        {
+          "ply": 18,
+          "engine": "elo-900",
+          "moveUci": "f2f3",
+          "elapsedMs": 50.65104500000007,
+          "nodes": 377,
+          "seed": 294769
+        },
+        {
+          "ply": 19,
+          "engine": "stockfish-max",
+          "moveUci": "e4e3",
+          "elapsedMs": 49.939816000000064,
+          "depth": 17,
+          "nodes": 43249
+        },
+        {
+          "ply": 20,
+          "engine": "elo-900",
+          "moveUci": "f3g4",
+          "elapsedMs": 33.164250999999695,
+          "nodes": 299,
+          "seed": 311151
+        },
+        {
+          "ply": 21,
+          "engine": "stockfish-max",
+          "moveUci": "f6f2",
+          "elapsedMs": 6.088759000000209,
+          "depth": 245,
+          "nodes": 10064
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "opening": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6"
+      ],
+      "white": "stockfish-max",
+      "black": "elo-900",
+      "result": "white",
+      "winner": "stockfish-max",
+      "elapsedMs": 1251.2810830000003,
+      "plies": 35,
+      "finalFen": "rnbq1r1k/2pp3Q/p1n5/4bp2/NpBBP3/1N6/PPP2PP1/2KR3R b - - 0 18",
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "f8c5",
+        "d4b3",
+        "c5d6",
+        "b1c3",
+        "g8e7",
+        "c1e3",
+        "e8g8",
+        "d1d2",
+        "c6b8",
+        "e1c1",
+        "a7a6",
+        "h2h4",
+        "b7b5",
+        "h4h5",
+        "b5b4",
+        "c3a4",
+        "e7c6",
+        "h5h6",
+        "f7f5",
+        "f1c4",
+        "g8h8",
+        "h6g7",
+        "h8g7",
+        "e3d4",
+        "d6e5",
+        "d2h6",
+        "g7h8",
+        "h6h7"
+      ],
+      "moveMetrics": [
+        {
+          "ply": 4,
+          "engine": "stockfish-max",
+          "moveUci": "d2d4",
+          "elapsedMs": 50.30652700000019,
+          "depth": 13,
+          "nodes": 48650
+        },
+        {
+          "ply": 5,
+          "engine": "elo-900",
+          "moveUci": "e5d4",
+          "elapsedMs": 37.97576500000014,
+          "nodes": 411,
+          "seed": 253823
+        },
+        {
+          "ply": 6,
+          "engine": "stockfish-max",
+          "moveUci": "f3d4",
+          "elapsedMs": 52.5924100000002,
+          "depth": 15,
+          "nodes": 46620
+        },
+        {
+          "ply": 7,
+          "engine": "elo-900",
+          "moveUci": "f8c5",
+          "elapsedMs": 50.429936,
+          "nodes": 410,
+          "seed": 270205
+        },
+        {
+          "ply": 8,
+          "engine": "stockfish-max",
+          "moveUci": "d4b3",
+          "elapsedMs": 50.35082800000009,
+          "depth": 12,
+          "nodes": 45921
+        },
+        {
+          "ply": 9,
+          "engine": "elo-900",
+          "moveUci": "c5d6",
+          "elapsedMs": 60.57243900000003,
+          "nodes": 467,
+          "seed": 286587
+        },
+        {
+          "ply": 10,
+          "engine": "stockfish-max",
+          "moveUci": "b1c3",
+          "elapsedMs": 50.508012999999664,
+          "depth": 12,
+          "nodes": 47627
+        },
+        {
+          "ply": 11,
+          "engine": "elo-900",
+          "moveUci": "g8e7",
+          "elapsedMs": 50.54457699999966,
+          "nodes": 455,
+          "seed": 302969
+        },
+        {
+          "ply": 12,
+          "engine": "stockfish-max",
+          "moveUci": "c1e3",
+          "elapsedMs": 50.250318000000334,
+          "depth": 14,
+          "nodes": 47858
+        },
+        {
+          "ply": 13,
+          "engine": "elo-900",
+          "moveUci": "e8g8",
+          "elapsedMs": 55.36534500000016,
+          "nodes": 403,
+          "seed": 319351
+        },
+        {
+          "ply": 14,
+          "engine": "stockfish-max",
+          "moveUci": "d1d2",
+          "elapsedMs": 52.91345900000033,
+          "depth": 14,
+          "nodes": 47263
+        },
+        {
+          "ply": 15,
+          "engine": "elo-900",
+          "moveUci": "c6b8",
+          "elapsedMs": 42.85378900000023,
+          "nodes": 377,
+          "seed": 335733
+        },
+        {
+          "ply": 16,
+          "engine": "stockfish-max",
+          "moveUci": "e1c1",
+          "elapsedMs": 50.58450600000015,
+          "depth": 16,
+          "nodes": 46800
+        },
+        {
+          "ply": 17,
+          "engine": "elo-900",
+          "moveUci": "a7a6",
+          "elapsedMs": 35.057124000000385,
+          "nodes": 364,
+          "seed": 352115
+        },
+        {
+          "ply": 18,
+          "engine": "stockfish-max",
+          "moveUci": "h2h4",
+          "elapsedMs": 50.28658200000018,
+          "depth": 15,
+          "nodes": 42985
+        },
+        {
+          "ply": 19,
+          "engine": "elo-900",
+          "moveUci": "b7b5",
+          "elapsedMs": 32.88463300000012,
+          "nodes": 351,
+          "seed": 368497
+        },
+        {
+          "ply": 20,
+          "engine": "stockfish-max",
+          "moveUci": "h4h5",
+          "elapsedMs": 50.2771189999994,
+          "depth": 15,
+          "nodes": 43328
+        },
+        {
+          "ply": 21,
+          "engine": "elo-900",
+          "moveUci": "b5b4",
+          "elapsedMs": 31.864613000000645,
+          "nodes": 338,
+          "seed": 384879
+        },
+        {
+          "ply": 22,
+          "engine": "stockfish-max",
+          "moveUci": "c3a4",
+          "elapsedMs": 49.54987399999936,
+          "depth": 15,
+          "nodes": 42500
+        },
+        {
+          "ply": 23,
+          "engine": "elo-900",
+          "moveUci": "e7c6",
+          "elapsedMs": 30.84006599999975,
+          "nodes": 299,
+          "seed": 401261
+        },
+        {
+          "ply": 24,
+          "engine": "stockfish-max",
+          "moveUci": "h5h6",
+          "elapsedMs": 49.915759000000435,
+          "depth": 15,
+          "nodes": 41587
+        },
+        {
+          "ply": 25,
+          "engine": "elo-900",
+          "moveUci": "f7f5",
+          "elapsedMs": 35.015480000000025,
+          "nodes": 338,
+          "seed": 417643
+        },
+        {
+          "ply": 26,
+          "engine": "stockfish-max",
+          "moveUci": "f1c4",
+          "elapsedMs": 50.63743499999964,
+          "depth": 18,
+          "nodes": 45407
+        },
+        {
+          "ply": 27,
+          "engine": "elo-900",
+          "moveUci": "g8h8",
+          "elapsedMs": 3.6007989999998244,
+          "nodes": 26,
+          "seed": 434025
+        },
+        {
+          "ply": 28,
+          "engine": "stockfish-max",
+          "moveUci": "h6g7",
+          "elapsedMs": 49.58528699999988,
+          "depth": 36,
+          "nodes": 102990
+        },
+        {
+          "ply": 29,
+          "engine": "elo-900",
+          "moveUci": "h8g7",
+          "elapsedMs": 1.9783399999996618,
+          "nodes": 13,
+          "seed": 450407
+        },
+        {
+          "ply": 30,
+          "engine": "stockfish-max",
+          "moveUci": "e3d4",
+          "elapsedMs": 49.32827399999951,
+          "depth": 131,
+          "nodes": 330308
+        },
+        {
+          "ply": 31,
+          "engine": "elo-900",
+          "moveUci": "d6e5",
+          "elapsedMs": 10.415729999999712,
+          "nodes": 78,
+          "seed": 466789
+        },
+        {
+          "ply": 32,
+          "engine": "stockfish-max",
+          "moveUci": "d2h6",
+          "elapsedMs": 7.509557000000314,
+          "depth": 245,
+          "nodes": 22821
+        },
+        {
+          "ply": 33,
+          "engine": "elo-900",
+          "moveUci": "g7h8",
+          "elapsedMs": 2.333969999999681,
+          "nodes": 13,
+          "seed": 483171
+        },
+        {
+          "ply": 34,
+          "engine": "stockfish-max",
+          "moveUci": "h6h7",
+          "elapsedMs": 5.66059099999984,
+          "depth": 245,
+          "nodes": 14483
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "opening": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6"
+      ],
+      "white": "elo-900",
+      "black": "stockfish-max",
+      "result": "black",
+      "winner": "stockfish-max",
+      "elapsedMs": 1724.0608730000004,
+      "plies": 46,
+      "finalFen": "r1b3k1/2p2pp1/p2b3p/3p1P2/QP6/P6P/4r2q/1RB4K w - - 0 24",
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "a7a6",
+        "b5e2",
+        "g8f6",
+        "f3g5",
+        "h7h6",
+        "g5h3",
+        "f6e4",
+        "e1g1",
+        "d7d5",
+        "b1c3",
+        "e4g5",
+        "d2d4",
+        "g5h3",
+        "g2h3",
+        "e5d4",
+        "c3a4",
+        "f8d6",
+        "e2g4",
+        "e8g8",
+        "f2f4",
+        "d8f6",
+        "f4f5",
+        "f8e8",
+        "c2c3",
+        "b7b5",
+        "c3d4",
+        "b5a4",
+        "a2a3",
+        "e8e4",
+        "d1a4",
+        "c6d4",
+        "b2b4",
+        "d4e2",
+        "g4e2",
+        "f6d4",
+        "f1f2",
+        "e4e2",
+        "a1b1",
+        "d4f2",
+        "g1h1",
+        "f2h2"
+      ],
+      "moveMetrics": [
+        {
+          "ply": 4,
+          "engine": "elo-900",
+          "moveUci": "f1b5",
+          "elapsedMs": 21.51679300000069,
+          "nodes": 351,
+          "seed": 245632
+        },
+        {
+          "ply": 5,
+          "engine": "stockfish-max",
+          "moveUci": "a7a6",
+          "elapsedMs": 50.04608400000052,
+          "depth": 12,
+          "nodes": 49946
+        },
+        {
+          "ply": 6,
+          "engine": "elo-900",
+          "moveUci": "b5e2",
+          "elapsedMs": 28.200329000000238,
+          "nodes": 416,
+          "seed": 262014
+        },
+        {
+          "ply": 7,
+          "engine": "stockfish-max",
+          "moveUci": "g8f6",
+          "elapsedMs": 50.641130999999405,
+          "depth": 15,
+          "nodes": 53965
+        },
+        {
+          "ply": 8,
+          "engine": "elo-900",
+          "moveUci": "f3g5",
+          "elapsedMs": 21.94365999999991,
+          "nodes": 364,
+          "seed": 278396
+        },
+        {
+          "ply": 9,
+          "engine": "stockfish-max",
+          "moveUci": "h7h6",
+          "elapsedMs": 49.92062700000042,
+          "depth": 15,
+          "nodes": 46034
+        },
+        {
+          "ply": 10,
+          "engine": "elo-900",
+          "moveUci": "g5h3",
+          "elapsedMs": 28.243725000000268,
+          "nodes": 429,
+          "seed": 294778
+        },
+        {
+          "ply": 11,
+          "engine": "stockfish-max",
+          "moveUci": "f6e4",
+          "elapsedMs": 50.30634100000043,
+          "depth": 16,
+          "nodes": 46078
+        },
+        {
+          "ply": 12,
+          "engine": "elo-900",
+          "moveUci": "e1g1",
+          "elapsedMs": 32.9664359999997,
+          "nodes": 377,
+          "seed": 311160
+        },
+        {
+          "ply": 13,
+          "engine": "stockfish-max",
+          "moveUci": "d7d5",
+          "elapsedMs": 49.91203299999961,
+          "depth": 16,
+          "nodes": 45340
+        },
+        {
+          "ply": 14,
+          "engine": "elo-900",
+          "moveUci": "b1c3",
+          "elapsedMs": 38.425976999999875,
+          "nodes": 338,
+          "seed": 327542
+        },
+        {
+          "ply": 15,
+          "engine": "stockfish-max",
+          "moveUci": "e4g5",
+          "elapsedMs": 50.07986399999936,
+          "depth": 15,
+          "nodes": 43562
+        },
+        {
+          "ply": 16,
+          "engine": "elo-900",
+          "moveUci": "d2d4",
+          "elapsedMs": 34.057763000000705,
+          "nodes": 364,
+          "seed": 343924
+        },
+        {
+          "ply": 17,
+          "engine": "stockfish-max",
+          "moveUci": "g5h3",
+          "elapsedMs": 49.716231000000334,
+          "depth": 16,
+          "nodes": 45680
+        },
+        {
+          "ply": 18,
+          "engine": "elo-900",
+          "moveUci": "g2h3",
+          "elapsedMs": 2.5464579999998023,
+          "nodes": 26,
+          "seed": 360306
+        },
+        {
+          "ply": 19,
+          "engine": "stockfish-max",
+          "moveUci": "e5d4",
+          "elapsedMs": 49.74547600000005,
+          "depth": 16,
+          "nodes": 48891
+        },
+        {
+          "ply": 20,
+          "engine": "elo-900",
+          "moveUci": "c3a4",
+          "elapsedMs": 34.79838700000073,
+          "nodes": 416,
+          "seed": 376688
+        },
+        {
+          "ply": 21,
+          "engine": "stockfish-max",
+          "moveUci": "f8d6",
+          "elapsedMs": 49.76804900000025,
+          "depth": 15,
+          "nodes": 44360
+        },
+        {
+          "ply": 22,
+          "engine": "elo-900",
+          "moveUci": "e2g4",
+          "elapsedMs": 43.7101560000001,
+          "nodes": 403,
+          "seed": 393070
+        },
+        {
+          "ply": 23,
+          "engine": "stockfish-max",
+          "moveUci": "e8g8",
+          "elapsedMs": 50.06124499999987,
+          "depth": 15,
+          "nodes": 45647
+        },
+        {
+          "ply": 24,
+          "engine": "elo-900",
+          "moveUci": "f2f4",
+          "elapsedMs": 35.191735000000335,
+          "nodes": 429,
+          "seed": 409452
+        },
+        {
+          "ply": 25,
+          "engine": "stockfish-max",
+          "moveUci": "d8f6",
+          "elapsedMs": 49.662405999999464,
+          "depth": 15,
+          "nodes": 46672
+        },
+        {
+          "ply": 26,
+          "engine": "elo-900",
+          "moveUci": "f4f5",
+          "elapsedMs": 51.83426599999984,
+          "nodes": 416,
+          "seed": 425834
+        },
+        {
+          "ply": 27,
+          "engine": "stockfish-max",
+          "moveUci": "f8e8",
+          "elapsedMs": 50.95451700000012,
+          "depth": 15,
+          "nodes": 40556
+        },
+        {
+          "ply": 28,
+          "engine": "elo-900",
+          "moveUci": "c2c3",
+          "elapsedMs": 52.04393900000014,
+          "nodes": 403,
+          "seed": 442216
+        },
+        {
+          "ply": 29,
+          "engine": "stockfish-max",
+          "moveUci": "b7b5",
+          "elapsedMs": 49.77930699999979,
+          "depth": 16,
+          "nodes": 46080
+        },
+        {
+          "ply": 30,
+          "engine": "elo-900",
+          "moveUci": "c3d4",
+          "elapsedMs": 55.65813799999978,
+          "nodes": 416,
+          "seed": 458598
+        },
+        {
+          "ply": 31,
+          "engine": "stockfish-max",
+          "moveUci": "b5a4",
+          "elapsedMs": 50.181721999999354,
+          "depth": 17,
+          "nodes": 47990
+        },
+        {
+          "ply": 32,
+          "engine": "elo-900",
+          "moveUci": "a2a3",
+          "elapsedMs": 47.81123300000036,
+          "nodes": 364,
+          "seed": 474980
+        },
+        {
+          "ply": 33,
+          "engine": "stockfish-max",
+          "moveUci": "e8e4",
+          "elapsedMs": 50.310473999999886,
+          "depth": 15,
+          "nodes": 44916
+        },
+        {
+          "ply": 34,
+          "engine": "elo-900",
+          "moveUci": "d1a4",
+          "elapsedMs": 48.92843300000004,
+          "nodes": 364,
+          "seed": 491362
+        },
+        {
+          "ply": 35,
+          "engine": "stockfish-max",
+          "moveUci": "c6d4",
+          "elapsedMs": 50.097687000000406,
+          "depth": 15,
+          "nodes": 44694
+        },
+        {
+          "ply": 36,
+          "engine": "elo-900",
+          "moveUci": "b2b4",
+          "elapsedMs": 59.7893269999995,
+          "nodes": 433,
+          "seed": 507744
+        },
+        {
+          "ply": 37,
+          "engine": "stockfish-max",
+          "moveUci": "d4e2",
+          "elapsedMs": 50.50677200000064,
+          "depth": 20,
+          "nodes": 48909
+        },
+        {
+          "ply": 38,
+          "engine": "elo-900",
+          "moveUci": "g4e2",
+          "elapsedMs": 7.330168999999842,
+          "nodes": 52,
+          "seed": 524126
+        },
+        {
+          "ply": 39,
+          "engine": "stockfish-max",
+          "moveUci": "f6d4",
+          "elapsedMs": 50.46096899999975,
+          "depth": 19,
+          "nodes": 50414
+        },
+        {
+          "ply": 40,
+          "engine": "elo-900",
+          "moveUci": "f1f2",
+          "elapsedMs": 7.101018000000295,
+          "nodes": 52,
+          "seed": 540508
+        },
+        {
+          "ply": 41,
+          "engine": "stockfish-max",
+          "moveUci": "e4e2",
+          "elapsedMs": 50.10718100000031,
+          "depth": 17,
+          "nodes": 50769
+        },
+        {
+          "ply": 42,
+          "engine": "elo-900",
+          "moveUci": "a1b1",
+          "elapsedMs": 46.59508399999959,
+          "nodes": 290,
+          "seed": 556890
+        },
+        {
+          "ply": 43,
+          "engine": "stockfish-max",
+          "moveUci": "d4f2",
+          "elapsedMs": 7.61214899999959,
+          "depth": 245,
+          "nodes": 26597
+        },
+        {
+          "ply": 44,
+          "engine": "elo-900",
+          "moveUci": "g1h1",
+          "elapsedMs": 1.770050000000083,
+          "nodes": 13,
+          "seed": 573272
+        },
+        {
+          "ply": 45,
+          "engine": "stockfish-max",
+          "moveUci": "f2h2",
+          "elapsedMs": 6.230179000000135,
+          "depth": 245,
+          "nodes": 12514
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "opening": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6"
+      ],
+      "white": "stockfish-max",
+      "black": "elo-900",
+      "result": "white",
+      "winner": "stockfish-max",
+      "elapsedMs": 1924.5800940000008,
+      "plies": 51,
+      "finalFen": "4rk2/1p3Q1p/2np4/p6N/2B5/8/PP3PPP/5RK1 b - - 0 26",
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "d5c4",
+        "e2e4",
+        "c8d7",
+        "f1c4",
+        "g8f6",
+        "g1e2",
+        "f8d6",
+        "e4e5",
+        "e8g8",
+        "e5d6",
+        "c7d6",
+        "e1g1",
+        "b8c6",
+        "c1g5",
+        "a8b8",
+        "d4d5",
+        "e6d5",
+        "c3d5",
+        "d7f5",
+        "g5f6",
+        "g7f6",
+        "e2f4",
+        "a7a5",
+        "d1h5",
+        "f5e4",
+        "a1e1",
+        "e4c2",
+        "e1e3",
+        "f8e8",
+        "e3e8",
+        "d8e8",
+        "d5f6",
+        "g8g7",
+        "f6e8",
+        "b8e8",
+        "h5f7",
+        "g7h6",
+        "f7h5",
+        "h6g7",
+        "h5g5",
+        "c2g6",
+        "f4h5",
+        "g7f8",
+        "g5f6",
+        "g6f7",
+        "f6f7"
+      ],
+      "moveMetrics": [
+        {
+          "ply": 4,
+          "engine": "stockfish-max",
+          "moveUci": "b1c3",
+          "elapsedMs": 49.79885100000047,
+          "depth": 15,
+          "nodes": 52990
+        },
+        {
+          "ply": 5,
+          "engine": "elo-900",
+          "moveUci": "d5c4",
+          "elapsedMs": 32.751242000000275,
+          "nodes": 442,
+          "seed": 319360
+        },
+        {
+          "ply": 6,
+          "engine": "stockfish-max",
+          "moveUci": "e2e4",
+          "elapsedMs": 50.55839999999989,
+          "depth": 15,
+          "nodes": 52473
+        },
+        {
+          "ply": 7,
+          "engine": "elo-900",
+          "moveUci": "c8d7",
+          "elapsedMs": 45.36839599999985,
+          "nodes": 455,
+          "seed": 335742
+        },
+        {
+          "ply": 8,
+          "engine": "stockfish-max",
+          "moveUci": "f1c4",
+          "elapsedMs": 51.22515800000019,
+          "depth": 15,
+          "nodes": 47505
+        },
+        {
+          "ply": 9,
+          "engine": "elo-900",
+          "moveUci": "g8f6",
+          "elapsedMs": 52.17741699999988,
+          "nodes": 429,
+          "seed": 352124
+        },
+        {
+          "ply": 10,
+          "engine": "stockfish-max",
+          "moveUci": "g1e2",
+          "elapsedMs": 50.81039999999939,
+          "depth": 14,
+          "nodes": 49098
+        },
+        {
+          "ply": 11,
+          "engine": "elo-900",
+          "moveUci": "f8d6",
+          "elapsedMs": 40.97683699999925,
+          "nodes": 403,
+          "seed": 368506
+        },
+        {
+          "ply": 12,
+          "engine": "stockfish-max",
+          "moveUci": "e4e5",
+          "elapsedMs": 49.89668100000017,
+          "depth": 15,
+          "nodes": 45035
+        },
+        {
+          "ply": 13,
+          "engine": "elo-900",
+          "moveUci": "e8g8",
+          "elapsedMs": 48.9395199999999,
+          "nodes": 442,
+          "seed": 384888
+        },
+        {
+          "ply": 14,
+          "engine": "stockfish-max",
+          "moveUci": "e5d6",
+          "elapsedMs": 49.80852899999991,
+          "depth": 16,
+          "nodes": 45225
+        },
+        {
+          "ply": 15,
+          "engine": "elo-900",
+          "moveUci": "c7d6",
+          "elapsedMs": 38.623231999999916,
+          "nodes": 377,
+          "seed": 401270
+        },
+        {
+          "ply": 16,
+          "engine": "stockfish-max",
+          "moveUci": "e1g1",
+          "elapsedMs": 49.55815700000039,
+          "depth": 15,
+          "nodes": 47548
+        },
+        {
+          "ply": 17,
+          "engine": "elo-900",
+          "moveUci": "b8c6",
+          "elapsedMs": 31.53993999999966,
+          "nodes": 390,
+          "seed": 417652
+        },
+        {
+          "ply": 18,
+          "engine": "stockfish-max",
+          "moveUci": "c1g5",
+          "elapsedMs": 51.08631500000047,
+          "depth": 16,
+          "nodes": 47420
+        },
+        {
+          "ply": 19,
+          "engine": "elo-900",
+          "moveUci": "a8b8",
+          "elapsedMs": 45.563249000000724,
+          "nodes": 429,
+          "seed": 434034
+        },
+        {
+          "ply": 20,
+          "engine": "stockfish-max",
+          "moveUci": "d4d5",
+          "elapsedMs": 50.71417999999994,
+          "depth": 15,
+          "nodes": 46952
+        },
+        {
+          "ply": 21,
+          "engine": "elo-900",
+          "moveUci": "e6d5",
+          "elapsedMs": 42.32441100000051,
+          "nodes": 403,
+          "seed": 450416
+        },
+        {
+          "ply": 22,
+          "engine": "stockfish-max",
+          "moveUci": "c3d5",
+          "elapsedMs": 50.589514999999665,
+          "depth": 17,
+          "nodes": 45953
+        },
+        {
+          "ply": 23,
+          "engine": "elo-900",
+          "moveUci": "d7f5",
+          "elapsedMs": 51.44142399999964,
+          "nodes": 429,
+          "seed": 466798
+        },
+        {
+          "ply": 24,
+          "engine": "stockfish-max",
+          "moveUci": "g5f6",
+          "elapsedMs": 50.340823999999884,
+          "depth": 15,
+          "nodes": 44674
+        },
+        {
+          "ply": 25,
+          "engine": "elo-900",
+          "moveUci": "g7f6",
+          "elapsedMs": 55.73598800000036,
+          "nodes": 468,
+          "seed": 483180
+        },
+        {
+          "ply": 26,
+          "engine": "stockfish-max",
+          "moveUci": "e2f4",
+          "elapsedMs": 50.02171300000009,
+          "depth": 15,
+          "nodes": 46595
+        },
+        {
+          "ply": 27,
+          "engine": "elo-900",
+          "moveUci": "a7a5",
+          "elapsedMs": 44.75952200000029,
+          "nodes": 429,
+          "seed": 499562
+        },
+        {
+          "ply": 28,
+          "engine": "stockfish-max",
+          "moveUci": "d1h5",
+          "elapsedMs": 49.995888999999806,
+          "depth": 15,
+          "nodes": 43577
+        },
+        {
+          "ply": 29,
+          "engine": "elo-900",
+          "moveUci": "f5e4",
+          "elapsedMs": 69.15239800000018,
+          "nodes": 390,
+          "seed": 515944
+        },
+        {
+          "ply": 30,
+          "engine": "stockfish-max",
+          "moveUci": "a1e1",
+          "elapsedMs": 50.73240799999985,
+          "depth": 16,
+          "nodes": 45946
+        },
+        {
+          "ply": 31,
+          "engine": "elo-900",
+          "moveUci": "e4c2",
+          "elapsedMs": 47.90764500000023,
+          "nodes": 377,
+          "seed": 532326
+        },
+        {
+          "ply": 32,
+          "engine": "stockfish-max",
+          "moveUci": "e1e3",
+          "elapsedMs": 49.91998599999988,
+          "depth": 15,
+          "nodes": 43775
+        },
+        {
+          "ply": 33,
+          "engine": "elo-900",
+          "moveUci": "f8e8",
+          "elapsedMs": 64.07337999999982,
+          "nodes": 377,
+          "seed": 548708
+        },
+        {
+          "ply": 34,
+          "engine": "stockfish-max",
+          "moveUci": "e3e8",
+          "elapsedMs": 50.29769899999974,
+          "depth": 13,
+          "nodes": 50969
+        },
+        {
+          "ply": 35,
+          "engine": "elo-900",
+          "moveUci": "d8e8",
+          "elapsedMs": 3.6127470000001267,
+          "nodes": 26,
+          "seed": 565090
+        },
+        {
+          "ply": 36,
+          "engine": "stockfish-max",
+          "moveUci": "d5f6",
+          "elapsedMs": 50.08086600000024,
+          "depth": 19,
+          "nodes": 50049
+        },
+        {
+          "ply": 37,
+          "engine": "elo-900",
+          "moveUci": "g8g7",
+          "elapsedMs": 5.534453000000212,
+          "nodes": 39,
+          "seed": 581472
+        },
+        {
+          "ply": 38,
+          "engine": "stockfish-max",
+          "moveUci": "f6e8",
+          "elapsedMs": 50.44912000000022,
+          "depth": 16,
+          "nodes": 48457
+        },
+        {
+          "ply": 39,
+          "engine": "elo-900",
+          "moveUci": "b8e8",
+          "elapsedMs": 6.512770999999702,
+          "nodes": 52,
+          "seed": 597854
+        },
+        {
+          "ply": 40,
+          "engine": "stockfish-max",
+          "moveUci": "h5f7",
+          "elapsedMs": 50.23634800000036,
+          "depth": 22,
+          "nodes": 53358
+        },
+        {
+          "ply": 41,
+          "engine": "elo-900",
+          "moveUci": "g7h6",
+          "elapsedMs": 2.8536050000002433,
+          "nodes": 26,
+          "seed": 614236
+        },
+        {
+          "ply": 42,
+          "engine": "stockfish-max",
+          "moveUci": "f7h5",
+          "elapsedMs": 50.196012999999766,
+          "depth": 31,
+          "nodes": 85334
+        },
+        {
+          "ply": 43,
+          "engine": "elo-900",
+          "moveUci": "h6g7",
+          "elapsedMs": 1.724091000000044,
+          "nodes": 13,
+          "seed": 630618
+        },
+        {
+          "ply": 44,
+          "engine": "stockfish-max",
+          "moveUci": "h5g5",
+          "elapsedMs": 49.55655899999965,
+          "depth": 40,
+          "nodes": 142099
+        },
+        {
+          "ply": 45,
+          "engine": "elo-900",
+          "moveUci": "c2g6",
+          "elapsedMs": 4.567831000000297,
+          "nodes": 39,
+          "seed": 647000
+        },
+        {
+          "ply": 46,
+          "engine": "stockfish-max",
+          "moveUci": "f4h5",
+          "elapsedMs": 50.09332400000039,
+          "depth": 158,
+          "nodes": 329267
+        },
+        {
+          "ply": 47,
+          "engine": "elo-900",
+          "moveUci": "g7f8",
+          "elapsedMs": 3.0583299999998417,
+          "nodes": 26,
+          "seed": 663382
+        },
+        {
+          "ply": 48,
+          "engine": "stockfish-max",
+          "moveUci": "g5f6",
+          "elapsedMs": 5.878986000000623,
+          "depth": 245,
+          "nodes": 16333
+        },
+        {
+          "ply": 49,
+          "engine": "elo-900",
+          "moveUci": "g6f7",
+          "elapsedMs": 1.3913739999989048,
+          "nodes": 13,
+          "seed": 679764
+        },
+        {
+          "ply": 50,
+          "engine": "stockfish-max",
+          "moveUci": "f6f7",
+          "elapsedMs": 4.37466300000051,
+          "depth": 245,
+          "nodes": 10795
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "opening": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6"
+      ],
+      "white": "elo-900",
+      "black": "stockfish-max",
+      "result": "black",
+      "winner": "stockfish-max",
+      "elapsedMs": 2118.1947679999994,
+      "plies": 56,
+      "finalFen": "r5k1/5ppp/p4n2/P1b1p3/2P3PK/4q3/7r/1RB5 w - - 0 29",
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1d2",
+        "c7c5",
+        "g1f3",
+        "c5d4",
+        "f3d4",
+        "e6e5",
+        "d4b5",
+        "d5d4",
+        "e2e3",
+        "a7a6",
+        "b5a3",
+        "d4e3",
+        "f2e3",
+        "b8c6",
+        "a3c2",
+        "d8g5",
+        "b2b4",
+        "g8f6",
+        "a2a4",
+        "c6b4",
+        "g2g3",
+        "c8g4",
+        "f1e2",
+        "g4e2",
+        "e1e2",
+        "g5g4",
+        "e2f2",
+        "g4f5",
+        "f2g1",
+        "b4c2",
+        "a1b1",
+        "f8c5",
+        "b1b7",
+        "e8g8",
+        "b7b3",
+        "c2e3",
+        "d1e1",
+        "e3c2",
+        "g1g2",
+        "c2e1",
+        "h1e1",
+        "f5f2",
+        "g2h3",
+        "f2e1",
+        "b3b1",
+        "f8d8",
+        "a4a5",
+        "d8d2",
+        "g3g4",
+        "e1e3",
+        "h3h4",
+        "d2h2"
+      ],
+      "moveMetrics": [
+        {
+          "ply": 4,
+          "engine": "elo-900",
+          "moveUci": "b1d2",
+          "elapsedMs": 31.52304400000139,
+          "nodes": 385,
+          "seed": 311169
+        },
+        {
+          "ply": 5,
+          "engine": "stockfish-max",
+          "moveUci": "c7c5",
+          "elapsedMs": 49.793352000000596,
+          "depth": 15,
+          "nodes": 51408
+        },
+        {
+          "ply": 6,
+          "engine": "elo-900",
+          "moveUci": "g1f3",
+          "elapsedMs": 21.81377700000121,
+          "nodes": 306,
+          "seed": 327551
+        },
+        {
+          "ply": 7,
+          "engine": "stockfish-max",
+          "moveUci": "c5d4",
+          "elapsedMs": 51.44765799999914,
+          "depth": 17,
+          "nodes": 51180
+        },
+        {
+          "ply": 8,
+          "engine": "elo-900",
+          "moveUci": "f3d4",
+          "elapsedMs": 26.629597000001013,
+          "nodes": 319,
+          "seed": 343933
+        },
+        {
+          "ply": 9,
+          "engine": "stockfish-max",
+          "moveUci": "e6e5",
+          "elapsedMs": 49.85157900000013,
+          "depth": 15,
+          "nodes": 50745
+        },
+        {
+          "ply": 10,
+          "engine": "elo-900",
+          "moveUci": "d4b5",
+          "elapsedMs": 38.31398900000022,
+          "nodes": 384,
+          "seed": 360315
+        },
+        {
+          "ply": 11,
+          "engine": "stockfish-max",
+          "moveUci": "d5d4",
+          "elapsedMs": 49.9461050000009,
+          "depth": 14,
+          "nodes": 49195
+        },
+        {
+          "ply": 12,
+          "engine": "elo-900",
+          "moveUci": "e2e3",
+          "elapsedMs": 33.419512000000395,
+          "nodes": 347,
+          "seed": 376697
+        },
+        {
+          "ply": 13,
+          "engine": "stockfish-max",
+          "moveUci": "a7a6",
+          "elapsedMs": 49.84189399999923,
+          "depth": 15,
+          "nodes": 47264
+        },
+        {
+          "ply": 14,
+          "engine": "elo-900",
+          "moveUci": "b5a3",
+          "elapsedMs": 42.258842999999615,
+          "nodes": 438,
+          "seed": 393079
+        },
+        {
+          "ply": 15,
+          "engine": "stockfish-max",
+          "moveUci": "d4e3",
+          "elapsedMs": 50.23231200000009,
+          "depth": 14,
+          "nodes": 48694
+        },
+        {
+          "ply": 16,
+          "engine": "elo-900",
+          "moveUci": "f2e3",
+          "elapsedMs": 43.59822900000108,
+          "nodes": 371,
+          "seed": 409461
+        },
+        {
+          "ply": 17,
+          "engine": "stockfish-max",
+          "moveUci": "b8c6",
+          "elapsedMs": 50.476064999998925,
+          "depth": 15,
+          "nodes": 47661
+        },
+        {
+          "ply": 18,
+          "engine": "elo-900",
+          "moveUci": "a3c2",
+          "elapsedMs": 43.29540799999995,
+          "nodes": 364,
+          "seed": 425843
+        },
+        {
+          "ply": 19,
+          "engine": "stockfish-max",
+          "moveUci": "d8g5",
+          "elapsedMs": 51.21388500000103,
+          "depth": 14,
+          "nodes": 48567
+        },
+        {
+          "ply": 20,
+          "engine": "elo-900",
+          "moveUci": "b2b4",
+          "elapsedMs": 42.422506999999314,
+          "nodes": 351,
+          "seed": 442225
+        },
+        {
+          "ply": 21,
+          "engine": "stockfish-max",
+          "moveUci": "g8f6",
+          "elapsedMs": 50.262792999999874,
+          "depth": 14,
+          "nodes": 49453
+        },
+        {
+          "ply": 22,
+          "engine": "elo-900",
+          "moveUci": "a2a4",
+          "elapsedMs": 41.7421319999994,
+          "nodes": 351,
+          "seed": 458607
+        },
+        {
+          "ply": 23,
+          "engine": "stockfish-max",
+          "moveUci": "c6b4",
+          "elapsedMs": 49.722852000000785,
+          "depth": 15,
+          "nodes": 41382
+        },
+        {
+          "ply": 24,
+          "engine": "elo-900",
+          "moveUci": "g2g3",
+          "elapsedMs": 38.68182799999886,
+          "nodes": 364,
+          "seed": 474989
+        },
+        {
+          "ply": 25,
+          "engine": "stockfish-max",
+          "moveUci": "c8g4",
+          "elapsedMs": 51.01280600000064,
+          "depth": 16,
+          "nodes": 45208
+        },
+        {
+          "ply": 26,
+          "engine": "elo-900",
+          "moveUci": "f1e2",
+          "elapsedMs": 43.40346900000077,
+          "nodes": 338,
+          "seed": 491371
+        },
+        {
+          "ply": 27,
+          "engine": "stockfish-max",
+          "moveUci": "g4e2",
+          "elapsedMs": 50.111041000000114,
+          "depth": 19,
+          "nodes": 46859
+        },
+        {
+          "ply": 28,
+          "engine": "elo-900",
+          "moveUci": "e1e2",
+          "elapsedMs": 37.0596000000005,
+          "nodes": 312,
+          "seed": 507753
+        },
+        {
+          "ply": 29,
+          "engine": "stockfish-max",
+          "moveUci": "g5g4",
+          "elapsedMs": 50.541972999999416,
+          "depth": 15,
+          "nodes": 43958
+        },
+        {
+          "ply": 30,
+          "engine": "elo-900",
+          "moveUci": "e2f2",
+          "elapsedMs": 6.761543000000529,
+          "nodes": 52,
+          "seed": 524135
+        },
+        {
+          "ply": 31,
+          "engine": "stockfish-max",
+          "moveUci": "g4f5",
+          "elapsedMs": 50.52039500000137,
+          "depth": 15,
+          "nodes": 46921
+        },
+        {
+          "ply": 32,
+          "engine": "elo-900",
+          "moveUci": "f2g1",
+          "elapsedMs": 9.930538000000524,
+          "nodes": 78,
+          "seed": 540517
+        },
+        {
+          "ply": 33,
+          "engine": "stockfish-max",
+          "moveUci": "b4c2",
+          "elapsedMs": 50.066373999999996,
+          "depth": 15,
+          "nodes": 43836
+        },
+        {
+          "ply": 34,
+          "engine": "elo-900",
+          "moveUci": "a1b1",
+          "elapsedMs": 38.03647699999965,
+          "nodes": 312,
+          "seed": 556899
+        },
+        {
+          "ply": 35,
+          "engine": "stockfish-max",
+          "moveUci": "f8c5",
+          "elapsedMs": 74.25072499999987,
+          "depth": 14,
+          "nodes": 33037
+        },
+        {
+          "ply": 36,
+          "engine": "elo-900",
+          "moveUci": "b1b7",
+          "elapsedMs": 66.23285000000033,
+          "nodes": 325,
+          "seed": 573281
+        },
+        {
+          "ply": 37,
+          "engine": "stockfish-max",
+          "moveUci": "e8g8",
+          "elapsedMs": 50.95938600000045,
+          "depth": 15,
+          "nodes": 43820
+        },
+        {
+          "ply": 38,
+          "engine": "elo-900",
+          "moveUci": "b7b3",
+          "elapsedMs": 51.36242599999969,
+          "nodes": 403,
+          "seed": 589663
+        },
+        {
+          "ply": 39,
+          "engine": "stockfish-max",
+          "moveUci": "c2e3",
+          "elapsedMs": 49.88630600000033,
+          "depth": 15,
+          "nodes": 43207
+        },
+        {
+          "ply": 40,
+          "engine": "elo-900",
+          "moveUci": "d1e1",
+          "elapsedMs": 50.979105000000345,
+          "nodes": 364,
+          "seed": 606045
+        },
+        {
+          "ply": 41,
+          "engine": "stockfish-max",
+          "moveUci": "e3c2",
+          "elapsedMs": 50.483626000001095,
+          "depth": 20,
+          "nodes": 45459
+        },
+        {
+          "ply": 42,
+          "engine": "elo-900",
+          "moveUci": "g1g2",
+          "elapsedMs": 6.9294430000009015,
+          "nodes": 52,
+          "seed": 622427
+        },
+        {
+          "ply": 43,
+          "engine": "stockfish-max",
+          "moveUci": "c2e1",
+          "elapsedMs": 50.234685000001264,
+          "depth": 20,
+          "nodes": 50901
+        },
+        {
+          "ply": 44,
+          "engine": "elo-900",
+          "moveUci": "h1e1",
+          "elapsedMs": 1.6409370000001218,
+          "nodes": 13,
+          "seed": 638809
+        },
+        {
+          "ply": 45,
+          "engine": "stockfish-max",
+          "moveUci": "f5f2",
+          "elapsedMs": 49.99598999999944,
+          "depth": 15,
+          "nodes": 56638
+        },
+        {
+          "ply": 46,
+          "engine": "elo-900",
+          "moveUci": "g2h3",
+          "elapsedMs": 2.6885290000009263,
+          "nodes": 26,
+          "seed": 655191
+        },
+        {
+          "ply": 47,
+          "engine": "stockfish-max",
+          "moveUci": "f2e1",
+          "elapsedMs": 49.937903000000006,
+          "depth": 15,
+          "nodes": 56239
+        },
+        {
+          "ply": 48,
+          "engine": "elo-900",
+          "moveUci": "b3b1",
+          "elapsedMs": 26.965018000000782,
+          "nodes": 286,
+          "seed": 671573
+        },
+        {
+          "ply": 49,
+          "engine": "stockfish-max",
+          "moveUci": "f8d8",
+          "elapsedMs": 50.38351700000021,
+          "depth": 19,
+          "nodes": 50285
+        },
+        {
+          "ply": 50,
+          "engine": "elo-900",
+          "moveUci": "a4a5",
+          "elapsedMs": 28.370002000001477,
+          "nodes": 234,
+          "seed": 687955
+        },
+        {
+          "ply": 51,
+          "engine": "stockfish-max",
+          "moveUci": "d8d2",
+          "elapsedMs": 50.019884999999704,
+          "depth": 22,
+          "nodes": 53857
+        },
+        {
+          "ply": 52,
+          "engine": "elo-900",
+          "moveUci": "g3g4",
+          "elapsedMs": 20.763230000000476,
+          "nodes": 161,
+          "seed": 704337
+        },
+        {
+          "ply": 53,
+          "engine": "stockfish-max",
+          "moveUci": "e1e3",
+          "elapsedMs": 7.643697999999858,
+          "depth": 245,
+          "nodes": 24210
+        },
+        {
+          "ply": 54,
+          "engine": "elo-900",
+          "moveUci": "h3h4",
+          "elapsedMs": 2.1881129999983386,
+          "nodes": 13,
+          "seed": 720719
+        },
+        {
+          "ply": 55,
+          "engine": "stockfish-max",
+          "moveUci": "d2h2",
+          "elapsedMs": 5.073285000000396,
+          "depth": 245,
+          "nodes": 13977
+        }
+      ]
+    }
+  ]
+}
