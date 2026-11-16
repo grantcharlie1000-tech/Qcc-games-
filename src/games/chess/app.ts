@@ -51,7 +51,9 @@ export class ChessApp implements GameInstance {
     this.root.append(this.view);
     container.append(this.root);
     this.root.addEventListener('click', this.click);
-    this.root.addEventListener('submit', (e) => e.preventDefault());
+    this.root.addEventListener('submit', (e) => {
+      if (!(e.target instanceof HTMLFormElement) || e.target.method !== 'dialog') e.preventDefault();
+    });
     this.applyPrefs();
     const invite = inviteCodeFromHash(location.hash);
     if (invite) this.friendLobby(invite); else this.home();
@@ -121,7 +123,7 @@ export class ChessApp implements GameInstance {
   openMenu() { this.settingsSheet(); }
   dismissMenu(): boolean {
     if (this.openSheet) { this.openSheet.close(); return true; }
-    if (this.screen?.dismissOptions()) return true;
+    if (this.screen?.dismissMenu()) return true;
     return false;
   }
 
