@@ -53,8 +53,39 @@ system dependencies installed do not require that variable.
 
 The neural run also compares real WASM logits at four white, black, castling and
 promotion positions with Python ONNX Runtime 1.23.0 CPU reference outputs. It
-aborts an active request after 20 ms, then asks the same session for another
+aborts an active request immediately after its move command is dispatched, then asks the same session for another
 700 ms move to exercise actual model reload recovery.
+
+The neural checks also verify that completed inference has no artificial wait,
+allow a fixed-work inference to outlast a 1 ms soft target while retaining its
+warm model, and reject missing, truncated and corrupt model parts and a missing
+runtime. The original inference graph options and weights are retained.
+
+`CHESS_BROWSER_ARTIFACTS` directs screenshots and reports outside the checkout.
+`CHESS_STOCKFISH_ONLY=1` runs the imported Stockfish checks and full game without
+executing the independent in-house opponents.
+`node tests/chess-ai/providers/browser/ui-smoke.mjs` checks real Maia and Stockfish
+replies in the built application's desktop and phone layouts, saving screenshots
+in TEMP by default. Run `npm run build` first.
+
+For a matched imported-provider timing comparison:
+
+```sh
+node tests/chess-ai/providers/browser/performance.mjs build baseline
+node tests/chess-ai/providers/browser/performance.mjs build candidate
+node tests/chess-ai/providers/browser/performance.mjs paired
+```
+
+The baseline build reads committed Maia and Stockfish source from HEAD in both
+the page and Worker build environments without changing the checkout. Both sides use the same production Vite build options,
+assets, positions, ratings and sampling draws. Five fresh-context runs per side
+alternate on a local no-store server. Results, CPU-load readings and screenshots
+go to TEMP (`CHESS_PERF_ROOT` overrides it). The harness checks legal results and
+records real inference time separately from move wall time. Stockfish retains
+its 100 ms search budget and separately times a one-legal-move position.
+Use `CHROMIUM_PATH` when the Playwright-managed Chromium is unavailable.
+These measurements describe this host and local asset delivery, not phone
+hardware, internet downloads, RAM use or a new playing-strength calibration.
 
 Localhost timings are not download predictions. The files and OS caches may be
 warm, and emulation does not reproduce phone memory limits or thermal behavior.

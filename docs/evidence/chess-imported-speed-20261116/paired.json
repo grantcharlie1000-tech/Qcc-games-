@@ -1,0 +1,1206 @@
+{
+  "baselineCommit": "bef0fa5a95fcc7dec757f84f0724369eccf73cec",
+  "cpu": "Intel(R) Core(TM) i5-7300HQ CPU @ 2.50GHz",
+  "cores": 4,
+  "loadAverage": [
+    0,
+    0,
+    0
+  ],
+  "notes": [
+    "Local no-store asset delivery. Mobile viewport, no physical phone or worker CPU emulation.",
+    "Fresh browser context per side. Fixed sampling draws. Stockfish has unchanged 100 ms search budgets.",
+    "Host may run unrelated applications; alternate five runs per side. No process/RAM claims."
+  ],
+  "results": [
+    {
+      "side": "baseline",
+      "at": "2026-11-16T08:56:36.981Z",
+      "hostCpuBeforePercent": 87.6,
+      "hostCpuDuringPercent": 94.3135227637349,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3006,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 20.30000001192093
+            },
+            {
+              "phase": "compile",
+              "atMs": 482.19999998807907
+            },
+            {
+              "phase": "warmup",
+              "atMs": 2645.199999988079
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 568.5,
+              "inferenceMs": 225.69999998807907
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 572.5999999642372,
+              "inferenceMs": 243.30000001192093
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 579.6000000238419,
+              "inferenceMs": 234.19999998807907
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 563.0999999642372,
+              "inferenceMs": 320.9000000357628
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 595.3000000119209,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.30000001192092896
+            },
+            {
+              "phase": "warmup",
+              "atMs": 585.0999999642372
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "d2d4",
+              "elapsedMs": 102.69999998807907
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "g1f3",
+              "elapsedMs": 101.10000002384186,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 100.79999995231628,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "g1f2",
+              "elapsedMs": 99.79999995231628,
+              "depth": 14
+            }
+          ],
+          "forcedMoveMs": 100.5
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "candidate",
+      "at": "2026-11-16T08:56:45.188Z",
+      "hostCpuBeforePercent": 94.15584415584416,
+      "hostCpuDuringPercent": 100,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 4858.199999988079,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 73.89999997615814
+            },
+            {
+              "phase": "compile",
+              "atMs": 925.8999999761581
+            },
+            {
+              "phase": "warmup",
+              "atMs": 4322.899999976158
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 340.69999998807907,
+              "inferenceMs": 329.5
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 301.60000002384186,
+              "inferenceMs": 301
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 318.0999999642372,
+              "inferenceMs": 317.80000001192093
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 385.9000000357628,
+              "inferenceMs": 385.60000002384186
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 615.5,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.30000001192092896
+            },
+            {
+              "phase": "warmup",
+              "atMs": 595.5
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "g1f3",
+              "elapsedMs": 111.69999998807907,
+              "depth": 6
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 110.89999997615814,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 99.5,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "g1f2",
+              "elapsedMs": 101,
+              "depth": 13
+            }
+          ],
+          "forcedMoveMs": 0.09999996423721313
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "baseline",
+      "at": "2026-11-16T08:56:53.091Z",
+      "hostCpuBeforePercent": 91.16541353383458,
+      "hostCpuDuringPercent": 94.54206602768903,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3872.899999976158,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 25.19999998807907
+            },
+            {
+              "phase": "compile",
+              "atMs": 886.5
+            },
+            {
+              "phase": "warmup",
+              "atMs": 3439.300000011921
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 582,
+              "inferenceMs": 355.80000001192093
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 561.3000000119209,
+              "inferenceMs": 257.19999998807907
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 573.4000000357628,
+              "inferenceMs": 213
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 562,
+              "inferenceMs": 220.39999997615814
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 281.5,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.19999998807907104
+            },
+            {
+              "phase": "warmup",
+              "atMs": 272
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "g1f3",
+              "elapsedMs": 101.40000003576279,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "d2d4",
+              "elapsedMs": 101.09999996423721,
+              "depth": 10
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 100,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 100.20000004768372,
+              "depth": 14
+            }
+          ],
+          "forcedMoveMs": 105.40000003576279
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "candidate",
+      "at": "2026-11-16T08:57:00.449Z",
+      "hostCpuBeforePercent": 100,
+      "hostCpuDuringPercent": 99.7202897511296,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3855.399999976158,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 23.69999998807907
+            },
+            {
+              "phase": "compile",
+              "atMs": 563.7999999523163
+            },
+            {
+              "phase": "warmup",
+              "atMs": 3335.899999976158
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 318.5,
+              "inferenceMs": 316.69999998807907
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 252.29999995231628,
+              "inferenceMs": 252
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 350.80000001192093,
+              "inferenceMs": 350.30000001192093
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 354.69999998807907,
+              "inferenceMs": 348.7999999523163
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 428.69999998807907,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.2999999523162842
+            },
+            {
+              "phase": "warmup",
+              "atMs": 414.7999999523163
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 132.19999998807907,
+              "depth": 7
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "d2d3",
+              "elapsedMs": 113.80000001192093,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "h1h8",
+              "elapsedMs": 135,
+              "depth": 12
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "g1f2",
+              "elapsedMs": 101.5,
+              "depth": 13
+            }
+          ],
+          "forcedMoveMs": 0.2999999523162842
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "baseline",
+      "at": "2026-11-16T08:57:08.771Z",
+      "hostCpuBeforePercent": 98.49198868991517,
+      "hostCpuDuringPercent": 89.47119775755095,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 4309,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 38.60000002384186
+            },
+            {
+              "phase": "compile",
+              "atMs": 1315.7000000476837
+            },
+            {
+              "phase": "warmup",
+              "atMs": 3972.5
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 575.1999999880791,
+              "inferenceMs": 203.39999997615814
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 574,
+              "inferenceMs": 202.39999997615814
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 560.0999999642372,
+              "inferenceMs": 205.5999999642372
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 565.8999999761581,
+              "inferenceMs": 192.0999999642372
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 314.10000002384186,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.19999998807907104
+            },
+            {
+              "phase": "warmup",
+              "atMs": 303.60000002384186
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "g1f3",
+              "elapsedMs": 102.59999996423721,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "g1f3",
+              "elapsedMs": 100.40000003576279,
+              "depth": 10
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "h1h8",
+              "elapsedMs": 99.89999997615814,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "g1f2",
+              "elapsedMs": 101.30000001192093,
+              "depth": 14
+            }
+          ],
+          "forcedMoveMs": 98.59999996423721
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "candidate",
+      "at": "2026-11-16T08:57:14.399Z",
+      "hostCpuBeforePercent": 79.59183673469387,
+      "hostCpuDuringPercent": 93.01008755234108,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3191.199999988079,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 22.299999952316284
+            },
+            {
+              "phase": "compile",
+              "atMs": 502
+            },
+            {
+              "phase": "warmup",
+              "atMs": 2767.5
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 245.39999997615814,
+              "inferenceMs": 240.89999997615814
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 289.5,
+              "inferenceMs": 287.5999999642372
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 236.69999998807907,
+              "inferenceMs": 236.39999997615814
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 202.80000001192093,
+              "inferenceMs": 200
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 247.69999998807907,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.19999998807907104
+            },
+            {
+              "phase": "warmup",
+              "atMs": 237.69999998807907
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 102.89999997615814,
+              "depth": 10
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "f1c4",
+              "elapsedMs": 99.90000003576279,
+              "depth": 10
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "h1h8",
+              "elapsedMs": 100.10000002384186,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 100.39999997615814,
+              "depth": 13
+            }
+          ],
+          "forcedMoveMs": 0.10000002384185791
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "baseline",
+      "at": "2026-11-16T08:57:21.981Z",
+      "hostCpuBeforePercent": 75.07507507507508,
+      "hostCpuDuringPercent": 93.53774567678312,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3533.099999964237,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 25
+            },
+            {
+              "phase": "compile",
+              "atMs": 634.6999999880791
+            },
+            {
+              "phase": "warmup",
+              "atMs": 3057.5
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 577.5999999642372,
+              "inferenceMs": 285.5
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 569.5,
+              "inferenceMs": 229.69999998807907
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 575.6000000238419,
+              "inferenceMs": 214.9000000357628
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 564.4000000357628,
+              "inferenceMs": 244.30000001192093
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 348.5,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.20000004768371582
+            },
+            {
+              "phase": "warmup",
+              "atMs": 338
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 104,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "d2d4",
+              "elapsedMs": 101,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "h1h8",
+              "elapsedMs": 102.90000003576279,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "g1f2",
+              "elapsedMs": 100.5,
+              "depth": 13
+            }
+          ],
+          "forcedMoveMs": 100.40000003576279
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "candidate",
+      "at": "2026-11-16T08:57:28.650Z",
+      "hostCpuBeforePercent": 100,
+      "hostCpuDuringPercent": 99.87653337581646,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3704.100000023842,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 34.200000047683716
+            },
+            {
+              "phase": "compile",
+              "atMs": 645.6000000238419
+            },
+            {
+              "phase": "warmup",
+              "atMs": 3256.900000035763
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 232.0999999642372,
+              "inferenceMs": 231.0999999642372
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 338,
+              "inferenceMs": 337.19999998807907
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 277.10000002384186,
+              "inferenceMs": 276.80000001192093
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 251.5,
+              "inferenceMs": 248.30000001192093
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 415.30000001192093,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.19999998807907104
+            },
+            {
+              "phase": "warmup",
+              "atMs": 399.5999999642372
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "d2d4",
+              "elapsedMs": 102.30000001192093,
+              "depth": 10
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "g1f3",
+              "elapsedMs": 103.80000001192093,
+              "depth": 9
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 102.89999997615814,
+              "depth": 11
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 102.39999997615814,
+              "depth": 14
+            }
+          ],
+          "forcedMoveMs": 0.10000002384185791
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "baseline",
+      "at": "2026-11-16T08:57:38.097Z",
+      "hostCpuBeforePercent": 100,
+      "hostCpuDuringPercent": 98.03773795567466,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 4693.399999976158,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 34.89999997615814
+            },
+            {
+              "phase": "compile",
+              "atMs": 733.5
+            },
+            {
+              "phase": "warmup",
+              "atMs": 4082.100000023842
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 660.2999999523163,
+              "inferenceMs": 637
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 607.6999999880791,
+              "inferenceMs": 421
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 572.5,
+              "inferenceMs": 322.39999997615814
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 582.8000000119209,
+              "inferenceMs": 460.80000001192093
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 574.9000000357628,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.30000001192092896
+            },
+            {
+              "phase": "warmup",
+              "atMs": 560.6000000238419
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "g1f3",
+              "elapsedMs": 105.80000001192093,
+              "depth": 7
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "d2d4",
+              "elapsedMs": 101
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "h1h8",
+              "elapsedMs": 125.39999997615814,
+              "depth": 11
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "g1f2",
+              "elapsedMs": 103.69999998807907,
+              "depth": 13
+            }
+          ],
+          "forcedMoveMs": 101
+        }
+      ],
+      "errors": []
+    },
+    {
+      "side": "candidate",
+      "at": "2026-11-16T08:57:45.093Z",
+      "hostCpuBeforePercent": 100,
+      "hostCpuDuringPercent": 99.70196018493752,
+      "engines": [
+        {
+          "name": "maia",
+          "loadMs": 3914.899999976158,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 35.30000001192093
+            },
+            {
+              "phase": "compile",
+              "atMs": 794.8999999761581
+            },
+            {
+              "phase": "warmup",
+              "atMs": 3378.699999988079
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-1100",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "e2e4",
+              "elapsedMs": 323.60000002384186,
+              "inferenceMs": 322.89999997615814
+            },
+            {
+              "opponent": "elo-1300",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "b1c3",
+              "elapsedMs": 270,
+              "inferenceMs": 269.69999998807907
+            },
+            {
+              "opponent": "elo-1600",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 299.80000001192093,
+              "inferenceMs": 281.5
+            },
+            {
+              "opponent": "elo-1900",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 277.19999998807907,
+              "inferenceMs": 271.0999999642372
+            }
+          ]
+        },
+        {
+          "name": "stockfish",
+          "loadMs": 300.69999998807907,
+          "phases": [
+            {
+              "phase": "download",
+              "atMs": 0.30000001192092896
+            },
+            {
+              "phase": "warmup",
+              "atMs": 290.19999998807907
+            }
+          ],
+          "moves": [
+            {
+              "opponent": "elo-2200",
+              "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+              "moveUci": "b1c3",
+              "elapsedMs": 114.80000001192093,
+              "depth": 7
+            },
+            {
+              "opponent": "elo-2600",
+              "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+              "moveUci": "d2d4",
+              "elapsedMs": 101.59999996423721
+            },
+            {
+              "opponent": "elo-3000",
+              "fen": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+              "moveUci": "a1a8",
+              "elapsedMs": 100.30000001192093,
+              "depth": 13
+            },
+            {
+              "opponent": "max",
+              "fen": "7k/P7/8/8/8/8/8/6K1 w - - 0 1",
+              "moveUci": "a7a8q",
+              "elapsedMs": 102,
+              "depth": 12
+            }
+          ],
+          "forcedMoveMs": 0.10000002384185791
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "summary": [
+    {
+      "name": "Maia move response",
+      "baseline": {
+        "median": 570.9499999880791,
+        "min": 568.7999999821186,
+        "max": 605.8249999880791,
+        "runs": [
+          570.9499999880791,
+          569.6750000119209,
+          568.7999999821186,
+          571.7750000059605,
+          605.8249999880791
+        ]
+      },
+      "candidate": {
+        "median": 292.65000000596046,
+        "min": 243.59999999403954,
+        "max": 336.57500000298023,
+        "runs": [
+          336.57500000298023,
+          319.07499998807907,
+          243.59999999403954,
+          274.67499999701977,
+          292.65000000596046
+        ]
+      }
+    },
+    {
+      "name": "Maia inference",
+      "baseline": {
+        "median": 256.02500000596046,
+        "min": 200.87499997019768,
+        "max": 460.29999999701977,
+        "runs": [
+          256.02500000596046,
+          261.59999999403954,
+          200.87499997019768,
+          243.6000000089407,
+          460.29999999701977
+        ]
+      },
+      "candidate": {
+        "median": 286.2999999821186,
+        "min": 241.22499997913837,
+        "max": 333.4750000089407,
+        "runs": [
+          333.4750000089407,
+          316.94999998807907,
+          241.22499997913837,
+          273.34999999403954,
+          286.2999999821186
+        ]
+      }
+    },
+    {
+      "name": "Maia initialization",
+      "baseline": {
+        "median": 3872.899999976158,
+        "min": 3006,
+        "max": 4693.399999976158,
+        "runs": [
+          3006,
+          3872.899999976158,
+          4309,
+          3533.099999964237,
+          4693.399999976158
+        ]
+      },
+      "candidate": {
+        "median": 3855.399999976158,
+        "min": 3191.199999988079,
+        "max": 4858.199999988079,
+        "runs": [
+          4858.199999988079,
+          3855.399999976158,
+          3191.199999988079,
+          3704.100000023842,
+          3914.899999976158
+        ]
+      }
+    },
+    {
+      "name": "Stockfish initialization",
+      "baseline": {
+        "median": 348.5,
+        "min": 281.5,
+        "max": 595.3000000119209,
+        "runs": [
+          595.3000000119209,
+          281.5,
+          314.10000002384186,
+          348.5,
+          574.9000000357628
+        ]
+      },
+      "candidate": {
+        "median": 415.30000001192093,
+        "min": 247.69999998807907,
+        "max": 615.5,
+        "runs": [
+          615.5,
+          428.69999998807907,
+          247.69999998807907,
+          415.30000001192093,
+          300.69999998807907
+        ]
+      }
+    },
+    {
+      "name": "Stockfish normal search",
+      "baseline": {
+        "median": 101.09999997913837,
+        "min": 100.67500001192093,
+        "max": 108.97499999403954,
+        "runs": [
+          101.09999997913837,
+          100.67500001192093,
+          101.04999999701977,
+          102.1000000089407,
+          108.97499999403954
+        ]
+      },
+      "candidate": {
+        "median": 104.67499999701977,
+        "min": 100.82500000298023,
+        "max": 120.625,
+        "runs": [
+          105.7749999910593,
+          120.625,
+          100.82500000298023,
+          102.84999999403954,
+          104.67499999701977
+        ]
+      }
+    },
+    {
+      "name": "Stockfish forced move",
+      "baseline": {
+        "median": 100.5,
+        "min": 98.59999996423721,
+        "max": 105.40000003576279,
+        "runs": [
+          100.5,
+          105.40000003576279,
+          98.59999996423721,
+          100.40000003576279,
+          101
+        ]
+      },
+      "candidate": {
+        "median": 0.10000002384185791,
+        "min": 0.09999996423721313,
+        "max": 0.2999999523162842,
+        "runs": [
+          0.09999996423721313,
+          0.2999999523162842,
+          0.10000002384185791,
+          0.10000002384185791,
+          0.10000002384185791
+        ]
+      }
+    }
+  ],
+  "successfulMovesPerSide": 45,
+  "maiaMatchedSampledMoves": 20,
+  "candidateSourceSha256": {
+    "maia/index.ts": "9034a9853e59813ba8b61d60879fd6a50554651fc4ce9df152dfb77b352b12c0",
+    "maia/engine.worker.ts": "7a280cc07fb92a8139abf9e30dc9dd29f67c0fb3fcf7da25e1b45ac1278b4be0",
+    "maia/protocol.ts": "291f2b8d47692b80ebced8d72a3cd10043a4b9d458e84f6cd2ddd74eedd09567",
+    "stockfish/index.ts": "b78d364a79457441833f246619030fbb6224b598d76e600a89dfb4b13a4c79b4"
+  }
+}
