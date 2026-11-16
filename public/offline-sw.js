@@ -58,9 +58,10 @@ self.addEventListener('fetch',event=>{
   return;
  }
  event.respondWith((async()=>{
-  const local=await caches.match(request);
-  if(local)return local;
-  try{return await fetch(request);}
-  catch{return new Response('This game is not downloaded',{status:503});}
+  // Bundled Vite assets are immutable hashes; unversioned artwork and engines
+  // prefer the network so online players see the latest files.
+  if(path.startsWith('assets/')){const local=await caches.match(request);if(local)return local;}
+  try{const response=await fetch(request);if(response.ok||response.status<500)return response;}catch{}
+  return await caches.match(request)||new Response('This game is not downloaded',{status:503});
  })());
 });
