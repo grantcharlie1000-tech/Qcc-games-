@@ -20,7 +20,7 @@ import {formatClock,formatRuntime,initials} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
-import {MovieDownloads} from './downloads';
+import {MovieDownloads,movieDownloads} from './downloads';
 import {moviePopularity,POPULARITY_ENDPOINT,parsePopularIds} from './popularity';
 import type {AttemptState,SupervisorEvents} from './playback';
 const base=import.meta.env.BASE_URL;
@@ -99,7 +99,7 @@ export class MoviesView {
  readonly root=document.createElement('section');
  private catalog:Catalog={titles:[],source:'starter',trending:[]};
  private licenses:unknown=[];
- private downloads=new MovieDownloads();
+ private downloads=movieDownloads;
  private confirmedPlayback='';
  private warning?:HTMLDialogElement;
  private abort=new AbortController();
