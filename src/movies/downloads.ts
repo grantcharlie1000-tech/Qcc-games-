@@ -37,7 +37,7 @@ export class MovieDownloads {
  private jobs=new Map<string,Promise<void>>();
  private listeners=new Set<(key:string)=>void>();
 
- static supported=()=>typeof caches!=='undefined'&&typeof navigator!=='undefined'&&
+ static supported=()=>import.meta.env.PROD&&typeof caches!=='undefined'&&typeof navigator!=='undefined'&&
   'serviceWorker' in navigator&&typeof isSecureContext!=='undefined'&&isSecureContext;
 
  constructor(private enabled=MovieDownloads.supported()){
