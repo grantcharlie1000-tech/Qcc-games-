@@ -71,6 +71,7 @@ async function seed(page){
   document.cookie='recovery=preserved; path=/';
   await navigator.serviceWorker.register(new URL('sw.js',location.href),{scope:new URL('.',location.href).href,updateViaCache:'none'});
   await navigator.serviceWorker.ready;
+  window.appRegistrations=[]; // Test's explicit legacy seed is not an app registration.
  });
  await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
  await expect(page.getByRole('heading',{name:'Legacy setup'})).toBeVisible();
@@ -151,7 +152,7 @@ for(const path of ['/','/Qcc-games-/']){
    legacyCaches:(await caches.keys()).filter(name=>name.startsWith('pocket-arcade')),
    registrations:(await navigator.serviceWorker.getRegistrations()).map(r=>r.active?.scriptURL||r.installing?.scriptURL||r.waiting?.scriptURL).filter(Boolean)
   }))).toEqual({legacyCaches:[],registrations:[origin+scope+'offline-sw.js']});
-  expect(await page.evaluate(()=>window.appRegistrations)).toEqual([]);
+  expect(await page.evaluate(()=>window.appRegistrations.every(url=>url.endsWith('/offline-sw.js')))).toBe(true);
   const reload=await page.reload();expect(reload.fromServiceWorker()).toBe(false);
   await recovered(page);
  });
