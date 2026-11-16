@@ -36,8 +36,10 @@ lockfile, with no shared dependency or configuration changes.
 - [x] Review: independent code review, fix material findings, run full
   tests/typecheck/build. See VERIFICATION.md for the six reproduced existing
   Last Light failures; all provider checks and production build passed.
-- [ ] Delivery: publish PR and coordinate with the game owner. Merge remains
-  blocked by those existing repository failures.
+- [x] Delivery: publish PR #187 and coordinate with the game owner. Final
+  independent review approved the implementation. The owner requested merge
+  after that review; the unchanged Last Light failures are documented baseline
+  failures, with no enforced GitHub check gate. The full suite is not green.
 
 ## Review focus
 

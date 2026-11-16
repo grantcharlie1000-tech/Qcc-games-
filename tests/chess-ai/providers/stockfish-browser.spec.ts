@@ -35,7 +35,10 @@ test('real Stockfish WASM starts, searches, cancels, restarts and analyzes', asy
   expect(result.cancelResult).toBe('aborted');
   expect(result.afterDispose).toBe('rejected');
   expect(result.analysis.depth).toBeGreaterThan(0);
-  expect(result.analysis.lines).toHaveLength(2);
+  // A time-limited search may finish the first PV at a newer depth before
+  // completing the second. The frozen contract explicitly permits fewer lines.
+  expect(result.analysis.lines.length).toBeGreaterThanOrEqual(1);
+  expect(result.analysis.lines.length).toBeLessThanOrEqual(2);
   for (const line of result.analysis.lines) expect(result.legalMovesUci).toContain(line.pvUci[0]);
   console.log(JSON.stringify({ stockfish: { loadMs: result.loadMs, thinkMs: result.thinkMs, depth: result.analysis.depth } }));
 });

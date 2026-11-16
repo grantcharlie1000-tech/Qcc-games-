@@ -49,6 +49,34 @@ The focused `npx vitest run tests/chess-ai --maxWorkers=1` run passed 84 tests
 across eight files. `npm run check` and `npm run build` passed. Independent code
 review cleared the found cancellation, restart, clock and late-delivery defects.
 
+## Final merge review
+
+Fresh independent review approved the implementation and independently reran
+61 provider checks. Actual GitHub CI logs confirm 5,598 passing unit tests and
+the same six failures as the exact main-content baseline, which had 5,531
+passing tests. All 84 chess AI tests explicitly pass in head CI. The two
+campaign browser checks also pass. Full repository browser shards may still
+be running when the scoped AI change merges; their completion is not claimed.
+
+A fresh Chromium/WebKit run of `stockfish-browser.spec.ts` exposed an overly
+strict assertion requiring two MultiPV lines within 200 ms. WebKit returned
+one legal line at the deepest completed depth. The frozen contract permits
+fewer lines, so the test now requires one or two legal lines rather than
+requiring a timing-dependent second line. The engine implementation is
+unchanged. This test correction does not change calibration or model hashes.
+The corrected Chromium and WebKit cases were each repeated three times:
+12 real browser tests passed in 15.7 seconds, covering search, cancellation,
+restart, analysis and missing WASM. Command:
+
+```
+PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 npx playwright test tests/chess-ai/providers/stockfish-browser.spec.ts --project=chromium --project=webkit --workers=1 --repeat-each=3 --reporter=line
+```
+
+The owner requested final review and merge after the baseline comparison.
+Main has no required status checks, review gate or ruleset. The known unrelated
+CI failures remain reported; no checks were disabled or represented as green,
+and no unrelated game files were changed to make this PR pass.
+
 That base run reproduced all six Last Light assertion failures, with the same
 values, while both timing-sensitive files passed. Result: 172 passed, six
 failed across four files, 36.22 seconds. No unrelated game files were edited.
