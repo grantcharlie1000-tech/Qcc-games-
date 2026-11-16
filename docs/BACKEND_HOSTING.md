@@ -48,7 +48,7 @@ upstream fetch uses manual redirects and a 10-second deadline; credentials and
 the secret are never followed to a redirect destination. A later failure after
 a response stream begins cannot change its status.
 
-Optional movie player failure emails use the native Pages route `/api/movie-failure-report` (not the Vercel proxy). Set `RESEND_API_KEY`, `QCC_MOVIE_REPORT_TO`, `QCC_MOVIE_REPORT_FROM`, and `QCC_MOVIE_REPORT_CODE` as secret/runtime bindings in Cloudflare Pages. Details, privacy and setup: [Movie failure reports](MOVIE_FAILURE_REPORTS.md). The route is disabled until all bindings are present.
+Automatic, failure-only movie diagnostics use the native Pages route `/api/movie-failure-report` (not the Vercel proxy). They write anonymous event rows to the existing Cloudflare D1 `MOVIE_POPULARITY_DB`, using the existing server-only `MOVIE_POPULARITY_SECRET` for hourly abuse throttling. Apply `docs/movie-failure-schema.sql` to Preview and Production **before** deploying the endpoint, then redeploy the existing cleanup Worker. No Resend/email configuration or diagnostic access code is needed. Details: [Movie failure reports](MOVIE_FAILURE_REPORTS.md).
 
 The movies fetch also uses `redirect: 'manual'`. Workers implements only
 `follow` and `manual`; `error` throws before making the request. Every non-2xx,
