@@ -898,7 +898,13 @@ export class MoviesView {
   dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
   dialog.addEventListener('keydown',event=>{
    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}
-   if(event.key==='Tab'){event.preventDefault();(document.activeElement===back?forward:back).focus();}
+   if(event.key==='Tab'){
+    event.preventDefault();
+    const focusable=optin.checked?[optin,code,back,forward]:[optin,back,forward];
+    const current=focusable.indexOf(document.activeElement as HTMLInputElement&HTMLButtonElement);
+    const next=current<0?(event.shiftKey?focusable.length-1:0):(current+(event.shiftKey?-1:1)+focusable.length)%focusable.length;
+    focusable[next]?.focus();
+   }
   });
   document.body.append(dialog);openSheet(dialog,trigger);back.focus({preventScroll:true});
  }
