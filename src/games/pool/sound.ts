@@ -6,7 +6,7 @@ export class PoolSound{
     if(!this.enabled())return null;
     try{
       this.ctx??=new AudioContext();
-      if(this.ctx.state==='suspended')void this.ctx.resume();
+      if(this.ctx.state!=='running'&&this.ctx.state!=='closed')void this.ctx.resume().catch(()=>{});
       if(!this.noise){const n=this.ctx.createBuffer(1,this.ctx.sampleRate*.4,this.ctx.sampleRate),d=n.getChannelData(0);let s=12345;for(let i=0;i<d.length;i++){s=(s*1103515245+12345)>>>0;d[i]=s/2147483648-1;}this.noise=n;}
       return this.ctx;
     }catch{return null;}
