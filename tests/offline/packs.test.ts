@@ -17,6 +17,10 @@ test('writes game packs from normalized Vite module IDs', async () => {
     for (const name of ['view.ts', 'storage.ts', 'account-storage.ts']) await writeFile(join(root, 'src/movies', name), 'export {}');
     await writeFile(join(publicDir, 'movies/catalog.json'), '{"titles":[]}');
     await writeFile(join(publicDir, 'movies/licenses.json'), '[]');
+    // Vite copies public files to dist before calling writeBundle.
+    await mkdir(join(outDir, 'movies'), {recursive: true});
+    await writeFile(join(outDir, 'movies/catalog.json'), '{"titles":[]}');
+    await writeFile(join(outDir, 'movies/licenses.json'), '[]');
     await writeFile(join(publicDir, 'sw.js'), "const VERSION = '__OFFLINE_VERSION__';");
     for (const [name, content] of Object.entries({'index.html': 'page', 'entry.js': 'entry', 'game.js': 'game', 'shared.js': 'shared', 'movie.js': 'movie', 'storage.js': 'storage', 'account.js': 'account'})) {
       await writeFile(join(outDir, name), content);
