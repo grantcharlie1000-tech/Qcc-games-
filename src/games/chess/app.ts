@@ -121,6 +121,7 @@ export class ChessApp implements GameInstance {
   openMenu() { this.settingsSheet(); }
   dismissMenu(): boolean {
     if (this.openSheet) { this.openSheet.close(); return true; }
+    if (this.screen?.dismissOptions()) return true;
     return false;
   }
 

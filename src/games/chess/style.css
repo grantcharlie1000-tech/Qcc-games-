@@ -157,14 +157,51 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch-armed{background:#e04848}
 .ch-ico{width:20px;height:20px;flex:none}
 @media (hover:hover) and (pointer:fine){.ch-iconbtn:hover,.ch-act:hover{background:rgb(255 255 255 / .18)}.ch-act-primary:hover{background:#ffd36b}}
-@container (max-width:759px){
-  .ch-panel{flex-direction:column}
-  .ch-nav{order:4}
-  .ch-panel-head{min-height:24px}.ch-state{font-size:14px}
-  .ch-nav,.ch-actions{gap:4px}
-  .ch-nav .ch-iconbtn{min-width:36px;flex:1}
-  .ch-review{order:5}
+/* Phones and portrait screens: the board takes the full width. The move list is a strip on top, players and
+   clocks sit above and below the board, and one row of actions (Options, Back, Forward) sits under it. */
+.ch-mbar{display:none}
+@container not ((min-width:760px) and (min-aspect-ratio:1/1)){
+  .ch-game{--pbar:62px;--strip:44px;--mbar:58px;--bs:min(100cqw,calc(100cqh - var(--strip) - 2 * var(--pbar) - var(--mbar) - 20px));gap:0;padding:0}
+  .ch-panel{display:contents}
+  .ch-panel-head{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .ch-nav,.ch-actions{display:none!important}
+  .ch-moves{order:0;width:100%;min-height:var(--strip);padding:0 12px;font-size:17px;gap:2px 4px}
+  .ch-mvno{font-size:16px;padding-left:8px}
+  .ch-mv{font-weight:600;padding:6px 8px}
+  .ch-mv-current{box-shadow:inset 0 -2px 0 rgb(255 255 255 / .85)}
+  .ch-col{order:1;margin-block:auto;gap:0}
+  .ch-board{border-radius:0;box-shadow:none}
+  .ch-banner{order:2;width:calc(100% - 24px);margin-top:8px}
+  .ch-review{order:3;width:calc(100% - 24px);margin-top:8px}
+  .ch-evalbar{display:none}
+  .ch-player{padding:0 12px;gap:12px}
+  .ch-avatar{width:46px;height:46px;border-radius:6px;background:#d9d8d6;box-shadow:none}
+  .ch-avatar svg{width:38px;height:38px}
+  .ch-pname{font-size:17px}.ch-prating{font-size:16px}
+  .ch-cp{width:19px;height:19px}
+  .ch-pinfo{justify-content:center}
+  .ch-clock{min-width:118px;height:48px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:6px;font:700 28px/1 var(--font-sans);font-variant-numeric:tabular-nums;background:#262421;color:rgb(255 255 255 / .55);box-shadow:none}
+  .ch-clock.ch-running{background:#fff;color:#191816;box-shadow:none}
+  .ch-mbar{order:4;display:flex;width:100%;height:var(--mbar);margin-top:4px}
+  .ch-mbtn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:44px;border:0;background:none;color:rgb(255 255 255 / .82);font:600 12px/1 var(--font-sans);border-radius:12px;transition:background 120ms,scale 120ms var(--ch-spring)}
+  .ch-mbtn .ch-ico{width:24px;height:24px}
+  .ch-mbtn:active{scale:.94;background:rgb(255 255 255 / .08)}
 }
+/* Landscape phones: players and clocks move beside the board so the board can use the full height. */
+@container (min-width:760px) and (min-aspect-ratio:1/1) and (max-height:560px){
+  .ch-game{--side:clamp(240px,28cqw,320px);--bs:min(calc(100cqh - 12px),calc(100cqw - var(--side) - 220px));gap:14px}
+  .ch-col{display:grid;grid-template-columns:170px var(--bs);grid-template-rows:1fr 1fr;column-gap:12px;width:auto}
+  .ch-boardwrap{grid-column:2;grid-row:1 / span 2}
+  .ch-player{grid-column:1;height:auto;flex-wrap:wrap;row-gap:6px}
+  .ch-player[data-pos=top]{grid-row:1;align-self:start}
+  .ch-player[data-pos=bottom]{grid-row:2;align-self:end}
+  .ch-clock{flex:1 0 100%}
+  .ch-panel{height:var(--bs);padding:10px}
+}
+@media (max-width:759px){body.in-game .game-view[data-game-id=chess]{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}}
+.ch-optlist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ch-optlist .ch-act{min-height:52px;justify-content:flex-start;padding:0 14px}
+.ch-optlist .ch-act span{display:inline}
 
 /* Review */
 .ch-evalbar{position:absolute;left:-16px;top:0;width:10px;height:100%;border-radius:6px;overflow:hidden;background:#2a2733;box-shadow:inset 0 0 0 1px var(--ch-edge)}

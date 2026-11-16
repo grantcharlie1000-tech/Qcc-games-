@@ -35,6 +35,7 @@ export interface ScreenHost {
 }
 
 const other = (c: Color): Color => (c === 'w' ? 'b' : 'w');
+const SETTINGS_ITEM = `<button type="button" class="ch-act" data-act="settings" aria-label="Board settings">${ico('board')}<span>Board</span></button>`;
 const COLOR_NAME: Record<Color, string> = { w: 'White', b: 'Black' };
 const START_COUNT: Record<PieceType, number> = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
 
@@ -87,7 +88,13 @@ export class GameScreen {
           <button type="button" class="ch-iconbtn" data-nav="last" aria-label="Latest move">${ico('last')}</button>
         </div>
         <div class="ch-actions"></div>
-      </aside>`;
+      </aside>
+      <nav class="ch-mbar" aria-label="Game actions">
+        <button type="button" class="ch-mbtn" data-act="options" aria-label="Options">${ico('menu')}<span>Options</span></button>
+        <button type="button" class="ch-mbtn ch-mbar-extra"></button>
+        <button type="button" class="ch-mbtn" data-nav="prev" aria-label="Back">${ico('prev')}<span>Back</span></button>
+        <button type="button" class="ch-mbtn" data-nav="next" aria-label="Forward">${ico('next')}<span>Forward</span></button>
+      </nav>`;
     this.board = new BoardView({
       legalFrom: (sq) => this.isLive() && this.session.controls().includes(this.rules.turn) ? this.rules.legalFrom(sq) : [],
       premoveFrom: (sq) => {
@@ -347,13 +354,38 @@ export class GameScreen {
       const resignLabel = armed ? 'Confirm' : abort ? 'Abort' : 'Resign';
       items.push(`<button type="button" class="ch-act${armed ? ' ch-armed' : ''}" data-act="resign" aria-label="${resignLabel}">${ico('flag')}<span>${resignLabel}</span></button>`);
     } else {
-      for (const [i, a] of this.host.actions(this.session).entries()) items.push(`<button type="button" class="ch-act${a.primary ? ' ch-act-primary' : ''}" data-host-act="${i}"><span>${esc(a.label)}</span></button>`);
+      for (const [i, a] of this.host.actions(this.session).entries()) items.push(`<button type="button" class="ch-act${a.primary ? ' ch-act-primary' : ''}" data-host-act="${i}" aria-label="${esc(a.label)}"><span>${esc(a.label)}</span></button>`);
       if (!this.review) items.push(`<button type="button" class="ch-act" data-act="review" aria-label="Review">${ico('chart')}<span>Review</span></button>`);
     }
     items.push(`<button type="button" class="ch-act" data-act="export" aria-label="Share or export">${ico('share')}<span>Share</span></button>`);
     const html = items.join('');
     if (bar.dataset.html !== html) { bar.dataset.html = html; bar.innerHTML = html; }
+    if (this.options) this.options.el.querySelector('.ch-optlist')!.innerHTML = html + SETTINGS_ITEM;
+    // On phones one extra action sits beside Back and Forward: Undo, else Hint, else Flip.
+    const extra = this.$<HTMLButtonElement>('.ch-mbar-extra');
+    const pick: [string, string, string] = live && this.session.canTakeback() ? ['takeback', 'undo', 'Undo'] : live && k === 'computer' && this.host.hintsEnabled() ? ['hint', 'bulb', 'Hint'] : ['flip', 'flip', 'Flip'];
+    if (extra.dataset.act !== pick[0]) { extra.dataset.act = pick[0]; extra.setAttribute('aria-label', pick[2]); extra.innerHTML = `${ico(pick[1])}<span>${pick[2]}</span>`; }
   }
+
+  private options?: { el: HTMLDialogElement; close: () => void };
+
+  /** Phones keep every game action in one sheet so the board has the screen. */
+  private openOptions() {
+    const bar = this.$<HTMLElement>('.ch-actions');
+    this.options = sheet(this.host.root, `<form method="dialog" class="dialog-head"><h2>Options</h2><button class="icon-button" aria-label="Close">${ico('close')}</button></form><div class="ch-optlist">${bar.dataset.html ?? ''}${SETTINGS_ITEM}</div>`, { label: 'Game options', onClose: () => { this.options = undefined; } });
+    this.options.el.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest<HTMLElement>('[data-act],[data-host-act]');
+      if (!target) return;
+      const resign = target.dataset.act === 'resign';
+      const close = this.options!.close;
+      if (!resign) close();
+      this.click(e);
+      // Resigning asks for a second press inside the sheet.
+      if (resign && !(performance.now() < this.resignArmed)) close();
+    });
+  }
+
+  dismissOptions(): boolean { if (!this.options) return false; this.options.close(); return true; }
 
   // Review ---------------------------------------------------------------
 
@@ -444,6 +476,7 @@ export class GameScreen {
       case 'analyze': void this.analysis?.run(); break;
       case 'export': this.exportSheet(); break;
       case 'settings': this.host.openSettings(); break;
+      case 'options': this.openOptions(); break;
     }
   };
 
@@ -508,6 +541,7 @@ export class GameScreen {
 
   dispose() {
     this.disposed = true;
+    this.options?.close();
     clearInterval(this.timer);
     cancelAnimationFrame(this.scrollFrame);
     this.el.removeEventListener('click', this.click);

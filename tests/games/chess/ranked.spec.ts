@@ -40,6 +40,14 @@ async function connect(context: BrowserContext, username?: string) {
   });
 }
 const moves = (page: Page) => page.locator('.ch-moves .ch-mv');
+/** Presses a game action: on wide screens it is in the panel, on phones it is in the Options sheet. */
+async function act(page: Page, name: string) {
+  const direct = page.locator('.ch-actions').getByRole('button', { name, exact: true });
+  if (await direct.isVisible()) { await direct.click(); return; }
+  const sheet = page.getByRole('dialog', { name: 'Game options' });
+  if (!(await sheet.isVisible())) await page.getByRole('button', { name: 'Options', exact: true }).click();
+  await sheet.getByRole('button', { name, exact: true }).click();
+}
 async function move(page: Page, from: string, to: string) { await page.locator(`#ch-sq-${from}`).click(); await page.locator(`#ch-sq-${to}`).click(); }
 const clockSeconds = async (page: Page, pos: 'top' | 'bottom') => {
   const t = (await page.locator(`.ch-player[data-pos="${pos}"] .ch-clock`).textContent()) ?? '';
@@ -120,7 +128,7 @@ test('two players are matched, play, agree a draw, then a decisive game updates 
     await expect(moves(black)).toHaveText(['e4', 'e5', 'd4', 'exd4', 'Nf3'], { timeout: 15000 });
 
     // Draw offer and acceptance.
-    await black.getByRole('button', { name: 'Draw' }).click();
+    await act(black, 'Draw');
     await expect(white.locator('.ch-banner')).toContainText('Draw offered');
     if (info.project.name === 'chromium') await (white === a ? white : black).screenshot({ path: EVIDENCE + 'ranked-game-390.png' });
     await white.getByRole('button', { name: 'Accept' }).click();
@@ -141,8 +149,8 @@ test('two players are matched, play, agree a draw, then a decisive game updates 
     await expect(moves(b2)).toHaveCount(1);
     await move(b2, 'd7', 'd5');
     await expect(moves(w2)).toHaveCount(2);
-    await b2.getByRole('button', { name: 'Resign' }).click();
-    await b2.getByRole('button', { name: 'Confirm' }).click();
+    await act(b2, 'Resign');
+    await act(b2, 'Confirm');
     await expect(w2.getByRole('dialog', { name: 'Game over' })).toContainText('You won');
     await expect(b2.getByRole('dialog', { name: 'Game over' })).toContainText('You lost');
     if (info.project.name === 'chromium') await w2.screenshot({ path: EVIDENCE + `ranked-result-${w2 === a ? 390 : 1440}.png` });

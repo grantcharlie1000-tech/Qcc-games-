@@ -58,6 +58,10 @@ The host creates a room (colour and time control), and the guest joins with the 
 
 The setup screen lists the opponent tiers from `CHESS_AI_OPPONENTS` with their real availability. Uninstalled opponents are disabled and marked "Not installed"; with no engines the Play button is disabled. Replies are validated twice (legal list in the loader, rules in the game) and replies for an older position are dropped. Hints appear only when an analysis provider is installed. Development builds can use the test-only mock engine with `localStorage['qcc:chess:mock-ai'] = '1'`; production builds do not contain it.
 
+## Layout
+
+On phones and portrait screens the board runs edge to edge. The move list is a strip along the top, each player's name, captured pieces and a large clock sit directly above and below the board, and one row under it holds Options, Undo (or Hint or Flip), Back and Forward. Every other game action (draw, resign, share, board settings, review) is in the Options sheet. The shell's dock stays the only toolbar below. On wide screens a side panel holds the moves and actions; on landscape phones the players and clocks move beside the board so it can use the full height.
+
 ## Accessibility and motion
 
 The board is keyboard playable (arrow keys, Enter, Escape) with spoken square and move announcements. Every action has a labelled button. Piece moves slide for 170 ms, captures fade, the check square pulses once, and sheets spring in. Reduced motion (system or QCC setting) removes animation; reduced transparency (system or QCC setting) replaces glass with solid panels. The default board is flat tan with a dark frame and bold outlined pieces with a soft offset shadow. The high-contrast theme uses white and deep blue squares with strong highlights.
