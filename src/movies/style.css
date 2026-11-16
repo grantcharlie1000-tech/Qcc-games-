@@ -381,10 +381,10 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-download-wrap{display:inline-flex;flex-direction:column;gap:3px;min-width:0;align-items:flex-start}
 .movies-view .movies-download-note{display:block;max-width:240px;font-family:var(--font-mono);font-size:11px;line-height:1.45;color:var(--c-400);overflow-wrap:anywhere}
 .movies-view .movies-actions>.movies-download-wrap{grid-column:1/-1;grid-row:4}
-.movies-view .movies-episode{grid-template-areas:"thumb" "body" "action" "download"}
+.movies-view .movies-episode:has(>.movies-download-wrap){grid-template-areas:"thumb" "body" "action" "download"}
 .movies-view .movies-episode>.movies-download-wrap{grid-area:download}
 @media (min-width:640px){
- .movies-view .movies-episode{grid-template-areas:"thumb body action" "thumb body download";row-gap:6px}
+ .movies-view .movies-episode:has(>.movies-download-wrap){grid-template-areas:"thumb body action" "thumb body download";row-gap:6px}
  .movies-view .movies-episode>.movies-download-wrap{justify-self:end;align-items:flex-end;text-align:right}
 }
 @media (max-width:639px){.movies-view .movies-actions>.movies-download-wrap{grid-column:1;grid-row:4;align-items:stretch}}
