@@ -627,6 +627,9 @@ art['last-light'] = s => {
  s.set(-10,3,9,C.gold).set(-10,3,10,C.cream);
 };
 
+// Chess uses the lit poster system on the production branch: scripts/posters/models/chess.mjs
+// (POSTERS entry there: hue 312, accent C.gold). Its cover.svg is generated with that system, not here.
+
 // ---------- backdrop and assembly ----------
 function backdropSvg(id, hue, box) {
   seed = [...id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 2147483646, 7) + 1;
