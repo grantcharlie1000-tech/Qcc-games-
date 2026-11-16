@@ -19,7 +19,7 @@ export const PUBLIC_EXTRAS = {
 // Source archives, licences and notes ship for provenance only; a game never loads them.
 const NOT_LOADED = /\.(?:tar\.gz|md|txt)$|(?:^|\/)(?:LICEN[CS]E[^/]*|COPYING|AUTHORS|SHA256SUMS|SOURCE-SHA256SUMS|ONNXRUNTIME-[^/]*)$/;
 // Shell files outside the bundle. Covers are added per game.
-const SHELL_PUBLIC = ['icon.svg', 'app-icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'offline/cover.svg'];
+const SHELL_PUBLIC = ['icon.svg', 'app-icon.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'offline/cover.svg', 'movies/catalog.json', 'movies/licenses.json'];
 
 const sha = data => createHash('sha256').update(data).digest('hex');
 async function walk(dir, prefix = '') {
@@ -69,6 +69,14 @@ export function offlinePacks() {
       const shellBundle = closure(entry, bundle, names, new Set(), {dynamic: false, scan: false});
       // Fonts and images used by the shell's CSS.
       for (const name of [...shellBundle]) if (name.endsWith('.css')) for (const dep of closure(name, bundle, names, new Set(), {dynamic: false, scan: true})) shellBundle.add(dep);
+      // The offline home screen must be able to load Movies, the watch page and stored
+      // episode metadata without fetching a lazy JS module from the network.
+      for (const filename of ['view.ts', 'storage.ts', 'account-storage.ts']) {
+        const file = join(root, 'src/movies', filename).replaceAll('\\', '/');
+        const chunk = names.find(name => bundle[name].type === 'chunk' && bundle[name].moduleIds.includes(file));
+        if (!chunk) throw new Error('offline-packs: missing Movies & TV chunk for ' + filename);
+        for (const dep of closure(chunk, bundle, names, new Set(), {dynamic: false, scan: false})) shellBundle.add(dep);
+      }
       const publicFiles = new Set(await walk(publicDir));
       const games = {};
       for (const id of gameIds) {
