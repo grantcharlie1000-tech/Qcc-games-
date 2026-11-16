@@ -103,15 +103,23 @@ base.describe('first visit on a phone',()=>{
 });
 
 test.describe('games on phones',()=>{
-  test('Drift Club keeps its dock below the notch',async({page,browserName})=>{
+  test('Drift Club runs edge to edge under the notch and home indicator, with its controls clear',async({page,browserName})=>{
     test.skip(browserName!=='chromium','safe-area insets are emulated through Chromium');
-    await page.setViewportSize({width:390,height:844});
     const cdp=await page.context().newCDPSession(page);
+    await page.setViewportSize({width:390,height:844});
     await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:47,bottom:34,left:0,right:0}});
     await page.goto('/#/game/drift-club');await expect(page.locator('.dc')).toBeVisible();
     expect((await page.locator('.game-dock').boundingBox())!.y).toBeGreaterThanOrEqual(47);
-    const shoot=(await page.locator('.dc-shoot').boundingBox())!;
+    let panel=(await page.locator('.dc-control').boundingBox())!,shoot=(await page.locator('.dc-shoot').boundingBox())!;
+    expect(panel.y+panel.height).toBeCloseTo(844,0);
     expect(shoot.y+shoot.height).toBeLessThanOrEqual(844-34);
+    await page.setViewportSize({width:844,height:390});
+    await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:21,left:47,right:0}});
+    await expect.poll(async()=>(await page.locator('.dc-desk').boundingBox())!.x).toBe(0);
+    panel=(await page.locator('.dc-desk').boundingBox())!;shoot=(await page.locator('.dc-shoot').boundingBox())!;
+    expect(panel.y+panel.height).toBeCloseTo(390,0);
+    expect(shoot.x).toBeGreaterThanOrEqual(47);
+    expect(shoot.y+shoot.height).toBeLessThanOrEqual(390-21);
   });
 
   test('Fivefold keeps readable tiles on a landscape phone',async({page})=>{

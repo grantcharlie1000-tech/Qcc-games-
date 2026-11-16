@@ -22,7 +22,8 @@ Goal: fix the defects that make QCC feel like a desktop site on an iPhone, keepi
 3. Leaderboards: the "Refresh scores" button is squashed to a 30 px circle by the sidebar icon style sharing its class. Fix: scope the sidebar rule.
 4. Menu search filters the library hidden behind the sheet. Fix: matching games listed under the field; the keyboard's Search key closes the sheet.
 5. Seven game audio modules resume only from `suspended`. iOS reports `interrupted` after calls and backgrounding, so sound stays off. Fix: resume whenever not `running` or `closed` (the rule `core/music.ts` already uses).
-6. Drift Club sets the game view padding to 0, so the dock sits under the notch and controls under the home indicator; portrait controls use 8 to 10 px text. Fix: safe-area padding and readable portrait sizes.
+6. Drift Club ignores safe areas: in landscape its controls sit under the side notch and the home indicator; portrait controls use 8 to 10 px text. Fix: edge to edge. The paper and the harbour run under the notch and home indicator (the paper column grows by the inset), and only their contents keep clear. Readable portrait sizes.
+   Note: iOS reports no top inset in portrait in Safari or the installed app with the default status bar, so the notch only reaches the page in landscape.
 7. Fivefold in landscape phones: the guess grid shrinks to about 13 px cells. Fix: grid beside the keyboard on short screens.
 8. Chess in landscape phones: the mode menu is clipped at the top and under the dock. Fix: compact short-height menu.
 9. Election: tabs, refresh and auto-refresh controls are 24 to 30 px tall. Fix: 44 px targets.

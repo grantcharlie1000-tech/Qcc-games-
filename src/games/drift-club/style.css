@@ -1,5 +1,5 @@
-body.in-game .game-view[data-game-id=drift-club]{--game-surface:#15383c;background:#15383c;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);gap:0}
-body.in-game .game-view[data-game-id=drift-club] .game-dock{order:0;margin:4px auto;flex-basis:54px}
+body.in-game .game-view[data-game-id=drift-club]{--game-surface:#15383c;background:#15383c;padding:0;gap:0}
+body.in-game .game-view[data-game-id=drift-club] .game-dock{order:0;margin:max(4px,env(safe-area-inset-top)) auto 4px;flex-basis:54px}
 body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-height:none}
 .dc{--ink:#183e40;--paper:#fff2d9;--gold:#fac567;width:100%;height:100%;display:grid;grid-template-columns:clamp(270px,27vw,385px) minmax(0,1fr);padding:0 clamp(10px,2vw,36px) clamp(10px,2vw,30px);color:var(--ink);text-align:left;isolation:isolate;font:500 15px/1.36 var(--font-sans,system-ui);overflow:hidden}
 .dc *{box-sizing:border-box}.dc button,.dc input{font:inherit}.dc button{cursor:pointer}.dc button:focus-visible,.dc input:focus-visible,.dc canvas:focus-visible{outline:3px solid #ee9844;outline-offset:2px}
@@ -57,4 +57,17 @@ body.in-game .game-view[data-game-id=drift-club] #game-stage{height:100%;max-hei
 }
 @media(max-height:620px) and (min-width:701px), (max-height:520px){
  .dc{grid-template-columns:clamp(205px,29vw,320px) 1fr;padding:0 6px 6px}.dc-desk{padding:10px 14px}.dc-brand h2{font-size:29px}.dc-monogram{width:32px;height:32px;font-size:22px}.dc-modes{margin-top:6px}.dc-tour{margin:8px 0;padding-bottom:8px}.dc-course{font-size:26px;margin:3px 0!important}.dc-tip,.dc-stops{display:none}.dc-inputs{grid-template-columns:1fr 1fr;margin:5px 0;gap:8px}.dc-spin button{min-height:29px}.dc-shoot{min-height:34px;margin-top:4px}.dc-player{font-size:17px}.dc-venue,.dc-board-score{font-size:9px}
+}
+/* Edge to edge: the paper and the harbour run under the notch and the home indicator; only what is on them keeps clear. */
+@media(max-width:900px) and (min-height:521px) and (orientation:portrait){
+ .dc{padding-bottom:0}
+ .dc-control{border-radius:0;padding-bottom:max(10px,calc(env(safe-area-inset-bottom) + 6px))}
+}
+@media(max-height:620px) and (min-width:701px), (max-height:520px){
+ .dc{padding:0;grid-template-columns:calc(clamp(205px,29vw,320px) + env(safe-area-inset-left,0px)) 1fr}
+ .dc-modes button,.dc-modes button[data-mode]{flex:auto;padding-inline:4px;font-size:11px}
+ .dc .dc-desk{border-radius:19px 0 0 0;padding-left:max(14px,calc(env(safe-area-inset-left) + 8px));padding-bottom:max(10px,calc(env(safe-area-inset-bottom) + 6px))}
+ .dc-window{border-radius:0 19px 0 0}
+ .dc-board-score,.dc-book-open{right:max(14px,calc(env(safe-area-inset-right) + 8px))}
+ .dc-caption{bottom:max(12px,calc(env(safe-area-inset-bottom) + 6px))}
 }
