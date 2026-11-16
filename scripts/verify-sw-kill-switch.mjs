@@ -55,7 +55,7 @@ export async function verifyBuiltKillSwitch(directory='dist'){
    if(item.isDirectory())await scan(file);
    else if(/\.(?:[cm]?js|ts|html)$/.test(item.name)){
     const code=await readFile(file,'utf8');
-    assert(!/serviceWorker\\s*\\.\\s*register\\s*\\(\\s*(?:new URL\\s*\\(\\s*)?['\"\x60]sw\\.js['\"\x60]/.test(code),'The broken legacy worker must never be registered: '+file);
+    assert(!/\bserviceWorker\s*\.\s*register\s*\(\s*(?:new URL\s*\(\s*)?['"]sw\.js['"]/.test(code),'The broken legacy worker must never be registered: '+file);
    }
   }
  }
