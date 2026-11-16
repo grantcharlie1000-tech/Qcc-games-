@@ -37,6 +37,8 @@ CREATE TABLE chess_games (
  result text CHECK (result IN ('1-0','0-1','1/2-1/2')),
  termination text,
  draw_offer char(1) CHECK (draw_offer IN ('w','b')),
+ white_offer_ply integer NOT NULL DEFAULT -1,
+ black_offer_ply integer NOT NULL DEFAULT -1,
  white_rating double precision,
  black_rating double precision,
  white_change double precision,

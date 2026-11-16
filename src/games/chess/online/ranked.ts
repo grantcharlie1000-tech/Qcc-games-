@@ -62,6 +62,8 @@ export class RankedSession implements Session {
   readonly premoves = true;
   onChange?: () => void;
   private game: RankedGameView & { moves: readonly string[] };
+  /** Moves the server has confirmed. `game.moves` may also hold one move still being sent. */
+  private confirmed: readonly string[];
   private received: number;
   private timer = 0;
   private problem = '';
@@ -70,6 +72,7 @@ export class RankedSession implements Session {
 
   constructor(private readonly api: ChessApi, initial: RankedGameView, private readonly now: () => number) {
     this.game = { ...initial, moves: initial.moves ?? [] };
+    this.confirmed = this.game.moves;
     this.received = now();
     this.schedule(0);
     document.addEventListener('visibilitychange', this.visible);
@@ -126,12 +129,12 @@ export class RankedSession implements Session {
     const g = this.game;
     if (!this.controls().includes(this.turn)) return false;
     // Show the move now; the server answer replaces it, or a refusal restores the true position.
-    const revision = g.revision;
+    const ply = g.moves.length;
     const v = this.view(this.now());
     this.game = { ...g, moves: [...g.moves, uci], drawOffer: g.drawOffer === g.color ? g.drawOffer : null,
       clock: { w: v.clock!.w, b: v.clock!.b, running: g.moves.length >= 1 } };
     this.received = this.now();
-    void this.send('move', revision, { uci });
+    void this.send('move', g.revision, { uci, ply });
     this.changed();
     return true;
   }
@@ -139,19 +142,22 @@ export class RankedSession implements Session {
   private async send(type: RankedCommand, revision: number, extra: Record<string, unknown> = {}) {
     this.sending = true;
     const id = commandId();
+    let done = false;
     for (let attempt = 0; attempt < 3 && !this.disposed; attempt++) {
       try {
         this.apply(await this.api.command(this.game.id, type, revision, extra, id));
         this.problem = '';
+        done = true;
         break;
       } catch (e) {
         if (e instanceof ChessApiError && e.status === 0) { this.problem = 'Reconnecting'; this.changed(); await new Promise((r) => setTimeout(r, 800 * (attempt + 1))); continue; }
         this.problem = e instanceof ChessApiError && e.code !== 'stale' ? e.message : '';
-        await this.refresh();
         break;
       }
     }
     this.sending = false;
+    // Whatever happened, show the server's game: a move that never arrived is taken back off the board.
+    if (!done) await this.refresh(true);
     this.changed();
   }
 
@@ -159,7 +165,7 @@ export class RankedSession implements Session {
   offerDraw() { void this.send('offer-draw', this.game.revision); }
   acceptDraw() { void this.send('offer-draw', this.game.revision); }
   declineDraw() { void this.send('decline-draw', this.game.revision); }
-  claimDraw() { void this.send('claim-draw', this.game.revision); }
+  claimDraw() { void this.send('claim-draw', this.game.revision, { ply: this.game.moves.length }); }
   canTakeback() { return false; }
   takeback() {}
   tick() {}
@@ -167,18 +173,19 @@ export class RankedSession implements Session {
   resume() { this.schedule(0); }
 
   private apply(view: RankedGameView) {
-    const moves = view.unchanged ? this.game.moves : view.moves ?? this.game.moves;
+    const moves = view.unchanged ? this.confirmed : view.moves ?? this.confirmed;
+    this.confirmed = moves;
     this.game = { ...view, moves };
     this.received = this.now();
     this.changed();
   }
 
-  async refresh() {
+  async refresh(full = false) {
     try {
-      const v = await this.api.game(this.game.id, this.sending ? undefined : this.game.revision);
+      const v = await this.api.game(this.game.id, full || this.sending ? undefined : this.game.revision);
       if (this.disposed) return;
-      if (v.unchanged && !this.sending) { this.game = { ...this.game, ...v, moves: this.game.moves }; this.received = this.now(); this.changed(); }
-      else if (!v.unchanged) this.apply(v);
+      if (this.sending) return;
+      this.apply(v);
       if (this.problem === 'Reconnecting') this.problem = '';
     } catch (e) {
       if (this.disposed) return;

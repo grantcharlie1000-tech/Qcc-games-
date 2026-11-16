@@ -104,7 +104,7 @@ test('two players are matched, play, agree a draw, then a decisive game updates 
       const s = JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:session')!);
       const me = await (await fetch('/.netlify/functions/chess?action=me', { headers: { Authorization: `Bearer ${s.token}` } })).json();
       const game = await (await fetch(`/.netlify/functions/chess?action=game&id=${me.activeGameId}`, { headers: { Authorization: `Bearer ${s.token}` } })).json();
-      const r = await fetch('/.netlify/functions/chess?action=command', { method: 'POST', headers: { Authorization: `Bearer ${s.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId: me.activeGameId, type: 'move', revision: game.revision, uci: 'd8d2', commandId: 'forged-move-1' }) });
+      const r = await fetch('/.netlify/functions/chess?action=command', { method: 'POST', headers: { Authorization: `Bearer ${s.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId: me.activeGameId, type: 'move', revision: game.revision, ply: game.moves.length, uci: 'd8d2', commandId: 'forged-move-1' }) });
       const r2 = await fetch('/.netlify/functions/chess?action=result', { method: 'POST', headers: { Authorization: `Bearer ${s.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId: me.activeGameId, result: '0-1' }) });
       return [r.status, r2.status];
     });

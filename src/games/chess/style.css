@@ -23,7 +23,7 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch[data-theme=dark]{--ch-light:#7d8796;--ch-dark:#424a58;--ch-last:rgb(172 140 255 / .42);--ch-sel:rgb(172 140 255 / .62);--ch-dot:rgb(0 0 0 / .3)}
 .ch[data-theme=contrast]{--ch-light:#ffffff;--ch-dark:#1b3a8a;--ch-last:rgb(255 212 0 / .55);--ch-sel:rgb(255 212 0 / .8);--ch-dot:rgb(0 0 0 / .45)}
 .ch[data-pieces=glass]{--ch-w-fill:#dfe9fb;--ch-w-hi:#ffffff;--ch-w-line:#41557a;--ch-w-detail:#41557a;--ch-b-fill:#28324e;--ch-b-hi:#62729e;--ch-b-line:#0c1222;--ch-b-detail:#b8c6ec}
-.ch[data-theme=contrast]{--ch-w-line:#000;--ch-b-line:#000}
+.ch[data-theme=contrast]{--ch-w-line:#000;--ch-w-detail:#000;--ch-b-line:#fff;--ch-b-fill:#111;--ch-b-hi:#2a2a2a;--ch-b-detail:#fff}
 
 /* Pieces */
 .ch-body{stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
@@ -142,7 +142,6 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 .ch-mv{border:0;background:none;color:var(--ch-text);padding:5px 7px;border-radius:8px;text-align:left;font:inherit;font-weight:550;min-height:30px}
 .ch-mv:hover{background:rgb(255 255 255 / .08)}
 .ch-mv-current{background:rgb(255 255 255 / .18)!important}
-.ch-moves li:last-child .ch-mv:last-of-type:not(:empty){animation:ch-in 200ms ease-out}
 .ch-judge{font-style:normal;margin-left:2px;font-weight:800}
 .ch-inaccuracy .ch-judge{color:#f2d24e}.ch-mistake .ch-judge{color:#ff9d4a}.ch-blunder .ch-judge{color:#ff5c5c}
 .ch-mv-none{color:var(--ch-muted);padding:4px 2px}

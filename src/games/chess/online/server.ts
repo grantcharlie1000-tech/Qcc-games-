@@ -178,6 +178,10 @@ export function createChessHandler(db: Database, options: ChessHandlerOptions = 
   }
 
   async function queueState(q: Query, account: Account): Promise<RankedQueueView> {
+    // Lock order: the time control's advisory lock first, then queue rows, so two pollers never wait on each other.
+    const peek = (await q(`SELECT base_ms, increment_ms FROM chess_queue WHERE account_id = $1`, [account.id])).rows[0];
+    if (!peek) return { state: 'idle' };
+    await q(`SELECT pg_advisory_xact_lock(hashtext('qcc-chess-queue:' || $1 || '+' || $2))`, [peek.base_ms, peek.increment_ms]);
     const r = await q(`SELECT category, base_ms, increment_ms, rating, game_id, floor(extract(epoch FROM now() - joined_at) * 1000)::bigint AS waited
       FROM chess_queue WHERE account_id = $1 FOR UPDATE`, [account.id]);
     const row = r.rows[0];
@@ -187,25 +191,27 @@ export function createChessHandler(db: Database, options: ChessHandlerOptions = 
       return { state: 'matched', gameId: row.game_id };
     }
     await q(`UPDATE chess_queue SET seen_at = now() WHERE account_id = $1`, [account.id]);
-    // Pairing is serialized per time control so two searchers never match the same opponent.
-    await q(`SELECT pg_advisory_xact_lock(hashtext('qcc-chess-queue:' || $1 || '+' || $2))`, [row.base_ms, row.increment_ms]);
     const waited = Number(row.waited);
     const candidates = await q(`SELECT account_id, rating, floor(extract(epoch FROM now() - joined_at) * 1000)::bigint AS waited
       FROM chess_queue WHERE base_ms = $1 AND increment_ms = $2 AND game_id IS NULL AND account_id <> $3
       AND seen_at > now() - ($4 * interval '1 second') ORDER BY joined_at LIMIT 50`, [row.base_ms, row.increment_ms, account.id, SEEN_TIMEOUT_S]);
     const mine = Number(row.rating);
-    const match = candidates.rows.find((c) => {
+    const matches = candidates.rows.filter((c) => {
       const gap = Math.abs(Number(c.rating) - mine);
       return gap <= searchRange(waited) && gap <= searchRange(Number(c.waited));
     });
-    if (!match) return { state: 'searching', category: row.category, waitedMs: waited, range: searchRange(waited), timeControl: `${row.base_ms / 60000}+${row.increment_ms / 1000}` };
-    const id = randomUUID();
-    const [white, black] = random() < 0.5 ? [account.id, match.account_id] : [match.account_id, account.id];
-    await q(`INSERT INTO chess_games(id, rated, category, base_ms, increment_ms, white_id, black_id, fen, white_ms, black_ms)
-      VALUES ($1, true, $2, $3, $4, $5, $6, $7, $3, $3)`, [id, row.category, row.base_ms, row.increment_ms, white, black, START_FEN]);
-    await q(`UPDATE chess_queue SET game_id = $1 WHERE account_id = $2`, [id, match.account_id]);
-    await q(`DELETE FROM chess_queue WHERE account_id = $1`, [account.id]);
-    return { state: 'matched', gameId: id };
+    for (const match of matches) {
+      const id = randomUUID();
+      const [white, black] = random() < 0.5 ? [account.id, match.account_id] : [match.account_id, account.id];
+      await q(`INSERT INTO chess_games(id, rated, category, base_ms, increment_ms, white_id, black_id, fen, white_ms, black_ms)
+        VALUES ($1, true, $2, $3, $4, $5, $6, $7, $3, $3)`, [id, row.category, row.base_ms, row.increment_ms, white, black, START_FEN]);
+      // The opponent may have left the queue a moment ago; only a row still waiting can be claimed.
+      const claimed = await q(`UPDATE chess_queue SET game_id = $1 WHERE account_id = $2 AND game_id IS NULL RETURNING 1`, [id, match.account_id]);
+      if (!claimed.rows.length) { await q(`DELETE FROM chess_games WHERE id = $1`, [id]); continue; }
+      await q(`DELETE FROM chess_queue WHERE account_id = $1`, [account.id]);
+      return { state: 'matched', gameId: id };
+    }
+    return { state: 'searching', category: row.category, waitedMs: waited, range: searchRange(waited), timeControl: `${row.base_ms / 60000}+${row.increment_ms / 1000}` };
   }
 
   async function activeGameId(q: Query, accountId: string): Promise<string | null> {
@@ -220,7 +226,8 @@ export function createChessHandler(db: Database, options: ChessHandlerOptions = 
       if (await commandSeen(q, row, account, body.commandId)) return view((await loadGame(q, row.id, false))!, account.id);
       const type = body.type;
       if (row.status !== 'active') throw new HttpError(409, 'finished', 'This game has ended.');
-      if (body.revision !== row.revision) throw new HttpError(409, 'stale', 'The game moved on. Refreshing.');
+      // Moves and claims are tied to the position (move count), never to other state, so draw offers cannot make a move stale.
+      if ((type === 'move' || type === 'claim-draw') && body.ply !== row.moves.length) throw new HttpError(409, 'stale', 'The game moved on. Refreshing.');
       const rules = new ChessRules(START_FEN, row.moves);
       const c = clocks(row);
       if (type === 'move') {
@@ -246,7 +253,13 @@ export function createChessHandler(db: Database, options: ChessHandlerOptions = 
       } else if (type === 'offer-draw') {
         if (!clockRunning(row)) throw new HttpError(409, 'too_early', 'Make a move first.');
         if (row.draw_offer && row.draw_offer !== me) await finish(q, row, { result: '1/2-1/2', termination: 'agreement' }, c);
-        else await q(`UPDATE chess_games SET draw_offer = $2, revision = revision + 1 WHERE id = $1`, [row.id, me]);
+        else if (row.draw_offer !== me) {
+          // One offer per player per move.
+          const col = me === 'w' ? 'white_offer_ply' : 'black_offer_ply';
+          const lastOffer = (await q(`SELECT ${col} AS ply FROM chess_games WHERE id = $1`, [row.id])).rows[0].ply;
+          if (lastOffer === row.moves.length) throw new HttpError(409, 'offered', 'You already offered a draw this move.');
+          await q(`UPDATE chess_games SET draw_offer = $2, ${col} = $3, revision = revision + 1 WHERE id = $1`, [row.id, me, row.moves.length]);
+        }
       } else if (type === 'decline-draw') {
         if (row.draw_offer && row.draw_offer !== me) await q(`UPDATE chess_games SET draw_offer = NULL, revision = revision + 1 WHERE id = $1`, [row.id]);
       } else if (type === 'claim-draw') {

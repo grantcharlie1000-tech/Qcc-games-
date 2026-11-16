@@ -1,6 +1,6 @@
 import { Room, type RoomEvent, type RosterEntry } from '../../../multiplayer/room';
 import { LocalMatch } from '../match';
-import { START_FEN, type Color, type Outcome } from '../rules';
+import { ChessRules, START_FEN, type Color, type Outcome } from '../rules';
 import type { PlayerInfo, Session, SessionView } from '../session';
 import { parseTimeControl, type TimeControl } from '../time-control';
 
@@ -23,6 +23,35 @@ type GuestCommand =
   | { t: 'resign' } | { t: 'offer-draw' } | { t: 'accept-draw' } | { t: 'decline-draw' } | { t: 'claim-draw' } | { t: 'rematch' };
 
 const other = (c: Color): Color => (c === 'w' ? 'b' : 'w');
+const RESULTS = ['1-0', '0-1', '1/2-1/2'];
+const TERMINATIONS = ['checkmate', 'stalemate', 'insufficient', 'fivefold', 'seventy-five', 'threefold', 'fifty-move', 'agreement', 'resignation', 'timeout', 'timeout-vs-insufficient', 'abandoned', 'aborted'];
+const side = (c: unknown): c is Color => c === 'w' || c === 'b';
+const ms = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n < 864e5;
+
+/** The guest trusts nothing from the host it cannot check: every field is validated before use. */
+export function validState(data: unknown): StateMessage | null {
+  const s = data as Partial<StateMessage>;
+  if (!s || s.t !== 'state' || !Number.isSafeInteger(s.rev) || typeof s.startFen !== 'string' || s.startFen.length > 100) return null;
+  if (!Array.isArray(s.moves) || s.moves.length > 2000 || !s.moves.every((m) => typeof m === 'string' && /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(m))) return null;
+  let rules: ChessRules;
+  try { rules = new ChessRules(s.startFen, s.moves); } catch { return null; }
+  const o = s.outcome;
+  if (o !== null && (!o || !RESULTS.includes(o.result) || !TERMINATIONS.includes(o.termination) || (o.winner !== undefined && !side(o.winner)))) return null;
+  if (s.drawOffer !== null && !side(s.drawOffer)) return null;
+  if (s.rematch !== null && !side(s.rematch)) return null;
+  if (!side(s.hostColor)) return null;
+  const c = s.clock;
+  if (c !== null && (!c || !ms(c.w) || !ms(c.b) || (c.running !== null && !side(c.running)))) return null;
+  if (s.tc !== null && (typeof s.tc !== 'string' || !parseTimeControl(s.tc))) return null;
+  const names = s.names;
+  if (!names || typeof names.w !== 'string' || typeof names.b !== 'string') return null;
+  void rules;
+  return {
+    t: 'state', rev: s.rev!, startFen: s.startFen, moves: [...s.moves], outcome: o ? { result: o.result, termination: o.termination, ...(o.winner ? { winner: o.winner } : {}) } : null,
+    drawOffer: s.drawOffer ?? null, clock: c ? { w: c.w, b: c.b, running: c.running } : null, tc: s.tc ?? null, hostColor: s.hostColor!,
+    names: { w: names.w.slice(0, 16), b: names.b.slice(0, 16) }, rematch: s.rematch ?? null,
+  };
+}
 
 export class FriendSession implements Session {
   readonly kind = 'friend' as const;
@@ -167,8 +196,8 @@ export class FriendSession implements Session {
       return;
     }
     if (e.type === 'message' && e.data && typeof e.data === 'object' && (e.data as StateMessage).t === 'state') {
-      const s = e.data as StateMessage;
-      if (!Array.isArray(s.moves) || typeof s.startFen !== 'string') return;
+      const s = validState(e.data);
+      if (!s) return;
       this.state = s;
       this.rev = s.rev;
       this.received = this.now();

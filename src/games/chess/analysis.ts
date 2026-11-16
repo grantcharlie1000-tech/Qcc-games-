@@ -5,7 +5,7 @@ import { ChessRules } from './rules';
  * Post-game analysis through the optional analysis provider. Every number shown
  * comes from the engine; nothing is estimated when no engine is installed.
  */
-export interface PlyEval { readonly cp?: number; readonly mate?: number; readonly best?: string; readonly line?: readonly string[] }
+export interface PlyEval { readonly cp?: number; readonly mate?: number; readonly best?: string; readonly line?: readonly string[]; /** Result of a finished position. */ readonly final?: string }
 export type Judgement = 'inaccuracy' | 'mistake' | 'blunder';
 
 /** White's winning chances (0..100) for an evaluation, using the common logistic mapping. */
@@ -51,7 +51,7 @@ export class GameAnalysis {
         const outcome = rules.outcome();
         if (outcome) {
           // A finished position needs no search: mate or a dead draw.
-          this.evals[ply] = outcome.termination === 'checkmate' ? { mate: outcome.winner === 'w' ? 1 : -1 } : { cp: 0 };
+          this.evals[ply] = outcome.termination === 'checkmate' ? { mate: outcome.winner === 'w' ? 1 : -1, final: outcome.result } : { cp: 0, final: outcome.result };
         } else {
           const r = await this.session.analyze({ fen: rules.fen, startFen: this.startFen, moveHistoryUci: rules.historyUci, legalMovesUci: rules.legalMovesUci(), positionRevision: ply, thinkingTimeMs, multiPv: 1, signal: this.abort.signal });
           const best = r.lines[0];
@@ -80,6 +80,7 @@ export class GameAnalysis {
 
 export function evalText(e: PlyEval | undefined): string {
   if (!e) return '';
+  if (e.final) return e.final;
   if (e.mate !== undefined) return `${e.mate > 0 ? '' : '-'}M${Math.abs(e.mate)}`;
   const v = (e.cp ?? 0) / 100;
   return `${v > 0 ? '+' : ''}${v.toFixed(1)}`;

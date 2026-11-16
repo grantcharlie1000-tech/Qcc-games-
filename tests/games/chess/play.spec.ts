@@ -130,6 +130,40 @@ test.describe('chess', () => {
     await expect(moves(page)).toHaveCount(0);
   });
 
+  test('reviews a finished game, stepping through moves, and never invents an evaluation', async ({ page }) => {
+    await startLocal(page);
+    for (const [a, b] of [['f2', 'f3'], ['e7', 'e5'], ['g2', 'g4'], ['d8', 'h4']]) await move(page, a, b);
+    await page.getByRole('dialog', { name: 'Game over' }).getByRole('button', { name: 'Review' }).click();
+    await expect(page.getByText('Engine analysis is not installed.')).toBeVisible();
+    await expect(page.locator('.ch-evalbar')).toBeHidden();
+    await page.getByRole('button', { name: 'First move' }).click();
+    await expect(page.locator('.ch-piece[data-square="h4"]')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Next move' }).click();
+    await expect(page.locator('.ch-piece[data-square="f3"]')).toHaveCount(1);
+    await expect(page.locator('.ch-state')).toHaveText('Viewing move 1 of 4');
+    await page.getByRole('button', { name: 'g4' }).click();
+    await expect(page.locator('.ch-piece[data-square="g4"]')).toHaveCount(1);
+    await expect(page.locator('.ch-piece[data-square="h4"]')).toHaveCount(0);
+    // The finished game is kept on this device and opens again from My games.
+    await page.evaluate(() => { location.hash = '#/collection'; });
+    await page.goto('/#/game/chess');
+    await page.getByRole('button', { name: 'My games' }).click();
+    await page.locator('.ch-hist').first().click();
+    await expect(moves(page)).toHaveText(['f3', 'e5', 'g4', 'Qh4#']);
+  });
+
+  test('runs engine analysis through the contract when an analysis engine is present', async ({ page, context }, info) => {
+    await context.addInitScript(() => localStorage.setItem('qcc:chess:mock-ai', '1'));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await startLocal(page);
+    for (const [a, b] of [['f2', 'f3'], ['e7', 'e5'], ['g2', 'g4'], ['d8', 'h4']]) await move(page, a, b);
+    await page.getByRole('dialog', { name: 'Game over' }).getByRole('button', { name: 'Review' }).click();
+    await page.getByRole('button', { name: /Analyze with Test engine/ }).click();
+    await expect(page.locator('.ch-graph')).toBeVisible();
+    await expect(page.locator('.ch-evalbar')).toBeVisible();
+    if (info.project.name === 'chromium') await page.screenshot({ path: EVIDENCE + 'review-1440.png' });
+  });
+
   test('has no horizontal scroll and a full-width board on a phone in a game', async ({ page }, info) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await startLocal(page);

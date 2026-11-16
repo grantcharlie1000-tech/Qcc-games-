@@ -123,6 +123,7 @@ export class LocalSession implements Session {
         onProgress: (p) => { this.loading = `Loading ${p.provider.name}${p.fraction !== undefined ? ` ${Math.round(p.fraction * 100)}%` : ''}`; this.changed(); },
       });
       this.loading = '';
+      if (this.disposed) { this.engine.dispose(); this.engine = undefined; return; }
     } catch (e) {
       if (this.disposed) return;
       this.loading = '';

@@ -40,9 +40,11 @@ async function pair(a: string, b: string, tc = '3+2') {
 }
 
 async function play(g: { id: string; white: string; black: string }, moves: string[]) {
-  let rev = (await get(g.white, `action=game&id=${g.id}`)).body.revision as number;
+  const current = (await get(g.white, `action=game&id=${g.id}`)).body;
+  let rev = current.revision as number;
+  const start = current.moves.length as number;
   for (const [i, uci] of moves.entries()) {
-    const r = await cmd(i % 2 ? g.black : g.white, g.id, 'move', rev, { uci });
+    const r = await cmd(i % 2 ? g.black : g.white, g.id, 'move', rev, { uci, ply: start + i });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     rev = r.body.revision;
   }
@@ -73,13 +75,13 @@ describe('ranked chess server', { timeout: 30000 }, () => {
     const start = await get(g.white, `action=game&id=${g.id}`);
     expect(start.body).toMatchObject({ status: 'active', revision: 0, moves: [], color: 'w', rated: true, category: 'blitz', clock: { w: 180000, b: 180000, running: false } });
     expect((await get(c, `action=game&id=${g.id}`)).status).toBe(404);
-    expect((await cmd(c, g.id, 'move', 0, { uci: 'e2e4' })).status).toBe(404);
-    expect((await cmd(g.black, g.id, 'move', 0, { uci: 'e7e5' })).body.error).toBe('not_your_turn');
-    expect((await cmd(g.white, g.id, 'move', 0, { uci: 'e2e5' })).status).toBe(422);
-    const moved = await cmd(g.white, g.id, 'move', 0, { uci: 'e2e4' });
+    expect((await cmd(c, g.id, 'move', 0, { uci: 'e2e4', ply: 0 })).status).toBe(404);
+    expect((await cmd(g.black, g.id, 'move', 0, { uci: 'e7e5', ply: 0 })).body.error).toBe('not_your_turn');
+    expect((await cmd(g.white, g.id, 'move', 0, { uci: 'e2e5', ply: 0 })).status).toBe(422);
+    const moved = await cmd(g.white, g.id, 'move', 0, { uci: 'e2e4', ply: 0 });
     expect(moved.body).toMatchObject({ revision: 1, moves: ['e2e4'] });
     // Same revision again: rejected as stale, not applied twice.
-    expect((await cmd(g.white, g.id, 'move', 0, { uci: 'd2d4' })).body.error).toBe('stale');
+    expect((await cmd(g.white, g.id, 'move', 0, { uci: 'd2d4', ply: 0 })).body.error).toBe('stale');
     const blackView = await get(g.black, `action=game&id=${g.id}&since=1`);
     expect(blackView.body.unchanged).toBe(true);
     expect(blackView.body.moves).toBeUndefined();
@@ -87,7 +89,7 @@ describe('ranked chess server', { timeout: 30000 }, () => {
 
   it('treats a repeated command id as one command', async () => {
     const g = await pair(await signup('Retry_White'), await signup('Retry_Black'));
-    const body = { gameId: g.id, type: 'move', revision: 0, uci: 'e2e4', commandId: 'same-command-123' };
+    const body = { gameId: g.id, type: 'move', revision: 0, ply: 0, uci: 'e2e4', commandId: 'same-command-123' };
     const first = await post(g.white, 'command', body);
     const again = await post(g.white, 'command', body);
     expect(first.body.revision).toBe(1);
@@ -135,6 +137,14 @@ describe('ranked chess server', { timeout: 30000 }, () => {
     const declined = await cmd(g.black, g.id, 'decline-draw', offered.body.revision);
     expect(declined.body.drawOffer).toBeNull();
     rev = declined.body.revision;
+    // Repeating an offer in the same move is refused and never makes the opponent's move stale.
+    expect((await cmd(g.white, g.id, 'offer-draw', rev)).body.error).toBe('offered');
+    const reply = await cmd(g.white, g.id, 'move', 0, { uci: 'g1f3', ply: 2 });
+    // The move carries an old revision (0) but the right move count, so it still counts.
+    expect(reply.status).toBe(200);
+    expect(reply.body.moves).toEqual(['e2e4', 'e7e5', 'g1f3']);
+    const blackMove = await cmd(g.black, g.id, 'move', 0, { uci: 'b8c6', ply: 3 });
+    expect(blackMove.status).toBe(200);
     const again = await cmd(g.white, g.id, 'offer-draw', rev);
     const agreed = await cmd(g.black, g.id, 'offer-draw', again.body.revision);
     expect(agreed.body).toMatchObject({ status: 'finished', result: '1/2-1/2', termination: 'agreement' });
@@ -154,7 +164,7 @@ describe('ranked chess server', { timeout: 30000 }, () => {
     await play(g, ['e2e4', 'e7e5']);
     await pool.query(`UPDATE chess_games SET turn_started_at = now() - interval '61 seconds' WHERE id = $1`, [g.id]);
     // The flag falls on the next read; a late move is refused.
-    expect((await cmd(g.white, g.id, 'move', 2, { uci: 'g1f3' })).body.error).toBe('finished');
+    expect((await cmd(g.white, g.id, 'move', 2, { uci: 'g1f3', ply: 2 })).body.error).toBe('finished');
     const end = await get(g.black, `action=game&id=${g.id}`);
     expect(end.body).toMatchObject({ status: 'finished', result: '0-1', termination: 'timeout', clock: { w: 0 } });
 
@@ -167,7 +177,7 @@ describe('ranked chess server', { timeout: 30000 }, () => {
     const g = await pair(await signup('Inc_White'), await signup('Inc_Black'), '3+2');
     await play(g, ['e2e4', 'e7e5']);
     await pool.query(`UPDATE chess_games SET turn_started_at = now() - interval '10 seconds' WHERE id = $1`, [g.id]);
-    const r = await cmd(g.white, g.id, 'move', 2, { uci: 'g1f3' });
+    const r = await cmd(g.white, g.id, 'move', 2, { uci: 'g1f3', ply: 2 });
     expect(r.body.clock.w).toBeGreaterThan(171000);
     expect(r.body.clock.w).toBeLessThanOrEqual(172000);
     expect(r.body.clock.b).toBe(180000);

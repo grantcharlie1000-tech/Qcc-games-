@@ -326,7 +326,7 @@ export class ChessApp implements GameInstance {
       <p class="ch-res-kicker">${s.rated ? 'Rated' : 'Casual'}${s.tc ? ` · ${esc(s.tc.id)}` : ''}</p>
       <h2>${esc(resultText(o, me))}</h2>
       <p class="ch-res-reason">${esc(TERMINATION_TEXT[o.termination] ?? o.termination)}</p>
-      <div class="ch-res-players">${row('w')}<span class="ch-res-score">${o.result.replace('1/2', '½').replace('1/2', '½')}</span>${row('b')}</div>
+      <div class="ch-res-players">${row('w')}<span class="ch-res-score">${esc(o.result.replace(/1\/2/g, '½'))}</span>${row('b')}</div>
       <p class="ch-muted">${Math.ceil(v.moves.length / 2)} moves · ${mins}:${String(secs).padStart(2, '0')}</p>
       <div class="ch-row">${actions.map((a, i) => `<button type="button" class="ch-pill${a.primary ? ' ch-pill-primary' : ''}" data-res="${i}">${esc(a.label)}</button>`).join('')}<button type="button" class="ch-pill" data-res="review">Review</button></div>
     </div>`, { label: 'Game over', className: 'ch-result-sheet', onClose: () => { this.openSheet = undefined; } });
@@ -453,21 +453,30 @@ export class ChessApp implements GameInstance {
         <p class="ch-muted ch-search-range" role="status"></p>
         <button type="button" class="ch-pill" data-go="cancel-search">Cancel</button>
       </section>`);
-    let stopped = false, matched = false;
+    let stopped = false, matched = false, failures = 0;
+    let joining: Promise<unknown> = Promise.resolve();
     const started = Date.now();
-    const stop = () => { if (!stopped && !matched) void this.api.leave().catch(() => {}); stopped = true; clearTimeout(this.searchTimer); };
+    // Leave only after the join has answered, so a late join cannot re-queue a player who cancelled.
+    const stop = () => { if (!stopped && !matched) void joining.catch(() => {}).then(() => this.api.leave()).catch(() => {}); stopped = true; clearTimeout(this.searchTimer); };
     this.cleanup.push(stop);
     const poll = async (first: boolean) => {
       if (stopped || this.disposed) return;
       try {
-        const q = first ? await this.api.join(tc) : await this.api.queue();
+        const request = first ? this.api.join(tc) : this.api.queue();
+        if (first) joining = request;
+        const q = await request;
         if (stopped) return;
+        failures = 0;
         if (q.state === 'matched') {
           matched = true;
           stop();
-          const game = await this.api.game(q.gameId);
-          if (this.disposed) return;
-          this.opponentFound(game);
+          try {
+            const game = await this.api.game(q.gameId);
+            if (!this.disposed) this.opponentFound(game);
+          } catch {
+            // The lobby reopens any active game on its own.
+            if (!this.disposed) void this.rankedLobby();
+          }
           return;
         }
         if (q.state === 'idle') { this.rankedLobby(); return; }
@@ -477,13 +486,16 @@ export class ChessApp implements GameInstance {
         const range = this.view.querySelector('.ch-search-range');
         if (range) range.textContent = `Rating range ±${q.range}`;
       } catch (e) {
-        if (e instanceof ChessApiError && e.status !== 0) {
-          this.view.querySelector('.ch-search-range')!.textContent = e.message;
+        // Network blips and busy servers are retried; refusals (bad request, logged out) end the search.
+        const retry = e instanceof ChessApiError && (e.status === 0 || e.status >= 500) && ++failures < 6;
+        if (!retry) {
+          const el = this.view.querySelector('.ch-search-range');
+          if (el) el.textContent = e instanceof Error ? e.message : 'Search stopped.';
           stop();
           return;
         }
       }
-      this.searchTimer = window.setTimeout(() => void poll(false), 1500);
+      this.searchTimer = window.setTimeout(() => void poll(first && failures > 0), 1500);
     };
     void poll(true);
   }

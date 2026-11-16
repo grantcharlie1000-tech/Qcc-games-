@@ -61,6 +61,7 @@ export class GameScreen {
   private hint: string | null = null;
   private movesKey = '';
   private lowWarned = false;
+  private scrollFrame = 0;
   private disposed = false;
   private readonly $ = <T extends Element>(s: string) => this.el.querySelector<T>(s)!;
 
@@ -166,6 +167,19 @@ export class GameScreen {
   render(animate = true) {
     if (this.disposed) return;
     const v = this.session.view(performance.now());
+    // A rematch in the same session starts a fresh game: leave review mode.
+    if (!v.moves.length && !v.outcome && this.lastCount > 0 && this.session.kind !== 'archive') {
+      this.review = false;
+      this.analysis?.dispose();
+      this.analysis = undefined;
+      this.viewPly = null;
+      this.hint = null;
+      this.board.setGuide(null);
+      this.el.classList.remove('ch-reviewing');
+      this.started = performance.now();
+      this.lowWarned = false;
+      this.board.setOrientation(this.session.perspective);
+    }
     this.sync(v);
     const count = this.rules.ply;
     const grew = count === this.lastCount + 1 && this.lastCount >= 0;
@@ -277,20 +291,24 @@ export class GameScreen {
       b.classList.toggle('ch-mv-current', on);
       if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
     }
-    const cur = list.querySelector<HTMLElement>('.ch-mv-current');
-    if (cur) {
-      const lr = list.getBoundingClientRect(), cr = cur.getBoundingClientRect();
-      if (cr.top < lr.top || cr.bottom > lr.bottom || cr.left < lr.left || cr.right > lr.right) {
-        list.scrollTo({ top: list.scrollTop + cr.top - lr.top - lr.height / 2, left: list.scrollLeft + cr.left - lr.left - lr.width / 2, behavior: this.host.reducedMotion() ? 'auto' : 'smooth' });
-      }
-    } else if (current === h.length) list.scrollTo({ top: list.scrollHeight, left: list.scrollWidth });
+    // Scroll in the next frame, so reading layout never forces it in the middle of a move.
+    cancelAnimationFrame(this.scrollFrame);
+    this.scrollFrame = requestAnimationFrame(() => {
+      const cur = list.querySelector<HTMLElement>('.ch-mv-current');
+      if (cur) {
+        const lr = list.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+        if (cr.top < lr.top || cr.bottom > lr.bottom || cr.left < lr.left || cr.right > lr.right) {
+          list.scrollTo({ top: list.scrollTop + cr.top - lr.top - lr.height / 2, left: list.scrollLeft + cr.left - lr.left - lr.width / 2, behavior: this.host.reducedMotion() ? 'auto' : 'smooth' });
+        }
+      } else if (current === h.length) list.scrollTo({ top: list.scrollHeight, left: list.scrollWidth });
+    });
   }
 
   private renderState() {
     const v = this.session.view(performance.now());
     let text: string;
-    if (v.outcome) text = `${resultText(v.outcome, this.session.kind === 'local' || this.session.kind === 'archive' ? null : this.session.perspective)} · ${TERMINATION_TEXT[v.outcome.termination] ?? ''}`;
-    else if (this.viewPly !== null) text = `Viewing move ${this.viewPly} of ${this.rules.ply}`;
+    if (this.viewPly !== null && this.viewPly < this.rules.ply) text = `Viewing move ${this.viewPly} of ${this.rules.ply}`;
+    else if (v.outcome) text = `${resultText(v.outcome, this.session.kind === 'local' || this.session.kind === 'archive' ? null : this.session.perspective)} · ${TERMINATION_TEXT[v.outcome.termination] ?? ''}`;
     else {
       const s = this.session.status();
       const turn = this.rules.turn;
@@ -321,15 +339,16 @@ export class GameScreen {
     const k = this.session.kind;
     const items: string[] = [`<button type="button" class="ch-act" data-act="flip" aria-label="Flip board">${ico('flip')}<span>Flip</span></button>`];
     if (live) {
-      if (this.session.canTakeback()) items.push(`<button type="button" class="ch-act" data-act="takeback">${ico('undo')}<span>Undo</span></button>`);
-      if (k === 'computer' && this.host.hintsEnabled()) items.push(`<button type="button" class="ch-act" data-act="hint">${ico('bulb')}<span>Hint</span></button>`);
-      if ((k === 'local' || k === 'friend' || k === 'ranked') && this.rules.ply >= (k === 'ranked' ? 2 : 1) && v.drawOffer !== this.myColor()) items.push(`<button type="button" class="ch-act" data-act="offer-draw">${ico('draw')}<span>Draw</span></button>`);
+      if (this.session.canTakeback()) items.push(`<button type="button" class="ch-act" data-act="takeback" aria-label="Undo">${ico('undo')}<span>Undo</span></button>`);
+      if (k === 'computer' && this.host.hintsEnabled()) items.push(`<button type="button" class="ch-act" data-act="hint" aria-label="Hint">${ico('bulb')}<span>Hint</span></button>`);
+      if ((k === 'local' || k === 'friend' || k === 'ranked') && this.rules.ply >= (k === 'ranked' ? 2 : 1) && v.drawOffer !== this.myColor()) items.push(`<button type="button" class="ch-act" data-act="offer-draw" aria-label="Draw">${ico('draw')}<span>Draw</span></button>`);
       const abort = k === 'ranked' && this.rules.ply < 2;
       const armed = performance.now() < this.resignArmed;
-      items.push(`<button type="button" class="ch-act${armed ? ' ch-armed' : ''}" data-act="resign">${ico('flag')}<span>${armed ? 'Confirm' : abort ? 'Abort' : 'Resign'}</span></button>`);
+      const resignLabel = armed ? 'Confirm' : abort ? 'Abort' : 'Resign';
+      items.push(`<button type="button" class="ch-act${armed ? ' ch-armed' : ''}" data-act="resign" aria-label="${resignLabel}">${ico('flag')}<span>${resignLabel}</span></button>`);
     } else {
       for (const [i, a] of this.host.actions(this.session).entries()) items.push(`<button type="button" class="ch-act${a.primary ? ' ch-act-primary' : ''}" data-host-act="${i}"><span>${esc(a.label)}</span></button>`);
-      if (!this.review) items.push(`<button type="button" class="ch-act" data-act="review">${ico('chart')}<span>Review</span></button>`);
+      if (!this.review) items.push(`<button type="button" class="ch-act" data-act="review" aria-label="Review">${ico('chart')}<span>Review</span></button>`);
     }
     items.push(`<button type="button" class="ch-act" data-act="export" aria-label="Share or export">${ico('share')}<span>Share</span></button>`);
     const html = items.join('');
@@ -490,6 +509,7 @@ export class GameScreen {
   dispose() {
     this.disposed = true;
     clearInterval(this.timer);
+    cancelAnimationFrame(this.scrollFrame);
     this.el.removeEventListener('click', this.click);
     this.el.removeEventListener('keydown', this.keys);
     this.analysis?.dispose();

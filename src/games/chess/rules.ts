@@ -37,6 +37,8 @@ export class ChessRules {
   private readonly startFen: string;
   private records: MoveRecord[] = [];
   private keys: string[] = [];
+  /** Legal moves and outcome of the current position, computed once per position. */
+  private memo: { legal?: string[]; outcome?: Outcome | null } = {};
 
   constructor(startFen = START_FEN, movesUci: readonly string[] = []) {
     this.startFen = startFen;
@@ -66,10 +68,10 @@ export class ChessRules {
   }
 
   legalMovesUci(): string[] {
-    return this.chess.moves({ verbose: true }).map(toUci);
+    return [...(this.memo.legal ??= this.chess.moves({ verbose: true }).map(toUci))];
   }
   legalFrom(square: string): string[] {
-    return this.chess.moves({ square: square as Square, verbose: true }).map(toUci);
+    return this.legalMovesUci().filter((m) => m.startsWith(square));
   }
   isLegal(uci: string): boolean { return this.legalMovesUci().includes(uci); }
   isPromotion(from: string, to: string): boolean {
@@ -79,13 +81,14 @@ export class ChessRules {
   /** Plays a UCI move if legal. Returns the record, or null and leaves the position unchanged. */
   move(uci: string): MoveRecord | null {
     const m = UCI.exec(typeof uci === 'string' ? uci : '');
-    if (!m || this.outcome()?.termination && isAutomatic(this.outcome()!.termination)) return null;
+    if (!m || this.outcome() || !this.legalMovesUci().includes(m[0])) return null;
     let played: ChessJsMove;
     try { played = this.chess.move({ from: m[1], to: m[2], promotion: m[3] }); } catch { return null; }
     if (!played || (played.promotion && !m[3])) { if (played) this.chess.undo(); return null; }
     const record = toRecord(played, this.chess.fen());
     this.records.push(record);
     this.keys.push(positionKey(record.fen));
+    this.memo = {};
     return record;
   }
 
@@ -93,6 +96,7 @@ export class ChessRules {
     if (!this.records.length) return null;
     this.chess.undo();
     this.keys.pop();
+    this.memo = {};
     return this.records.pop() ?? null;
   }
 
@@ -111,15 +115,15 @@ export class ChessRules {
 
   /** Board outcome that ends the game without any claim. */
   outcome(): Outcome | null {
-    if (this.chess.isCheckmate()) {
+    if (this.memo.outcome !== undefined) return this.memo.outcome;
+    let o: Outcome | null = null;
+    if (!this.legalMovesUci().length) {
       const winner = other(this.turn);
-      return { result: winner === 'w' ? '1-0' : '0-1', termination: 'checkmate', winner };
-    }
-    if (this.chess.isStalemate()) return { result: '1/2-1/2', termination: 'stalemate' };
-    if (this.chess.isInsufficientMaterial()) return { result: '1/2-1/2', termination: 'insufficient' };
-    if (this.repetitions() >= 5) return { result: '1/2-1/2', termination: 'fivefold' };
-    if (this.halfmoveClock >= 150) return { result: '1/2-1/2', termination: 'seventy-five' };
-    return null;
+      o = this.chess.inCheck() ? { result: winner === 'w' ? '1-0' : '0-1', termination: 'checkmate', winner } : { result: '1/2-1/2', termination: 'stalemate' };
+    } else if (this.chess.isInsufficientMaterial()) o = { result: '1/2-1/2', termination: 'insufficient' };
+    else if (this.repetitions() >= 5) o = { result: '1/2-1/2', termination: 'fivefold' };
+    else if (this.halfmoveClock >= 150) o = { result: '1/2-1/2', termination: 'seventy-five' };
+    return (this.memo.outcome = o);
   }
 
   /** Whether `color` has any sequence of legal moves that could mate (FIDE 6.9 approximation by material). */
