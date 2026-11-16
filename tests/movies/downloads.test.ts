@@ -4,9 +4,10 @@ import type {LicensedMedia,Title} from '../../src/movies/model';
 
 class MemoryCache {
  private entries=new Map<string,Response>();
- async match(url:RequestInfo|URL){return this.entries.get(String(url))?.clone();}
- async put(url:RequestInfo|URL,response:Response){this.entries.set(String(url),new Response(await response.arrayBuffer(),{status:response.status,headers:response.headers}));}
- async delete(url:RequestInfo|URL){return this.entries.delete(String(url));}
+ private key(url:RequestInfo|URL){return url instanceof Request?url.url:String(url);}
+ async match(url:RequestInfo|URL){return this.entries.get(this.key(url))?.clone();}
+ async put(url:RequestInfo|URL,response:Response){this.entries.set(this.key(url),new Response(await response.arrayBuffer(),{status:response.status,headers:response.headers}));}
+ async delete(url:RequestInfo|URL){return this.entries.delete(this.key(url));}
  async keys(){return [...this.entries.keys()].map(url=>new Request(url));}
 }
 
