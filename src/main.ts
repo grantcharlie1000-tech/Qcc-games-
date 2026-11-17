@@ -72,7 +72,7 @@ const icon=(name:string)=>{
 trackInputMode();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<main id="content"></main>
-<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Reduce transparency</span><input type="checkbox" id="transparency"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label><label><span>Contribute to Popular in Marlborough</span><input type="checkbox" id="movie-popularity"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><a id="open-downloads" class="game-button secondary" href="#/downloads">Downloads</a><a id="open-election" class="game-button secondary election-menu-button" href="#/election">Election results <span class="election-menu-live">Results</span></a>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu" class="ui-glass-sheet" aria-labelledby="menu-title"><form method="dialog" class="dialog-head"><h2 id="menu-title" class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><ul id="search-results" class="search-results" aria-label="Matching games" hidden></ul><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Reduce transparency</span><input type="checkbox" id="transparency"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label><label><span>Christmas theme</span><input type="checkbox" id="festive"></label><label><span>Contribute to Popular in Marlborough</span><input type="checkbox" id="movie-popularity"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><a id="open-downloads" class="game-button secondary" href="#/downloads">Downloads</a><a id="open-election" class="game-button secondary election-menu-button" href="#/election">Election results <span class="election-menu-live">Results</span></a>${PREDICTIONS_MENU?'<a id="open-predictions" class="game-button secondary predictions-menu-button" href="#/predictions">Predictions <span class="predictions-menu-note">Free credits</span></a>':''}<button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog" class="ui-glass-sheet" aria-labelledby="rules-title"><form method="dialog" class="dialog-head"><h2 id="rules-title">How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div><a class="offline-pill" href="#/downloads" hidden>Offline</a><button type="button" class="update-pill" hidden>Restart to update</button>`;
 const navigation=createSectionNavigation('app');
 navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('games')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv" aria-label="TV Shows">${uiIcon('tv')}<span class="tab-tv">TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
@@ -207,8 +207,10 @@ function filterNotice(){
   if(onlyFavourites&&search)return `Favourites matching “${search}”`;
   return onlyFavourites?'Showing your favourites':`Games matching “${search}”`;
 }
+// One rule for the library and the Menu's search results.
+const matchingGames=()=>games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.trim().toLowerCase()));
 function library(){
-  const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
+  const items=matchingGames();
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
   content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map((g,index)=>`<a class="game-card" data-game="${g.id}" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" loading="${index<6?'eager':'lazy'}" decoding="async" draggable="false"></a>`).join('')}${filtered?'':`<a class="downloads-card" href="#/downloads" aria-label="Downloads" style="--card:#1f4c21;--ink:#fff3df;--accent:#f7c531"><h2>Downloads</h2><span class="title-line"></span><img src="${import.meta.env.BASE_URL}offline/cover.svg" alt="" width="320" height="400" loading="lazy" decoding="async" draggable="false"></a>`}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
@@ -228,7 +230,7 @@ function paintOfflineBadges(){
 function showAllGames(){
   onlyFavourites=false;search='';
   document.querySelector<HTMLInputElement>('#favourites-only')!.checked=false;
-  document.querySelector<HTMLInputElement>('#search')!.value='';
+  document.querySelector<HTMLInputElement>('#search')!.value='';searchResults();
   library();
   content.querySelector<HTMLElement>('.game-card')?.focus();
   announce('Showing all games');
@@ -592,12 +594,23 @@ document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
 document.querySelector('#open-study')!.addEventListener('click',openStudyEntry);
 document.querySelector<HTMLInputElement>('#favourites-only')!.addEventListener('change',event=>{
-  onlyFavourites=(event.target as HTMLInputElement).checked;
+  onlyFavourites=(event.target as HTMLInputElement).checked;searchResults();
   if(activeId||movies||appView)location.hash=collectionHash;else library();
 });
+// The library behind the open sheet is hidden, so the sheet shows the first matches itself.
+function searchResults(){
+  const list=document.querySelector<HTMLUListElement>('#search-results')!;
+  const matches=search.trim()?matchingGames().slice(0,5):[];
+  list.hidden=!search.trim();
+  list.innerHTML=matches.length?matches.map(g=>`<li><a class="search-result" href="${entryHash(g.id)}" style="--card:${g.color}"><img src="${artUrl(g.id)}" alt="" width="32" height="32"><span></span></a></li>`).join(''):'<li class="search-empty">No games found</li>';
+  list.querySelectorAll('.search-result span').forEach((span,index)=>{span.textContent=matches[index].title;});
+}
 document.querySelector<HTMLInputElement>('#search')!.addEventListener('input',event=>{
-  search=(event.target as HTMLInputElement).value;if(activeId||movies||appView)location.hash=collectionHash;else library();
+  search=(event.target as HTMLInputElement).value;searchResults();if(activeId||movies||appView)location.hash=collectionHash;else library();
 });
+// The keyboard's Search key shows the filtered library.
+document.querySelector<HTMLInputElement>('#search')!.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();menu.close();}});
+document.querySelector('#search-results')!.addEventListener('click',event=>{if((event.target as Element).closest('a'))menu.close();});
 for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#transparency','reducedTransparency'],['#colour','colorBlind']] as const){
   const input=document.querySelector<HTMLInputElement>(selector)!;input.checked=!!preferences[key];
   input.addEventListener('change',()=>{

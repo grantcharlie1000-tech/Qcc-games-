@@ -7,7 +7,7 @@ export function playChessSound(kind: ChessSound, enabled: boolean) {
   if (!enabled) return;
   try {
     ctx ??= new AudioContext();
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state !== 'running' && ctx.state !== 'closed') void ctx.resume().catch(() => {});
     const t = ctx.currentTime;
     // A soft knock: filtered noise burst plus a short tone.
     const tone = (freq: number, at: number, dur: number, gain: number, type: OscillatorType = 'sine') => {

@@ -65,7 +65,7 @@ export function createSfx(enabled: () => boolean): Sfx {
         master.gain.value = MASTER;
         master.connect(audio.destination);
       }
-      if (audio.state === 'suspended') void audio.resume().catch(() => undefined);
+      if (audio.state !== 'running' && audio.state !== 'closed') void audio.resume().catch(() => undefined);
       build(audio, master, audio.currentTime);
     } catch {
       /* Audio is optional. */

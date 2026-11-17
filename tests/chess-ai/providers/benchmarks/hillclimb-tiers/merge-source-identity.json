@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-11-16T20:53:34.733Z",
+  "commit": "1e7b682c109aba09bd396b9136dfa550ec4cffbb",
+  "measuredWorkingTreeSourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+  "committedSourceSha256": "3d86be321089efa3a2b9923adafc6d49619ace249e4a19c7b0f6c4dfe36cfb5c",
+  "allFilesEqualAfterCrLfNormalization": true,
+  "lineEndingOnly": [
+    "engine.ts"
+  ],
+  "files": [
+    "engine.ts",
+    "brook.ts",
+    "engine.worker.ts",
+    "index.ts",
+    "manifest.ts",
+    "perception.ts",
+    "protocol.ts",
+    "search-rules.ts",
+    "vendor/chess.js"
+  ]
+}

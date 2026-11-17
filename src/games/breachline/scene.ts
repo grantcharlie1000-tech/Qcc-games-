@@ -1130,6 +1130,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       for (const m of [lambert, led, kitMat, ...kitMats, devMat, devScreen, devBar, ...devLeds, devGlow.material, devPool.material]) m.dispose();
       screenTex.dispose(); (devGlow.material as THREE.SpriteMaterial).map?.dispose(); (devPool.material as THREE.MeshBasicMaterial).map?.dispose();
       renderer.dispose();
+      // iOS keeps only a few live WebGL contexts; release this one now rather than at garbage collection.
+      renderer.forceContextLoss();
     },
   };
 }

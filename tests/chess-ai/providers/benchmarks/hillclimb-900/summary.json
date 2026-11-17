@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-11-16T07:56:32.455Z",
+  "sourceSha256": "d2a1614856f7163c5794ddf78a0223f6cc2f793446e811f655d3a01829b2458b",
+  "corpusSha256": "70eac3a46d96dfc0b39c30d48760186a7348e0b529de8dc1b895b8614050ec5b",
+  "games": 44,
+  "positions": 176,
+  "botChoices": 1408,
+  "baseline": {
+    "positions": 176,
+    "humanMeanCappedCpLoss": 86.4659090909091,
+    "botMeanCappedCpLoss": 210.8096590909091,
+    "ratio": 2.438066763043764,
+    "humanBlunderFraction": 0.09659090909090909,
+    "botBlunderFraction": 0.3330965909090909
+  },
+  "candidate": {
+    "positions": 176,
+    "humanMeanCappedCpLoss": 86.4659090909091,
+    "botMeanCappedCpLoss": 88.09517045454545,
+    "ratio": 1.0188428177158628,
+    "humanBlunderFraction": 0.09659090909090909,
+    "botBlunderFraction": 0.11931818181818182
+  },
+  "lossReductionFraction": 0.5821103699211643,
+  "pairedMeanDifferenceFromHumanCp": 1.6292613636363635,
+  "approximate95PercentGameClusterBootstrapDifferenceCp": [
+    -29.352272727272727,
+    29.298295454545453
+  ],
+  "uncertainty": "Descriptive game-cluster bootstrap, 10000 resamples, seed 149831. Games may share players and come from one club. Not a population confidence guarantee or an Elo conversion.",
+  "match": {
+    "win": 20,
+    "loss": 0,
+    "draw": 0,
+    "unfinished": 0,
+    "score": 1
+  },
+  "workerComputeMs": {
+    "baseline": 75,
+    "candidate": 200
+  },
+  "moveAllowanceMs": 500
+}

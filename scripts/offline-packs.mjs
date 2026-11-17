@@ -72,7 +72,7 @@ export function offlinePacks() {
       const publicFiles = new Set(await walk(publicDir));
       const games = {};
       for (const id of gameIds) {
-        const module = join(root, 'src/games', id, 'index.ts');
+        const module = join(root, 'src/games', id, 'index.ts').replaceAll('\\', '/');
         const chunk = names.find(name => bundle[name].type === 'chunk' && bundle[name].moduleIds.includes(module));
         if (!chunk) throw new Error(`offline-packs: no chunk contains ${id}`);
         const own = chunk === entry ? new Set() : closure(chunk, bundle, names, shellBundle, {dynamic: true, scan: true});

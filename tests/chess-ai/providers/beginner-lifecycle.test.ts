@@ -20,6 +20,30 @@ function request(signal=new AbortController().signal,revision=1):ChessAIMoveRequ
 }
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();TestWorker.instances=[];});
 describe('beginner worker ownership',()=>{
+  it('delivers a legal worker reply immediately without spending the unused thinking allowance',async()=>{
+    vi.stubGlobal('Worker',TestWorker);vi.useFakeTimers();
+    const provider=createProvider();await provider.initialize({signal:new AbortController().signal,onProgress:()=>{}});
+    let delivered=false;
+    const pending=provider.chooseMove({...request(),opponentId:'elo-500',thinkingTimeMs:500}).then(result=>{delivered=true;return result;});
+    await vi.advanceTimersByTimeAsync(0);
+    const worker=TestWorker.instances[0],sent=worker.sent[0] as {id:number;revision:number};
+    worker.message({type:'result',id:sent.id,revision:sent.revision,result:{moveUci:'e2e4'}});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(delivered).toBe(true);
+    provider.cancel();await pending.catch(()=>{});provider.dispose();
+  });
+  it('uses more of Brooks existing pacing window without changing the lower-tier budget',async()=>{
+    vi.stubGlobal('Worker',TestWorker);
+    for(const [opponentId,budget] of [['elo-900',200],['elo-700',75]] as const) {
+      const provider=createProvider();await provider.initialize({signal:new AbortController().signal,onProgress:()=>{}});
+      const pending=provider.chooseMove({...request(),opponentId,thinkingTimeMs:500});
+      const rejected=expect(pending).rejects.toThrow();
+      await new Promise(resolve=>setTimeout(resolve,0));
+      const message=TestWorker.instances.at(-1)!.sent[0] as {input:{thinkingTimeMs:number}};
+      provider.cancel();await rejected;provider.dispose();
+      expect(message.input.thinkingTimeMs).toBe(budget);
+    }
+  });
   it('does not initialize without Workers',async()=>{
     vi.stubGlobal('Worker',undefined);
     await expect(createProvider().initialize({signal:new AbortController().signal,onProgress:()=>{}})).rejects.toThrow();
@@ -73,7 +97,7 @@ describe('beginner worker ownership',()=>{
     await vi.advanceTimersByTimeAsync(2);await rejected;
     expect(TestWorker.instances[0].terminated).toBe(true);p.dispose();
   });
-  it('rejects a queued pacing callback after the absolute clock deadline',async()=>{
+  it('rejects a worker reply delivered after the absolute clock deadline',async()=>{
     vi.stubGlobal('Worker',TestWorker);
     const p=createProvider();await p.initialize({signal:new AbortController().signal,onProgress:()=>{}});
     vi.useFakeTimers();
@@ -81,8 +105,8 @@ describe('beginner worker ownership',()=>{
     const pending=p.chooseMove(input);const rejected=expect(pending).rejects.toThrow();
     await Promise.resolve();
     const worker=TestWorker.instances[0],sent=worker.sent[0] as {id:number;revision:number};
-    worker.message({type:'result',id:sent.id,revision:sent.revision,result:{moveUci:'e2e4'}});
     vi.spyOn(performance,'now').mockReturnValue(100);
+    worker.message({type:'result',id:sent.id,revision:sent.revision,result:{moveUci:'e2e4'}});
     await vi.advanceTimersByTimeAsync(1);await rejected;
     expect(worker.terminated).toBe(true);p.dispose();
   });

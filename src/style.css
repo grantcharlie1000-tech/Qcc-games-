@@ -58,3 +58,9 @@ html:has(body:is(.social-active,.chat-active):not(.in-game)){scroll-padding-bott
 .election-menu-live{padding:3px 7px;border-radius:999px;background:#d4003a;color:#fff;font:700 10px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .predictions-menu-button{width:100%;margin:0 0 8px;gap:10px}
 .predictions-menu-note{padding:3px 7px;border-radius:999px;background:#00d492;color:#03231b;font:700 10px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+/* Installed app (black-translucent status bar): everything runs under the clock and the Dynamic Island. A soft dark
+   edge behind the status bar keeps its white text readable over light scenes and scrolled content, like the system's
+   scroll edge. Study's white page gets a solid band instead. The inset is 0 in Safari and on desktop, so this draws nothing there. */
+body::after{content:'';position:fixed;top:0;left:0;right:0;height:calc(env(safe-area-inset-top,0px) * 1.5);background:linear-gradient(rgb(0 0 0 / .5),rgb(0 0 0 / .22) 55%,rgb(0 0 0 / 0));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent);pointer-events:none;z-index:2147483000}
+@media (prefers-reduced-transparency:reduce){body::after{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(rgb(0 0 0 / .7),rgb(0 0 0 / 0))}}
+body.study-active::after{height:env(safe-area-inset-top,0px);background:#191b1a}

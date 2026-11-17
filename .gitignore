@@ -28,4 +28,5 @@ dist-pages/
 
 .vite-cache/
 .cache/
+.omc/
 

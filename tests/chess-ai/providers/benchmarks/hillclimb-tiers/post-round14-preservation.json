@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-11-16T11:34:09.887Z",
+  "method": "Exact move, node and completed-depth preservation on already-scored300/700/900corpora; this is reused regression evidence, not new validation. All24non500full games must also be identical. All48games must finish with upper-tier score above.5 per pair.",
+  "rows": [
+    {
+      "tier": 300,
+      "choices": 320,
+      "changes": 0,
+      "sourceSha256": "ac21aff952aac9be8ee537bccf694726472b67530f6ae199e11d94df1d6e014f"
+    },
+    {
+      "tier": 700,
+      "choices": 304,
+      "changes": 0,
+      "sourceSha256": "ac21aff952aac9be8ee537bccf694726472b67530f6ae199e11d94df1d6e014f"
+    },
+    {
+      "tier": 900,
+      "choices": 352,
+      "changes": 0,
+      "sourceSha256": "ac21aff952aac9be8ee537bccf694726472b67530f6ae199e11d94df1d6e014f"
+    }
+  ],
+  "unchangedGames": 24,
+  "sourceSha256": "ac21aff952aac9be8ee537bccf694726472b67530f6ae199e11d94df1d6e014f"
+}

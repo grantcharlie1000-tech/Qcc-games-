@@ -1,0 +1,147 @@
+{
+  "generatedAt": "2026-11-16T11:54:31.441Z",
+  "method": "Matched forced-root oracle losses, metric2. Four fixed candidate seeds per human position.95% intervals from5000 contributor-cluster bootstrap resamples, descriptive only. Convenience cohorts do not establish a platform rating or a narrow Elo interval.",
+  "tiers": [
+    {
+      "tier": 300,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "7054f3b15bbbdbe6bf7640b3b315484a976e3ea745d2127fb44242da99ad67eb",
+      "positions": 80,
+      "games": 20,
+      "contributors": 6,
+      "humanMeanCpLoss": 162.1625,
+      "baselineMeanCpLoss": 304.321875,
+      "candidateMeanCpLoss": 145.846875,
+      "ratio": 0.8993871887766901,
+      "absoluteLogRatio": 0.10604164893567179,
+      "reductionFromBaselineFraction": 0.5207479744924678,
+      "contributorBootstrapDifference95Cp": [
+        -50.20238095238095,
+        9.449404761904763
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.425,
+          "10-50": 0.0875,
+          "50-100": 0.075,
+          "100-200": 0.1,
+          "200-500": 0.2,
+          "500-1000": 0.1125
+        },
+        "candidate": {
+          "0-10": 0.375,
+          "10-50": 0.14375,
+          "50-100": 0.071875,
+          "100-200": 0.184375,
+          "200-500": 0.165625,
+          "500-1000": 0.059375
+        },
+        "baseline": {
+          "0-10": 0.184375,
+          "10-50": 0.09375,
+          "50-100": 0.05625,
+          "100-200": 0.18125,
+          "200-500": 0.234375,
+          "500-1000": 0.25
+        }
+      },
+      "failures": 0
+    },
+    {
+      "tier": 700,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "dbb9d803f03a88c84c8ad8f68df281e0340fe51ca25f688c6f52d5494b7a7039",
+      "positions": 76,
+      "games": 19,
+      "contributors": 5,
+      "humanMeanCpLoss": 55.276315789473685,
+      "baselineMeanCpLoss": 230.6184210526316,
+      "candidateMeanCpLoss": 65.77302631578948,
+      "ratio": 1.1898952630326114,
+      "absoluteLogRatio": 0.17386528899164616,
+      "reductionFromBaselineFraction": 0.7147971700804473,
+      "contributorBootstrapDifference95Cp": [
+        -15.25,
+        30.665625
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.5526315789473685,
+          "10-50": 0.21052631578947367,
+          "50-100": 0.07894736842105263,
+          "100-200": 0.06578947368421052,
+          "200-500": 0.06578947368421052,
+          "500-1000": 0.02631578947368421
+        },
+        "candidate": {
+          "0-10": 0.4769736842105263,
+          "10-50": 0.16776315789473684,
+          "50-100": 0.13157894736842105,
+          "100-200": 0.125,
+          "200-500": 0.09210526315789473,
+          "500-1000": 0.006578947368421052
+        },
+        "baseline": {
+          "0-10": 0.22697368421052633,
+          "10-50": 0.10197368421052631,
+          "50-100": 0.16447368421052633,
+          "100-200": 0.15460526315789475,
+          "200-500": 0.18092105263157895,
+          "500-1000": 0.17105263157894737
+        }
+      },
+      "failures": 0
+    },
+    {
+      "tier": 900,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "e17b5cccafb941a7c3b00b6afc76855eb3577d3cca36c502b108627ec8ca850a",
+      "positions": 88,
+      "games": 22,
+      "contributors": 6,
+      "humanMeanCpLoss": 78.7159090909091,
+      "baselineMeanCpLoss": 55.1875,
+      "candidateMeanCpLoss": 72.28977272727273,
+      "ratio": 0.9183629276743179,
+      "absoluteLogRatio": 0.0851626204398499,
+      "reductionFromBaselineFraction": -0.3098939565530734,
+      "contributorBootstrapDifference95Cp": [
+        -43.505208333333336,
+        31.696428571428573
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.5340909090909091,
+          "10-50": 0.13636363636363635,
+          "50-100": 0.13636363636363635,
+          "100-200": 0.07954545454545454,
+          "200-500": 0.056818181818181816,
+          "500-1000": 0.056818181818181816
+        },
+        "candidate": {
+          "0-10": 0.5738636363636364,
+          "10-50": 0.11079545454545454,
+          "50-100": 0.10227272727272728,
+          "100-200": 0.08522727272727272,
+          "200-500": 0.09375,
+          "500-1000": 0.03409090909090909
+        },
+        "baseline": {
+          "0-10": 0.6136363636363636,
+          "10-50": 0.11363636363636363,
+          "50-100": 0.09943181818181818,
+          "100-200": 0.07386363636363637,
+          "200-500": 0.08238636363636363,
+          "500-1000": 0.017045454545454544
+        }
+      },
+      "failures": 0
+    }
+  ]
+}
