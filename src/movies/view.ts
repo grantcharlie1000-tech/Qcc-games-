@@ -20,6 +20,7 @@ import {formatClock,formatRuntime,initials} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
+import {bindPlayerControls} from './player-controls';
 import {moviePopularity,POPULARITY_ENDPOINT,parsePopularIds} from './popularity';
 import type {AttemptState,SupervisorEvents} from './playback';
 const base=import.meta.env.BASE_URL;
@@ -150,6 +151,7 @@ export class MoviesView {
  private resumeTimer?:ReturnType<typeof setTimeout>;
  private video?:HTMLVideoElement;
  private frame?:HTMLIFrameElement;
+ private playerControls?:ReturnType<typeof bindPlayerControls>;
  // The server on screen. Undefined when no server can start the title, or when the title plays from a licensed file.
  private providerId?:StreamProviderId;
  // FrameXTV failed for this title, so the panel shows until Try again.
@@ -1093,6 +1095,9 @@ export class MoviesView {
   const retry=document.createElement('button');retry.className='ui-btn secondary small';retry.textContent='Retry title';retry.dataset.action='retry-title';notice.append(' ',retry);
  }
  private bindPlayer(){
+  this.playerControls?.dispose();
+  const screen=this.root.querySelector<HTMLElement>('.movies-screen');
+  this.playerControls=screen?bindPlayerControls(screen):undefined;
   moviePopularity.reset();
   this.ended=false;this.frameDuration=undefined;this.frameReported=false;this.videoReported=false;
   this.video=this.root.querySelector('video')??undefined;
@@ -1317,6 +1322,7 @@ export class MoviesView {
   if(this.wasFullscreen&&!active){const intentional=this.intentionalExit;this.intentionalExit=false;if(!intentional)this.browserExit();}
   this.wasFullscreen=active;
   const button=this.root.querySelector('[data-action="fullscreen"]');button?.setAttribute('aria-pressed',String(this.screenFullscreen()));
+  this.playerControls?.reveal();
  };
  // Leaving fullscreen only dismisses player overlays. It never navigates to Study
  // or replaces the current media, whether the browser used Escape or its own control.
@@ -1411,7 +1417,7 @@ export class MoviesView {
  private stopVideo(){this.endSession();this.closeDrawer();this.releaseMedia();}
  // Takes the stream and the local video off the screen during a redraw.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
- private releaseMedia(){this.keepPlaying=false;if(this.pipWindow){const win=this.pipWindow;this.pipWindow=undefined;win.close();}this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ private releaseMedia(){this.playerControls?.dispose();this.playerControls=undefined;this.keepPlaying=false;if(this.pipWindow){const win=this.pipWindow;this.pipWindow=undefined;win.close();}this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }
