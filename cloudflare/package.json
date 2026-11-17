@@ -1,0 +1,12 @@
+{
+  "name": "qcc-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:site": "cd .. && npm ci && npm run build",
+    "check": "wrangler deploy --dry-run --outdir .wrangler-out",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {"pg": "8.23.1"},
+  "devDependencies": {"wrangler": "4.156.0"}
+}
