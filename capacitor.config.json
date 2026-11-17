@@ -1,0 +1,11 @@
+{
+  "appId": "com.grantcharlie1000.qccgames",
+  "appName": "QCC Games",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
