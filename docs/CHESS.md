@@ -31,6 +31,16 @@ Finished local, computer and friend games are kept on the device (last 30) and o
 | `online/glicko.ts` | Glicko-2 (Glickman 2012), checked against the paper's worked example. |
 | `pieces.ts`, `style.css`, `sound.ts` | Original piece silhouettes, themes and layout, synthesized move sounds. |
 
+## Chess Academy
+
+The Chess home screen has a **Learn chess** entry for an offline-capable, free Academy. It reuses the standard BoardView and ChessRules: drag, tap, keyboard moves and promotion work as in the main chess game. No additional engine, subscription, API or login is required.
+
+The starter curriculum has 15 original playable lessons across Foundations, Tactics, Checkmates and Endgames. Some are multi-move exercises with predetermined legal opponent replies. Every lesson has a specific move objective, an optional on-board arrow hint, immediate explanation, retry, and a next-lesson button. Legal moves that do not meet the lesson goal are rejected without advancing the board. The curriculum data is in `academy-data.ts`; `validateAcademy()` checks that every setup, answer and reply is legal.
+
+Completion is scored at one to three stars according to wrong attempts and hints, with best scores preserved on replay. Progress is saved with the existing Chess game snapshot and validated on restore. It is device-level progress, not a ranked rating and not an account-synced learning record. The **Review weak spots** filter shows completed exercises below three stars. Existing saves from before the Academy still restore normally.
+
+Relevant files: `src/games/chess/academy.ts`, `academy-data.ts`, and Academy styles in `style.css`. Tests: `tests/games/chess/academy.test.ts` and `academy.spec.ts`.
+
 ## Ranked play
 
 The ranked server is `createChessHandler(db)` in `online/server.ts`, served at the same-origin route `/.netlify/functions/chess` (Netlify adapter `netlify/functions/chess.mts`; the Cloudflare Pages proxy allowlist in `functions/_middleware.ts`). Tables come from `netlify/database/migrations/20261116090000_chess_ranked.sql`.
