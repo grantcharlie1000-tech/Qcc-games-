@@ -5,6 +5,7 @@ import { cleanName } from '../../multiplayer/protocol';
 import { inviteCodeFromHash } from '../../multiplayer/panel';
 import { Room } from '../../multiplayer/room';
 import { chessRegistry } from './ai';
+import { ChessAcademy, restoreAcademyProgress, type AcademyProgress } from './academy';
 import { copyText, esc, ico, sheet } from './dom';
 import { LocalMatch, TERMINATION_TEXT } from './match';
 import { FriendSession, ROOM_GAME, ROOM_VERSION } from './online/friend';
@@ -18,7 +19,7 @@ import { CATEGORY_LABEL, PRESETS, RANKED_CONTROLS, categoryOf, parseTimeControl,
 
 interface Setup { opponentId: string; color: Color | 'random'; tc: string; hints: boolean; takebacks: boolean; localTc: string; friendTc: string; friendColor: Color | 'random'; rankedTc: string }
 interface Archived { id: string; kind: 'local' | 'computer' | 'friend'; startFen: string; moves: string[]; outcome: Outcome; names: { w: string; b: string }; perspective: Color; tc: string; at: number }
-interface Saved { v: 1; prefs: Prefs; setup: Setup; resume: LocalSaved | null; archive: Archived[] }
+interface Saved { v: 1; prefs: Prefs; setup: Setup; resume: LocalSaved | null; archive: Archived[]; academy?: AcademyProgress }
 
 const DEFAULT_PREFS: Prefs = { theme: 'wood', pieces: 'classic', coords: false, hints: true, premove: true, autoFlip: false };
 const DEFAULT_SETUP: Setup = { opponentId: 'elo-1100', color: 'w', tc: 'none', hints: false, takebacks: true, localTc: 'none', friendTc: '5+3', friendColor: 'random', rankedTc: '5+0' };
@@ -34,6 +35,7 @@ export class ChessApp implements GameInstance {
   private setup: Setup = { ...DEFAULT_SETUP };
   private resumeGame: LocalSaved | null = null;
   private archive: Archived[] = [];
+  private academy: AcademyProgress = restoreAcademyProgress(null);
   private screen?: GameScreen;
   private registryPromise?: Promise<ChessAIRegistry>;
   private api = new ChessApi();
@@ -93,7 +95,7 @@ export class ChessApp implements GameInstance {
   serialize(): Saved {
     const s = this.screen?.session;
     if (s instanceof LocalSession && !s.match.over) this.resumeGame = s.saved();
-    return { v: 1, prefs: this.prefs, setup: this.setup, resume: this.resumeGame, archive: this.archive };
+    return { v: 1, prefs: this.prefs, setup: this.setup, resume: this.resumeGame, archive: this.archive, academy: this.academy };
   }
 
   restore(data: unknown) {
@@ -116,6 +118,7 @@ export class ChessApp implements GameInstance {
     }
     if (d.resume && typeof d.resume === 'object' && LocalMatch.restore((d.resume as LocalSaved).match, now())) this.resumeGame = d.resume as LocalSaved;
     if (Array.isArray(d.archive)) this.archive = d.archive.filter((a) => a && typeof a === 'object' && Array.isArray(a.moves) && typeof a.startFen === 'string' && a.outcome).slice(0, 30);
+    this.academy = restoreAcademyProgress(d.academy);
     this.applyPrefs();
     if (this.screenName === 'home') this.home();
   }
@@ -200,6 +203,7 @@ export class ChessApp implements GameInstance {
         <h1 class="ch-title" tabindex="-1">Chess</h1>
         ${resume ? `<button type="button" class="ch-card ch-card-resume" data-go="resume"><b>${resumeLabel}</b><span>${resume.match.moves.length} moves</span></button>` : ''}
         <div class="ch-cards">
+          <button type="button" class="ch-card ch-card-academy" data-go="academy"><b>Learn chess</b><span>Lessons and puzzles</span></button>
           <button type="button" class="ch-card" data-go="computer"><b>Computer</b><span>Play an engine</span></button>
           <button type="button" class="ch-card" data-go="local"><b>Pass and play</b><span>Two players, one device</span></button>
           <button type="button" class="ch-card" data-go="friend"><b>Friend</b><span>Private online game</span></button>
@@ -213,6 +217,22 @@ export class ChessApp implements GameInstance {
       </section>`);
     this.context.setLevel('Chess');
     this.context.setStatus('Choose a mode');
+  }
+
+  private academyScreen() {
+    this.show('academy', '<div class="ch-academy-host"></div>');
+    const academy = new ChessAcademy({
+      root: this.view.querySelector<HTMLElement>('.ch-academy-host')!,
+      progress: this.academy,
+      prefs: () => this.prefs,
+      reducedMotion: () => this.context.settings.reducedMotion,
+      announce: (message) => this.context.announce(message),
+      onProgress: (progress) => { this.academy = progress; this.save(); },
+      onExit: () => this.home(),
+    });
+    this.cleanup.push(() => academy.dispose());
+    this.context.setLevel('Chess Academy');
+    this.context.setStatus('Interactive lessons');
   }
 
   private async computerSetup() {
@@ -638,6 +658,7 @@ export class ChessApp implements GameInstance {
     if (!go) return;
     switch (go) {
       case 'home': this.home(); break;
+      case 'academy': this.academyScreen(); break;
       case 'computer': void this.computerSetup(); break;
       case 'local': this.localSetup(); break;
       case 'friend': this.friendLobby(); break;
