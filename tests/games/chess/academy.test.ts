@@ -78,7 +78,7 @@ describe('Chess Academy progress and interaction', () => {
     } finally { s.app.dispose(); s.root.remove(); }
   });
 
-  it('rejects a wrong legal move, offers a hint and awards fewer stars', () => {
+  it('rejects a wrong legal move, gives a hint and preserves the best score on replay', () => {
     const s = mount();
     try {
       s.open('centre-pawn');
@@ -87,9 +87,13 @@ describe('Chess Academy progress and interaction', () => {
       expect(s.saves()).toBe(0);
       s.root.querySelector<HTMLButtonElement>('[data-academy="hint"]')!.click();
       expect(s.root.textContent).toContain('pawn in front');
+      s.key('ArrowDown'); // Return cursor from e3 to e2.
+      s.e4();
+      expect(s.progress().completed['centre-pawn']).toBe(1);
       s.root.querySelector<HTMLButtonElement>('[data-academy="retry"]')!.click();
       s.e4();
-      expect(s.progress().completed['centre-pawn']).toBe(3); // Retry starts a fresh attempt.
+      expect(s.progress().completed['centre-pawn']).toBe(3);
+      expect(s.saves()).toBe(2);
     } finally { s.app.dispose(); s.root.remove(); }
   });
 });
