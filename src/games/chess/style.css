@@ -336,3 +336,46 @@ body.in-game .game-view[data-game-id=chess] #game-stage{height:100%;display:flex
 @media (forced-colors:active){.ch-sq.ch-selected,.ch-sq.ch-last{outline:2px solid Highlight}}
 /* Short landscape phones: the four modes in one row and no decorative pieces, so the whole menu fits above the dock. */
 @media (orientation:landscape) and (max-height:500px){.ch-home{gap:8px;padding-top:8px}.ch-hero{display:none}.ch-title{font-size:30px;margin:0}.ch-cards{grid-template-columns:repeat(4,minmax(0,1fr))}.ch-card{min-height:72px;padding:12px}}
+
+/* Chess Academy: use the exact same board and floating glass language as regular play. */
+.ch-card-academy{background:linear-gradient(145deg,rgb(95 211 141 / .21),rgb(95 211 141 / .04)),var(--ch-glass)}
+.ch-academy-host{display:flex;flex-direction:column;min-height:100%;width:100%}
+.ch-academy-host .ch-head{flex-shrink:0}
+.ch-academy-content{display:flex;flex-direction:column;gap:17px;width:min(100%,560px);margin:0 auto;padding:14px 14px max(30px,env(safe-area-inset-bottom))}
+.ch-academy-hero{display:flex;flex-direction:column;gap:11px;padding:20px;border-radius:24px;background:linear-gradient(155deg,rgb(242 193 78 / .18),rgb(255 255 255 / .03) 64%),var(--ch-glass);border:1px solid var(--ch-edge);box-shadow:0 14px 40px rgb(0 0 0 / .14);-webkit-backdrop-filter:var(--ch-blur);backdrop-filter:var(--ch-blur)}
+.ch-academy-hero h2{font-size:clamp(23px,6vw,32px);line-height:1.07;margin:0;color:var(--ch-text)}
+.ch-academy-hero p{margin:0;color:var(--ch-muted);font-size:14px;line-height:1.4}
+.ch-academy-hero .ch-academy-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.15em;font-weight:800;color:var(--ch-accent)}
+.ch-academy-hero .ch-primary{width:100%;margin-top:2px}
+.ch-academy-progress{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:var(--ch-text)}
+.ch-academy-meter{height:6px;width:100%;border-radius:12px;overflow:hidden;background:rgb(255 255 255 / .12)}
+.ch-academy-meter i{display:block;height:100%;border-radius:12px;background:var(--ch-accent);transition:width 240ms ease-out}
+.ch-academy-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ch-academy-toolbar>b{font-size:17px}
+.ch-academy-toolbar .ch-pill{font-size:12px;padding:0 12px;min-height:36px}
+.ch-academy-unit{display:flex;flex-direction:column;gap:9px}
+.ch-academy-unit h2{margin:0 0 0 2px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ch-muted)}
+.ch-academy-list{display:flex;flex-direction:column;gap:8px}
+.ch-academy-card{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;padding:14px 12px;text-align:left;border:1px solid var(--ch-edge);border-radius:18px;background:var(--ch-glass);-webkit-backdrop-filter:var(--ch-blur);backdrop-filter:var(--ch-blur);color:var(--ch-text)}
+.ch-academy-card:focus-visible,.ch-academy-card:hover{outline:2px solid var(--ch-accent);outline-offset:1px}
+.ch-academy-number{display:grid;place-items:center;width:30px;height:30px;border-radius:12px;background:rgb(255 255 255 / .12);font-weight:800;font-size:13px}
+.ch-academy-cardtext{display:flex;flex-direction:column;min-width:0;gap:3px}
+.ch-academy-cardtext b{font-size:15px}
+.ch-academy-cardtext small{font-size:12px;line-height:1.35;color:var(--ch-muted)}
+.ch-academy-stars{font-size:13px;letter-spacing:.02em;color:var(--ch-accent);white-space:nowrap}
+.ch-academy-play{gap:12px}
+.ch-academy-lessonhead{display:flex;flex-direction:column;gap:7px}
+.ch-academy-meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--ch-accent);font-weight:700}
+.ch-academy-lessonhead h2{margin:0;font-size:15px;font-weight:500;line-height:1.4;color:var(--ch-muted)}
+.ch-academy-objective{margin:1px 0 0;padding:12px 14px;border:1px solid var(--ch-edge);border-radius:15px;background:var(--ch-glass-strong);font-size:17px;font-weight:700;line-height:1.3}
+.ch-academy-boardwrap{width:min(100%,440px);margin-inline:auto}
+.ch-academy-boardwrap .ch-board{width:100%;height:auto;aspect-ratio:1}
+.ch-academy-feedback{min-height:52px;margin:0;padding:12px 14px;border-radius:15px;border:1px solid var(--ch-edge);background:var(--ch-glass);font-size:14px;line-height:1.45;color:var(--ch-muted)}
+.ch-academy-feedback[data-kind=success]{color:var(--ch-text);border-color:rgb(95 211 141 / .6);background:rgb(95 211 141 / .10)}
+.ch-academy-feedback[data-kind=active]{color:var(--ch-text)}
+.ch-academy-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.ch-academy-controls .ch-pill{flex:1;white-space:nowrap;min-height:44px}
+.ch-academy-controls .ch-pill-primary{flex:1.4}
+.ch-academy-footnote{margin:0;text-align:center;line-height:1.35}
+@media(max-width:420px){.ch-academy-content{padding-inline:11px}.ch-academy-hero{padding:16px}.ch-academy-play{gap:9px}.ch-academy-card{padding:11px 10px}.ch-academy-objective{font-size:15px;padding:10px 12px}}
+@media(prefers-reduced-motion:reduce){.ch-academy-meter i{transition:none}}
