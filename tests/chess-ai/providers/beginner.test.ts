@@ -56,6 +56,18 @@ describe('beginner decision system', () => {
     expect(improving).toBeGreaterThan(70);
     expect(improving).toBeGreaterThanOrEqual(beginner);
   });
+  it('lets Pebble occasionally overlook a hanging queen in normal play', () => {
+    const fen = '6k1/8/8/5n2/3Q4/8/4P3/1N4K1 w - - 0 1';
+    const input = { ...position(fen, 'elo-300'), thinkingTimeMs: 75 };
+    let misses = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const chess = new Chess(fen);
+      chess.move(computeMove(input, seed).moveUci);
+      if (chess.moves({ verbose: true }).some(move => move.captured === 'q')) misses++;
+    }
+    expect(misses).toBeGreaterThan(0);
+    expect(misses).toBeLessThan(30);
+  });
   it('only returns the supplied legal moves through a seeded game', () => {
     const chess=new Chess();
     for(let ply=0;ply<120 && !chess.isGameOver();ply++) {
