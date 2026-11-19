@@ -1,0 +1,76 @@
+.game-view[data-game-id="gta-iv-web"] {
+  --game-surface: radial-gradient(ellipse at 50% 0, #273d55, #111822 68%);
+}
+body.in-game .game-view[data-game-id="gta-iv-web"] #game-stage {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gta4-local {
+  width: 100%;
+  min-height: 100%;
+  padding: clamp(72px, 11vh, 106px) 12px 24px;
+  color: #f6f7f8;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, sans-serif;
+}
+.gta4-local-card {
+  width: min(100%, 640px);
+  border: 1px solid rgb(255 255 255 / .18);
+  border-radius: 24px;
+  background: linear-gradient(140deg, rgb(26 39 54 / .93), rgb(13 21 32 / .96));
+  box-shadow: 0 24px 90px rgb(0 0 0 / .4);
+  overflow: hidden;
+}
+.gta4-local-header {
+  padding: clamp(20px, 4vw, 30px);
+  background: linear-gradient(150deg, rgb(152 49 65 / .28), rgb(50 91 134 / .16));
+  border-bottom: 1px solid rgb(255 255 255 / .12);
+}
+.gta4-local-kicker {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .17em;
+  color: #ffbbab;
+}
+.gta4-local h1 { margin: 8px 0; font-size: clamp(26px, 5vw, 38px); line-height: 1.08; }
+.gta4-local-header p { margin: 0; color: #d3dce7; }
+.gta4-local-detail { padding: clamp(18px, 4vw, 30px); }
+.gta4-local-disclaimer {
+  margin: 0 0 15px;
+  color: #e5e9f0;
+  line-height: 1.5;
+}
+.gta4-local ol { margin: 0 0 22px; padding-left: 22px; line-height: 1.5; color: #d4dce6; }
+.gta4-local li + li { margin-top: 7px; }
+.gta4-local code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: rgb(255 255 255 / .12);
+  color: white;
+}
+.gta4-local-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.gta4-local-actions a {
+  min-height: 44px;
+  padding: 13px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 190px;
+  text-align: center;
+  text-decoration: none;
+}
+.gta4-local-actions a:focus-visible, .gta4-local-source:focus-visible {
+  outline: 3px solid #ffe2b7;
+  outline-offset: 3px;
+}
+.gta4-local-footnote { color: #b4c3d2; line-height: 1.5; font-size: 12px; margin: 20px 0 12px; }
+.gta4-local-source { color: #b7d4ff; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-height: 650px) {
+  .gta4-local { display: block; min-height: 0; padding-top: 56px; }
+}
