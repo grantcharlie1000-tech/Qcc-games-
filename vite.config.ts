@@ -4,8 +4,10 @@ import { offlinePacks } from './scripts/offline-packs.mjs';
 // Globle's globe.gl dependencies import large modules for features it never uses; see the stub file.
 const unused=fileURLToPath(new URL('./src/games/globle/unused-stubs.ts',import.meta.url));
 const contentSecurityPolicy=`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; worker-src 'self'; media-src 'self'; frame-src 'self' https://framextv.xyz https://framextv.cc https://archive.org; form-action 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`;
-// First-party iframe routes are used by optional Study and re3 browser integrations.
-const securityHeaders={'Content-Security-Policy':contentSecurityPolicy};
+// Preserve anti-framing on the normal app. Preview/dev builds opt in to self-framing
+// only when the re3 card is explicitly enabled; Cloudflare uses path-specific _headers.
+const previewPolicy=process.env.VITE_QCC_RE3==='on' ? contentSecurityPolicy.replace("frame-ancestors 'none'","frame-ancestors 'self'") : contentSecurityPolicy;
+const securityHeaders={'Content-Security-Policy':previewPolicy};
 // The election results proxy (functions/api/election.ts on Pages) also answers in `vite` dev and preview.
 let electionHandle:((request:Request)=>Promise<Response>)|undefined;
 const electionMiddleware=(load:()=>Promise<any>)=>async(req:any,res:any,next:()=>void)=>{
