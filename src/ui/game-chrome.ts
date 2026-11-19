@@ -21,7 +21,7 @@ const fields:Record<GameId,Field[]>={
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
   quadfall:[score,level], claimline:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}],
   'drift-club':[level], 'crossy-road':[score], 'quad-clash':[score,level], 'last-light':[], breachline:[level], chess:[level],
-  'femboy-obby':[{label:'Stage',source:'.fo-stage'},{label:'Stars',source:'.fo-time',labelSource:'.fo-time-label'}]
+  'femboy-obby':[{label:'Stage',source:'.fo-stage'},{label:'Stars',source:'.fo-time',labelSource:'.fo-time-label'}], re3:[]
 };
 
 type Choice={selector:string;label?:string};

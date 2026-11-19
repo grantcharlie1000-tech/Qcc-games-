@@ -15,6 +15,7 @@ import {join, posix} from 'node:path';
 export const PUBLIC_EXTRAS = {
   breachline: ['audio/breachline/'],
   chess: ['chess-engines/beginner/', 'chess-engines/stockfish/', 'chess-engines/maia/'],
+  re3: ['ports/re3/'],
 };
 // Source archives, licences and notes ship for provenance only; a game never loads them.
 const NOT_LOADED = /\.(?:tar\.gz|md|txt)$|(?:^|\/)(?:LICEN[CS]E[^/]*|COPYING|AUTHORS|SHA256SUMS|SOURCE-SHA256SUMS|ONNXRUNTIME-[^/]*)$/;
@@ -59,7 +60,7 @@ export function offlinePacks() {
     apply: 'build',
     configResolved(config) {
       root = config.root; outDir = config.build.outDir; publicDir = config.publicDir;
-      gameIds = readdirSync(join(root, 'src/games')).filter(id => existsSync(join(root, 'src/games', id, 'index.ts'))).sort();
+      gameIds = readdirSync(join(root, 'src/games')).filter(id => (id !== 're3' || process.env.VITE_QCC_RE3 === 'on') && existsSync(join(root, 'src/games', id, 'index.ts'))).sort();
     },
     async generateBundle(_options, bundle) {
       const names = Object.keys(bundle).filter(name => !name.endsWith('.map') && !name.startsWith('.vite/'));

@@ -21,8 +21,8 @@ it('permits only approved image/frame origins for movie requests',()=>{
  const html=readFileSync('index.html','utf8');expect(html).not.toContain('Content-Security-Policy');
  for(const path of ['netlify.toml','vite.config.ts','public/_headers','scripts/serve-built.mjs']){
   const text=readFileSync(path,'utf8');
-  for(const policy of ["media-src 'self'","frame-src https://framextv.xyz https://framextv.cc","script-src 'self'","object-src 'none'","https://image.tmdb.org"])expect(text).toContain(policy);
-  expect(text.match(/frame-src [^;]+/)?.[0]).toBe('frame-src https://framextv.xyz https://framextv.cc https://archive.org');
+  for(const policy of ["media-src 'self'","frame-src 'self' https://framextv.xyz https://framextv.cc","script-src 'self'","object-src 'none'","https://image.tmdb.org"])expect(text).toContain(policy);
+  expect(text.match(/frame-src [^;]+/)?.[0]).toBe("frame-src 'self' https://framextv.xyz https://framextv.cc https://archive.org");
   // JavaScript eval stays forbidden. WebAssembly compilation ('wasm-unsafe-eval') was allowed by the owner on
   // 2026-11-11 for Breachline's compressed textures and models; it does not permit eval() or new Function().
   expect(text).not.toMatch(/(?<!wasm-)unsafe-eval/);

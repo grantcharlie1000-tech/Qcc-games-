@@ -15,6 +15,12 @@ __pycache__/
 *.pyc
 *.log
 
+# Never commit proprietary game files picked for the optional re3 runtime.
+/public/ports/re3/build/package/
+/public/ports/re3/gamefiles/
+/public/ports/re3/**/*.gamedata/
+/public/ports/re3/*.zip
+
 # Operating-system files
 .DS_Store
 Thumbs.db
