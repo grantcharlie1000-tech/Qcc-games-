@@ -1,5 +1,6 @@
-export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold','claimline','crossy-road','quad-clash','femboy-obby','drift-club','last-light','breachline','chess','re3'] as const;
-export type GameId = typeof GAME_IDS[number];
+export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold','claimline','crossy-road','quad-clash','femboy-obby','drift-club','last-light','breachline','chess'] as const;
+// Optional browser port: not part of the default supported/synced game ID list.
+export type GameId = typeof GAME_IDS[number] | 're3';
 export interface Settings { sound: boolean; reducedMotion: boolean; reducedTransparency?: boolean; colorBlind: boolean; autoNextEpisode: boolean }
 export interface GameContext {
   readonly id: GameId;
