@@ -42,3 +42,26 @@ Local Chromium IPC remained prohibited even after an approved escalated attempt,
 - An earlier unconstrained full-suite run had 4,683 passes and one unrelated `tests/social/server.test.ts` pagination timeout at its 5-second limit. The complete two-worker rerun above passed without changing that test.
 - Independent review found no blocking production defect. Its camera-stability concern in the screenshot test was corrected by resetting to a frozen seeded view before either capture.
 - Browser tests were discovered successfully (74 focused Chromium cases). Local execution is blocked as described above; the focused CI browser results are recorded separately above.
+
+## Rapid late-game terrain streaming
+
+The first static terrain cache still rebuilt every pool when any integer culling bound changed. A forward hop moves the isometric camera diagonally relative to its lanes, so these bounds can shift several times within one hop. The rail sleepers and ground details then shift together in the instance buffer even though the terrain itself has not changed.
+
+The static cache now extends two rows forward and one tile to either side of the existing camera guard. Tiles, trees, rocks, lily pads and signal posts are reused while the normal view fits within that cache. Cars, water effects, train lights, snow and gameplay still use the same camera window, state, and timing. If the padded view fills a static pool, the renderer falls back to the original bounds.
+
+Deterministic render workload: seed 11, world revision 6, 840 frames representing 120 rapid forward hops from row 600. The real scene runs with only the WebGL submission boundary mocked. Total ground matrix upload bytes are derived from changed matrix ranges; they are not hardware GPU timings.
+
+| Viewport | Frames dirtying the ground matrix | Ground matrix upload bytes | Mean submitted triangles |
+| --- | ---: | ---: | ---: |
+| 390×844 | 352 → 58 | 6,015,360 → 2,495,936 | 35,775 → 38,172 |
+| 1366×768 | 574 → 58 | 38,048,448 → 6,857,024 | 103,531 → 107,393 |
+
+The small offscreen fringe increases submitted triangles, but reduces ground matrix upload bytes by 59% on the phone viewport and 82% on desktop in this workload. The projection test checks visible static shadow bounds during forward and sideways movement, including an origin shift. A focused browser spec runs a seeded, nonlethal buffered-hop sequence from row 600, checks the score, and compares the visible terrain before and after invalidating the cache. No physical-device FPS claim is made.
+
+To reproduce the submission figures:
+
+```sh
+CROSSY_RESOURCE_REPORT=/tmp/crossy-late-run.json npx vitest run tests/games/crossy-road/scene-budget.test.ts -t 'rapid late-game'
+```
+
+The baseline loaded unchanged `scene.ts` from `383f8d04` as a sibling module using `CROSSY_BASELINE_SCENE`. The regression is expected to fail on that baseline.

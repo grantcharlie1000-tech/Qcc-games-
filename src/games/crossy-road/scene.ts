@@ -16,7 +16,7 @@ import {obstacleAt, obstacleVariant, lilyAt} from './terrain';
 import {
   DEATH_TIME, DEATH_TIME_REDUCED, HOP_TIME, IDLE_LIMIT, IDLE_WARN, SAFE_LAG, SQUASH_TIME,
   TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, ROW_DEPTH, TRAFFIC_ROW_Z, TRAIN_BASE_Y, clamp, lerp,
-  type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
+  type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LaneSource, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
 import { forEachMover, forEachTrain, laneVelocity, platformAt, railWarning } from './lanes';
 import {
@@ -102,6 +102,9 @@ const SIGNAL_LAMP_X = 0.2, SIGNAL_LAMP_Y = 1.06;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
 const MARGIN = 2;
 const MAX_ROWS = 64;
+// Cache just beyond the existing culling guard so routine camera motion does not
+// shift every static instance slot. Animated rows still use the exact view window.
+const STATIC_ROWS_AHEAD = 2, STATIC_COLUMNS = 1;
 /** Falling snow: flakes per quality tier, and the height of the column they fall through (tiles). */
 const FLAKES_HIGH = 220, FLAKES_LOW = 90, SNOW_H = 7;
 const YAWS: Readonly<Record<Dir, number>> = { up: 0, down: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 };
@@ -141,6 +144,7 @@ class Pool {
   shadowOpacity = 1;
   n = 0;
   cached = false;
+  overflow = false;
   private readonly m: Float32Array;
   private readonly c: Float32Array;
   private readonly previous: Float64Array;
@@ -190,12 +194,12 @@ class Pool {
     }
   }
 
-  begin(originX = 0): void { this.originX = originX; this.n = 0; this.matrixDirty = this.colorDirty = false; this.matrixFirst = this.colorFirst = Infinity; this.matrixLast = this.colorLast = -1; }
+  begin(originX = 0): void { this.originX = originX; this.n = 0; this.overflow = false; this.matrixDirty = this.colorDirty = false; this.matrixFirst = this.colorFirst = Infinity; this.matrixLast = this.colorLast = -1; }
 
   put(x: number, y: number, z: number, sx: number, sy: number, sz: number, yaw: number, pi: number, k: number): void {
     x -= this.originX;
     const n = this.n;
-    if (n >= this.cap) return;
+    if (n >= this.cap) { this.overflow = true; return; }
     const a = n * 9, previous = this.previous;
     if (previous[a] !== x || previous[a+1] !== y || previous[a+2] !== z || previous[a+3] !== sx || previous[a+4] !== sy || previous[a+5] !== sz || previous[a+6] !== yaw) {
       previous[a]=x; previous[a+1]=y; previous[a+2]=z; previous[a+3]=sx; previous[a+4]=sy; previous[a+5]=sz; previous[a+6]=yaw;
@@ -234,13 +238,13 @@ class Pool {
     this.n=n+1;
   }
 
-  commit(): void {
+  commit(full = false): void {
     const mesh=this.mesh,n=this.n;
     mesh.count=n; mesh.visible=n>0;
     if(this.shadow){this.shadow.count=n;this.shadow.visible=n>0&&this.shadowOpacity>0;}
     if(!n)return;
-    if(this.matrixDirty){this.rm.start=this.matrixFirst*16;this.rm.count=(this.matrixLast-this.matrixFirst+1)*16;mesh.instanceMatrix.needsUpdate=true;}
-    if(this.colorDirty){this.rc.start=this.colorFirst*3;this.rc.count=(this.colorLast-this.colorFirst+1)*3;mesh.instanceColor!.needsUpdate=true;}
+    if(full||this.matrixDirty){this.rm.start=full?0:this.matrixFirst*16;this.rm.count=full?this.cap*16:(this.matrixLast-this.matrixFirst+1)*16;mesh.instanceMatrix.needsUpdate=true;}
+    if(full||this.colorDirty){this.rc.start=full?0:this.colorFirst*3;this.rc.count=full?this.cap*3:(this.colorLast-this.colorFirst+1)*3;mesh.instanceColor!.needsUpdate=true;}
   }
 
   dispose(): void { this.shadow?.dispose(); this.mesh.dispose(); }
@@ -366,11 +370,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   /** Smoothed focus (row and x), the look-at point on the ground, and the shake offset. */
   let snap = true, focusRow = 0, focusX = 4, lookX = 4, lookZ = 0, shakeX = 0, shakeY = 0;
   let rowLo = 0, rowHi = 0, renderOriginX = 0;
-  // Fixed storage: static instance buffers survive ordinary animated frames.
-  // Rebuild only at visible cell boundaries or when the world/lanes change.
-  const visibleLanes: (Lane | undefined)[] = new Array(MAX_ROWS + 2);
-  const staticWindows = new Int32Array(MAX_ROWS * 2);
-  let staticRowLo = NaN, staticRowHi = NaN, staticOrigin = NaN, rebuildStatic = true;
+  const cachedLanes: (Lane | undefined)[] = new Array(MAX_ROWS + STATIC_ROWS_AHEAD + 2);
+  const staticWindows = new Int32Array((cachedLanes.length - 2) * 2);
+  let staticRowLo = 0, staticRowHi = -1, staticOrigin = NaN;
+  let staticPass = false, padStatic = true;
   /** The frame being drawn. */
   let now = 0, anim = 0, reduced = false, colorBlind = false;
   /** The row being drawn: its z and the world x window that can be on screen. */
@@ -418,6 +421,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     applyPixelRatio();
     if (!changed) return;
     fit = cameraFit(w, h);
+    staticOrigin = NaN;
+    padStatic = true;
     camera.left = -fit.halfWidth; camera.right = fit.halfWidth; camera.top = fit.halfHeight; camera.bottom = -fit.halfHeight;
     camera.updateProjectionMatrix();
   }
@@ -480,7 +485,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function drawGrass(lane: GrassLane, row: number): void {
-    if (!rebuildStatic) return;
+    if (!staticPass) return;
     band(C_GRASS + lane.shade, -0.5, 0.5, curZ, ROW_DEPTH);
     for(let c=Math.floor(winLo);c<=Math.ceil(winHi);c++) {
       const o=obstacleAt(lane,c), variant=obstacleVariant(lane,c);
@@ -511,11 +516,14 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   };
 
   function drawRoad(lane: RoadLane, ahead: Lane): void {
-    if (rebuildStatic) band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
-    if (rebuildStatic && ahead.kind === 'road') {
-      // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
-      const zb = curZ - ROW_DEPTH / 2;
-      for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
+    if (staticPass) {
+      band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
+      if (ahead.kind === 'road') {
+        // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
+        const zb = curZ - ROW_DEPTH / 2;
+        for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
+      }
+      return;
     }
     curRoad = lane;
     curDir = lane.dir;
@@ -528,7 +536,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   };
 
   function drawWater(lane: RiverLane | LilyLane, row: number, ahead: Lane, behind: Lane): void {
-    if (rebuildStatic) {
+    if (staticPass) {
       band(C_WATER, WATER_Y - 0.6, 0.6, curZ, ROW_DEPTH, C_WATER_EDGE, 1);
       // Both shorelines end at the exact half-cell boundary. The soil wall and
       // narrow rim stay inside this water cell; adjacent road/rail strips remain whole.
@@ -536,6 +544,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * (ROW_DEPTH / 2 - 0.006), 0.012);
         band(C_RIPPLE, WATER_Y, 0.008, curZ + side * (ROW_DEPTH / 2 - 0.028), 0.025);
       }
+      if (lane.kind === 'lily') {
+        for (let c = winLo; c <= winHi; c++) if (lilyAt(lane,c)) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
+      }
+      return;
     }
     // A few light ripples drifting slowly, repeating every 14 tiles.
     for (let k = 0; k < 1; k++) {
@@ -555,8 +567,6 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     }
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
-    } else if (rebuildStatic) {
-      for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) if (lilyAt(lane,c)) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
     }
   }
 
@@ -567,7 +577,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     if (x < winLo - 1 || x > winHi + 1) return;
     // Beside the track, on the near edge, so a passing train never clips it.
     const z = curZ + ROW_DEPTH / 2 - 0.05, face = curZ + ROW_DEPTH / 2 - 0.007;
-    if (rebuildStatic) posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
+    if (staticPass) {
+      posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
+      return;
+    }
     for (let side = 0; side < 2; side++) {
       const lx = x + (side === 0 ? -SIGNAL_LAMP_X : SIGNAL_LAMP_X), lit = on && side === phase;
       const s = lit ? 1.08 + (colorBlind ? 0.25 : 0) : 0.9;
@@ -594,7 +607,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function drawRail(lane: RailLane): void {
-    if (rebuildStatic) {
+    if (staticPass) {
       band(C_BALLAST, -0.5, 0.5, curZ, ROW_DEPTH);
       // Snowy shoulders either side of the track bed.
       band(C_SNOW, 0, 0.02, curZ - ROW_DEPTH / 2 + 0.17, 0.34);
@@ -624,13 +637,14 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.03, tz + rz, 0.035);
         band(C_RAIL_HEAD, RAIL_TOP - 0.022, 0.022, tz + rz, 0.075);
       }
+    } else {
+      curRail=lane;
+      forEachTrain(lane, now, winLo, winHi, onTrain);
     }
-    curRail=lane;
-    forEachTrain(lane, now, winLo, winHi, onTrain);
     // Signals repeat spatially; each warns about arrival at its own column.
     // The two lamps alternate about 1.4 times a second; reduced motion still alternates (a light change, not motion).
     for(let x=Math.ceil((winLo-.15)/8)*8+.15;x<=winHi+1;x+=8) {
-      const on=railWarning(lane,now,x);
+      const on=!staticPass && railWarning(lane,now,x);
       signal(x,on,(now*1.4)%1<.5?0:1);
     }
   }
@@ -639,7 +653,6 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const onTrain=(x0:number,x1:number):void=>drawTrain(curRail,x0,x1);
 
   function drawRow(lane: Lane, row: number, ahead: Lane, behind: Lane): void {
-    windowFor(row);
     switch (lane.kind) {
       case 'grass': drawGrass(lane, row); break;
       case 'road': drawRoad(lane, ahead); break;
@@ -854,29 +867,19 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     colorBlind = frame.colorBlind;
     anim = reduced ? 0 : now;
     aim(frame);
-    rebuildStatic = rowLo !== staticRowLo || rowHi !== staticRowHi || renderOriginX !== staticOrigin;
-    for (let row = rowLo - 1; row <= rowHi + 1; row++) {
-      const i = row - rowLo + 1, lane = world.lane(row);
-      if (visibleLanes[i] !== lane) rebuildStatic = true;
-      visibleLanes[i] = lane;
-      if (row < rowLo || row > rowHi) continue;
-      windowFor(row);
-      const offset = (row - rowLo) * 2;
-      if (staticWindows[offset] !== winLo || staticWindows[offset + 1] !== winHi) rebuildStatic = true;
-      staticWindows[offset] = winLo; staticWindows[offset + 1] = winHi;
-    }
-    staticRowLo = rowLo; staticRowHi = rowHi; staticOrigin = renderOriginX;
-    for (const p of pools) if (!p.cached || rebuildStatic) p.begin(renderOriginX);
+    if (!retainsStatic(world)) rebuildTerrain(world);
+    for (const p of pools) if (!p.cached) p.begin(renderOriginX);
     for (let row = rowLo; row <= rowHi; row++) {
-      const i = row - rowLo + 1;
-      drawRow(visibleLanes[i]!, row, visibleLanes[i + 1]!, visibleLanes[i - 1]!);
+      const i = row - staticRowLo + 1;
+      windowFor(row);
+      drawRow(cachedLanes[i]!, row, cachedLanes[i + 1]!, cachedLanes[i - 1]!);
     }
     actors(frame);
     snowfall();
     if(beam.visible)beam.position.x-=renderOriginX;
     if(spot.visible)spot.position.x-=renderOriginX;
     if(shade.visible)shade.position.x-=renderOriginX;
-    for (const p of pools) if (!p.cached || rebuildStatic) p.commit();
+    for (const p of pools) if (!p.cached) p.commit();
     renderer.render(scene, camera);
     const info = renderer.info;
     stats.calls = info.render.calls;
@@ -886,9 +889,48 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     stats.programs = info.programs ? info.programs.length : 0;
   }
 
+  function retainsStatic(world: LaneSource): boolean {
+    if (renderOriginX !== staticOrigin || rowLo < staticRowLo || rowHi > staticRowHi) return false;
+    for (let row = rowLo - 1; row <= rowHi + 1; row++) {
+      const i = row - staticRowLo;
+      if (cachedLanes[i + 1] !== world.lane(row)) return false;
+      if (row < rowLo || row > rowHi) continue;
+      windowFor(row);
+      if (winLo < staticWindows[i * 2] || winHi > staticWindows[i * 2 + 1]) return false;
+    }
+    return true;
+  }
+
+  function rebuildTerrain(world: LaneSource, forceUpload = false): void {
+    staticRowLo = rowLo;
+    staticRowHi = rowHi + (padStatic ? STATIC_ROWS_AHEAD : 0);
+    const columns = padStatic ? STATIC_COLUMNS : 0;
+    staticOrigin = renderOriginX;
+    for (let row = staticRowLo - 1; row <= staticRowHi + 1; row++) cachedLanes[row - staticRowLo + 1] = world.lane(row);
+    for (const p of pools) if (p.cached) p.begin(renderOriginX);
+    staticPass = true;
+    for (let row = staticRowLo; row <= staticRowHi; row++) {
+      const i = row - staticRowLo;
+      windowFor(row);
+      staticWindows[i * 2] = winLo -= columns;
+      staticWindows[i * 2 + 1] = winHi += columns;
+      drawRow(cachedLanes[i + 1]!, row, cachedLanes[i + 2]!, cachedLanes[i]!);
+    }
+    staticPass = false;
+    // On unusually wide views, keep the original window and pool limits instead
+    // of letting cache padding crowd out geometry the camera can actually see.
+    // Commit first so a pool empty after the retry still uploads its pending
+    // changes when geometry re-enters. Nonempty pools upload all touched slots.
+    for (const p of pools) if (p.cached) p.commit(forceUpload);
+    if (padStatic && pools.some(p => p.cached && p.overflow)) {
+      padStatic = false;
+      rebuildTerrain(world, true);
+    }
+  }
+
   function reset(): void {
     snap = true;
-    staticRowLo = NaN;
+    staticOrigin = NaN;
     deathT = NaN;
   }
 
