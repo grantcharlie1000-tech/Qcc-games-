@@ -20,7 +20,7 @@ import {
 } from './config';
 import { forEachMover, forEachTrain, laneVelocity, platformAt, railWarning } from './lanes';
 import {
-  LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
+  LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, groundBoxGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
 
@@ -328,7 +328,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const train = trainGeometry(), cars = carStyles.map(style => merged(carGeometry(style))), trucks = [merged(truckGeometry(2)), merged(truckGeometry(3))];
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
-  const ground = pool(box, lit, 6400, false, true);
+  const ground = pool(geo(groundBoxGeometry()), lit, 6400, false, true);
   const waterFx = pool(box, lit, 640);
   const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
   const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
@@ -469,10 +469,16 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   // Lane drawing --------------------------------------------------------------------
 
+  // Ground never rotates or casts shadows; the fixed orthographic camera faces
+  // the three retained sides for every view, including camera shake.
+  function putGround(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number): void {
+    ground.put(x, y, z, sx, sy, sz, 0, color, 1);
+  }
+
   /** A bounded strip snapped to horizontal chunks, extending beyond the frustum. */
   function band(ci: number, y: number, h: number, zc: number, depth: number, _edge = ci, _shade = DARK): void {
     const left = Math.floor(winLo / 16) * 16 - 8, right = Math.ceil(winHi / 16) * 16 + 8;
-    ground.put((left+right)/2, y, zc, right-left, h, depth, 0, ci, 1);
+    putGround((left+right)/2, y, zc, right-left, h, depth, ci);
   }
 
   function putTree(x: number, variant: number, k: number): void {
@@ -495,9 +501,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         // Scattered decoration on open snow: a few grass tufts poking through, and soft drifts.
         const h=hash(row,c+1000), kind=h&15, dx=(((h>>>4)&15)/15-0.5)*0.6, dz=(((h>>>8)&15)/15-0.5)*0.7*ROW_DEPTH;
         if(kind===0) {
-          ground.put(c+dx,0,curZ+dz,0.07,0.1,0.07,0,C_TUFT+((h>>>12)&1),1);
-          ground.put(c+dx+0.08,0,curZ+dz+0.04,0.06,0.07,0.06,0,C_TUFT+((h>>>13)&1),1);
-        } else if(kind===1) ground.put(c+dx,0,curZ+dz,0.3+((h>>>14)&3)*0.08,0.05,0.22,0,C_SNOW,1);
+          putGround(c+dx,0,curZ+dz,0.07,0.1,0.07, C_TUFT+((h>>>12)&1));
+          putGround(c+dx+0.08,0,curZ+dz+0.04,0.06,0.07,0.06, C_TUFT+((h>>>13)&1));
+        } else if(kind===1) putGround(c+dx,0,curZ+dz,0.3+((h>>>14)&3)*0.08,0.05,0.22, C_SNOW);
       }
     }
   }
@@ -521,7 +527,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       if (ahead.kind === 'road') {
         // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
         const zb = curZ - ROW_DEPTH / 2;
-        for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
+        for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) putGround(k, 0, zb, 0.98, 0.012, 0.065, C_DASH);
       }
       return;
     }
@@ -620,15 +626,15 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         const h = hash(lane.row, x + 3000);
         // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
         for (const sx of [x - 0.25, x + 0.25]) {
-          ground.put(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.72, 0, C_SLEEPER, 1);
-          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, 0, C_PLATE, 1);
+          putGround(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.72, C_SLEEPER);
+          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) putGround(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, C_PLATE);
         }
         // Gravel speckles between the sleepers.
-        ground.put(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, 0, C_GRAVEL + ((h >>> 22) & 1), 1);
-        ground.put(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, 0, C_GRAVEL + ((h >>> 29) & 1), 1);
+        putGround(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, C_GRAVEL + ((h >>> 22) & 1));
+        putGround(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, C_GRAVEL + ((h >>> 29) & 1));
         // Snow settles on most sleepers and drifts between some of them.
-        if ((h & 3) !== 0) ground.put(x + 0.25, BED_TOP + SLEEPER_H, tz + (((h >>> 2) & 7) - 3.5) * 0.02, 0.15, 0.016, 0.22 + ((h >>> 5) & 3) * 0.05, 0, C_SNOW, 1);
-        if (((h >>> 8) & 3) === 0) ground.put(x + 0.5, BED_TOP, tz + (((h >>> 10) & 7) - 3.5) * 0.04, 0.26 + ((h >>> 13) & 3) * 0.08, 0.025, 0.16, 0, C_SNOW, 1);
+        if ((h & 3) !== 0) putGround(x + 0.25, BED_TOP + SLEEPER_H, tz + (((h >>> 2) & 7) - 3.5) * 0.02, 0.15, 0.016, 0.22 + ((h >>> 5) & 3) * 0.05, C_SNOW);
+        if (((h >>> 8) & 3) === 0) putGround(x + 0.5, BED_TOP, tz + (((h >>> 10) & 7) - 3.5) * 0.04, 0.26 + ((h >>> 13) & 3) * 0.08, 0.025, 0.16, C_SNOW);
       }
       // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
       const foot = BED_TOP + SLEEPER_H + 0.008;
