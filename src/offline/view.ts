@@ -38,8 +38,9 @@ ${Downloads.supported()?`<div class="dl-actions"><button type="button" class="ga
     const all=this.root.querySelector<HTMLElement>('[data-list="all"]'),ready=this.root.querySelector<HTMLElement>('[data-list="ready"]');
     if(!all||!ready)return;
     const downloaded=new Set(this.downloads.downloaded());
-    ready.innerHTML=games.filter(g=>downloaded.has(g.id)).map(g=>this.row(g.id)).join('');
-    all.innerHTML=games.filter(g=>!downloaded.has(g.id)).map(g=>this.row(g.id)).join('');
+    // The GTA IV entry is a local launcher, not an offline game download.
+    ready.innerHTML=games.filter(g=>g.id!=='gta-iv-web'&&downloaded.has(g.id)).map(g=>this.row(g.id)).join('');
+    all.innerHTML=games.filter(g=>g.id!=='gta-iv-web'&&!downloaded.has(g.id)).map(g=>this.row(g.id)).join('');
     ready.hidden=!downloaded.size;
     this.root.querySelector<HTMLElement>('[data-section="ready"]')!.hidden=!downloaded.size;
     this.paintAll();
