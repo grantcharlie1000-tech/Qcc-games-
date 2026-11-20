@@ -48,6 +48,8 @@ upstream fetch uses manual redirects and a 10-second deadline; credentials and
 the secret are never followed to a redirect destination. A later failure after
 a response stream begins cannot change its status.
 
+Automatic, failure-only movie diagnostics use the native Pages route `/api/movie-failure-report` (not the Vercel proxy). They write anonymous event rows to the existing Cloudflare D1 `MOVIE_POPULARITY_DB`, using the existing server-only `MOVIE_POPULARITY_SECRET` for hourly abuse throttling. Apply `docs/movie-failure-schema.sql` to Preview and Production **before** deploying the endpoint, then redeploy the existing cleanup Worker. No Resend/email configuration or diagnostic access code is needed. Details: [Movie failure reports](MOVIE_FAILURE_REPORTS.md).
+
 The movies fetch also uses `redirect: 'manual'`. Workers implements only
 `follow` and `manual`; `error` throws before making the request. Every non-2xx,
 including redirects, fails metadata retrieval (404 keeps the existing
