@@ -23,7 +23,7 @@ export interface Profile {
 }
 // Custom style, perception and seeded variation for the four local opponents.
 const PROFILES: Record<string, Profile> = {
-  'elo-300': {captureNotice:.95,dangerNotice:1,mateNotice:.20,temperature:8,development:.85,pawnAdvance:8},
+  'elo-300': {captureNotice:.95,dangerNotice:.80,mateNotice:.20,temperature:8,development:.85,pawnAdvance:8},
   'elo-500': {captureNotice:.93,dangerNotice:.98,mateNotice:.44,temperature:15,development:1,pawnAdvance:4},
   'elo-700': {captureNotice:.99,dangerNotice:.98,mateNotice:.60,temperature:6,development:1.15,pawnAdvance:4},
   'elo-900': {captureNotice:.79,dangerNotice:.73,mateNotice:.71,temperature:6,development:1.225,pawnAdvance:4},
