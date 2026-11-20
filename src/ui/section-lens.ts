@@ -34,7 +34,7 @@ vec2 bendFace(vec2 pos) {
   float curvature = dot(radial, radial);
   // The face magnifies across its full width. Toward the curved ends and
   // across the short axis, the change in slope produces a stronger bend.
-  return pos - vec2(p.x * (.20 + .10 * radial.y * radial.y), 0.)
+  return pos - vec2(p.x * .20, 0.)
              - axis * (vec2(.23, .46) + vec2(.15, .16) * curvature);
 }
 vec3 backdrop(vec2 pos, float frost) {
