@@ -30,6 +30,15 @@
   right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
   transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
+/* Keep vertical scrolling and pinch zoom native while the pill tracks horizontal drags. */
+.section-tabbar .ui-tab{touch-action:pan-y pinch-zoom}
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-tabbar[data-pill-dragging][data-pill-ready]:not([data-hidden=true]):not([data-minimized=true])::after{
+    translate:var(--ui-pill-drag-x) 0;
+    scale:var(--ui-pill-drag-scale);
+    transition:translate 65ms var(--ease-out),scale 100ms var(--ease-out),opacity 120ms var(--ease);
+  }
+}
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
   left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;
   --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;

@@ -199,6 +199,7 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
+  const section=bar.classList.contains('section-tabbar');
   // Convex arcade lenses sample inward, so their compositor surface needs no
   // legacy outward margin. This also bounds live canvas controls to their own
   // area instead of filtering an extra 14px on all four sides every frame.
@@ -226,7 +227,11 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
-  let press:{tab:HTMLElement;pointerId:number}|null=null;
+  let press:{
+    tab:HTMLElement;
+    pointerId:number;
+    drag:{x:number;y:number;active:boolean}|null;
+  }|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
 
@@ -258,12 +263,14 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // began the press can end it, but a new primary press on the bar ends a stale one, since its pointer-up may never come.
   // A window that loses focus or a page that is hidden ends it too, for the same reason.
   const down=(event:PointerEvent)=>{
-    if(event.button!==0)return;
+    if(event.button!==0||(section&&event.pointerType==='touch'&&!event.isPrimary))return;
     if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    press={tab,pointerId:event.pointerId};
+    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false}:null;
+    press={tab,pointerId:event.pointerId,drag};
     bar.setAttribute('data-pressing','');
+    if(drag)document.addEventListener('pointermove',move,{passive:true});
     document.addEventListener('pointerup',up);
     document.addEventListener('pointercancel',cancel);
     document.addEventListener('lostpointercapture',cancel);
@@ -271,7 +278,40 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     document.addEventListener('visibilitychange',hidden);
     if(!standalone)place(tab,false,true);
   };
+  const move=(event:PointerEvent)=>{
+    if(!press?.drag||event.pointerId!==press.pointerId)return;
+    const {drag,tab}=press;
+    const dx=event.clientX-drag.x;
+    // Leave taps and vertical pans alone until the pointer makes a horizontal move.
+    if(!drag.active&&(Math.abs(dx)<6||Math.abs(dx)<=Math.abs(event.clientY-drag.y)))return;
+    const width=tab.offsetWidth;
+    const available=bar.clientWidth;
+    if(!width||!available)return;
+    const deformation=Math.min(1,Math.abs(dx)/width);
+    const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
+    const halfWidth=width*scaleX/2;
+    const center=Math.max(halfWidth,Math.min(available-halfWidth,tab.offsetLeft+width/2+dx));
+    bar.style.setProperty('--ui-pill-drag-x',`${round(center-width/2)}px`);
+    bar.style.setProperty('--ui-pill-drag-scale',`${scaleX} ${scaleY}`);
+    if(!drag.active){
+      // The gesture takes over from any in-flight selection stretch.
+      stretch?.cancel();
+      drag.active=true;
+      bar.setAttribute('data-pill-dragging','');
+    }
+  };
+  // A native link drag would stop pointermove on the tabs that use anchors.
+  const nativeDrag=(event:DragEvent)=>{
+    if(press)event.preventDefault();
+  };
+  if(section)bar.addEventListener('dragstart',nativeDrag);
+  const clearDrag=()=>{
+    bar.removeAttribute('data-pill-dragging');
+    bar.style.removeProperty('--ui-pill-drag-x');
+    bar.style.removeProperty('--ui-pill-drag-scale');
+  };
   const stopListening=()=>{
+    document.removeEventListener('pointermove',move);
     document.removeEventListener('pointerup',up);
     document.removeEventListener('pointercancel',cancel);
     document.removeEventListener('lostpointercapture',cancel);
@@ -280,9 +320,10 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const release=(event:PointerEvent|null,cancelled:boolean)=>{
     if(!press)return;
-    const {tab}=press;
+    const {tab,drag}=press;
     press=null;
     stopListening();
+    if(drag?.active)clearDrag();
     bar.removeAttribute('data-pressing');
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
     const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
@@ -425,6 +466,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
       bar.removeEventListener('pointerdown',down);
+      if(section)bar.removeEventListener('dragstart',nativeDrag);
+      if(press?.drag?.active)clearDrag();
       stopListening();
       press=null;
       stretch?.cancel();

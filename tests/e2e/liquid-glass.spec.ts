@@ -217,6 +217,30 @@ test('a press that slides off the tab springs the pill back and selects nothing'
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
+test('a horizontal drag carries the pill across tabs and springs back on an off-tab release',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true});
+  const tv=bar.getByRole('link',{name:'TV Shows',exact:true});
+  await expectPillUnder(bar,games);
+  const start=await boxOf(games), end=await boxOf(tv);
+  const x=start.x+start.width/2, y=start.y+start.height/2;
+  const farX=end.x+end.width/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(farX,y,{steps:5});
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-farX)).toBeLessThan(3);
+  const reverseX=farX-30;
+  await page.mouse.move(reverseX,y,{steps:3});
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-reverseX)).toBeLessThan(3);
+  await page.mouse.up();
+  await expect(bar).not.toHaveAttribute('data-pressing');
+  await expectPillUnder(bar,games);
+  await expect(games).toHaveAttribute('aria-current','page');
+  await expect(page).toHaveURL(/#\/collection$/);
+});
+
 test('keyboard activation moves the pill but never swells it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
