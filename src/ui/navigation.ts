@@ -1,4 +1,5 @@
 import {uiIcon} from './icons';
+import {bindSectionLens} from './section-lens';
 import './section-navigation.css';
 
 /** Shared shell geometry and semantics; each owner supplies its destinations/actions. */
@@ -15,4 +16,21 @@ export function createSectionNavigation(scope:'app'|'movies'|'social'|'chat'|'pr
   menu.setAttribute('aria-label','Open menu');menu.setAttribute('aria-haspopup','dialog');menu.innerHTML=uiIcon('menu');
   root.append(bar,menu);
   return {root,bar,menu};
+}
+
+/** The two browse scenes with paintable backdrops. Other routes use the shell's CSS glass. */
+export function bindSectionNavigationLens(bar:HTMLElement,scroller:Window|HTMLElement):()=>void {
+  if (new URLSearchParams(location.search).get('glass')==='fallback') return ()=>{};
+  if (bar.classList.contains('app-tabbar')) {
+    const host = document.querySelector<HTMLElement>('#content');
+    if (host) return bindSectionLens(bar,host,()=>host.querySelector('.game-grid')?host:null);
+  }
+  if (bar.classList.contains('movies-mobile-nav') && scroller instanceof HTMLElement) {
+    // The nested Movies scroller has visible alignment evidence in Chromium.
+    // WebKit keeps the compositor frost for this scene.
+    return bindSectionLens(bar,scroller,()=>bar.dataset.glass==='backdrop'
+      ? scroller.querySelector<HTMLElement>('.movies-browse')
+      : null);
+  }
+  return ()=>{};
 }

@@ -2,6 +2,7 @@
 // data-minimized on the bar once the reader has scrolled on. Minimized, the bar shrinks into a capsule that keeps the current tab's icon.
 // theme.css draws both states, and data-hidden is left to the caller that hides the bar fully, such as Up next in Movies.
 import {bindGlass} from './glass';
+import {bindSectionNavigationLens} from './navigation';
 export interface TabbarScroll{minimized:boolean;lastY:number;travel:number}
 // px of downward travel before the bar minimizes, and of upward travel before it expands again.
 export const TABBAR_MINIMIZE=64;
@@ -61,6 +62,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   let state:TabbarScroll={minimized:false,lastY:position(scroller).y,travel:0};
   let frame=0;
   const glass=bindGlass(bar);
+  const disposeLens=bindSectionNavigationLens(bar,scroller);
   // Writes the attribute only when the state changes.
   const apply=(minimized:boolean)=>{
     if(bar.hasAttribute('data-minimized')===minimized)return;
@@ -154,6 +156,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       parentWatch.disconnect();
       if(frame)cancelAnimationFrame(frame);
       frame=0;
+      disposeLens();
       glass.dispose();
       mini.remove();
       bar.removeAttribute('data-minimized');
