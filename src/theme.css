@@ -120,7 +120,11 @@
 .ui-tabbar[data-glass="backdrop"][data-hidden="true"]:not(:has(:focus-visible))::before{opacity:0;transition:opacity 160ms var(--ease)}
 .ui-tabbar[data-glass="backdrop"][data-hidden="true"]:not(:has(:focus-visible))::after{opacity:0;transition:opacity 160ms var(--ease)}
 /* Fine pointers get a faint lozenge. The current item keeps none, and colour and background change at once. */
-@media (hover:hover) and (pointer:fine){.ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}}
+@media (hover:hover) and (pointer:fine){
+  .ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}
+  /* The moving pill supplies the highlight during a scrub. */
+  .section-tabbar[data-pill-dragging] .ui-tab:hover{background-color:transparent}
+}
 /* Chromium only (glass.ts sets is-refracting): the lens's backdrop is blurred, then bent by the filter, so the rim bends what is behind the bar. Keep this above the fallbacks, which must win under reduced transparency. */
 .ui-tabbar.is-refracting .ui-glass-lens{-webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone)}
 /* The capsule: a button beside the bar, out of the tab order and hidden from assistive technology. It has the frost material in every lens mode, drawn
