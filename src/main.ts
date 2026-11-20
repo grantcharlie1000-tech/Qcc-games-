@@ -132,7 +132,7 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby','last-light','breachline']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club','chess']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club','chess','gta-iv-web']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
 const metricText=(id:GameId,score:number)=>id==='claimline'||id==='femboy-obby'?formatScore(id,score):String(Math.floor(score));
 
@@ -459,7 +459,7 @@ async function route(){
   const paintDownload=()=>{
     const status=downloads.status(id),percent=status.total?Math.floor(status.done/status.total*100):0;
     const label=status.state==='ready'?'Downloaded':status.state==='downloading'?`Downloading ${percent}%`:status.state==='queued'?'Waiting':status.state==='update'?'Update download':status.state==='failed'?'Retry download':'Download';
-    downloadButton.hidden=!Downloads.supported()||!downloads.packs;
+    downloadButton.hidden=id==='gta-iv-web'||!Downloads.supported()||!downloads.packs;
     downloadButton.disabled=['ready','downloading','queued'].includes(status.state);
     downloadButton.querySelector('span')!.textContent=label;downloadButton.setAttribute('aria-label',`${label}: ${info.title}`);
   };
