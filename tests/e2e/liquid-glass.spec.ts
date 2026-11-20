@@ -112,8 +112,7 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
-  // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  await expect(bar.getByRole('link').or(bar.getByRole('button'))).toHaveCount(5);
   // No chat backend answers here, so the Apps tab is not added and the bar is the shell's own five tabs.
   await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
 });
@@ -124,7 +123,7 @@ for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  await expect(bar.getByRole('link').or(bar.getByRole('button'))).toHaveCount(5);
 });
 
 test('the Movies pill slides to the section chosen',async({page})=>{
@@ -239,6 +238,58 @@ test('a horizontal drag carries the pill across tabs and springs back on an off-
   await expectPillUnder(bar,games);
   await expect(games).toHaveAttribute('aria-current','page');
   await expect(page).toHaveURL(/#\/collection$/);
+});
+
+test('a scrub back to an unselected link leaves the Games route active',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true});
+  const tv=bar.getByRole('link',{name:'TV Shows',exact:true});
+  await expectPillUnder(bar,games);
+  const box=await boxOf(tv);
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  // Move within the same link so the browser still dispatches a click on release.
+  await page.mouse.move(x-18,y,{steps:3});
+  await expect(bar).toHaveAttribute('data-pill-dragging','');
+  await page.mouse.move(x,y,{steps:3});
+  await page.mouse.up();
+  await expect(page).toHaveURL(/#\/collection$/);
+  await expectPillUnder(bar,games);
+  await expect(bar).not.toHaveAttribute('data-pill-dragging');
+  await expect(page.locator('.game-grid')).toBeVisible();
+
+  await tv.click();
+  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
+  await expect(page.locator('.movies-mobile-nav').getByRole('button',{name:'TV Shows'})).toHaveAttribute('aria-pressed','true');
+});
+
+test('reduced motion leaves section link drags to the browser',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const tv=bar.getByRole('link',{name:'TV Shows',exact:true});
+  const box=await boxOf(tv);
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await expect(bar).toHaveAttribute('data-pressing','');
+  // Automation does not guarantee an OS drag on every engine. Check whether
+  // the glass handler cancels the browser's dragstart event during the press.
+  const allowed=await tv.evaluate(el=>el.dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true})));
+  expect(allowed).toBe(true);
+  await page.mouse.move(x-35,y,{steps:5});
+  await expect(bar).not.toHaveAttribute('data-pill-dragging');
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await expect(bar).not.toHaveAttribute('data-pressing');
+  await expect(page).toHaveURL(/#\/collection$/);
+  await tv.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
 });
 
 test('keyboard activation moves the pill but never swells it',async({page})=>{
@@ -750,8 +801,8 @@ test('the Movies island uses the same white ink and bold selection as Games',asy
   await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
-test('the navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
+test('the fallback navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/?glass=fallback');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
   // #92 frosts navigation at .36; the selection pill remains near-transparent.
@@ -759,8 +810,7 @@ test('the navigation glass keeps its frosted backdrop, dark tint and clean glyph
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeLessThanOrEqual(.02);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
-  // Navigation frost (section-navigation.css); Chromium's SVG lens adds its url() map.
-  expect(frost).toMatch(/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.4\) brightness\(0\.94\)$/);
+  expect(frost).toBe('blur(12px) saturate(1.4) brightness(0.94)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   // Clean glyphs: no stroke or blurred glow; over busy art the adaptive ink may
@@ -962,8 +1012,9 @@ test('a new press ends a press whose pointer-up never arrived, and the pill foll
   await expectPillUnder(bar,movie);
 });
 
-test('a touch press shows the press, and lifting on the tab selects it',async({page,browserName})=>{
+for(const reducedMotion of ['no-preference','reduce'] as const) test(`a touch press shows the press, and lifting selects the tab (${reducedMotion})`,async({page,browserName})=>{
   test.skip(browserName!=='chromium','touch input is sent through the Chromium DevTools protocol');
+  await page.emulateMedia({reducedMotion});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
@@ -978,6 +1029,7 @@ test('a touch press shows the press, and lifting on the tab selects it',async({p
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expect(tv).toHaveAttribute('aria-pressed','true');
   await expectPillUnder(bar,tv);
+  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
 });
 
 test('a touch that slides off the tab springs the pill back and selects nothing',async({page,browserName})=>{
@@ -1073,8 +1125,11 @@ test('a press on the island that Movies left behind does nothing',async({page})=
 
 // The specular layer masks a thin edge, with two bright arcs and a continuous rim.
 test('the arcade rim has two directional specular arcs around a clear centre',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
-  const rim=page.locator('.app-tabbar > .ui-glass-glow');
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/?glass=fallback');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-glass','frost');
+  const rim=bar.locator('.ui-glass-glow');
   await expect(rim).toBeVisible();
   const style=await rim.evaluate(el=>{const s=getComputedStyle(el);return {image:s.backgroundImage,mask:s.maskComposite,padding:s.paddingTop};});
   expect(style.image).toContain('conic-gradient');

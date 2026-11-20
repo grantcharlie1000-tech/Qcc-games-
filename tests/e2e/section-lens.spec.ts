@@ -30,6 +30,56 @@ test('section lens updates the visible Games backdrop as the page scrolls',async
   await expect(bar.getByRole('link',{name:'Games'})).toHaveAttribute('aria-current','page');
 });
 
+test('section lens ignores game mutations and resumes live sampling at the restored library scroll',async({page})=>{
+  await page.addInitScript(()=>{
+    let queued=0;
+    const request=window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame=callback=>{
+      if(callback.name==='drawSectionLens') queued++;
+      return request(callback);
+    };
+    Object.defineProperty(window,'sectionLensFrames',{get:()=>queued});
+  });
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar'),canvas=bar.locator('canvas.section-lens');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await page.evaluate(()=>scrollTo(0,18));
+  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(18);
+  await page.evaluate(()=>{location.hash='#/game/snake';});
+  await expect(page.locator('.snake-start')).toBeVisible();
+  await expect(bar).not.toHaveAttribute('data-section-lens','webgl');
+  const queued=await page.locator('#game-status').evaluate(async status=>{
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const count=()=>Reflect.get(window,'sectionLensFrames') as number;
+    const before=count();
+    status.textContent='Playing Snake';
+    status.style.opacity='.9';
+    await Promise.resolve();
+    return count()-before;
+  });
+  expect(queued).toBe(0);
+
+  await page.goBack();
+  await expect(page.locator('.game-grid')).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(18);
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+
+  const patch=page.locator('#lens-test-patch');
+  await page.locator('.game-grid').evaluate(grid=>{
+    const element=document.createElement('div');
+    element.id='lens-test-patch';
+    element.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:rgb(255,0,0)';
+    grid.append(element);
+  });
+  const colour=()=>canvas.evaluate(el=>{
+    const surface=el as HTMLCanvasElement;
+    return [...surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data];
+  });
+  await expect.poll(async()=>{const [r,g]=await colour();return r-g;}).toBeGreaterThan(80);
+  await patch.evaluate(el=>{el.style.backgroundColor='rgb(0,255,0)';});
+  await expect.poll(async()=>{const [r,g]=await colour();return g-r;}).toBeGreaterThan(80);
+});
+
 test('section lens falls back on context loss',async({page})=>{
   await page.addInitScript(()=>{
     const getContext=HTMLCanvasElement.prototype.getContext;

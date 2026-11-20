@@ -232,6 +232,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     pointerId:number;
     drag:{x:number;y:number;active:boolean}|null;
   }|null=null;
+  let scrubbedPointer:number|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
 
@@ -264,6 +265,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // A window that loses focus or a page that is hidden ends it too, for the same reason.
   const down=(event:PointerEvent)=>{
     if(event.button!==0||(section&&event.pointerType==='touch'&&!event.isPrimary))return;
+    scrubbedPointer=null;
     if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
@@ -302,9 +304,20 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   // A native link drag would stop pointermove on the tabs that use anchors.
   const nativeDrag=(event:DragEvent)=>{
-    if(press)event.preventDefault();
+    if(press?.drag)event.preventDefault();
   };
-  if(section)bar.addEventListener('dragstart',nativeDrag);
+  // The browser can still click the starting tab when a scrub returns to it.
+  const suppressScrubClick=(event:MouseEvent)=>{
+    if(scrubbedPointer===null||event.detail===0||
+      (event instanceof PointerEvent&&event.pointerId!==scrubbedPointer))return;
+    scrubbedPointer=null;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  if(section){
+    bar.addEventListener('dragstart',nativeDrag);
+    bar.addEventListener('click',suppressScrubClick,true);
+  }
   const clearDrag=()=>{
     bar.removeAttribute('data-pill-dragging');
     bar.style.removeProperty('--ui-pill-drag-x');
@@ -323,10 +336,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     const {tab,drag}=press;
     press=null;
     stopListening();
-    if(drag?.active)clearDrag();
+    if(drag?.active){
+      clearDrag();
+      if(!cancelled&&event)scrubbedPointer=event.pointerId;
+    }
     bar.removeAttribute('data-pressing');
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
-    const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
+    const tapped=!drag?.active&&!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
     // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current, and the
     // observer below follows the change. If the click changes nothing, the pill still sits under the tapped tab, so the next
     // frame puts it back under the current one. Anything else springs back to the current tab now.
@@ -466,7 +482,10 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
       bar.removeEventListener('pointerdown',down);
-      if(section)bar.removeEventListener('dragstart',nativeDrag);
+      if(section){
+        bar.removeEventListener('dragstart',nativeDrag);
+        bar.removeEventListener('click',suppressScrubClick,true);
+      }
       if(press?.drag?.active)clearDrag();
       stopListening();
       press=null;

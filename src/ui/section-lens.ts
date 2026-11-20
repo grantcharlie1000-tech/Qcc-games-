@@ -162,6 +162,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   let rendered = '', texture = '', textureReady = false;
   let gl:WebGL2RenderingContext|null = null;
   let gpu:ReturnType<typeof createRenderer>|null = null;
+  let root:HTMLElement|null = null;
   let source:HTMLCanvasElement|null = null;
   let releaseFrame:(()=>void)|undefined;
 
@@ -176,7 +177,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     releaseFrame = next ? onGlassFrame(next,()=>drawSectionLens(next)) : undefined;
   }
   function schedule() {
-    if (!disposed && !frame && !document.hidden && !unavailable && !lost) {
+    if (root && !disposed && !frame && !document.hidden && !unavailable && !lost) {
       frame = requestAnimationFrame(drawSectionLens);
     }
   }
@@ -188,7 +189,6 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   const drawSectionLens = (tick:number|HTMLCanvasElement) => {
     if (typeof tick==='number') frame = 0;
     const live = typeof tick==='number'?undefined:tick;
-    const root = scene();
     const hidden = bar.closest('[data-sheet-hidden]') ||
       (bar.dataset.hidden==='true' && !bar.parentElement?.querySelector(':focus-visible'));
     if (!backdrop || !root || disposed || document.hidden || unavailable || lost || hidden ||
@@ -267,15 +267,35 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
 
   const resize = new ResizeObserver(invalidate);
   resize.observe(bar);
-  resize.observe(host);
-  const changes = new MutationObserver(records=>{
-    if (records.some(({target})=>target===document.documentElement || target===document.body ||
-      (host.contains(target) && !(target instanceof Element && target.closest('.section-navigation'))))) invalidate();
-    else schedule();
-  });
   const attributes = ['class','style','hidden','src','srcset','sizes','open','aria-pressed','aria-current',
     'data-glass','data-hidden','data-minimized','data-pressing','data-sheet-hidden'];
-  changes.observe(host,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:attributes});
+  const sceneChanges = new MutationObserver(invalidate);
+  function refreshScene() {
+    const next = scene();
+    if (root===next) return;
+    sceneChanges.disconnect();
+    listenToSource(null);
+    root = next;
+    if (root) {
+      sceneChanges.observe(root,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:attributes});
+      resize.observe(host);
+    } else {
+      resize.unobserve(host);
+      cancelAnimationFrame(frame);
+      frame = 0;
+      fallback();
+    }
+    invalidate();
+  }
+  const changes = new MutationObserver(records=>{
+    const hostChanged = records.some(({target})=>target===host);
+    if (hostChanged || records.some(({target,attributeName})=>target===bar && attributeName==='data-glass')) refreshScene();
+    if (hostChanged || records.some(({target})=>target===document.documentElement || target===document.body)) invalidate();
+    else schedule();
+  });
+  // Route renders replace the host's direct children. Only the current
+  // paintable scene needs subtree updates.
+  changes.observe(host,{childList:true,attributes:true,attributeFilter:attributes});
   changes.observe(bar,{childList:true,attributes:true,attributeFilter:attributes});
   changes.observe(document.documentElement,{attributes:true,attributeFilter:['class','data-theme','data-input']});
   changes.observe(document.body,{attributes:true,attributeFilter:['class']});
@@ -284,11 +304,11 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   const signal = events.signal;
   document.addEventListener('scroll',event=>{
     if (event.target===document || event.target===host) schedule();
-    else if (event.target instanceof Node && host.contains(event.target)) invalidate();
+    else if (root && event.target instanceof Node && host.contains(event.target)) invalidate();
   },{capture:true,passive:true,signal});
   for (const name of ['load','error','transitionrun','transitionend','animationstart','animationend','focusin','focusout']) {
     host.addEventListener(name,event=>{
-      if (event.target instanceof Element && !event.target.closest('.section-navigation')) invalidate();
+      if (root && event.target instanceof Element && !event.target.closest('.section-navigation')) invalidate();
     },{capture:true,signal});
   }
   for (const name of ['transitionrun','transitionend','animationend','focusin','focusout']) {
@@ -312,14 +332,15 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   document.fonts?.addEventListener('loadingdone',invalidate,{signal});
   void document.fonts?.ready.then(()=>{if (!disposed) invalidate();});
   const unwatch = watchGlassFrameSources(()=>{
-    if (source || host.querySelector('canvas:not(.section-lens)')) invalidate();
+    if (source || root?.querySelector('canvas')) invalidate();
   });
-  schedule();
+  refreshScene();
   return ()=>{
     disposed = true;
     cancelAnimationFrame(frame);
     events.abort();
     changes.disconnect();
+    sceneChanges.disconnect();
     resize.disconnect();
     listenToSource(null);
     unwatch();

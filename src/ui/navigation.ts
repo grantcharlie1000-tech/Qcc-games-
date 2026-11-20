@@ -23,13 +23,13 @@ export function bindSectionNavigationLens(bar:HTMLElement,scroller:Window|HTMLEl
   if (new URLSearchParams(location.search).get('glass')==='fallback') return ()=>{};
   if (bar.classList.contains('app-tabbar')) {
     const host = document.querySelector<HTMLElement>('#content');
-    if (host) return bindSectionLens(bar,host,()=>host.querySelector('.game-grid')?host:null);
+    if (host) return bindSectionLens(bar,host,()=>host.querySelector(':scope > .game-grid')?host:null);
   }
   if (bar.classList.contains('movies-mobile-nav') && scroller instanceof HTMLElement) {
     // The nested Movies scroller has visible alignment evidence in Chromium.
     // WebKit keeps the compositor frost for this scene.
     return bindSectionLens(bar,scroller,()=>bar.dataset.glass==='backdrop'
-      ? scroller.querySelector<HTMLElement>('.movies-browse')
+      ? scroller.querySelector<HTMLElement>(':scope > .movies-browse')
       : null);
   }
   return ()=>{};
