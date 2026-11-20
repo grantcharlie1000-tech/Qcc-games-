@@ -19,44 +19,60 @@ uniform float pillOpacity;
 in vec2 unit;
 out vec4 color;
 
+float capsuleRadius(vec2 bounds) {
+  return min(bounds.x, bounds.y) * .5;
+}
 vec2 capsuleAxis(vec2 p, vec2 bounds) {
-  float halfLine = max(0., (bounds.x - bounds.y) * .5);
-  return p - vec2(clamp(p.x, -halfLine, halfLine), 0.);
+  vec2 halfLine = max(vec2(0.), (bounds - bounds.yx) * .5);
+  return p - clamp(p, -halfLine, halfLine);
 }
 vec3 backdrop(vec2 pos, float frost) {
   vec2 uv = region.xy + pos * region.zw;
   vec2 step = frost * region.zw;
-  return .52 * texture(scene, uv).rgb + .12 * (
+  return .60 * texture(scene, uv).rgb + .10 * (
     texture(scene, uv + vec2(step.x, 0.)).rgb + texture(scene, uv - vec2(step.x, 0.)).rgb +
     texture(scene, uv + vec2(0., step.y)).rgb + texture(scene, uv - vec2(0., step.y)).rgb);
 }
-float rim(vec2 normal, float depth) {
-  float light = dot(normal, vec2(-.45, -.89));
-  return (.10 + .26 * max(0., light)) * (1. - smoothstep(.1, 2., depth));
+vec3 transmit(vec3 rgb, float transmission) {
+  float luma = dot(rgb, vec3(.2126, .7152, .0722));
+  // Keep the color of dark art and soften bright detail behind the white controls.
+  float exposure = transmission / (1. + 1.30 * max(0., luma - .27));
+  return mix(vec3(luma), rgb, 1.10) * exposure;
+}
+vec3 rim(vec3 rgb, vec2 normal, float depth) {
+  float light = dot(normal, vec2(-.42, -.91));
+  float key = smoothstep(-.08, .98, light);
+  float line = 1. - smoothstep(.35, 1.45, depth);
+  float sheen = (1. - smoothstep(.6, 4., depth)) * key;
+  float shade = (1. - smoothstep(1., 4., depth)) * max(0., -light);
+  return mix(rgb * (1. - .12 * shade), vec3(1.), (.09 + .49 * key) * line + .11 * sheen);
 }
 void main() {
   vec2 pos = unit * size;
   vec2 p = pos - size * .5;
   vec2 axis = capsuleAxis(p, size);
-  float depth = size.y * .5 - length(axis);
+  float radius = capsuleRadius(size);
+  float depth = radius - length(axis);
   float coverage = smoothstep(-.5, .5, depth);
   vec2 normal = axis / max(length(axis), .001);
-  float edge = 1. - smoothstep(0., 24., depth);
-  vec2 body = pos - p * vec2(.045, .15) - normal * 6. * edge * edge;
-  vec3 rgb = backdrop(body, 2.);
-  rgb = mix(rgb, vec3(.028, .042, .065), .30);
-  rgb = mix(rgb, vec3(1.), rim(normal, depth));
+  // A cylindrical face bends across the short axis and into both end caps.
+  // The cubic term increases the bend near the rim, with zero slope at the spine.
+  vec2 radial = axis / radius;
+  vec2 body = pos - vec2(p.x * .055, 0.) - axis * (.29 + .18 * dot(radial, radial));
+  vec3 rgb = rim(transmit(backdrop(body, 1.45), .94), normal, depth);
 
   if (pillOpacity > 0.) {
     vec2 pp = pos - pill.xy;
     vec2 pillAxis = capsuleAxis(pp, pill.zw);
-    float pillDepth = pill.w * .5 - length(pillAxis);
+    float pillRadius = capsuleRadius(pill.zw);
+    float pillDepth = pillRadius - length(pillAxis);
     float selected = pillOpacity * smoothstep(-.5, .5, pillDepth);
     if (selected > 0.) {
+      // Magnify the same scene about the animated pill center, with its own rim.
+      vec2 pillRadial = pillAxis / pillRadius;
+      vec2 lens = pos - pp * .36 - pillAxis * (.10 * dot(pillRadial, pillRadial));
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      vec2 lens = pos - pp * vec2(.24, .29) - pillNormal * 3. * (1. - smoothstep(0., 8., pillDepth));
-      vec3 selection = mix(backdrop(lens, 1.25), vec3(.04, .055, .075), .25);
-      selection = mix(selection, vec3(1.), .055 + rim(pillNormal, pillDepth));
+      vec3 selection = rim(transmit(backdrop(lens, .9), 1.) + .014, pillNormal, pillDepth);
       rgb = mix(rgb, selection, selected);
     }
   }
