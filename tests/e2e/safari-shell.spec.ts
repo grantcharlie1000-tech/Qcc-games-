@@ -66,7 +66,15 @@ for(const width of [390,1366])test(`Movies shares navigation geometry, actions a
 });
 
 for(const mode of ['flag','WebKit brands'])test(`${mode} selects one fallback surface without blurring its companion`,async({page})=>{
- if(mode==='WebKit brands')await page.addInitScript(()=>Object.defineProperty(navigator,'userAgentData',{value:undefined}));
+ if(mode==='WebKit brands')await page.addInitScript(()=>{
+  Object.defineProperty(navigator,'userAgentData',{value:undefined});
+  // UA brands gate the SVG path. Simulate unavailable WebGL2 to exercise CSS frost.
+  const getContext=HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,...args:unknown[]){
+   if(args[0]==='webgl2')return null;
+   return Reflect.apply(getContext,this,args);
+  };
+ });
  await page.goto(`/${mode==='flag'?'?glass=fallback':''}#/collection`);
  const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu');
  await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
