@@ -23,7 +23,7 @@ async function material(page:Page,selector:string){
 }
 
 for(const fallback of [false,true]){
-  const mode=fallback?'CSS fallback':'Chromium lens';
+  const mode=fallback?'CSS fallback':'Default glass';
   test(`${mode}: every filtered layer stays inside the morphing pill`,async({page,browserName})=>{
     await open(page,fallback,browserName==='chromium');
     const bar=page.locator('.app-tabbar');
@@ -51,8 +51,16 @@ for(const fallback of [false,true]){
 
   test(`${mode}: one material survives collapse and every section route`,async({page,browserName})=>{
     await open(page,fallback,browserName==='chromium');
+    const games=page.locator('.app-tabbar');
+    const mixed=!fallback&&browserName==='webkit';
+    if(mixed)await expect(games).toHaveAttribute('data-section-lens','webgl');
     const initial=await material(page,'.app-tabbar');
-    expect(await material(page,'.app-menu')).toEqual(initial);
+    const companion=await material(page,'.app-menu');
+    if(mixed){
+      expect(initial.root.filter).toBe('none');
+      expect(companion.root.filter).toBe('blur(12px) saturate(1.4) brightness(0.94)');
+    }
+    expect(companion).toEqual(mixed?{...initial,root:{...initial.root,filter:'blur(12px) saturate(1.4) brightness(0.94)'}}:initial);
     const miniRoot=await page.locator('.app-navigation .ui-tabbar-mini').evaluate(el=>{
       const s=getComputedStyle(el);return {filter:s.backdropFilter,background:s.background,border:s.border,shadow:s.boxShadow};
     });
@@ -67,10 +75,15 @@ for(const fallback of [false,true]){
       const movie=route.startsWith('movies'),bar=movie?'.movies-mobile-nav':'.app-tabbar',menu=movie?'.movies-menu':'.app-menu';
       await expect(page.locator(bar)).toBeVisible();
       if(!fallback&&browserName==='chromium')for(const selector of [bar,menu])await expect(page.locator(selector)).toHaveClass(/is-refracting/);
-      expect(await material(page,bar),route).toEqual(initial);
-      expect(await material(page,menu),route+' companion').toEqual(initial);
+      if(mixed){
+        if(movie)await expect(page.locator(bar)).not.toHaveAttribute('data-section-lens','webgl');
+        else await expect(games).toHaveAttribute('data-section-lens','webgl');
+      }
+      expect(await material(page,bar),route).toEqual(mixed&&movie?companion:initial);
+      expect(await material(page,menu),route+' companion').toEqual(companion);
     }
     await page.locator('.app-tabbar [data-action=study]').click();await expect(page.locator('#study-view')).toBeVisible();
-    expect(await material(page,'.app-tabbar')).toEqual(initial);
+    if(mixed)await expect(games).not.toHaveAttribute('data-section-lens','webgl');
+    expect(await material(page,'.app-tabbar')).toEqual(mixed?companion:initial);
   });
 }

@@ -26,6 +26,17 @@ vec2 capsuleAxis(vec2 p, vec2 bounds) {
   vec2 halfLine = max(vec2(0.), (bounds - bounds.yx) * .5);
   return p - clamp(p, -halfLine, halfLine);
 }
+vec2 bendFace(vec2 pos) {
+  vec2 p = pos - size * .5;
+  vec2 axis = capsuleAxis(p, size);
+  float radius = capsuleRadius(size);
+  vec2 radial = axis / radius;
+  float curvature = dot(radial, radial);
+  // The face magnifies across its full width. Toward the curved ends and
+  // across the short axis, the change in slope produces a stronger bend.
+  return pos - vec2(p.x * (.20 + .10 * radial.y * radial.y), 0.)
+             - axis * (vec2(.23, .46) + vec2(.15, .16) * curvature);
+}
 vec3 backdrop(vec2 pos, float frost) {
   vec2 uv = region.xy + pos * region.zw;
   vec2 step = frost * region.zw;
@@ -55,10 +66,7 @@ void main() {
   float depth = radius - length(axis);
   float coverage = smoothstep(-.5, .5, depth);
   vec2 normal = axis / max(length(axis), .001);
-  // A cylindrical face bends across the short axis and into both end caps.
-  // The cubic term increases the bend near the rim, with zero slope at the spine.
-  vec2 radial = axis / radius;
-  vec2 body = pos - vec2(p.x * .055, 0.) - axis * (.29 + .18 * dot(radial, radial));
+  vec2 body = bendFace(pos);
   vec3 rgb = rim(transmit(backdrop(body, 1.45), .94), normal, depth);
 
   if (pillOpacity > 0.) {

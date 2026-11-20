@@ -16,12 +16,13 @@ test('section lens updates the visible Games backdrop as the page scrolls',async
       .filter(image=>image.getBoundingClientRect().top<innerHeight).map(image=>image.decode()));
   });
   const pixels=async()=>{
-    // Sample artwork in the main body between the Movies and TV labels.
+    // Sample the Games card artwork near the left side of the main body.
     const shot=await bar.screenshot({scale:'css'});
-    return sharp(shot).extract({left:103,top:18,width:25,height:26}).removeAlpha().raw().toBuffer();
+    return sharp(shot).extract({left:64,top:12,width:36,height:40}).removeAlpha().raw().toBuffer();
   };
   const rest=await pixels();
   await page.evaluate(()=>scrollTo(0,18));
+  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(18);
   await expect.poll(async()=>{
     const scrolled=await pixels();
     return scrolled.reduce((sum,channel,index)=>sum+Math.abs(channel-rest[index]),0)/rest.length;
