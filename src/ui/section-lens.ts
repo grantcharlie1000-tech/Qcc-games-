@@ -28,14 +28,25 @@ vec2 capsuleAxis(vec2 p, vec2 bounds) {
 }
 vec2 bendFace(vec2 pos) {
   vec2 p = pos - size * .5;
-  vec2 axis = capsuleAxis(p, size);
   float radius = capsuleRadius(size);
-  vec2 radial = axis / radius;
-  float curvature = dot(radial, radial);
-  // The face magnifies across its full width. Toward the curved ends and
-  // across the short axis, the change in slope produces a stronger bend.
-  return pos - vec2(p.x * .20, 0.)
-             - axis * (vec2(.23, .46) + vec2(.15, .16) * curvature);
+  float spread = max(size.x * .275, radius * 1.7);
+  float across = p.y / radius;
+  float across2 = across * across;
+  float edge = across2 / (.25 + across2);
+
+  // Round the face by pulling each row inward more as it nears the rim.
+  // The squared cap offset joins the straight section with zero slope.
+  float along = p.x / spread;
+  float cap = capsuleAxis(p, size).x / radius;
+  float x = p.x - radius * (along * inversesqrt(1. + along * along) * (.10 + .81 * edge)
+                            + .46 * cap * abs(cap) / (1. + abs(cap)));
+
+  // Bend columns at the already-projected x. The two passes are monotone
+  // along their respective axes, so their composition cannot fold.
+  float column = x / spread;
+  float column2 = column * column;
+  float y = p.y * (1. - .28 - .26 * column2 / (.40 + column2) - .08 * edge);
+  return size * .5 + vec2(x, y);
 }
 vec3 backdrop(vec2 pos, float frost) {
   vec2 uv = region.xy + pos * region.zw;
