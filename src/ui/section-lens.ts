@@ -16,6 +16,7 @@ uniform vec2 size;
 uniform vec4 region;
 uniform vec4 pill;
 uniform float pillOpacity;
+uniform float pillLift;
 in vec2 unit;
 out vec4 color;
 
@@ -69,6 +70,20 @@ vec3 rim(vec3 rgb, vec2 normal, float depth) {
   float shade = (1. - smoothstep(1., 4., depth)) * max(0., -light);
   return mix(rgb * (1. - .12 * shade), vec3(1.), (.09 + .49 * key) * line + .11 * sheen);
 }
+vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float y) {
+  float upper = 1. - smoothstep(-.65, .60, y);
+  float veil = mix(.055, .125, pillLift) + .10 * upper;
+  vec3 face = mix(sceneColor, vec3(.52, .59, .62), veil);
+
+  // A single lit bevel. Where the two silhouettes approach, the body owns the rim.
+  float clearance = smoothstep(1., 4.5, barDepth - max(0., pillDepth));
+  float key = smoothstep(.05, .95, dot(normal, vec2(-.35, -.94)));
+  float bevel = (1. - smoothstep(0., mix(4., 6., pillLift), pillDepth)) * key * clearance;
+  face = mix(face, vec3(.88, .94, 1.), bevel * mix(.31, .42, pillLift));
+
+  float underside = (1. - smoothstep(.1, 4., pillDepth)) * max(0., normal.y);
+  return face * (1. - mix(.085, .13, pillLift) * underside);
+}
 void main() {
   vec2 pos = unit * size;
   vec2 p = pos - size * .5;
@@ -86,19 +101,26 @@ void main() {
     float pillRadius = capsuleRadius(pill.zw);
     float pillDepth = pillRadius - length(pillAxis);
     float selected = pillOpacity * smoothstep(-.5, .5, pillDepth);
+    // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
+    vec2 shadowPos = pp - vec2(0., mix(1.25, 3.5, pillLift));
+    float shadowDepth = pillRadius - length(capsuleAxis(shadowPos, pill.zw));
+    float shadow = smoothstep(-3.5, 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
+                   * smoothstep(-.15, .60, pp.y / pillRadius);
+    rgb *= 1. - pillOpacity * shadow * mix(.12, .30, pillLift);
     if (selected > 0.) {
-      // Magnify the same scene about the animated pill center, with its own rim.
+      // Magnify the captured scene directly about the animated pill center.
       vec2 pillRadial = pillAxis / pillRadius;
       vec2 lens = pos - pp * .36 - pillAxis * (.10 * dot(pillRadial, pillRadial));
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      vec3 selection = rim(transmit(backdrop(lens, .9), 1.) + .014, pillNormal, pillDepth);
+      vec3 selection = pillSurface(transmit(backdrop(lens, .9), 1.) + .014,
+                                   pillNormal, pillDepth, depth, pp.y / pillRadius);
       rgb = mix(rgb, selection, selected);
     }
   }
   color = vec4(rgb * coverage, coverage);
 }`;
 
-type Geometry = {bar:DOMRect; crop:Crop; pill:number[]; opacity:number; density:number};
+type Geometry = {bar:DOMRect; crop:Crop; pill:number[]; opacity:number; lift:number; density:number};
 
 function createRenderer(gl:WebGL2RenderingContext) {
   const program = gl.createProgram();
@@ -121,7 +143,8 @@ function createRenderer(gl:WebGL2RenderingContext) {
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   const uniform = (name:string)=>gl.getUniformLocation(program,name);
-  const size = uniform('size'), region = uniform('region'), pill = uniform('pill'), opacity = uniform('pillOpacity');
+  const size = uniform('size'), region = uniform('region'), pill = uniform('pill');
+  const opacity = uniform('pillOpacity'), lift = uniform('pillLift');
   let width = 0, height = 0;
   return {
     upload(canvas:HTMLCanvasElement) {
@@ -141,6 +164,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
       gl.uniform4f(region,(bar.x-crop.x)/crop.width,(bar.y-crop.y)/crop.height,1/crop.width,1/crop.height);
       gl.uniform4fv(pill,geometry.pill);
       gl.uniform1f(opacity,geometry.opacity);
+      gl.uniform1f(lift,geometry.lift);
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     },
   };
@@ -161,7 +185,10 @@ function geometryOf(element:HTMLElement):Geometry|null {
   const [scaleX,scaleY=scaleX] = style.scale==='none'?[1]:style.scale.split(' ').map(Number);
   const sx = bar.width/element.offsetWidth, sy = bar.height/element.offsetHeight;
   const pill = [(shiftX+(parseFloat(style.left)||0)+w/2)*sx,((parseFloat(style.top)||0)+h/2)*sy,w*scaleX*sx,h*scaleY*sy];
-  return {bar,crop:{x,y,width,height},pill,opacity:w&&h?Number(style.opacity):0,density:Math.min(1.5,devicePixelRatio)};
+  // Read the already-animated press area. Selection stretch peaks at 1.062.
+  // A held press and the stretched scrub both stay above 1.25.
+  const lift = Math.min(1, Math.max(0, (scaleX * scaleY - 1.07) / .18));
+  return {bar,crop:{x,y,width,height},pill,opacity:w&&h?Number(style.opacity):0,lift,density:Math.min(1.5,devicePixelRatio)};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */
@@ -226,7 +253,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     const {crop,density} = geometry;
     const anchor = root.getBoundingClientRect();
     const nextTexture = [anchor.x,anchor.y,crop.x,crop.y,crop.width,crop.height,density].join(',');
-    const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,...geometry.pill,geometry.opacity].join(',');
+    const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,...geometry.pill,geometry.opacity,geometry.lift].join(',');
     const changed = texture!==nextTexture || !!live;
     try {
       if (changed) {
