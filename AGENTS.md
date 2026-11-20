@@ -41,3 +41,15 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Take screenshots while you work, and paste them in the chat when your run finishes.
 - Liquid Glass is see-through and floats on top of the game. Never move, shrink or band off a game, scene or page to make room for glass controls (the game dock, tab bar, menu buttons). The scene runs underneath the glass. Only things the player must read or press keep clear of it, inside the game's own layout.
 - The notch, Dynamic Island and home indicator work the same way: backgrounds and scenes run to the screen edges, and only controls and essential text keep clear of them.
+
+## Simple code
+
+- Write the simplest code that solves the problem. Do not add layers, options or abstractions that the task does not need.
+- Before you finish, read your change again and check that it is the best solution to the problem. If a smaller or clearer solution exists, use it.
+- Delete code that your change makes unused.
+
+## How to write to the owner
+
+- Write about 80% of the way to ASD-STE100 Simplified Technical English (the plain English in aircraft maintenance manuals).
+- Use short sentences with one idea each. Use simple, common verbs and the active voice.
+- Do not use idioms, jargon or filler.
