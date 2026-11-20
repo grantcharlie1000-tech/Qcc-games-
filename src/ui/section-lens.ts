@@ -17,6 +17,9 @@ uniform vec4 region;
 uniform vec4 pill;
 uniform float pillOpacity;
 uniform float pillLift;
+uniform float pillMotion;
+uniform float drawPad;
+uniform float pillProjection;
 in vec2 unit;
 out vec4 color;
 
@@ -35,19 +38,27 @@ vec2 bendFace(vec2 pos) {
   float across2 = across * across;
   float cap = capsuleAxis(p, size).x / radius;
 
-  // Keep the middle close to its original scale and round the shoulders
-  // progressively. The cubic joins the straight section with zero slope.
-  float x = p.x - radius * (along * (.065 + .135 * across2) + .22 * cap * cap * cap);
+  // Keep the center nearly affine and grow the bend toward the upper and lower rim.
+  float rowBend = .08 + across2 * (.06 + .135 * across2);
+  float cap2 = cap * cap;
+  float shoulder = .35 * cap * cap2 * (1.5 - .5 * cap2);
+  float x = p.x - radius * (along * rowBend + shoulder);
   float column = x / (size.x * .5);
-  float y = p.y * (.89 - .10 * column * column - .08 * across2);
+  float y = p.y * (.83 - .12 * column * column - .08 * across2 * (1. + across2));
   return size * .5 + vec2(x, y);
 }
-vec3 backdrop(vec2 pos, float frost) {
+vec3 bodyFrost(vec2 pos) {
   vec2 uv = region.xy + pos * region.zw;
-  vec2 step = frost * region.zw;
-  return .60 * texture(scene, uv).rgb + .10 * (
-    texture(scene, uv + vec2(step.x, 0.)).rgb + texture(scene, uv - vec2(step.x, 0.)).rgb +
-    texture(scene, uv + vec2(0., step.y)).rgb + texture(scene, uv - vec2(0., step.y)).rgb);
+  // Stagger the RGB samples to soften edges across angles.
+  vec2 nearX = vec2(1.50, .65) * region.zw;
+  vec2 nearY = vec2(-.65, 1.50) * region.zw;
+  vec2 farX = vec2(1.15, 3.05) * region.zw;
+  vec2 farY = vec2(-3.05, 1.15) * region.zw;
+  vec3 nearSamples = texture(scene, uv + nearX).rgb + texture(scene, uv - nearX).rgb
+                   + texture(scene, uv + nearY).rgb + texture(scene, uv - nearY).rgb;
+  vec3 farSamples = texture(scene, uv + farX).rgb + texture(scene, uv - farX).rgb
+                  + texture(scene, uv + farY).rgb + texture(scene, uv - farY).rgb;
+  return .16 * texture(scene, uv).rgb + .105 * (nearSamples + farSamples);
 }
 vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   float luma = dot(rgb, vec3(.2126, .7152, .0722));
@@ -55,45 +66,54 @@ vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
   return mix(vec3(luma), rgb, 1.10) * exposure;
 }
-vec3 rim(vec3 rgb, vec2 normal, float depth) {
-  float light = dot(normal, vec2(-.42, -.91));
-  float key = smoothstep(-.08, .98, light);
-  float line = 1. - smoothstep(.35, 1.45, depth);
-  float sheen = (1. - smoothstep(.6, 4., depth)) * key;
-  float shade = (1. - smoothstep(1., 4., depth)) * max(0., -light);
-  return mix(rgb * (1. - .12 * shade), vec3(1.), (.09 + .49 * key) * line + .11 * sheen);
+vec3 glassColor(vec2 pos) {
+  return transmit(bodyFrost(pos), .98, .66);
 }
-vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float y) {
-  float upper = 1. - smoothstep(-.65, .60, y);
-  float veil = mix(.055, .125, pillLift) + .10 * upper;
-  vec3 face = mix(sceneColor, vec3(.52, .59, .62), veil);
-
-  // A single lit bevel. Where the two silhouettes approach, the body owns the rim.
+vec3 rim(vec3 rgb, vec2 normal, float depth) {
+  // C30's top and bottom specular edges, shaped by the capsule normal.
+  float top = max(0., dot(normal, vec2(-.30, -.95)));
+  float bottom = max(0., normal.y);
+  float line = 1. - smoothstep(.3, 1.45, depth);
+  return mix(rgb, vec3(1.), (.10 + .55 * top + .25 * bottom) * line);
+}
+vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y) {
+  // Give the inset and exposed outline a bevel, and fade it at the join.
   float clearance = smoothstep(1., 4.5, barDepth - max(0., pillDepth));
-  float key = smoothstep(.05, .95, dot(normal, vec2(-.35, -.94)));
-  float bevel = (1. - smoothstep(0., mix(4., 6., pillLift), pillDepth)) * key * clearance;
-  face = mix(face, vec3(.88, .94, 1.), bevel * mix(.31, .42, pillLift));
-
-  float underside = (1. - smoothstep(.1, 4., pillDepth)) * max(0., normal.y);
-  return face * (1. - mix(.085, .13, pillLift) * underside);
+  clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
+  float top = max(0., dot(normal, vec2(-.30, -.95)));
+  float bottom = max(0., normal.y);
+  float line = 1. - smoothstep(.2, mix(1.25, 2.4, pillLift), pillDepth);
+  float specular = mix(.22, .75, pillLift) * top + mix(0., .28, pillLift) * bottom;
+  float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom);
+  float inset = (1. - pillLift) * (.055 + .065 * smoothstep(-.5, .8, y));
+  vec3 face = sceneColor * (1. - inset - .13 * shade * clearance);
+  return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {
-  vec2 pos = unit * size;
+  vec2 pos = unit * (size + 2. * drawPad) - drawPad;
   vec2 p = pos - size * .5;
   vec2 axis = capsuleAxis(p, size);
   float radius = capsuleRadius(size);
   float depth = radius - length(axis);
   float coverage = smoothstep(-.5, .5, depth);
+
+  vec2 pp = pos - pill.xy;
+  vec2 pillAxis = capsuleAxis(pp, pill.zw);
+  float pillRadius = capsuleRadius(pill.zw);
+  float pillDepth = pillRadius - length(pillAxis);
+  float selected = pillOpacity * smoothstep(-.5, .5, pillDepth);
+  float liftEdge = smoothstep(0., .25, pillProjection);
+  if (coverage <= 0. && selected * liftEdge <= 0.) {
+    color = vec4(0.);
+    return;
+  }
+
   vec2 normal = axis / max(length(axis), .001);
   vec2 body = bendFace(pos);
-  vec3 rgb = rim(transmit(backdrop(body, .85), .98, .66), normal, depth);
+  vec3 bodyColor = glassColor(body);
+  vec3 rgb = rim(bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
-    vec2 pp = pos - pill.xy;
-    vec2 pillAxis = capsuleAxis(pp, pill.zw);
-    float pillRadius = capsuleRadius(pill.zw);
-    float pillDepth = pillRadius - length(pillAxis);
-    float selected = pillOpacity * smoothstep(-.5, .5, pillDepth);
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
     vec2 shadowPos = pp - vec2(0., mix(1.25, 3.5, pillLift));
     float shadowDepth = pillRadius - length(capsuleAxis(shadowPos, pill.zw));
@@ -101,19 +121,31 @@ void main() {
                    * smoothstep(-.15, .60, pp.y / pillRadius);
     rgb *= 1. - pillOpacity * shadow * mix(.12, .30, pillLift);
     if (selected > 0.) {
-      // Magnify the captured scene directly about the animated pill center.
-      vec2 pillRadial = pillAxis / pillRadius;
-      vec2 lens = pos - pp * .36 - pillAxis * (.10 * dot(pillRadial, pillRadial));
+      // A settled selection uses the exact same scene sample as the bar.
+      vec3 selectionColor = bodyColor;
+      if (pillMotion > 0.) {
+        vec2 radial = pillAxis / pillRadius;
+        vec2 warped = pos - pp * .29 - pillAxis * (.19 + .155 * dot(radial, radial));
+        selectionColor = glassColor(mix(body, warped, pillMotion));
+      }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      vec3 selection = pillSurface(transmit(backdrop(lens, .9), 1., 1.30) + .014,
-                                   pillNormal, pillDepth, depth, pp.y / pillRadius);
-      rgb = mix(rgb, selection, selected);
+      vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius);
+
+      // The selected surface owns the covered rim. Blend coverage in
+      // premultiplied alpha so the two outlines meet as one contour.
+      float bodyWeight = coverage * (1. - selected);
+      float pillWeight = selected * mix(coverage, 1., liftEdge);
+      color = vec4(bodyWeight * rgb + pillWeight * selection, bodyWeight + pillWeight);
+      return;
     }
   }
   color = vec4(rgb * coverage, coverage);
 }`;
 
-type Geometry = {bar:DOMRect; crop:Crop; pill:number[]; opacity:number; lift:number; density:number};
+type Geometry = {
+  bar:DOMRect; crop:Crop; pill:number[]; opacity:number; lift:number;
+  motion:number; pad:number; projection:number; density:number;
+};
 
 function createRenderer(gl:WebGL2RenderingContext) {
   const program = gl.createProgram();
@@ -138,6 +170,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
   const uniform = (name:string)=>gl.getUniformLocation(program,name);
   const size = uniform('size'), region = uniform('region'), pill = uniform('pill');
   const opacity = uniform('pillOpacity'), lift = uniform('pillLift');
+  const motion = uniform('pillMotion'), drawPad = uniform('drawPad'), projection = uniform('pillProjection');
   let width = 0, height = 0;
   return {
     upload(canvas:HTMLCanvasElement) {
@@ -158,19 +191,27 @@ function createRenderer(gl:WebGL2RenderingContext) {
       gl.uniform4fv(pill,geometry.pill);
       gl.uniform1f(opacity,geometry.opacity);
       gl.uniform1f(lift,geometry.lift);
+      gl.uniform1f(motion,geometry.motion);
+      gl.uniform1f(drawPad,geometry.pad);
+      gl.uniform1f(projection,geometry.projection);
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     },
   };
 }
 
-function geometryOf(element:HTMLElement):Geometry|null {
+function smoothstep(value:number) {
+  const t = Math.min(1,Math.max(0,value));
+  return t * t * (3 - 2 * t);
+}
+
+function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
   // The field bends inward. A small margin retains frost taps and edge antialiasing.
-  const pad = 8;
-  const x = Math.max(0,Math.floor(bar.left)-pad), y = Math.max(0,Math.floor(bar.top)-pad);
-  const width = Math.min(innerWidth,Math.ceil(bar.right)+pad)-x;
-  const height = Math.min(innerHeight,Math.ceil(bar.bottom)+pad)-y;
+  const cropPad = 8;
+  const x = Math.max(0,Math.floor(bar.left)-cropPad), y = Math.max(0,Math.floor(bar.top)-cropPad);
+  const width = Math.min(innerWidth,Math.ceil(bar.right)+cropPad)-x;
+  const height = Math.min(innerHeight,Math.ceil(bar.bottom)+cropPad)-y;
   if (width<=0 || height<=0) return null;
   const style = getComputedStyle(element,'::after');
   const w = parseFloat(style.width)||0, h = parseFloat(style.height)||0;
@@ -181,7 +222,31 @@ function geometryOf(element:HTMLElement):Geometry|null {
   // Read the already-animated press area. Selection stretch peaks at 1.062.
   // A held press and the stretched scrub both stay above 1.25.
   const lift = Math.min(1, Math.max(0, (scaleX * scaleY - 1.07) / .18));
-  return {bar,crop:{x,y,width,height},pill,opacity:w&&h?Number(style.opacity):0,lift,density:Math.min(1.5,devicePixelRatio)};
+  const opacity = w&&h?Number(style.opacity):0;
+  const [cx,cy,pillWidth,pillHeight] = pill;
+  // Leave room for the adjacent menu even when a scrub reaches the outer tab.
+  const sideRoom = Math.min(cx,bar.width-cx) + 6 - pillWidth/2;
+  const expanded = opacity > 0 && bar.width >= 2 * bar.height &&
+    element.dataset.hidden !== 'true' && element.dataset.minimized !== 'true';
+  // Use the animated scale through release as well as during the press.
+  const projection = expanded ? smoothstep(lift) * smoothstep(sideRoom/2) : 0;
+  const settledX = (parseFloat(style.getPropertyValue('--ui-pill-x')) || 0) -
+    (parseFloat(style.getPropertyValue('--section-pill-bleed')) || 0);
+  // Transition progress comes from the resolved pseudo-element geometry, so
+  // release and selection slides return to zero without an extra clock.
+  const travel = Math.abs(shiftX-settledX);
+  const scale = Math.max(Math.abs(scaleX-1),Math.abs(scaleY-1));
+  const moving = expanded && (pillAnimating || element.hasAttribute('data-pressing'));
+  const motion = moving ? Math.min(1,Math.max(lift,travel/24,scale*7)) : 0;
+  const stretch = Math.min(1,Math.max(0,(1.14-scaleY)/.16));
+  const drawnPill = projection > 0 ? [
+    cx,
+    cy + projection * (bar.height/2 - cy),
+    pillWidth + projection * Math.min(8,2*sideRoom),
+    pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
+  ] : pill;
+  const pad = projection > 0 ? 8 : 0;
+  return {bar,crop:{x,y,width,height},pill:drawnPill,opacity,lift,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */
@@ -237,16 +302,19 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
       listenToSource(null);
       return;
     }
-    const geometry = geometryOf(bar);
+    const animations = bar.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
+    const pillAnimating = animations.some(animation=>(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after');
+    const geometry = geometryOf(bar,pillAnimating);
     if (!geometry) {
       fallback();
       listenToSource(null);
       return;
     }
-    const {crop,density} = geometry;
+    const {crop,density,pad} = geometry;
     const anchor = root.getBoundingClientRect();
     const nextTexture = [anchor.x,anchor.y,crop.x,crop.y,crop.width,crop.height,density].join(',');
-    const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,...geometry.pill,geometry.opacity,geometry.lift].join(',');
+    const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,
+      ...geometry.pill,geometry.opacity,geometry.lift,geometry.motion,pad,geometry.projection].join(',');
     const changed = texture!==nextTexture || !!live;
     try {
       if (changed) {
@@ -278,7 +346,11 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
       if (!textureReady || !gpu) {
         fallback();
       } else if (changed || rendered!==nextRender || canvas.parentElement!==bar) {
-        const width = Math.ceil(geometry.bar.width*density), height = Math.ceil(geometry.bar.height*density);
+        // Match the viewport pad to each axis of the CSS box.
+        canvas.style.setProperty('--section-lens-pad-x',pad ? `${100*pad/geometry.bar.width}%` : '');
+        canvas.style.setProperty('--section-lens-pad-y',pad ? `${100*pad/geometry.bar.height}%` : '');
+        const width = Math.ceil((geometry.bar.width+2*pad)*density);
+        const height = Math.ceil((geometry.bar.height+2*pad)*density);
         if (canvas.width!==width || canvas.height!==height) {
           canvas.width = renderCanvas.width = width;
           canvas.height = renderCanvas.height = height;
@@ -301,7 +373,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
       // readable scene into view. Other setup or GPU errors leave CSS in charge.
       unavailable = !(error instanceof DOMException && error.name==='SecurityError') && !gl?.isContextLost();
     }
-    if (bar.getAnimations({subtree:true}).some(animation=>animation.playState==='running')) schedule();
+    if (animations.length) schedule();
   };
 
   const resize = new ResizeObserver(invalidate);
