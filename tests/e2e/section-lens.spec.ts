@@ -81,6 +81,27 @@ test('section lens ignores game mutations and resumes live sampling at the resto
   await expect.poll(async()=>{const [r,g]=await colour();return g-r;}).toBeGreaterThan(80);
 });
 
+test('the selected ink has a thin outline over bright live glass',async({page})=>{
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await page.locator('.game-grid').evaluate(grid=>{
+    const patch=document.createElement('div');
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:#aaa;pointer-events:none';
+    grid.append(patch);
+  });
+  const canvas=bar.locator('canvas.section-lens');
+  await expect.poll(()=>canvas.evaluate(element=>{
+    const surface=element as HTMLCanvasElement;
+    return surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data[0];
+  })).toBeGreaterThan(110);
+
+  const selected=bar.getByRole('link',{name:'Games',exact:true});
+  await expect(selected).toHaveAttribute('aria-current','page');
+  await expect(selected.locator('.ui-icon')).toHaveCSS('filter',/drop-shadow\(.*0\.85/);
+  await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
+});
+
 test('section lens falls back on context loss',async({page})=>{
   await page.addInitScript(()=>{
     const getContext=HTMLCanvasElement.prototype.getContext;

@@ -46,9 +46,18 @@
 .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
   --section-pill-accent:#ff8ca7;
   --glass-icon-ink:var(--section-pill-accent);
+  --section-pill-ink-halo:rgb(0 0 0 / .85);
+}
+/* Keep the C30 accents readable even over bright live artwork. */
+.section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
+  filter:drop-shadow(1px 0 0 var(--section-pill-ink-halo)) drop-shadow(-1px 0 0 var(--section-pill-ink-halo))
+         drop-shadow(0 1px 0 var(--section-pill-ink-halo)) drop-shadow(0 -1px 0 var(--section-pill-ink-halo));
 }
 .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
   color:color-mix(in srgb,var(--section-pill-accent) 62%,white);
+  paint-order:normal;
+  text-shadow:1px 0 var(--section-pill-ink-halo),-1px 0 var(--section-pill-ink-halo),
+              0 1px var(--section-pill-ink-halo),0 -1px var(--section-pill-ink-halo);
 }
 @media(prefers-color-scheme:dark){
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
