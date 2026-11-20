@@ -47,3 +47,9 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Write the simplest code that solves the problem. Do not add layers, options or abstractions that the task does not need.
 - Before you finish, read your change again and check that it is the best solution to the problem. If a smaller or clearer solution exists, use it.
 - Delete code that your change makes unused.
+
+## How to write to the owner
+
+- Write about 80% of the way to ASD-STE100 Simplified Technical English (the plain English in aircraft maintenance manuals).
+- Use short sentences with one idea each. Use simple, common verbs and the active voice.
+- Do not use idioms, jargon or filler.
