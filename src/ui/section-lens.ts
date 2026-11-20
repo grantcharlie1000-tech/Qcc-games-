@@ -30,23 +30,16 @@ vec2 capsuleAxis(vec2 p, vec2 bounds) {
 vec2 bendFace(vec2 pos) {
   vec2 p = pos - size * .5;
   float radius = capsuleRadius(size);
-  float spread = max(size.x * .275, radius * 1.7);
+  float along = p.x / (size.x * .5);
   float across = p.y / radius;
   float across2 = across * across;
-  float edge = across2 / (.25 + across2);
-
-  // Round the face by pulling each row inward more as it nears the rim.
-  // The squared cap offset joins the straight section with zero slope.
-  float along = p.x / spread;
   float cap = capsuleAxis(p, size).x / radius;
-  float x = p.x - radius * (along * inversesqrt(1. + along * along) * (.10 + .81 * edge)
-                            + .46 * cap * abs(cap) / (1. + abs(cap)));
 
-  // Bend columns at the already-projected x. The two passes are monotone
-  // along their respective axes, so their composition cannot fold.
-  float column = x / spread;
-  float column2 = column * column;
-  float y = p.y * (1. - .28 - .26 * column2 / (.40 + column2) - .08 * edge);
+  // Keep the middle close to its original scale and round the shoulders
+  // progressively. The cubic joins the straight section with zero slope.
+  float x = p.x - radius * (along * (.065 + .135 * across2) + .22 * cap * cap * cap);
+  float column = x / (size.x * .5);
+  float y = p.y * (.89 - .10 * column * column - .08 * across2);
   return size * .5 + vec2(x, y);
 }
 vec3 backdrop(vec2 pos, float frost) {
@@ -56,10 +49,10 @@ vec3 backdrop(vec2 pos, float frost) {
     texture(scene, uv + vec2(step.x, 0.)).rgb + texture(scene, uv - vec2(step.x, 0.)).rgb +
     texture(scene, uv + vec2(0., step.y)).rgb + texture(scene, uv - vec2(0., step.y)).rgb);
 }
-vec3 transmit(vec3 rgb, float transmission) {
+vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   float luma = dot(rgb, vec3(.2126, .7152, .0722));
   // Keep the color of dark art and soften bright detail behind the white controls.
-  float exposure = transmission / (1. + 1.30 * max(0., luma - .27));
+  float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
   return mix(vec3(luma), rgb, 1.10) * exposure;
 }
 vec3 rim(vec3 rgb, vec2 normal, float depth) {
@@ -93,7 +86,7 @@ void main() {
   float coverage = smoothstep(-.5, .5, depth);
   vec2 normal = axis / max(length(axis), .001);
   vec2 body = bendFace(pos);
-  vec3 rgb = rim(transmit(backdrop(body, 1.45), .94), normal, depth);
+  vec3 rgb = rim(transmit(backdrop(body, .85), .98, .66), normal, depth);
 
   if (pillOpacity > 0.) {
     vec2 pp = pos - pill.xy;
@@ -112,7 +105,7 @@ void main() {
       vec2 pillRadial = pillAxis / pillRadius;
       vec2 lens = pos - pp * .36 - pillAxis * (.10 * dot(pillRadial, pillRadial));
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      vec3 selection = pillSurface(transmit(backdrop(lens, .9), 1.) + .014,
+      vec3 selection = pillSurface(transmit(backdrop(lens, .9), 1., 1.30) + .014,
                                    pillNormal, pillDepth, depth, pp.y / pillRadius);
       rgb = mix(rgb, selection, selected);
     }
