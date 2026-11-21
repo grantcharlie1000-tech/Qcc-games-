@@ -138,7 +138,8 @@ void main() {
   // bends it along the curve, while the centre stays flat under the grey frost.
   float band = 1. - smoothstep(0., 12., depth);
   vec2 bent = body + normal * 12. * band * band;
-  vec3 rgb = rim(band > 0. ? mix(vec3(.24), glassColor(bent, 1.), .8) : bodyColor, normal, depth);
+  // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
+  vec3 rgb = rim(band > 0. ? mix(vec3(.24), glassColor(bent, mix(1.8, 1., band)), .8) : bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
