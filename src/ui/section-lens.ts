@@ -79,7 +79,7 @@ out vec4 color;
 // colours behind the bar stay quiet. Its tone still follows the scene, so a bright backdrop
 // lifts the bar as before. Motion clears it toward the lens.
 vec3 smoked(vec3 frosted, float motion) {
-  vec3 neutral = mix(vec3(dot(frosted, vec3(.2126, .7152, .0722))), frosted, mix(.62, 1., motion));
+  vec3 neutral = mix(vec3(dot(frosted, vec3(.2126, .7152, .0722))), frosted, mix(.86, 1., motion));
   return mix(vec3(.24), neutral, mix(.8, 1., motion));
 }
 float capsuleRadius(vec2 bounds) {
