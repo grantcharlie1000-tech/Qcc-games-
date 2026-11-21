@@ -191,6 +191,21 @@ test('section lens stays inside the bar on first press and rises only with drag 
   expect(await raised()).toBe('');
   await page.mouse.move(x+138,y,{steps:4});
   await expect.poll(raised).not.toBe('');
+  await page.waitForTimeout(400);
+  // Like the owner's thumb, the raised lens stays inset in the bar: the padded rows above
+  // the bar stay clear over the lens, where a lifted lens would overhang.
+  const overhang=await canvas.evaluate((element,lensX)=>{
+    const surface=element as HTMLCanvasElement, rect=surface.getBoundingClientRect();
+    const bar=surface.parentElement!.getBoundingClientRect();
+    const scale=surface.width/rect.width, column=Math.round((lensX-rect.left)*scale);
+    const rows=Math.floor((bar.top-rect.top)*scale)-1;
+    const alpha=surface.getContext('2d')!.getImageData(column-20,0,41,rows).data;
+    let max=0;
+    for(let i=3;i<alpha.length;i+=4)max=Math.max(max,alpha[i]);
+    return {rows,max};
+  },x+138);
+  expect(overhang.rows).toBeGreaterThan(6);
+  expect(overhang.max).toBe(0);
   await page.mouse.move(x+4,y,{steps:4});
   await page.mouse.up();
   await expect.poll(raised).toBe('');
