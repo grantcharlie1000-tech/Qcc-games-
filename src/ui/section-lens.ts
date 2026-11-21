@@ -101,7 +101,7 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   specular += smoke * .24 * bottom;
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
   // press: the tone follows the average scene under it, so no art, dome or ring shows.
-  face = mix(face, vec3(milkTone), .95 * pillPress);
+  face = mix(face, vec3(milkTone), .985 * pillPress);
   // The raised lens catches a little light so it stays apart from the bar over dark dividers.
   face = mix(face, vec3(.86), .09 * pillLift);
   // Like the owner's dragged thumb, it darkens toward its refractive edge.
@@ -168,7 +168,7 @@ void main() {
           vec2 tap = vec2(float(i % 3) - 1., float(i / 3) - 1.) * vec2(.32, .26) * pill.zw;
           milkTone += dot(glassColor(pill.xy + tap, 1.), vec3(.2126, .7152, .0722));
         }
-        milkTone = .38 + .62 * milkTone / 9.;
+        milkTone = .62 + .4 * milkTone / 9.;
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
