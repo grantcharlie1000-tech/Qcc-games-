@@ -71,6 +71,8 @@ uniform float pillMotion;
 uniform float drawPad;
 uniform float pillProjection;
 ${GLASS}
+// The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
+const float RIM_SLACK = 2.;
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -201,7 +203,16 @@ void main() {
         // compresses hard and bends along the rim while the face inside it stays flat.
         float bevel = min(12., .45 * pillRadius);
         float edge = clamp(1. - pillDepth / bevel, 0., .985);
-        vec2 warped = samplePill.xy + pp / 1.36 + outward * bevel * 2.6 * (1. - sqrt(1. - edge * edge));
+        // The rim's furthest sample must stay inside the backdrop crop, or CLAMP_TO_EDGE repeats
+        // its edge column as a streak. Where the viewport clips the crop (an outer tab, the
+        // screen bottom), scale the whole rim push down for this frame, the same at every
+        // pixel, so the mapping never folds and the edge is never sampled.
+        float reach = bevel * 2.6 * (1. - sqrt(1. - .985 * .985));
+        vec2 lo = -region.xy / region.zw + RIM_SLACK, hi = (1. - region.xy) / region.zw - RIM_SLACK;
+        vec2 core = pill.zw * .5 / 1.36;
+        vec2 room = min(samplePill.xy - core - lo, hi - samplePill.xy - core);
+        vec2 fit = clamp(room / max(reach, .001), 0., 1.);
+        vec2 warped = samplePill.xy + pp / 1.36 + outward * fit * reach * (1. - sqrt(1. - edge * edge)) / (1. - sqrt(1. - .985 * .985));
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), pillMotion);
@@ -289,8 +300,10 @@ function smoothstep(value:number) {
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
-  // The field bends inward. The margin holds the rim band's outer sample and the frost taps.
-  const cropPad = 14;
+  // The field bends inward. The margin holds the dragged lens's furthest rim sample (about
+  // 24 px past the bar over an outer tab) and the frost taps; the shader caps it where the
+  // viewport clips this margin.
+  const cropPad = 28;
   const x = Math.max(0,Math.floor(bar.left)-cropPad), y = Math.max(0,Math.floor(bar.top)-cropPad);
   const width = Math.min(innerWidth,Math.ceil(bar.right)+cropPad)-x;
   const height = Math.min(innerHeight,Math.ceil(bar.bottom)+cropPad)-y;
