@@ -63,6 +63,10 @@
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
     --section-pill-accent:#0099ff;
   }
+  /* C30 dark archive: every tab shows its 24px filled glyph, not the 16px outline. */
+  .section-tabbar[data-section-lens=webgl] .ui-tab .ui-icon{width:24px;height:24px}
+  .section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-line{display:none}
+  .section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-fill{display:inline}
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
     color:var(--section-pill-accent);
   }
