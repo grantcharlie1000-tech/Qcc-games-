@@ -233,16 +233,17 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
   float line = 1. - smoothstep(.2, mix(1.85, 1.6, pillLift), pillDepth);
-  // A held press keeps only a faint edge so the thumb reads as one milky piece, not a ring.
-  // The raised slab catches a crisp top highlight; its lower edge keeps only a hairline.
-  float specular = mix(.06 + .36 * top + .13 * bottom, .62 * top * top + .05 * bottom, pillLift) * (1. - .8 * pillPress);
+  // Like Apple Music's selected tab, the resting pill has no lit rim of its own: its edge
+  // reads only as the change in tone. A held press keeps only a faint edge so the thumb reads
+  // as one milky piece, not a ring. The raised slab catches a crisp top highlight; its lower
+  // edge keeps only a hairline.
+  float specular = mix((.06 + .36 * top + .13 * bottom) * pillPress, .62 * top * top + .05 * bottom, pillLift) * (1. - .8 * pillPress);
   // The raised lens keeps its lower bevel light so no dark seam forms under the art.
   float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift) * (1. - pillPress);
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
-  // The dark theme's resting selection is a smoked capsule, as in C30, with a crisp lower rim.
+  // The dark theme's resting selection is a smoked capsule, as in C30.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
   vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .20 * smoke);
-  specular += smoke * .24 * bottom;
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
   // press: the tone follows the average scene under it, so no art or dome shows. Like the
   // owner's thumb it is milky glass, not paint: a hairline catches the light at the rim and
