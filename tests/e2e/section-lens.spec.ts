@@ -172,3 +172,25 @@ test('section lens keeps Movies art visible through CSS fallback',async({browser
     return style.display!=='none' && style.visibility==='visible' && !!filter && filter!=='none';
   }))).toBe(true);
 });
+
+test('section lens stays inside the bar on first press and rises only with drag travel',async({page})=>{
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  const canvas=bar.locator('canvas.section-lens');
+  // The surface grows past the bar only while the raised lens is drawn.
+  const raised=()=>canvas.evaluate(element=>(element as HTMLCanvasElement).style.getPropertyValue('--section-lens-pad-x'));
+  const box=(await bar.getByRole('link',{name:'Games',exact:true}).boundingBox())!;
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await expect(bar).toHaveAttribute('data-pressing','');
+  await page.waitForTimeout(300);
+  expect(await raised()).toBe('');
+  await page.mouse.move(x+138,y,{steps:4});
+  await expect.poll(raised).not.toBe('');
+  await page.mouse.move(x+4,y,{steps:4});
+  await page.mouse.up();
+  await expect.poll(raised).toBe('');
+  await expect(bar.getByRole('link',{name:'Games',exact:true})).toHaveAttribute('aria-current','page');
+});
