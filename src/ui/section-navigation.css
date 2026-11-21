@@ -34,7 +34,8 @@
 .section-tabbar .ui-tab{touch-action:pan-y pinch-zoom}
 .section-tabbar.ui-tabbar::after{
   --section-pill-bleed:2px;
-  top:7px;bottom:7px;
+  /* Apple Music's selected tab fills its bar but for about 4.5px above and below (.85 of the height). */
+  top:4.5px;bottom:4.5px;
   width:calc(var(--ui-pill-w, 0px) + 2 * var(--section-pill-bleed));
   translate:calc(var(--ui-pill-x, 0px) - var(--section-pill-bleed)) 0;
   transition-duration:240ms,240ms,120ms;
