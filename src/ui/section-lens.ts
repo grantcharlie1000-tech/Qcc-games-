@@ -138,7 +138,7 @@ void main() {
   // A thin band at the rim refracts while the centre stays flat: it mirrors what
   // lies past the top edge and stretches what lies just inside the lower edge.
   float band = 1. - smoothstep(1., 10., depth);
-  float reach = mix(.42, 2.25, smoothstep(.35, -.35, normal.y));
+  float reach = mix(.42, 2.25, 1. - smoothstep(-.35, .35, normal.y));
   vec2 edgeSample = mix(body, pos + normal * max(depth, 0.) * reach, band);
   vec3 rgb = rim(band > 0. ? glassColor(edgeSample, .6, 0.) : bodyColor, normal, depth);
 
