@@ -146,8 +146,8 @@ void main() {
   vec2 pillAxis = capsuleAxis(pp, pill.zw);
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
-  // The pressed thumb and the raised lens have soft outlines, not a hard ring.
-  float soft = .5 + 1.2 * pillLift + 1.4 * pillPress;
+  // The pressed thumb has a soft outline; the raised slab keeps a crisp glass edge.
+  float soft = .5 + .2 * pillLift + 1.4 * pillPress;
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
@@ -187,7 +187,7 @@ void main() {
         // compresses hard and bends along the rim while the face inside it stays flat.
         float bevel = min(8., .32 * pillRadius);
         float edge = clamp(1. - pillDepth / bevel, 0., .985);
-        vec2 warped = samplePill.xy + pp / 1.3 + outward * bevel * 2.4 * (1. - sqrt(1. - edge * edge));
+        vec2 warped = samplePill.xy + pp / 1.3 + outward * bevel * 3.2 * (1. - sqrt(1. - edge * edge));
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         selectionColor = mix(vec3(.24), glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), mix(.8, 1., pillMotion));
