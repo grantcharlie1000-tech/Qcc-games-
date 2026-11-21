@@ -1,0 +1,61 @@
+name: Android debug APK (Capacitor)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/android-debug.yml'
+      - 'capacitor.config.json'
+      - 'docs/ANDROID.md'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'public/**'
+      - 'vite.config.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      # Ubuntu GitHub-hosted runners already include Android SDK command-line tools.
+      # setup-android@v3 tries to install retired `sdkmanager tools` and fails.
+      - name: Install project dependencies
+        run: npm ci
+      - name: Build and verify web bundle
+        run: npm run build
+      # Bootstrap only: these temporary, version-matched dependencies do not
+      # change the website lockfile. Pin in package-lock for production.
+      - name: Install Capacitor 8 toolchain
+        run: npm install --no-save --package-lock=false @capacitor/core@8.6.0 @capacitor/cli@8.6.0 @capacitor/android@8.6.0
+      - name: Install Android SDK 36
+        run: sdkmanager --install 'platforms;android-36'
+      - name: Generate and sync Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Assemble unsigned-for-release debug APK
+        working-directory: android
+        run: bash ./gradlew assembleDebug --no-daemon
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: qcc-games-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
