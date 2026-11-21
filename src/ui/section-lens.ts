@@ -15,6 +15,7 @@ uniform sampler2D scene;
 uniform vec2 size;
 uniform vec4 region;
 uniform vec4 pill;
+uniform vec4 samplePill;
 uniform float pillOpacity;
 uniform float pillLift;
 uniform float pillMotion;
@@ -47,13 +48,14 @@ vec2 bendFace(vec2 pos) {
   float y = p.y * (.83 - .12 * column * column - .08 * across2 * (1. + across2));
   return size * .5 + vec2(x, y);
 }
-vec3 bodyFrost(vec2 pos) {
+vec3 frost(vec2 pos, float spread) {
   vec2 uv = region.xy + pos * region.zw;
   // Stagger the RGB samples to soften edges across angles.
-  vec2 nearX = vec2(1.50, .65) * region.zw;
-  vec2 nearY = vec2(-.65, 1.50) * region.zw;
-  vec2 farX = vec2(1.15, 3.05) * region.zw;
-  vec2 farY = vec2(-3.05, 1.15) * region.zw;
+  vec2 tapScale = region.zw * spread;
+  vec2 nearX = vec2(1.50, .65) * tapScale;
+  vec2 nearY = vec2(-.65, 1.50) * tapScale;
+  vec2 farX = vec2(1.15, 3.05) * tapScale;
+  vec2 farY = vec2(-3.05, 1.15) * tapScale;
   vec3 nearSamples = texture(scene, uv + nearX).rgb + texture(scene, uv - nearX).rgb
                    + texture(scene, uv + nearY).rgb + texture(scene, uv - nearY).rgb;
   vec3 farSamples = texture(scene, uv + farX).rgb + texture(scene, uv - farX).rgb
@@ -66,8 +68,8 @@ vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
   return mix(vec3(luma), rgb, 1.10) * exposure;
 }
-vec3 glassColor(vec2 pos) {
-  return transmit(bodyFrost(pos), .98, .66);
+vec3 glassColor(vec2 pos, float spread) {
+  return transmit(frost(pos, spread), .98, .66);
 }
 vec3 rim(vec3 rgb, vec2 normal, float depth) {
   // C30's top and bottom specular edges, shaped by the capsule normal.
@@ -110,7 +112,7 @@ void main() {
 
   vec2 normal = axis / max(length(axis), .001);
   vec2 body = bendFace(pos);
-  vec3 bodyColor = glassColor(body);
+  vec3 bodyColor = glassColor(body, 1.);
   vec3 rgb = rim(bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
@@ -124,9 +126,17 @@ void main() {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
       if (pillMotion > 0.) {
-        vec2 radial = pillAxis / pillRadius;
-        vec2 warped = pos - pp * .29 - pillAxis * (.19 + .155 * dot(radial, radial));
-        selectionColor = glassColor(mix(body, warped, pillMotion));
+        // Project the visible capsule into the active lens's sampling footprint.
+        vec2 sampleOffset = pp / pill.zw * samplePill.zw;
+        vec2 sampleAxis = capsuleAxis(sampleOffset, samplePill.zw);
+        vec2 radial = sampleAxis / capsuleRadius(samplePill.zw);
+        vec2 focused = .71 * sampleOffset - sampleAxis * (.19 + .155 * dot(radial, radial));
+        // Keep the exposed crest focused on the scene under the bar. The side and
+        // lower bevels draw detail in from the outer part of the same footprint.
+        float bevel = smoothstep(.55, .98, length(radial)) * smoothstep(-1., -.4, radial.y);
+        vec2 warped = samplePill.xy + mix(focused, sampleOffset, bevel);
+        // Keep color edges legible after the lens magnifies the frosted scene.
+        selectionColor = glassColor(mix(body, warped, pillMotion), mix(1., .67, pillMotion));
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius);
@@ -143,7 +153,7 @@ void main() {
 }`;
 
 type Geometry = {
-  bar:DOMRect; crop:Crop; pill:number[]; opacity:number; lift:number;
+  bar:DOMRect; crop:Crop; pill:number[]; samplePill:number[]; opacity:number; lift:number;
   motion:number; pad:number; projection:number; density:number;
 };
 
@@ -169,6 +179,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   const uniform = (name:string)=>gl.getUniformLocation(program,name);
   const size = uniform('size'), region = uniform('region'), pill = uniform('pill');
+  const samplePill = uniform('samplePill');
   const opacity = uniform('pillOpacity'), lift = uniform('pillLift');
   const motion = uniform('pillMotion'), drawPad = uniform('drawPad'), projection = uniform('pillProjection');
   let width = 0, height = 0;
@@ -189,6 +200,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
       gl.uniform2f(size,bar.width,bar.height);
       gl.uniform4f(region,(bar.x-crop.x)/crop.width,(bar.y-crop.y)/crop.height,1/crop.width,1/crop.height);
       gl.uniform4fv(pill,geometry.pill);
+      gl.uniform4fv(samplePill,geometry.samplePill);
       gl.uniform1f(opacity,geometry.opacity);
       gl.uniform1f(lift,geometry.lift);
       gl.uniform1f(motion,geometry.motion);
@@ -239,14 +251,23 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
   const moving = expanded && (pillAnimating || element.hasAttribute('data-pressing'));
   const motion = moving ? Math.min(1,Math.max(lift,travel/24,scale*7)) : 0;
   const stretch = Math.min(1,Math.max(0,(1.14-scaleY)/.16));
-  const drawnPill = projection > 0 ? [
+  // Keep the active sample centered on the bar as the visible capsule flattens and rises.
+  const samplePill = projection > 0 ? [
     cx,
     cy + projection * (bar.height/2 - cy),
     pillWidth + projection * Math.min(8,2*sideRoom),
     pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
   ] : pill;
+  const raisedHeight = bar.height - 8;
+  const raisedWidth = Math.min(pillWidth + 2 * sideRoom, Math.max(pillWidth, raisedHeight * (1.36 + .29 * stretch)));
+  const drawnPill = projection > 0 ? [
+    cx,
+    cy + projection * (raisedHeight/2 - 2.5 - cy),
+    pillWidth + projection * (raisedWidth - pillWidth),
+    pillHeight + projection * (raisedHeight - pillHeight),
+  ] : pill;
   const pad = projection > 0 ? 8 : 0;
-  return {bar,crop:{x,y,width,height},pill:drawnPill,opacity,lift,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
+  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */
@@ -314,7 +335,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     const anchor = root.getBoundingClientRect();
     const nextTexture = [anchor.x,anchor.y,crop.x,crop.y,crop.width,crop.height,density].join(',');
     const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,
-      ...geometry.pill,geometry.opacity,geometry.lift,geometry.motion,pad,geometry.projection].join(',');
+      ...geometry.pill,...geometry.samplePill,geometry.opacity,geometry.lift,geometry.motion,pad,geometry.projection].join(',');
     const changed = texture!==nextTexture || !!live;
     try {
       if (changed) {
