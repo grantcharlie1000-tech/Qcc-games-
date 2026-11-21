@@ -83,7 +83,8 @@ const vec2 SMOKE_CORE = vec2(.09, .13);
 // C30's even smoke over large card areas: a wide field sample (taps up to about 18 css px out)
 // tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
 // SMOKE_FIELD (teal and mustard card art), while a 9 px stripe, mostly absent from the field,
-// keeps its hue. Bright detail also sinks a little toward the darker field, so blurred titles
+// keeps its hue. Only dull colour fades (spread below about .45): a vivid field such as a
+// pure red or green panel still reads through at full strength. Bright detail also sinks a little toward the darker field, so blurred titles
 // stay quiet, and broad bright art, which the field shares, still lifts the bar.
 const float SMOKE_FIELD = .45, SMOKE_FIELD_SPREAD = 5., SMOKE_EVEN = .3;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
@@ -115,7 +116,7 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
   // saturated mark keeps most of its hue.
   float spread = max(chroma.r, max(chroma.g, chroma.b)) - min(chroma.r, min(chroma.g, chroma.b));
-  float shared = clamp(length(fieldChroma) / max(length(chroma), .001), 0., 1.);
+  float shared = clamp(length(fieldChroma) / max(length(chroma), .001), 0., 1.) * (1. - smoothstep(.3, .45, spread));
   float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
 }
