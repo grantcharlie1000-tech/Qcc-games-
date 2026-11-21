@@ -178,8 +178,9 @@ void main() {
         vec2 outward = pillAxis / max(length(pillAxis), .001);
         float edge = 1. - smoothstep(0., .42 * pillRadius, pillDepth);
         vec2 warped = samplePill.xy + pp / 1.3 + outward * pillRadius * .5 * edge * edge;
-        // Keep color edges legible after the lens magnifies the frosted scene.
-        selectionColor = glassColor(mix(body, warped, pillMotion), mix(1., .67, pillMotion));
+        // Keep color edges legible after the lens magnifies the frosted scene. The bar's
+        // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
+        selectionColor = mix(vec3(.24), glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion)), mix(.8, 1., pillMotion));
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
