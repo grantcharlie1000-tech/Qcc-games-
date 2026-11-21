@@ -60,6 +60,17 @@
   color:var(--section-pill-accent);font-weight:600;paint-order:normal;
   text-shadow:0 0 1px var(--section-pill-ink-halo),0 0 1px var(--section-pill-ink-halo);
 }
+/* The smoked resting pill hides that rim. Over the milky press lens and the moving bar it read as a doubled
+   dark outline, so press and drag draw it once, and only where glass-ink.ts found bright art under the label. */
+.section-tabbar[data-section-lens=webgl][data-pressing] .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
+  filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo));
+}
+.section-tabbar[data-section-lens=webgl][data-pressing] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
+  text-shadow:0 0 1px var(--section-pill-ink-halo);
+}
+.section-tabbar[data-section-lens=webgl][data-pressing] .ui-tab:is([aria-current=page],[aria-pressed=true]):not(:has(>span[data-glass-halo])){
+  --section-pill-ink-halo:transparent;
+}
 @media(prefers-color-scheme:dark){
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
     --section-pill-accent:#0099ff;
