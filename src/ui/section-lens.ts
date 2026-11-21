@@ -85,7 +85,7 @@ const float RIM_SLACK = 2.;
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
 // drawn at device density, so the bevel spans LENS_BEVEL * DPR device px. Its slope, and so
 // its normal, grows as u^2: the face meets the bevel without a seam.
-const float LENS_ZOOM = 1.36, LENS_BEVEL = 14., LENS_SLOPE = 1.6;
+const float LENS_ZOOM = 1.36, LENS_BEVEL = 14., LENS_SLOPE = 2.4;
 // Like thick glass, the bevel bends each ray toward the centre along its normal, so content
 // swells, bends and stretches as it enters the rim. The pull (in bevels) stays under the fold,
 // where it would turn the mapping back on itself: 2 * pull < 1 / LENS_ZOOM.
@@ -144,15 +144,16 @@ float lensBevel(float radius) {
 }
 // The raised lens's surface, lit from the same bevel normal that refracts it: a broad soft
 // lit band along the top, a softer dark band along the bottom and a little darkening all
-// round where the glass tilts away. The outermost px roll off, so the lens meets the bar
-// through a soft transition, never a bright 1 px outline.
+// round where the glass tilts away. The light on the outermost px is held to about half, then
+// climbs over 7 px to a broad band about 5 px in: the top edge still reads clearly brighter
+// than the bar beside it, through a transition about 4.5 px wide, never a bright 1 px outline.
 vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
   vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
   float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
-  float lit = max(0., facing) * smoothstep(0., 6., pillDepth);
+  float lit = max(0., facing) * (.45 + .55 * smoothstep(0., 7., pillDepth));
   float shade = max(0., -facing);
   vec3 face = sceneColor * (1. - .45 * shade - .2 * (1. - normal.z));
-  return mix(face, vec3(1.), .62 * lit);
+  return mix(face, vec3(1.), .9 * lit);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
@@ -202,7 +203,7 @@ void main() {
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
   // The pressed thumb and the raised slab keep a crisp glass edge, as the owner's do.
-  float soft = .5 + 1.3 * pillLift + .6 * pillPress;
+  float soft = .5 + .9 * pillLift + .6 * pillPress;
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
