@@ -117,6 +117,64 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
 });
 
+// The clear resting pill must not wash out the selected accent over bright art. Read the
+// WebGL pill under the selected glyph and label over a white patch and compare it with the
+// accent ink. The smoked pill before the clear pill (900e080c), measured by this same test, gave
+// dark 2.52:1 at pill luminance .089 and light 1.25:1 at .188; the unlimited clear pill gave
+// dark 1.26:1 (.227) and a light pill brighter than its accent (.451). Pin the smoked pill's
+// values, with a little room for rasterisation.
+test('the selected accent keeps its contrast against the WebGL pill over white art',async({page})=>{
+  const floor={dark:{ratio:2.5,pill:.091},light:{ratio:1.23,pill:.19}};
+  for (const scheme of ['dark','light'] as const) {
+    await page.emulateMedia({colorScheme:scheme});
+    await page.goto('/#/collection');
+    const bar=page.locator('.app-tabbar');
+    await expect(bar).toHaveAttribute('data-section-lens','webgl');
+    await expect(bar.getByRole('link',{name:'Games',exact:true})).toHaveAttribute('aria-current','page');
+    await page.locator('.game-grid').evaluate(grid=>{
+      const patch=document.createElement('div');
+      patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:#fff;pointer-events:none';
+      grid.append(patch);
+    });
+    const canvas=bar.locator('canvas.section-lens');
+    const contrast=()=>canvas.evaluate(element=>{
+      const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+      const sx=surface.width/rect.width,sy=surface.height/rect.height;
+      const tab=surface.closest('.app-tabbar')!.querySelector('[aria-current="page"]')!;
+      const label=tab.querySelector(':scope > span')!,icon=tab.querySelector('.ui-icon')!;
+      const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+      const ink=lum(getComputedStyle(label).color.match(/[\d.]+/g)!.slice(0,3).map(Number));
+      const context=surface.getContext('2d')!,values:number[]=[],pill:number[]=[];
+      for (const box of [label.getBoundingClientRect(),icon.getBoundingClientRect()]) {
+        const x=Math.round((box.left-rect.left)*sx),y=Math.round((box.top-rect.top)*sy);
+        const w=Math.max(1,Math.round(box.width*sx)),h=Math.max(1,Math.round(box.height*sy));
+        const data=context.getImageData(x,y,w,h).data;
+        for (let i=0;i<data.length;i+=4) {
+          const bg=lum([data[i],data[i+1],data[i+2]]);
+          pill.push(bg);
+          values.push((Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05));
+        }
+      }
+      values.sort((a,b)=>a-b);
+      pill.sort((a,b)=>a-b);
+      return `${Math.round(100*values[values.length>>1])/100} ${Math.round(1000*pill[pill.length>>1])/1000}`;
+    });
+    // Wait for the white patch to reach the lens and for two equal reads.
+    await expect.poll(()=>canvas.evaluate(element=>{
+      const surface=element as HTMLCanvasElement;
+      return surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data[1];
+    })).toBeGreaterThan(110);
+    let previous='';
+    await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
+    const [ratio,pill]=previous.split(' ').map(Number);
+    console.log(`selected accent over white art, ${scheme}: ${ratio}:1, pill luminance ${pill}`);
+    // The pill may be no brighter than the smoked pill either, so its contrast cannot recover
+    // by crossing over the accent (light theme) while the art still washes it out.
+    expect(ratio).toBeGreaterThanOrEqual(floor[scheme].ratio);
+    expect(pill).toBeLessThanOrEqual(floor[scheme].pill);
+  }
+});
+
 test('section lens falls back on context loss',async({page})=>{
   await page.addInitScript(()=>{
     const getContext=HTMLCanvasElement.prototype.getContext;

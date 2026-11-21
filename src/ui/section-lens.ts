@@ -126,9 +126,15 @@ const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 // clarity 1, no veil) at the bar's own transmission (PILL_GAIN takes the lens's .80 back to .98).
 // The light theme's pill clears further (PILL_CLEAR.x), as C30's light pill shows its card
 // nearly unchanged; the dark theme's (.y) keeps a little smoke. It fades out with motion, lift
-// and press, so the press, the drag lens and every moving frame keep their own colour.
+// and press, and it is sampled where the selection is, so a sliding pill keeps its refraction.
 const vec2 PILL_CLEAR = vec2(.95, .7);
 const float PILL_GAIN = .98 / .80;
+// Over bright art the clear glass, and the dark theme's lighter .20 smoke, would lift the pill
+// toward the selected accent's own luminance and wash the accent out. Once the bar's veiled frost
+// passes PILL_BRIGHT.x luma (grey art about #464646), the pill eases to the plain smoked pill's
+// tone (slope one, .30 dark smoke), and from PILL_BRIGHT.y (about #727272) it is never brighter
+// than that, while darker card art keeps the clear look.
+const vec2 PILL_BRIGHT = vec2(.33, .41);
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -303,6 +309,8 @@ void main() {
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
+      float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
+      vec3 clearGlass = vec3(0.), plainGlass = vec3(0.);
       if (pillMotion > 0.) {
         // Magnify evenly like native: one scale across the whole face, centred on
         // the active sample. Only a narrow band at the edge refracts, drawing in
@@ -331,7 +339,13 @@ void main() {
         vec2 warped = mix(pressWarp, lensWarp, pillLift);
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
-        selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion), pillMotion * pillLift), pillMotion, field);
+        // One frost sample serves the moving selection and the clear glass it fades from.
+        vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion) * .5);
+        selectionColor = smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field);
+        if (clear > 0.) {
+          clearGlass = glassTone(frosted, 1.);
+          plainGlass = glassTone(frosted, 0.);
+        }
         // Neutral smoke in the raised lens; it falls with the motion, so the rest pill is unchanged.
         float neutral = pillMotion * pillLift;
         float lensLuma = dot(selectionColor, vec3(.2126, .7152, .0722));
@@ -339,10 +353,25 @@ void main() {
         float dull = 1. - smoothstep(LENS_NEUTRAL_VIVID.x, LENS_NEUTRAL_VIVID.y, lensSpread);
         selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * dull * neutral) * (1. + (LENS_GAIN - 1.) * neutral);
         selectionColor += LENS_LIFT * neutral * max(0., 1. - dot(selectionColor, vec3(.2126, .7152, .0722)));
+      } else if (clear > 0.) {
+        vec3 frosted = frost(body, BODY_SPREAD * .5);
+        clearGlass = glassTone(frosted, 1.);
+        plainGlass = glassTone(frosted, 0.);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
-      vec3 faceColor = clear > 0. ? mix(selectionColor, glassColor(body, BODY_SPREAD, 1.) * PILL_GAIN, clear) : selectionColor;
+      vec3 faceColor = selectionColor;
+      if (clear > 0.) {
+        faceColor = mix(selectionColor, clearGlass * PILL_GAIN, clear);
+        // Hold bright art to the plain smoked pill (PILL_BRIGHT). Its tone eases to the frost's
+        // luma with motion, as smoked() does, and pillSurface's .20 dark smoke is traded for .30.
+        float plain = dot(plainGlass, vec3(.2126, .7152, .0722));
+        float fieldLuma = dot(field, vec3(.2126, .7152, .0722));
+        float plainTone = mix(SMOKE_SLOPE * mix(plain, min(plain, fieldLuma), SMOKE_EVEN) - SMOKE_DROP, plain, pillMotion);
+        float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
+        float ceiling = max(0., plainTone) * (1. - .30 * smoke) / (1. - .20 * smoke);
+        float faceLuma = dot(faceColor, vec3(.2126, .7152, .0722));
+        faceColor *= mix(1., min(1., ceiling / max(faceLuma, .001)), smoothstep(PILL_BRIGHT.x, PILL_BRIGHT.y, plain));
+      }
       vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
       selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
