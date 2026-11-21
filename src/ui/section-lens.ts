@@ -74,10 +74,18 @@ uniform float drawPad;
 uniform float pillProjection;
 ${GLASS}
 const float BODY_SPREAD = 2.4;
-const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .70;
+// The field fade below takes about a fifth of a 9 px stripe's colour, so the stripe's own keep
+// rises to hold it near its old .70.
+const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .86;
 // Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
 // grey out but a stripe keeps its width at half height.
 const vec2 SMOKE_CORE = vec2(.09, .13);
+// C30's even smoke over large card areas: a wide field sample (taps up to about 18 css px out)
+// tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
+// SMOKE_FIELD (teal and mustard card art), while a 9 px stripe, mostly absent from the field,
+// keeps its hue. Bright detail also sinks a little toward the darker field, so blurred titles
+// stay quiet, and broad bright art, which the field shares, still lifts the bar.
+const float SMOKE_FIELD = .45, SMOKE_FIELD_SPREAD = 5., SMOKE_EVEN = .3;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -97,15 +105,18 @@ out vec4 color;
 // C30's smoked frost: a neutral grey that keeps only part of the art's colour, so card
 // colours behind the bar stay quiet. Its tone still follows the scene, so a bright backdrop
 // lifts the bar as before. Motion clears it toward the lens.
-vec3 smoked(vec3 frosted, float motion) {
+vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float luma = dot(frosted, vec3(.2126, .7152, .0722));
   vec3 chroma = frosted - luma;
+  float fieldLuma = dot(field, vec3(.2126, .7152, .0722));
+  vec3 fieldChroma = field - fieldLuma;
   // Dark tones sink and bright art still lifts the bar, so the slope stays near one.
-  float tone = mix(SMOKE_SLOPE * luma - SMOKE_DROP, luma, motion);
+  float tone = mix(SMOKE_SLOPE * mix(luma, min(luma, fieldLuma), SMOKE_EVEN) - SMOKE_DROP, luma, motion);
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
   // saturated mark keeps most of its hue.
   float spread = max(chroma.r, max(chroma.g, chroma.b)) - min(chroma.r, min(chroma.g, chroma.b));
-  float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread), 1., motion);
+  float shared = clamp(length(fieldChroma) / max(length(chroma), .001), 0., 1.);
+  float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
 }
 float capsuleRadius(vec2 bounds) {
@@ -132,11 +143,13 @@ vec2 bendFace(vec2 pos) {
   float y = p.y * (.83 - .12 * column * column - .08 * across2 * (1. + across2));
   return size * .5 + vec2(x, y);
 }
-vec3 rim(vec3 rgb, vec2 normal, float depth) {
-  // C30's top and bottom specular edges, shaped by the capsule normal.
+vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
+  // C30's top and bottom specular edges, shaped by the capsule normal. At rest the band runs
+  // about 2.4 px deep so it reads as C30's rim; under the raised lens it narrows to 1.25 px,
+  // which keeps the bar's glass in the lens's top gap dark.
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.25, 1.25, depth);
+  float line = 1. - smoothstep(.25, mix(2.4, 1.25, liftEdge), depth);
   return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * line);
 }
 float lensBevel(float radius) {
@@ -215,13 +228,14 @@ void main() {
   vec2 body = bendFace(pos);
   // C30's smoked frost: a wider blur and a darker, flatter grey so titles behind
   // the bar do not read.
-  vec3 bodyColor = smoked(glassColor(body, BODY_SPREAD), 0.);
+  vec3 field = glassColor(body, BODY_SPREAD * SMOKE_FIELD_SPREAD);
+  vec3 bodyColor = smoked(glassColor(body, BODY_SPREAD), 0., field);
   // As in C30, a band at the rim refracts: it draws in what lies past the edge and
   // bends it along the curve, while the centre stays flat under the grey frost.
   float band = 1. - smoothstep(0., 12., depth);
   vec2 bent = body + normal * 12. * band * band;
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
-  vec3 rgb = rim(band > 0. ? smoked(glassColor(bent, mix(BODY_SPREAD, 1., band)), 0.) : bodyColor, normal, depth);
+  vec3 rgb = rim(band > 0. ? smoked(glassColor(bent, mix(BODY_SPREAD, 1., band)), 0., field) : bodyColor, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -261,7 +275,7 @@ void main() {
         vec2 warped = mix(pressWarp, lensWarp, pillLift);
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
-        selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion), pillMotion * pillLift), pillMotion);
+        selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion), pillMotion * pillLift), pillMotion, field);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
