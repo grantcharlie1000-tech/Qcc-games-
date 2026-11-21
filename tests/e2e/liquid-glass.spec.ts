@@ -156,11 +156,15 @@ test('the Movies pill survives a re-render of the page',async({page})=>{
 
 test('the pill appears under the current tab on load without sliding in from the edge',async({page})=>{
   await page.addInitScript(()=>{
-    const w=window as Window&{__pillX?:string[]};
-    w.__pillX=[];
+    const samples:number[]=[];
+    const w=window as Window&{__pillCentres?:number[]};
+    w.__pillCentres=samples;
     const sample=()=>{
       const bar=document.querySelector('.app-tabbar');
-      if(bar)w.__pillX!.push(getComputedStyle(bar,'::after').translate);
+      if(bar){
+        const pill=getComputedStyle(bar,'::after');
+        samples.push(parseFloat(pill.translate)+parseFloat(pill.width)/2);
+      }
       if(performance.now()<2500)requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
@@ -170,12 +174,14 @@ test('the pill appears under the current tab on load without sliding in from the
   const bar=page.locator('.app-tabbar');
   const games=bar.locator('[aria-current="page"]');
   await expectPillUnder(bar,games);
-  const samples=await page.evaluate(()=>(window as Window&{__pillX?:string[]}).__pillX??[]);
-  const xs=samples.map(sample=>parseFloat(sample)).filter(x=>Number.isFinite(x));
-  const target=xs[xs.length-1];
-  expect(Math.abs(target-await games.evaluate(el=>(el as HTMLElement).offsetLeft))).toBeLessThan(1);
-  // Each sample is either the unplaced pill at 0 or already at its target. A value in between is a slide.
-  expect(xs.filter(x=>Math.abs(x)>0.5&&Math.abs(x-target)>0.5)).toEqual([]);
+  const samples=await page.evaluate(()=>(window as Window&{__pillCentres?:number[]}).__pillCentres??[]);
+  const tabCentre=await games.evaluate(el=>{
+    const tab=el as HTMLElement;
+    return tab.offsetLeft+tab.offsetWidth/2;
+  });
+  expect(Math.abs(samples[samples.length-1]-tabCentre)).toBeLessThan(1);
+  // The unplaced pill is centred at 0. A centre between 0 and the tab is a slide.
+  expect(samples.filter(centre=>Math.abs(centre)>0.5&&Math.abs(centre-tabCentre)>0.5)).toEqual([]);
 });
 
 test('a press moves the pill under the finger and swells it, and release takes the swell away',async({page})=>{
