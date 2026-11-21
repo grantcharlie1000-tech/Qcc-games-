@@ -75,11 +75,12 @@ in vec2 unit;
 flat in float milkTone;
 out vec4 color;
 
-// C30's smoked frost: a darker, neutral grey that keeps only part of the art's colour,
-// so titles and card colours behind the bar stay quiet. Motion clears it toward the lens.
+// C30's smoked frost: a neutral grey that keeps only part of the art's colour, so card
+// colours behind the bar stay quiet. Its tone still follows the scene, so a bright backdrop
+// lifts the bar as before. Motion clears it toward the lens.
 vec3 smoked(vec3 frosted, float motion) {
   vec3 neutral = mix(vec3(dot(frosted, vec3(.2126, .7152, .0722))), frosted, mix(.62, 1., motion));
-  return mix(vec3(.21), neutral, mix(.76, 1., motion));
+  return mix(vec3(.24), neutral, mix(.8, 1., motion));
 }
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
