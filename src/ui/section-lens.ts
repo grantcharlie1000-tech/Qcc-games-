@@ -70,11 +70,12 @@ vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
   return mix(vec3(luma), rgb, 1.10) * exposure;
 }
-vec3 glassColor(vec2 pos, float spread) {
+vec3 glassColor(vec2 pos, float spread, float clarity) {
   // Like the owner's frosted Search bar: keep the backdrop colour and its shapes
   // faintly legible, but lift them toward a light grey with compressed contrast.
-  vec3 rgb = transmit(frost(pos, spread * .5), .98, .66);
-  return mix(vec3(.44), rgb, .64);
+  // The raised thumb clears toward the owner's dragged slider: sharp, bright detail.
+  vec3 rgb = transmit(frost(pos, spread * .5), mix(.98, 1.16, clarity), mix(.66, .28, clarity));
+  return mix(vec3(.44), rgb, mix(.64, .93, clarity));
 }
 vec3 rim(vec3 rgb, vec2 normal, float depth) {
   // C30's top and bottom specular edges, shaped by the capsule normal.
@@ -89,8 +90,9 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.2, mix(1.85, 3.6, pillLift), pillDepth);
-  float specular = mix(.06 + .36 * top + .13 * bottom, .46 * top + .10 * bottom, pillLift);
+  float line = 1. - smoothstep(.2, mix(1.85, 2.6, pillLift), pillDepth);
+  // The raised thumb carries a bright rim all round, strongest at the crest and the foot.
+  float specular = mix(.06 + .36 * top + .13 * bottom, .16 + .66 * top + .34 * bottom, pillLift);
   // The raised lens keeps its lower bevel light so no dark seam forms under the art.
   float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift);
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
@@ -104,7 +106,7 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   vec3 milk = mix(vec3(faceLuma), face, .55) * .62 + vec3(.34);
   face = mix(face, milk, pillPress * (.55 + .35 * core));
   // The raised lens catches a little light so it stays apart from the bar over dark dividers.
-  face = mix(face, vec3(.86), .09 * pillLift);
+  face = mix(face, vec3(.86), .07 * pillLift);
   return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {
@@ -129,13 +131,13 @@ void main() {
   vec2 normal = axis / max(length(axis), .001);
   vec2 body = bendFace(pos);
   // Card titles stay legible through the frost, as behind the owner's Search bar.
-  vec3 bodyColor = glassColor(body, .68);
+  vec3 bodyColor = glassColor(body, .68, 0.);
   // A thin band at the rim refracts while the centre stays flat: it mirrors what
   // lies past the top edge and stretches what lies just inside the lower edge.
   float band = 1. - smoothstep(1., 10., depth);
   float reach = mix(.42, 2.25, smoothstep(.35, -.35, normal.y));
   vec2 edgeSample = mix(body, pos + normal * max(depth, 0.) * reach, band);
-  vec3 rgb = rim(band > 0. ? glassColor(edgeSample, .6) : bodyColor, normal, depth);
+  vec3 rgb = rim(band > 0. ? glassColor(edgeSample, .6, 0.) : bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -158,7 +160,7 @@ void main() {
         float bevel = smoothstep(.55, .98, length(radial)) * smoothstep(-1., -.4, radial.y);
         vec2 warped = samplePill.xy + mix(focused, sampleOffset, bevel);
         // Keep color edges legible after the lens magnifies the frosted scene.
-        selectionColor = glassColor(mix(body, warped, pillMotion), mix(1., .67, pillMotion));
+        selectionColor = glassColor(mix(body, warped, pillMotion), mix(.68, .3, pillMotion * pillLift), pillLift);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius);
