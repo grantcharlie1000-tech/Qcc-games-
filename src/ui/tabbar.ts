@@ -57,10 +57,9 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const width=parseFloat(style.width)||0;
     const [scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
     const center=(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
-    for(const tab of tabs()){
-      const zoom=lensZoom(center,width*scaleX/2,scaleX,tab.offsetLeft+tab.offsetWidth/2).toFixed(3);
-      if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
-    }
+    // Every layout read comes before the first write, so a drag frame forces at most one layout.
+    const zooms=tabs().map(tab=>[tab,lensZoom(center,width*scaleX/2,scaleX,tab.offsetLeft+tab.offsetWidth/2).toFixed(3)] as const);
+    for(const [tab,zoom] of zooms)if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
     // The pill's scale eases for 100ms after each move, so keep following it while the drag lasts.
     frame=requestAnimationFrame(tick);
   };
