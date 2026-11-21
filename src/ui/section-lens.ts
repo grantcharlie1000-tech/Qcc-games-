@@ -83,28 +83,29 @@ vec3 rim(vec3 rgb, vec2 normal, float depth) {
   float line = 1. - smoothstep(.25, 1.25, depth);
   return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * line);
 }
-vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y) {
+vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
   float clearance = smoothstep(1., 4.5, barDepth - max(0., pillDepth));
   clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.2, mix(1.85, 3.6, pillLift), pillDepth);
-  float specular = mix(.06 + .36 * top + .13 * bottom, .46 * top + .10 * bottom, pillLift);
+  float line = 1. - smoothstep(.2, mix(1.85, 2.4, pillLift), pillDepth);
+  // A held press keeps only a faint edge so the thumb reads as one milky piece, not a ring.
+  float specular = mix(.06 + .36 * top + .13 * bottom, .30 * top + .06 * bottom, pillLift) * (1. - .8 * pillPress);
   // The raised lens keeps its lower bevel light so no dark seam forms under the art.
-  float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift);
+  float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift) * (1. - pillPress);
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
   // The dark theme's resting selection is a smoked capsule, as in C30, with a crisp lower rim.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
   vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .30 * smoke);
   specular += smoke * .24 * bottom;
-  // First contact frosts the thumb: a brighter milky core with compressed contrast.
-  float core = smoothstep(.5, 9., pillDepth);
-  float faceLuma = dot(face, vec3(.2126, .7152, .0722));
-  vec3 milk = mix(vec3(faceLuma), face, .55) * .62 + vec3(.34);
-  face = mix(face, milk, pillPress * (.55 + .35 * core));
+  // First contact turns the thumb one solid, even light-grey milk, as in the owner's
+  // press: the tone follows the average scene under it, so no art, dome or ring shows.
+  face = mix(face, vec3(milkTone), .95 * pillPress);
   // The raised lens catches a little light so it stays apart from the bar over dark dividers.
   face = mix(face, vec3(.86), .09 * pillLift);
+  // Like the owner's dragged thumb, it darkens toward its refractive edge.
+  face *= 1. - .22 * pillLift * (1. - smoothstep(.5, 9., pillDepth));
   return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {
@@ -119,7 +120,9 @@ void main() {
   vec2 pillAxis = capsuleAxis(pp, pill.zw);
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
-  float selected = pillOpacity * smoothstep(-.5 - .6 * pillLift, .5 + .6 * pillLift, pillDepth);
+  // The pressed thumb and the raised lens have soft outlines, not a hard ring.
+  float soft = .5 + 1.2 * pillLift + 1.4 * pillPress;
+  float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
     color = vec4(0.);
@@ -128,34 +131,47 @@ void main() {
 
   vec2 normal = axis / max(length(axis), .001);
   vec2 body = bendFace(pos);
-  vec3 bodyColor = glassColor(body, 1.);
-  vec3 rgb = rim(bodyColor, normal, depth);
+  // C30's smoked frost: a wider blur and a darker, flatter grey so titles behind
+  // the bar do not read.
+  vec3 bodyColor = mix(vec3(.24), glassColor(body, 1.8), .8);
+  // As in C30, a band at the rim refracts: it draws in what lies past the edge and
+  // bends it along the curve, while the centre stays flat under the grey frost.
+  float band = 1. - smoothstep(0., 12., depth);
+  vec2 bent = body + normal * 12. * band * band;
+  vec3 rgb = rim(band > 0. ? mix(vec3(.24), glassColor(bent, 1.), .8) : bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
     vec2 shadowPos = pp - vec2(0., mix(1.25, 3.5, pillLift));
     float shadowDepth = pillRadius - length(capsuleAxis(shadowPos, pill.zw));
-    float shadow = smoothstep(-3.5, 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
+    // The raised lens casts a wider, softer shadow, like the owner's dragged thumb.
+    float shadow = smoothstep(-mix(3.5, 6.5, pillLift), 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
                    * smoothstep(-.15, .60, pp.y / pillRadius);
-    rgb *= 1. - pillOpacity * shadow * mix(.12, .16, pillLift) * (1. - pillPress);
+    rgb *= 1. - pillOpacity * shadow * mix(.12, .22, pillLift) * (1. - pillPress);
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
       if (pillMotion > 0.) {
-        // Project the visible capsule into the active lens's sampling footprint.
-        vec2 sampleOffset = pp / pill.zw * samplePill.zw;
-        vec2 sampleAxis = capsuleAxis(sampleOffset, samplePill.zw);
-        vec2 radial = sampleAxis / capsuleRadius(samplePill.zw);
-        vec2 focused = .71 * sampleOffset - sampleAxis * (.19 + .155 * dot(radial, radial));
-        // Keep the exposed crest focused on the scene under the bar. The side and
-        // lower bevels draw detail in from the outer part of the same footprint.
-        float bevel = smoothstep(.55, .98, length(radial)) * smoothstep(-1., -.4, radial.y);
-        vec2 warped = samplePill.xy + mix(focused, sampleOffset, bevel);
+        // Magnify evenly like native: one scale across the whole face, centred on
+        // the active sample. Only a narrow band at the edge refracts, drawing in
+        // what lies just past the lens, the same all round so the ends never curl.
+        vec2 outward = pillAxis / max(length(pillAxis), .001);
+        float edge = 1. - smoothstep(0., .42 * pillRadius, pillDepth);
+        vec2 warped = samplePill.xy + pp / 1.3 + outward * pillRadius * .5 * edge * edge;
         // Keep color edges legible after the lens magnifies the frosted scene.
         selectionColor = glassColor(mix(body, warped, pillMotion), mix(1., .67, pillMotion));
       }
+      float milkTone = 0.;
+      if (pillPress > 0.) {
+        // Average the frosted scene over the pressed thumb for one even milky tone.
+        for (int i = 0; i < 9; i++) {
+          vec2 tap = vec2(float(i % 3) - 1., float(i / 3) - 1.) * vec2(.32, .26) * pill.zw;
+          milkTone += dot(glassColor(pill.xy + tap, 1.), vec3(.2126, .7152, .0722));
+        }
+        milkTone = .38 + .62 * milkTone / 9.;
+      }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius);
+      vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
@@ -237,8 +253,8 @@ function smoothstep(value:number) {
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
-  // The field bends inward. A small margin retains frost taps and edge antialiasing.
-  const cropPad = 8;
+  // The field bends inward. The margin holds the rim band's outer sample and the frost taps.
+  const cropPad = 14;
   const x = Math.max(0,Math.floor(bar.left)-cropPad), y = Math.max(0,Math.floor(bar.top)-cropPad);
   const width = Math.min(innerWidth,Math.ceil(bar.right)+cropPad)-x;
   const height = Math.min(innerHeight,Math.ceil(bar.bottom)+cropPad)-y;
@@ -289,7 +305,8 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     cx,
     cy + projection * (raisedHeight/2 - 2.5 - cy),
     pillWidth * pressWidth + projection * (raisedWidth - pillWidth * pressWidth),
-    pillHeight + projection * (raisedHeight - pillHeight),
+    // A held press sits clearly lower than the bar, as the owner's thumb does in its track.
+    pillHeight * (1 - .1 * press) + projection * (raisedHeight - pillHeight),
   ] : pill;
   const pad = projection > 0 ? 8 : 0;
   return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*rise,press,smoke:dark?1:0,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
