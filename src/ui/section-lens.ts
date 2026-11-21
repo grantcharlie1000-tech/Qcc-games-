@@ -25,11 +25,15 @@ vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
   return mix(vec3(luma), rgb, 1.10) * exposure;
 }
-vec3 glassColor(vec2 pos, float spread) {
+vec3 glassColor(vec2 pos, float spread, float clarity) {
   // Like the owner's frosted Search bar: keep the backdrop colour and its shapes
   // faintly legible, but lift them toward a light grey with compressed contrast.
-  vec3 rgb = transmit(frost(pos, spread * .5), .98, .66);
-  return mix(vec3(.44), rgb, .64);
+  // The dragged lens clears toward the owner's thumb, whose track keeps its full colour.
+  vec3 rgb = transmit(frost(pos, spread * .5), mix(.98, 1.16, clarity), mix(.66, .28, clarity));
+  return mix(vec3(.44), rgb, mix(.64, .93, clarity));
+}
+vec3 glassColor(vec2 pos, float spread) {
+  return glassColor(pos, spread, 0.);
 }`;
 
 const VERTEX = `#version 300 es
@@ -180,7 +184,7 @@ void main() {
         vec2 warped = samplePill.xy + pp / 1.3 + outward * pillRadius * .5 * edge * edge;
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
-        selectionColor = mix(vec3(.24), glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion)), mix(.8, 1., pillMotion));
+        selectionColor = mix(vec3(.24), glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), mix(.8, 1., pillMotion));
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
