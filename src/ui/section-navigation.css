@@ -82,6 +82,11 @@
     scale:var(--ui-pill-drag-scale);
     transition:scale 100ms var(--ease-out),opacity 120ms var(--ease);
   }
+  /* The raised drag lens magnifies the icon and label it passes over (tabbar.ts). Release eases them back to 1. */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl] .ui-tab>:is(.ui-icon,span){transition:scale 180ms var(--ease-out)}
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab>:is(.ui-icon,span){
+    scale:var(--section-lens-zoom,1);transition:none;
+  }
 }
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
   left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;

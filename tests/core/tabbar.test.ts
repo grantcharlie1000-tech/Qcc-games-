@@ -1,5 +1,5 @@
-import {expect,test} from 'vitest';
-import {nextTabbarState,type TabbarScroll} from '../../src/ui/tabbar';
+import {describe,expect,it,test} from 'vitest';
+import {LENS_ZOOM,lensZoom,nextTabbarState,type TabbarScroll} from '../../src/ui/tabbar';
 
 const expanded=(lastY:number):TabbarScroll=>({minimized:false,lastY,travel:0});
 const minimized=(lastY:number):TabbarScroll=>({minimized:true,lastY,travel:0});
@@ -106,4 +106,22 @@ test('the step returns a new state and leaves its input alone',()=>{
   const state=expanded(200);
   nextTabbarState(state,260,1000);
   expect(state).toEqual(expanded(200));
+});
+
+describe('lensZoom',()=>{
+  it('keeps tab content at 1 at rest and on a press, whatever the distance',()=>{
+    expect(lensZoom(100,40,1,100)).toBe(1);
+    expect(lensZoom(100,40,1.1,100)).toBe(1);
+  });
+  it('magnifies the tab under a raised drag lens and fades out as the lens leaves it',()=>{
+    expect(lensZoom(100,45,1.32,100)).toBeCloseTo(LENS_ZOOM,5);
+    const near=lensZoom(100,45,1.32,120),far=lensZoom(100,45,1.32,160);
+    expect(near).toBeGreaterThan(1);expect(near).toBeLessThan(LENS_ZOOM);
+    expect(far).toBe(1);
+    expect(LENS_ZOOM).toBeGreaterThanOrEqual(1.15);expect(LENS_ZOOM).toBeLessThanOrEqual(1.25);
+  });
+  it('builds the magnification with drag stretch, as the lens rises',()=>{
+    expect(lensZoom(100,45,1.15,100)).toBeGreaterThan(1);
+    expect(lensZoom(100,45,1.15,100)).toBeLessThan(lensZoom(100,45,1.25,100));
+  });
 });

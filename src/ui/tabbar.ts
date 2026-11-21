@@ -35,6 +35,40 @@ export function nextTabbarState(state:TabbarScroll,y:number,max:number,typing=fa
   return {minimized,lastY:at,travel};
 }
 
+// The drag lens magnifies the tab content it passes over, as the native lens does. This reads only the pill's resolved
+// ::after geometry, which section-lens.ts reads too, and writes one --section-lens-zoom per tab. The lens rises with drag
+// stretch past the 1.1 press width, so a press, a settle and rest stay at 1. CSS applies it only without reduced motion.
+export const LENS_ZOOM=1.2;
+const smooth=(t:number)=>{const x=Math.min(1,Math.max(0,t));return x*x*(3-2*x);};
+export function lensZoom(lensCenter:number,halfWidth:number,scaleX:number,tabCenter:number):number{
+  const rise=smooth((scaleX-1.1)/.18);
+  if(!rise||halfWidth<=0)return 1;
+  const reach=1-smooth((Math.abs(tabCenter-lensCenter)/halfWidth-.15)/.85);
+  return 1+(LENS_ZOOM-1)*rise*reach;
+}
+function bindLensZoom(bar:HTMLElement):()=>void{
+  let frame=0;
+  const tabs=()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
+  const clear=()=>{for(const tab of tabs())tab.style.removeProperty('--section-lens-zoom');};
+  const tick=()=>{
+    frame=0;
+    if(!bar.hasAttribute('data-pill-dragging')){clear();return;}
+    const style=getComputedStyle(bar,'::after');
+    const width=parseFloat(style.width)||0;
+    const [scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
+    const center=(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
+    for(const tab of tabs()){
+      const zoom=lensZoom(center,width*scaleX/2,scaleX,tab.offsetLeft+tab.offsetWidth/2).toFixed(3);
+      if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
+    }
+    // The pill's scale eases for 100ms after each move, so keep following it while the drag lasts.
+    frame=requestAnimationFrame(tick);
+  };
+  const watch=new MutationObserver(()=>{if(!frame)frame=requestAnimationFrame(tick);});
+  watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging']});
+  return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;clear();};
+}
+
 function position(scroller:Window|HTMLElement):{y:number;max:number}{
   if(scroller instanceof HTMLElement)return {y:scroller.scrollTop,max:scroller.scrollHeight-scroller.clientHeight};
   return {y:scroller.scrollY,max:scroller.document.documentElement.scrollHeight-scroller.innerHeight};
@@ -63,6 +97,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   let frame=0;
   const glass=bindGlass(bar);
   const disposeLens=bindSectionNavigationLens(bar,scroller);
+  const disposeZoom=bounded?bindLensZoom(bar):()=>{};
   // Writes the attribute only when the state changes.
   const apply=(minimized:boolean)=>{
     if(bar.hasAttribute('data-minimized')===minimized)return;
@@ -156,6 +191,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       parentWatch.disconnect();
       if(frame)cancelAnimationFrame(frame);
       frame=0;
+      disposeZoom();
       disposeLens();
       glass.dispose();
       mini.remove();
