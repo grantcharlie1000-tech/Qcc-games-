@@ -19,6 +19,7 @@ uniform vec4 samplePill;
 uniform float pillOpacity;
 uniform float pillLift;
 uniform float pillPress;
+uniform float pillSmoke;
 uniform float pillMotion;
 uniform float drawPad;
 uniform float pillProjection;
@@ -70,14 +71,17 @@ vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
   return mix(vec3(luma), rgb, 1.10) * exposure;
 }
 vec3 glassColor(vec2 pos, float spread) {
-  return transmit(frost(pos, spread), .98, .66);
+  // Like the owner's frosted Search bar: keep the backdrop colour and its shapes
+  // faintly legible, but lift them toward a light grey with compressed contrast.
+  vec3 rgb = transmit(frost(pos, spread * .5), .98, .66);
+  return mix(vec3(.44), rgb, .64);
 }
 vec3 rim(vec3 rgb, vec2 normal, float depth) {
   // C30's top and bottom specular edges, shaped by the capsule normal.
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.3, 1.45, depth);
-  return mix(rgb, vec3(1.), (.10 + .55 * top + .25 * bottom) * line);
+  float line = 1. - smoothstep(.25, 1.25, depth);
+  return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * line);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
@@ -90,7 +94,10 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   // The raised lens keeps its lower bevel light so no dark seam forms under the art.
   float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift);
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
-  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance);
+  // The dark theme's resting selection is a smoked capsule, as in C30, with a crisp lower rim.
+  float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
+  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .30 * smoke);
+  specular += smoke * .24 * bottom;
   // First contact frosts the thumb: a brighter milky core with compressed contrast.
   float core = smoothstep(.5, 9., pillDepth);
   float faceLuma = dot(face, vec3(.2126, .7152, .0722));
@@ -160,7 +167,7 @@ void main() {
 }`;
 
 type Geometry = {
-  bar:DOMRect; crop:Crop; pill:number[]; samplePill:number[]; opacity:number; lift:number; press:number;
+  bar:DOMRect; crop:Crop; pill:number[]; samplePill:number[]; opacity:number; lift:number; press:number; smoke:number;
   motion:number; pad:number; projection:number; density:number;
 };
 
@@ -187,7 +194,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
   const uniform = (name:string)=>gl.getUniformLocation(program,name);
   const size = uniform('size'), region = uniform('region'), pill = uniform('pill');
   const samplePill = uniform('samplePill');
-  const opacity = uniform('pillOpacity'), lift = uniform('pillLift'), press = uniform('pillPress');
+  const opacity = uniform('pillOpacity'), lift = uniform('pillLift'), press = uniform('pillPress'), smoke = uniform('pillSmoke');
   const motion = uniform('pillMotion'), drawPad = uniform('drawPad'), projection = uniform('pillProjection');
   let width = 0, height = 0;
   return {
@@ -211,6 +218,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
       gl.uniform1f(opacity,geometry.opacity);
       gl.uniform1f(lift,geometry.lift);
       gl.uniform1f(press,geometry.press);
+      gl.uniform1f(smoke,geometry.smoke);
       gl.uniform1f(motion,geometry.motion);
       gl.uniform1f(drawPad,geometry.pad);
       gl.uniform1f(projection,geometry.projection);
@@ -224,7 +232,7 @@ function smoothstep(value:number) {
   return t * t * (3 - 2 * t);
 }
 
-function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
+function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
   // The field bends inward. A small margin retains frost taps and edge antialiasing.
@@ -282,7 +290,7 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
     pillHeight + projection * (raisedHeight - pillHeight),
   ] : pill;
   const pad = projection > 0 ? 8 : 0;
-  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*rise,press,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
+  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*rise,press,smoke:dark?1:0,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */
@@ -297,6 +305,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   if (!display || !backdrop) return ()=>{};
   display.globalCompositeOperation = 'copy';
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const scheme = matchMedia('(prefers-color-scheme: dark)');
   const events = new AbortController();
   let frame = 0, disposed = false, unavailable = false, lost = false;
   let rendered = '', texture = '', textureReady = false;
@@ -340,7 +349,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     }
     const animations = bar.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
     const pillAnimating = animations.some(animation=>(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after');
-    const geometry = geometryOf(bar,pillAnimating);
+    const geometry = geometryOf(bar,pillAnimating,scheme.matches);
     if (!geometry) {
       fallback();
       listenToSource(null);
@@ -350,7 +359,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     const anchor = root.getBoundingClientRect();
     const nextTexture = [anchor.x,anchor.y,crop.x,crop.y,crop.width,crop.height,density].join(',');
     const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,
-      ...geometry.pill,...geometry.samplePill,geometry.opacity,geometry.lift,geometry.press,geometry.motion,pad,geometry.projection].join(',');
+      ...geometry.pill,...geometry.samplePill,geometry.opacity,geometry.lift,geometry.press,geometry.smoke,geometry.motion,pad,geometry.projection].join(',');
     const changed = texture!==nextTexture || !!live;
     try {
       if (changed) {
@@ -476,6 +485,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   window.addEventListener('resize',invalidate,{signal});
   window.visualViewport?.addEventListener('resize',invalidate,{signal});
   motion.addEventListener('change',schedule,{signal});
+  scheme.addEventListener('change',schedule,{signal});
   document.fonts?.addEventListener('loadingdone',invalidate,{signal});
   void document.fonts?.ready.then(()=>{if (!disposed) invalidate();});
   const unwatch = watchGlassFrameSources(()=>{
