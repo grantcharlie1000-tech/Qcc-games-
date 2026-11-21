@@ -128,8 +128,14 @@ void main() {
 
   vec2 normal = axis / max(length(axis), .001);
   vec2 body = bendFace(pos);
-  vec3 bodyColor = glassColor(body, 1.);
-  vec3 rgb = rim(bodyColor, normal, depth);
+  // Card titles stay legible through the frost, as behind the owner's Search bar.
+  vec3 bodyColor = glassColor(body, .68);
+  // A thin band at the rim refracts while the centre stays flat: it mirrors what
+  // lies past the top edge and stretches what lies just inside the lower edge.
+  float band = 1. - smoothstep(1., 10., depth);
+  float reach = mix(.42, 2.25, smoothstep(.35, -.35, normal.y));
+  vec2 edgeSample = mix(body, pos + normal * max(depth, 0.) * reach, band);
+  vec3 rgb = rim(band > 0. ? glassColor(edgeSample, .6) : bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -237,8 +243,8 @@ function smoothstep(value:number) {
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
-  // The field bends inward. A small margin retains frost taps and edge antialiasing.
-  const cropPad = 8;
+  // The field bends inward. The margin holds the rim band's mirrored sample and the frost taps.
+  const cropPad = 14;
   const x = Math.max(0,Math.floor(bar.left)-cropPad), y = Math.max(0,Math.floor(bar.top)-cropPad);
   const width = Math.min(innerWidth,Math.ceil(bar.right)+cropPad)-x;
   const height = Math.min(innerHeight,Math.ceil(bar.bottom)+cropPad)-y;
