@@ -117,6 +117,15 @@ const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
 // legible. The bevel lighting sits on top.
 const float LENS_NEUTRAL = .35, LENS_NEUTRAL_DIM = .06;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
+// C30's resting selection is clear glass: the art under it reads through in its own colour,
+// with none of the bar's smoke or grey veil. At rest the pill's face mixes PILL_CLEAR of the
+// way from the bar's smoked sample toward the same frost seen through clear glass (glassTone at
+// clarity 1, no veil) at the bar's own transmission (PILL_GAIN takes the lens's .80 back to .98).
+// The light theme's pill clears further (PILL_CLEAR.x), as C30's light pill shows its card
+// nearly unchanged; the dark theme's (.y) keeps a little smoke. It fades out with motion, lift
+// and press, so the press, the drag lens and every moving frame keep their own colour.
+const vec2 PILL_CLEAR = vec2(.95, .7);
+const float PILL_GAIN = .98 / .80;
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -328,7 +337,9 @@ void main() {
         selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * dull * neutral) * (1. - LENS_NEUTRAL_DIM * neutral);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
-      vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
+      float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
+      vec3 faceColor = clear > 0. ? mix(selectionColor, glassColor(body, BODY_SPREAD, 1.) * PILL_GAIN, clear) : selectionColor;
+      vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
       selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
 
