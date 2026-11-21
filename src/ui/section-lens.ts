@@ -108,9 +108,12 @@ const float LENS_PULL = .26;
 // card seam thickens and curves away from the centre line as it enters, then settles to the
 // even face. It only draws samples toward the centre, so the furthest sample is unchanged.
 const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
-// The raised lens is neutral, dark clear glass: it keeps part of the colour of the content
-// under it, so it never takes on a navy or teal backdrop's cast. The bevel lighting sits on top.
+// The raised lens is neutral, dark clear glass: dull colour under it (a navy or teal card,
+// chroma spread below about .2) loses LENS_NEUTRAL of its saturation, so the lens never takes on
+// the backdrop's cast, while a vivid mark (spread above about .32) keeps its hue and stays
+// legible. The bevel lighting sits on top.
 const float LENS_NEUTRAL = .35, LENS_NEUTRAL_DIM = .06;
+const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -307,7 +310,9 @@ void main() {
         // Neutral smoke in the raised lens; it falls with the motion, so the rest pill is unchanged.
         float neutral = pillMotion * pillLift;
         float lensLuma = dot(selectionColor, vec3(.2126, .7152, .0722));
-        selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * neutral) * (1. - LENS_NEUTRAL_DIM * neutral);
+        float lensSpread = max(selectionColor.r, max(selectionColor.g, selectionColor.b)) - min(selectionColor.r, min(selectionColor.g, selectionColor.b));
+        float dull = 1. - smoothstep(LENS_NEUTRAL_VIVID.x, LENS_NEUTRAL_VIVID.y, lensSpread);
+        selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * dull * neutral) * (1. - LENS_NEUTRAL_DIM * neutral);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
