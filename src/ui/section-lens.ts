@@ -72,7 +72,10 @@ uniform float drawPad;
 uniform float pillProjection;
 ${GLASS}
 const float BODY_SPREAD = 2.4;
-const float SMOKE_SLOPE = 1.05, SMOKE_DROP = .06, SMOKE_CHROMA = .70, SMOKE_CORE = .25;
+const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .70;
+// Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
+// grey out but a stripe keeps its width at half height.
+const vec2 SMOKE_CORE = vec2(.09, .13);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 in vec2 unit;
@@ -90,7 +93,7 @@ vec3 smoked(vec3 frosted, float motion) {
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
   // saturated mark keeps most of its hue.
   float spread = max(chroma.r, max(chroma.g, chroma.b)) - min(chroma.r, min(chroma.g, chroma.b));
-  float keep = mix(SMOKE_CHROMA * smoothstep(0., SMOKE_CORE, spread), 1., motion);
+  float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread), 1., motion);
   return vec3(tone) + chroma * keep;
 }
 float capsuleRadius(vec2 bounds) {
