@@ -124,8 +124,13 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .30 * smoke);
   specular += smoke * .24 * bottom;
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
-  // press: the tone follows the average scene under it, so no art, dome or ring shows.
-  face = mix(face, vec3(milkTone), .985 * pillPress);
+  // press: the tone follows the average scene under it, so no art or dome shows. Like the
+  // owner's thumb it is milky glass, not paint: a hairline catches the light at the rim and
+  // a little of the scene shows through just inside it.
+  float pressRim = smoothstep(-.2, .5, pillDepth) * (1. - smoothstep(1., 2., pillDepth));
+  float pressRing = (1. - smoothstep(1.2, 4.5, pillDepth)) * (1. - pressRim);
+  face = mix(face, vec3(milkTone), (.985 - .10 * pressRing) * pillPress);
+  face = mix(face, vec3(1.), .16 * pressRim * pillPress * clearance);
   // Like the owner's dragged thumb, the raised slab is a lighter, slightly milky glass.
   face = mix(face, vec3(.80), .22 * pillLift);
   // A thin dark inner shadow runs along its lower edge, under the bottom hairline, and the
@@ -146,8 +151,8 @@ void main() {
   vec2 pillAxis = capsuleAxis(pp, pill.zw);
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
-  // The pressed thumb has a soft outline; the raised slab keeps a crisp glass edge.
-  float soft = .5 + .2 * pillLift + 1.4 * pillPress;
+  // The pressed thumb and the raised slab keep a crisp glass edge, as the owner's do.
+  float soft = .5 + .2 * pillLift + .6 * pillPress;
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
