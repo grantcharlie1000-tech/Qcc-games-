@@ -112,9 +112,10 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.2, mix(1.85, 2.4, pillLift), pillDepth);
+  float line = 1. - smoothstep(.2, mix(1.85, 1.6, pillLift), pillDepth);
   // A held press keeps only a faint edge so the thumb reads as one milky piece, not a ring.
-  float specular = mix(.06 + .36 * top + .13 * bottom, .30 * top + .06 * bottom, pillLift) * (1. - .8 * pillPress);
+  // The raised slab catches a crisp top highlight; its lower edge keeps only a hairline.
+  float specular = mix(.06 + .36 * top + .13 * bottom, .62 * top * top + .05 * bottom, pillLift) * (1. - .8 * pillPress);
   // The raised lens keeps its lower bevel light so no dark seam forms under the art.
   float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift) * (1. - pillPress);
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
@@ -125,10 +126,12 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
   // press: the tone follows the average scene under it, so no art, dome or ring shows.
   face = mix(face, vec3(milkTone), .985 * pillPress);
-  // The raised lens catches a little light so it stays apart from the bar over dark dividers.
-  face = mix(face, vec3(.86), .09 * pillLift);
-  // Like the owner's dragged thumb, it darkens toward its refractive edge.
-  face *= 1. - .22 * pillLift * (1. - smoothstep(.5, 9., pillDepth));
+  // Like the owner's dragged thumb, the raised slab is a lighter, slightly milky glass.
+  face = mix(face, vec3(.80), .22 * pillLift);
+  // A thin dark inner shadow runs along its lower edge, under the bottom hairline, and the
+  // refractive band darkens a little all round so the slab reads as thick glass.
+  float inner = 1. - smoothstep(1., 6.5, pillDepth);
+  face *= 1. - pillLift * inner * (.08 + .40 * bottom * bottom);
   return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {
@@ -166,12 +169,12 @@ void main() {
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
-    vec2 shadowPos = pp - vec2(0., mix(1.25, 3.5, pillLift));
+    vec2 shadowPos = pp - vec2(0., mix(1.25, 2., pillLift));
     float shadowDepth = pillRadius - length(capsuleAxis(shadowPos, pill.zw));
     // The raised lens casts a wider, softer shadow, like the owner's dragged thumb.
-    float shadow = smoothstep(-mix(3.5, 6.5, pillLift), 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
+    float shadow = smoothstep(-mix(3.5, 4.5, pillLift), 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
                    * smoothstep(-.15, .60, pp.y / pillRadius);
-    rgb *= 1. - pillOpacity * shadow * mix(.12, .22, pillLift) * (1. - pillPress);
+    rgb *= 1. - pillOpacity * shadow * mix(.12, .10, pillLift) * (1. - pillPress);
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
@@ -180,8 +183,11 @@ void main() {
         // the active sample. Only a narrow band at the edge refracts, drawing in
         // what lies just past the lens, the same all round so the ends never curl.
         vec2 outward = pillAxis / max(length(pillAxis), .001);
-        float edge = 1. - smoothstep(0., .42 * pillRadius, pillDepth);
-        vec2 warped = samplePill.xy + pp / 1.3 + outward * pillRadius * .5 * edge * edge;
+        // A narrow bevel: a quarter-circle profile, so the content in the last few pixels
+        // compresses hard and bends along the rim while the face inside it stays flat.
+        float bevel = min(8., .32 * pillRadius);
+        float edge = clamp(1. - pillDepth / bevel, 0., .985);
+        vec2 warped = samplePill.xy + pp / 1.3 + outward * bevel * 2.4 * (1. - sqrt(1. - edge * edge));
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         selectionColor = mix(vec3(.24), glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), mix(.8, 1., pillMotion));
@@ -315,11 +321,12 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     pillWidth + projection * Math.min(8,2*sideRoom),
     pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
   ] : pill;
-  const raisedHeight = bar.height - 8;
+  // Like the owner's thumb, the raised lens stays inset in the bar, clear of its top and bottom.
+  const raisedHeight = bar.height - 10;
   const raisedWidth = Math.min(pillWidth + 2 * sideRoom, Math.max(pillWidth, raisedHeight * (1.36 + .29 * stretch)));
   const drawnPill = projection > 0 || press > 0 ? [
     cx,
-    cy + projection * (raisedHeight/2 - 2.5 - cy),
+    cy + projection * (bar.height/2 - cy),
     pillWidth * pressWidth + projection * (raisedWidth - pillWidth * pressWidth),
     // A held press sits clearly lower than the bar, as the owner's thumb does in its track.
     pillHeight * (1 - .1 * press) + projection * (raisedHeight - pillHeight),
