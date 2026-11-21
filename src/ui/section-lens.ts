@@ -103,6 +103,8 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   float faceLuma = dot(face, vec3(.2126, .7152, .0722));
   vec3 milk = mix(vec3(faceLuma), face, .55) * .62 + vec3(.34);
   face = mix(face, milk, pillPress * (.55 + .35 * core));
+  // The raised lens catches a little light so it stays apart from the bar over dark dividers.
+  face = mix(face, vec3(.86), .09 * pillLift);
   return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {
