@@ -179,12 +179,12 @@ vec2 bendFace(vec2 pos) {
   return size * .5 + vec2(x, y);
 }
 vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
-  // C30's top and bottom specular edges, shaped by the capsule normal. At rest the band runs
-  // about 2.4 px deep so it reads as C30's rim; under the raised lens it narrows to 1.25 px,
+  // C30's top and bottom specular edges, shaped by the capsule normal. At rest the band is
+  // C30's single thin, crisp rim, about 1.1 px deep; under the raised lens it runs 1.25 px,
   // which keeps the bar's glass in the lens's top gap dark.
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.25, mix(2.4, 1.25, liftEdge), depth);
+  float line = 1. - smoothstep(.25, mix(1.1, 1.25, liftEdge), depth);
   return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * line);
 }
 float lensBevel(float radius) {
