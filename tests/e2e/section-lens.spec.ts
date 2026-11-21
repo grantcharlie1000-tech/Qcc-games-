@@ -82,6 +82,7 @@ test('section lens ignores game mutations and resumes live sampling at the resto
 });
 
 test('the selected ink has a thin outline over bright live glass',async({page})=>{
+  await page.emulateMedia({colorScheme:'dark'});
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-section-lens','webgl');
@@ -98,6 +99,8 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 
   const selected=bar.getByRole('link',{name:'Games',exact:true});
   await expect(selected).toHaveAttribute('aria-current','page');
+  await expect(selected.locator('.ui-icon')).toHaveCSS('color','rgb(0, 153, 255)');
+  await expect(selected.locator(':scope > span')).toHaveCSS('color','rgb(0, 153, 255)');
   await expect(selected.locator('.ui-icon')).toHaveCSS('filter',/drop-shadow\(.*0\.85/);
   await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
 });

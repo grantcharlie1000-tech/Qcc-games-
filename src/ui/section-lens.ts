@@ -82,11 +82,11 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.2, mix(1.25, 2.4, pillLift), pillDepth);
-  float specular = mix(.22, .75, pillLift) * top + mix(0., .28, pillLift) * bottom;
+  float line = 1. - smoothstep(.2, mix(1.85, 2.4, pillLift), pillDepth);
+  float specular = mix(.06 + .36 * top + .13 * bottom, .75 * top + .28 * bottom, pillLift);
   float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom);
-  float inset = (1. - pillLift) * (.055 + .065 * smoothstep(-.5, .8, y));
-  vec3 face = sceneColor * (1. - inset - .13 * shade * clearance);
+  float inset = (1. - pillLift) * (.075 + .14 * smoothstep(-.5, .8, y));
+  vec3 face = sceneColor * (1. - inset - mix(.21, .13, pillLift) * shade * clearance);
   return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {

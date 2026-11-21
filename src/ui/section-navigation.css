@@ -61,7 +61,10 @@
 }
 @media(prefers-color-scheme:dark){
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
-    --section-pill-accent:#70c7ff;
+    --section-pill-accent:#0099ff;
+  }
+  .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
+    color:var(--section-pill-accent);
   }
 }
 @media(prefers-reduced-motion:no-preference){
