@@ -19,18 +19,20 @@ vec3 frost(vec2 pos, float spread) {
                   + texture(scene, uv + farY).rgb + texture(scene, uv - farY).rgb;
   return .16 * texture(scene, uv).rgb + .105 * (nearSamples + farSamples);
 }
-vec3 transmit(vec3 rgb, float transmission, float highlightCompression) {
+vec3 transmit(vec3 rgb, float transmission, float highlightCompression, float saturation) {
   float luma = dot(rgb, vec3(.2126, .7152, .0722));
   // Keep the color of dark art and soften bright detail behind the white controls.
   float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
-  return mix(vec3(luma), rgb, 1.10) * exposure;
+  return mix(vec3(luma), rgb, saturation) * exposure;
 }
 vec3 glassColor(vec2 pos, float spread, float clarity) {
   // Like the owner's frosted Search bar: keep the backdrop colour and its shapes
   // faintly legible, but lift them toward a light grey with compressed contrast.
-  // The dragged lens clears toward the owner's thumb, whose track keeps its full colour.
-  vec3 rgb = transmit(frost(pos, spread * .5), mix(.98, 1.16, clarity), mix(.66, .28, clarity));
-  return mix(vec3(.44), rgb, mix(.64, .97, clarity));
+  // The dragged lens clears into the owner's neutral, dark clear glass: no grey veil, no
+  // added saturation and no lift, so each pixel keeps the colour of the content under it
+  // and the lens takes on none of the backdrop's average colour.
+  vec3 rgb = transmit(frost(pos, spread * .5), mix(.98, .80, clarity), mix(.66, .28, clarity), mix(1.10, 1., clarity));
+  return mix(vec3(.44), rgb, mix(.64, 1., clarity));
 }
 vec3 glassColor(vec2 pos, float spread) {
   return glassColor(pos, spread, 0.);
@@ -78,6 +80,16 @@ const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .70;
 const vec2 SMOKE_CORE = vec2(.09, .13);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
+// The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
+// across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
+// soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
+// drawn at device density, so the bevel spans LENS_BEVEL * DPR device px. Its slope, and so
+// its normal, grows as u^2: the face meets the bevel without a seam.
+const float LENS_ZOOM = 1.36, LENS_BEVEL = 14., LENS_SLOPE = 1.6;
+// Like thick glass, the bevel bends each ray toward the centre along its normal, so content
+// swells, bends and stretches as it enters the rim. The pull (in bevels) stays under the fold,
+// where it would turn the mapping back on itself: 2 * pull < 1 / LENS_ZOOM.
+const float LENS_PULL = .26;
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -127,6 +139,21 @@ vec3 rim(vec3 rgb, vec2 normal, float depth) {
   float line = 1. - smoothstep(.25, 1.25, depth);
   return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * line);
 }
+float lensBevel(float radius) {
+  return min(LENS_BEVEL, .6 * radius);
+}
+// The raised lens's surface, lit from the same bevel normal that refracts it: a broad soft
+// lit band along the top, a softer dark band along the bottom and a little darkening all
+// round where the glass tilts away. The outermost px roll off, so the lens meets the bar
+// through a soft transition, never a bright 1 px outline.
+vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
+  vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
+  float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
+  float lit = max(0., facing) * smoothstep(0., 6., pillDepth);
+  float shade = max(0., -facing);
+  vec3 face = sceneColor * (1. - .45 * shade - .2 * (1. - normal.z));
+  return mix(face, vec3(1.), .62 * lit);
+}
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
   float clearance = smoothstep(1., 4.5, barDepth - max(0., pillDepth));
@@ -175,7 +202,7 @@ void main() {
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
   // The pressed thumb and the raised slab keep a crisp glass edge, as the owner's do.
-  float soft = .5 + .2 * pillLift + .6 * pillPress;
+  float soft = .5 + 1.3 * pillLift + .6 * pillPress;
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
@@ -200,9 +227,10 @@ void main() {
     vec2 shadowPos = pp - vec2(0., mix(1.25, 2., pillLift));
     float shadowDepth = pillRadius - length(capsuleAxis(shadowPos, pill.zw));
     // The raised lens casts a wider, softer shadow, like the owner's dragged thumb.
-    float shadow = smoothstep(-mix(3.5, 4.5, pillLift), 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
-                   * smoothstep(-.15, .60, pp.y / pillRadius);
-    rgb *= 1. - pillOpacity * shadow * mix(.12, .10, pillLift) * (1. - pillPress);
+    // Under the raised lens it is a soft outer shadow all round, deepest below.
+    float below = mix(smoothstep(-.15, .60, pp.y / pillRadius), .4 + .6 * smoothstep(-.6, .8, pp.y / pillRadius), pillLift);
+    float shadow = smoothstep(-mix(3.5, 7., pillLift), 0., shadowDepth) * smoothstep(1.5, 4.5, depth) * below;
+    rgb *= 1. - pillOpacity * shadow * mix(.12, .22, pillLift) * (1. - pillPress);
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
@@ -224,13 +252,20 @@ void main() {
         vec2 core = pill.zw * .5 / 1.36;
         vec2 room = min(samplePill.xy - core - lo, hi - samplePill.xy - core);
         vec2 fit = clamp(room / max(reach, .001), 0., 1.);
-        vec2 warped = samplePill.xy + pp / 1.36 + outward * fit * reach * (1. - sqrt(1. - edge * edge)) / (1. - sqrt(1. - .985 * .985));
+        vec2 pressWarp = samplePill.xy + pp / 1.36 + outward * fit * reach * (1. - sqrt(1. - edge * edge)) / (1. - sqrt(1. - .985 * .985));
+        // The raised lens refracts through its bevel instead (LENS_PULL): inward only, so its
+        // furthest sample is the face's own edge, pill.zw / 2 / LENS_ZOOM from the active sample.
+        float u = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
+        vec2 lensWarp = samplePill.xy + pp / LENS_ZOOM - outward * LENS_PULL * lensBevel(pillRadius) * u * u;
+        vec2 warped = mix(pressWarp, lensWarp, pillLift);
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion), pillMotion * pillLift), pillMotion);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
+      float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
+      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
@@ -312,9 +347,11 @@ function smoothstep(value:number) {
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
-  // The field bends inward. The margin holds the dragged lens's furthest rim sample (about
-  // 24 px past the bar over an outer tab) and the frost taps; the shader caps it where the
-  // viewport clips this margin.
+  // The field bends inward. The margin holds the furthest sample any pose reaches: the held
+  // thumb's rim pull (up to about 26 px past its face, so about 27 px past the bar over an
+  // outer tab) plus the frost taps. The bar's own rim band reaches 12 px plus its taps, and
+  // the raised lens refracts inward only, so its furthest sample is its face edge, a couple
+  // of px past the bar. The shader caps the thumb's pull where the viewport clips this margin.
   const cropPad = 28;
   const x = Math.max(0,Math.floor(bar.left)-cropPad), y = Math.max(0,Math.floor(bar.top)-cropPad);
   const width = Math.min(innerWidth,Math.ceil(bar.right)+cropPad)-x;
