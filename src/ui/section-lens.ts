@@ -2,54 +2,9 @@ import {onGlassFrame,requestGlassFrame,watchGlassFrameSources} from './glass-fra
 import {createSectionBackdrop} from './section-backdrop';
 import type {Crop} from './section-backdrop';
 
-const VERTEX = `#version 300 es
-out vec2 unit;
-void main() {
-  unit = vec2(float(gl_VertexID & 1), float(gl_VertexID >> 1));
-  gl_Position = vec4(unit * vec2(2., -2.) + vec2(-1., 1.), 0., 1.);
-}`;
-
-const FRAGMENT = `#version 300 es
-precision highp float;
-uniform sampler2D scene;
-uniform vec2 size;
+// The frosted scene sample, shared by both stages.
+const GLASS = `uniform sampler2D scene;
 uniform vec4 region;
-uniform vec4 pill;
-uniform vec4 samplePill;
-uniform float pillOpacity;
-uniform float pillLift;
-uniform float pillPress;
-uniform float pillSmoke;
-uniform float pillMotion;
-uniform float drawPad;
-uniform float pillProjection;
-in vec2 unit;
-out vec4 color;
-
-float capsuleRadius(vec2 bounds) {
-  return min(bounds.x, bounds.y) * .5;
-}
-vec2 capsuleAxis(vec2 p, vec2 bounds) {
-  vec2 halfLine = max(vec2(0.), (bounds - bounds.yx) * .5);
-  return p - clamp(p, -halfLine, halfLine);
-}
-vec2 bendFace(vec2 pos) {
-  vec2 p = pos - size * .5;
-  float radius = capsuleRadius(size);
-  float along = p.x / (size.x * .5);
-  float across = p.y / radius;
-  float across2 = across * across;
-  float cap = capsuleAxis(p, size).x / radius;
-
-  // Keep the center nearly affine and grow the bend toward the upper and lower rim.
-  float rowBend = .08 + across2 * (.06 + .135 * across2);
-  float cap2 = cap * cap;
-  float shoulder = .35 * cap * cap2 * (1.5 - .5 * cap2);
-  float x = p.x - radius * (along * rowBend + shoulder);
-  float column = x / (size.x * .5);
-  float y = p.y * (.83 - .12 * column * column - .08 * across2 * (1. + across2));
-  return size * .5 + vec2(x, y);
-}
 vec3 frost(vec2 pos, float spread) {
   vec2 uv = region.xy + pos * region.zw;
   // Stagger the RGB samples to soften edges across angles.
@@ -75,6 +30,70 @@ vec3 glassColor(vec2 pos, float spread) {
   // faintly legible, but lift them toward a light grey with compressed contrast.
   vec3 rgb = transmit(frost(pos, spread * .5), .98, .66);
   return mix(vec3(.44), rgb, .64);
+}`;
+
+const VERTEX = `#version 300 es
+precision highp float;
+uniform vec4 pill;
+uniform float pillPress;
+${GLASS}
+out vec2 unit;
+flat out float milkTone;
+void main() {
+  unit = vec2(float(gl_VertexID & 1), float(gl_VertexID >> 1));
+  gl_Position = vec4(unit * vec2(2., -2.) + vec2(-1., 1.), 0., 1.);
+  // Average the frosted scene over the pressed thumb for one even milky tone. It
+  // depends only on uniforms, so it runs once per vertex, not at every thumb pixel.
+  milkTone = 0.;
+  if (pillPress > 0.) {
+    for (int i = 0; i < 9; i++) {
+      vec2 tap = vec2(float(i % 3) - 1., float(i / 3) - 1.) * vec2(.32, .26) * pill.zw;
+      milkTone += dot(glassColor(pill.xy + tap, 1.), vec3(.2126, .7152, .0722));
+    }
+    milkTone = .62 + .4 * milkTone / 9.;
+  }
+}`;
+
+const FRAGMENT = `#version 300 es
+precision highp float;
+uniform vec2 size;
+uniform vec4 pill;
+uniform vec4 samplePill;
+uniform float pillOpacity;
+uniform float pillLift;
+uniform float pillPress;
+uniform float pillSmoke;
+uniform float pillMotion;
+uniform float drawPad;
+uniform float pillProjection;
+${GLASS}
+in vec2 unit;
+flat in float milkTone;
+out vec4 color;
+
+float capsuleRadius(vec2 bounds) {
+  return min(bounds.x, bounds.y) * .5;
+}
+vec2 capsuleAxis(vec2 p, vec2 bounds) {
+  vec2 halfLine = max(vec2(0.), (bounds - bounds.yx) * .5);
+  return p - clamp(p, -halfLine, halfLine);
+}
+vec2 bendFace(vec2 pos) {
+  vec2 p = pos - size * .5;
+  float radius = capsuleRadius(size);
+  float along = p.x / (size.x * .5);
+  float across = p.y / radius;
+  float across2 = across * across;
+  float cap = capsuleAxis(p, size).x / radius;
+
+  // Keep the center nearly affine and grow the bend toward the upper and lower rim.
+  float rowBend = .08 + across2 * (.06 + .135 * across2);
+  float cap2 = cap * cap;
+  float shoulder = .35 * cap * cap2 * (1.5 - .5 * cap2);
+  float x = p.x - radius * (along * rowBend + shoulder);
+  float column = x / (size.x * .5);
+  float y = p.y * (.83 - .12 * column * column - .08 * across2 * (1. + across2));
+  return size * .5 + vec2(x, y);
 }
 vec3 rim(vec3 rgb, vec2 normal, float depth) {
   // C30's top and bottom specular edges, shaped by the capsule normal.
@@ -161,15 +180,6 @@ void main() {
         vec2 warped = samplePill.xy + pp / 1.3 + outward * pillRadius * .5 * edge * edge;
         // Keep color edges legible after the lens magnifies the frosted scene.
         selectionColor = glassColor(mix(body, warped, pillMotion), mix(1., .67, pillMotion));
-      }
-      float milkTone = 0.;
-      if (pillPress > 0.) {
-        // Average the frosted scene over the pressed thumb for one even milky tone.
-        for (int i = 0; i < 9; i++) {
-          vec2 tap = vec2(float(i % 3) - 1., float(i / 3) - 1.) * vec2(.32, .26) * pill.zw;
-          milkTone += dot(glassColor(pill.xy + tap, 1.), vec3(.2126, .7152, .0722));
-        }
-        milkTone = .62 + .4 * milkTone / 9.;
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
