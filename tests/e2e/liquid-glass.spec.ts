@@ -811,9 +811,11 @@ test('the fallback navigation glass keeps its frosted backdrop, dark tint and cl
   await page.setViewportSize({width:390,height:844});await page.goto('/?glass=fallback');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  // #92 frosts navigation at .36; the selection pill remains near-transparent.
+  // #92 frosts navigation at .36. Without the WebGL lens the selection pill is the C30 smoke, a clear step darker than the bar.
   expect(tint).toBeCloseTo(.36,2);
-  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeLessThanOrEqual(.02);
+  const pill=await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
+  expect(alphaOf(pill)).toBeGreaterThanOrEqual(.25);
+  expect(pill).toMatch(/^rgba\(0, 0, 0,/);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
   expect(frost).toBe('blur(12px) saturate(1.4) brightness(0.94)');
