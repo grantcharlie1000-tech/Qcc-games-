@@ -75,6 +75,12 @@ in vec2 unit;
 flat in float milkTone;
 out vec4 color;
 
+// C30's smoked frost: a darker, neutral grey that keeps only part of the art's colour,
+// so titles and card colours behind the bar stay quiet. Motion clears it toward the lens.
+vec3 smoked(vec3 frosted, float motion) {
+  vec3 neutral = mix(vec3(dot(frosted, vec3(.2126, .7152, .0722))), frosted, mix(.62, 1., motion));
+  return mix(vec3(.21), neutral, mix(.76, 1., motion));
+}
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
 }
@@ -164,13 +170,13 @@ void main() {
   vec2 body = bendFace(pos);
   // C30's smoked frost: a wider blur and a darker, flatter grey so titles behind
   // the bar do not read.
-  vec3 bodyColor = mix(vec3(.24), glassColor(body, 1.8), .8);
+  vec3 bodyColor = smoked(glassColor(body, 1.8), 0.);
   // As in C30, a band at the rim refracts: it draws in what lies past the edge and
   // bends it along the curve, while the centre stays flat under the grey frost.
   float band = 1. - smoothstep(0., 12., depth);
   vec2 bent = body + normal * 12. * band * band;
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
-  vec3 rgb = rim(band > 0. ? mix(vec3(.24), glassColor(bent, mix(1.8, 1., band)), .8) : bodyColor, normal, depth);
+  vec3 rgb = rim(band > 0. ? smoked(glassColor(bent, mix(1.8, 1., band)), 0.) : bodyColor, normal, depth);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -195,7 +201,7 @@ void main() {
         vec2 warped = samplePill.xy + pp / 1.3 + outward * bevel * 3.2 * (1. - sqrt(1. - edge * edge));
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
-        selectionColor = mix(vec3(.24), glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), mix(.8, 1., pillMotion));
+        selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), pillMotion);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
