@@ -83,13 +83,16 @@ const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .86;
 // Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
 // grey out but a stripe keeps its width at half height.
 const vec2 SMOKE_CORE = vec2(.09, .13);
-// C30's even smoke over large card areas: a wide field sample (fieldColor, one tap of a mip
-// level about FIELD_TEXEL css px a texel) tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
+// C30's even smoke over large card areas: a wide field sample (fieldColor: four taps of a mip
+// level about FIELD_TEXEL css px a texel, about 10 css px out) tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
 // SMOKE_FIELD (teal and mustard card art), while a 9 px stripe, mostly absent from the field,
 // keeps its hue. Only dull colour fades (spread below about .45): a vivid field such as a
 // pure red or green panel still reads through at full strength. Bright detail also sinks a little toward the darker field, so blurred titles
 // stay quiet, and broad bright art, which the field shares, still lifts the bar.
-const float SMOKE_FIELD = .45, SMOKE_EVEN = .3, FIELD_TEXEL = 32. / 3.;
+const float SMOKE_FIELD = .45, SMOKE_EVEN = .3, FIELD_TEXEL = 16. / 3.;
+// The field's taps, in css px: the frost's near ring at spread 6, so a 9 px stripe keeps about
+// two fifths of its colour in the field, as with the earlier nine-tap field.
+const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -135,16 +138,21 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
 }
-// One bilinear tap of mip level L reads base texels up to 1.5 * 2^L away, so the field's reach
-// is fixed in css px at every density. Its centre is held that far, plus RIM_SLACK, inside the
-// crop, so it never reads the clamped edge where the viewport clips the crop margin.
+// A bilinear tap of mip level L reads base texels up to 1.5 * 2^L away, so the field's reach is
+// its furthest tap offset (9 css px on each axis) plus that, at every density. Its centre is held
+// that far, plus RIM_SLACK, inside the crop, so it never reads the clamped edge where the
+// viewport clips the crop margin.
 vec3 fieldColor(vec2 pos) {
   float density = float(textureSize(scene, 0).x) * region.z;
   float lod = log2(FIELD_TEXEL * density);
-  float reach = 1.5 * exp2(ceil(lod - .01)) / density + RIM_SLACK;
+  float reach = 9. + 1.5 * exp2(ceil(lod - .01)) / density + RIM_SLACK;
   vec2 lo = -region.xy / region.zw + reach;
   vec2 hi = max(lo, (1. - region.xy) / region.zw - reach);
-  return glassTone(textureLod(scene, region.xy + clamp(pos, lo, hi) * region.zw, lod).rgb, 0.);
+  vec2 uv = region.xy + clamp(pos, lo, hi) * region.zw;
+  vec2 tapX = FIELD_TAP_X * region.zw, tapY = FIELD_TAP_Y * region.zw;
+  vec3 rgb = textureLod(scene, uv + tapX, lod).rgb + textureLod(scene, uv - tapX, lod).rgb
+           + textureLod(scene, uv + tapY, lod).rgb + textureLod(scene, uv - tapY, lod).rgb;
+  return glassTone(rgb * .25, 0.);
 }
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
