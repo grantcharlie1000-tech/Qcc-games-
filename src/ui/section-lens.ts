@@ -99,7 +99,7 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   // The dark theme's resting selection is a smoked capsule, as in C30, with a crisp lower rim.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
   vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .30 * smoke);
-  specular += smoke * .24 * bottom;
+  specular += smoke * .12 * bottom;
   // First contact frosts the thumb: a brighter milky core with compressed contrast.
   float core = smoothstep(.5, 9., pillDepth);
   float faceLuma = dot(face, vec3(.2126, .7152, .0722));
@@ -107,7 +107,10 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   face = mix(face, milk, pillPress * (.55 + .35 * core));
   // The raised lens catches a little light so it stays apart from the bar over dark dividers.
   face = mix(face, vec3(.86), .07 * pillLift);
-  return mix(face, vec3(1.), specular * line * clearance);
+  face = mix(face, vec3(1.), specular * line * clearance);
+  // C30's smoked capsule ends in a crisp bright lower rim, not a soft glow.
+  float crisp = 1. - smoothstep(.15, .95, pillDepth);
+  return mix(face, vec3(1.), smoke * .34 * bottom * crisp * clearance);
 }
 void main() {
   vec2 pos = unit * (size + 2. * drawPad) - drawPad;
