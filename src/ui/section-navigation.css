@@ -78,6 +78,13 @@
     --section-pill-accent:#0099ff;
   }
 }
+/* On the CSS fallback the accent cannot reach 3:1 over bright art, smoked or milky pill alike. Where glass-ink.ts
+   flags bright art under the selected label, the tab keeps white ink with the full dark .85 rim, at rest and held. */
+@media not (prefers-contrast:more){@media (forced-colors:none){
+  .section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]):has(>span[data-glass-halo]){
+    --section-pill-accent:#fff;--section-pill-ink-halo:rgb(0 0 0 / .85);
+  }
+}}
 /* Without the lens the CSS pill carries the C30 selection: a smoked body a clear step darker than the frosted bar,
    lit along its top edge. A press lifts it toward the milky lens the WebGL path draws. */
 .section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])::after{
