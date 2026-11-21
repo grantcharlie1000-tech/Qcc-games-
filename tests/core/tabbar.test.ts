@@ -1,5 +1,5 @@
 import {describe,expect,it,test} from 'vitest';
-import {LENS_ZOOM,lensZoom,nextTabbarState,type TabbarScroll} from '../../src/ui/tabbar';
+import {LENS_ZOOM,lensBevel,lensCover,lensZoom,nextTabbarState,tabCover,type TabbarScroll} from '../../src/ui/tabbar';
 
 const expanded=(lastY:number):TabbarScroll=>({minimized:false,lastY,travel:0});
 const minimized=(lastY:number):TabbarScroll=>({minimized:true,lastY,travel:0});
@@ -108,20 +108,69 @@ test('the step returns a new state and leaves its input alone',()=>{
   expect(state).toEqual(expanded(200));
 });
 
-describe('lensZoom',()=>{
-  it('keeps tab content at 1 at rest and on a press, whatever the distance',()=>{
-    expect(lensZoom(100,40,1,100)).toBe(1);
-    expect(lensZoom(100,40,1.1,100)).toBe(1);
+// A 390px bar: 58px tabs, a 24px icon and a 40px label centred in each, and the drag lens at full stretch, 1.32 wide.
+const TAB=58,ICON=24,LABEL=40,STRETCH=1.32;
+const lensHalf=(TAB+4)*STRETCH/2,bevel=lensBevel((TAB+4)*STRETCH,48);
+const content=(centre:number)=>[[centre-ICON/2,centre+ICON/2,ICON*ICON],[centre-LABEL/2,centre+LABEL/2,LABEL*12]] as const;
+const zoomAt=(lens:number,tab:number,scaleX=STRETCH)=>lensZoom(scaleX,tabCover(lens,lensHalf,bevel,content(tab)));
+
+describe('lensCover',()=>{
+  it('counts content inside the lens face in full, content past the lens not at all',()=>{
+    expect(lensCover(100,40,12,80,120)).toBe(1);
+    expect(lensCover(100,40,12,72,128)).toBe(1);
+    expect(lensCover(100,40,12,140,180)).toBe(0);
+    expect(lensCover(100,40,12,10,60)).toBe(0);
   });
-  it('magnifies the tab under a raised drag lens and fades out as the lens leaves it',()=>{
-    expect(lensZoom(100,45,1.32,100)).toBeCloseTo(LENS_ZOOM,5);
-    const near=lensZoom(100,45,1.32,120),far=lensZoom(100,45,1.32,160);
-    expect(near).toBeGreaterThan(1);expect(near).toBeLessThan(LENS_ZOOM);
-    expect(far).toBe(1);
-    expect(LENS_ZOOM).toBeGreaterThanOrEqual(1.15);expect(LENS_ZOOM).toBeLessThanOrEqual(1.25);
+  it('eases the weight down across the bevel, smooth and symmetric',()=>{
+    // Across the bevel alone the smoothstep averages one half.
+    expect(lensCover(100,40,12,128,140)).toBeCloseTo(.5,6);
+    expect(lensCover(100,40,12,60,72)).toBeCloseTo(.5,6);
+    // Thin slices step down monotonically from the face to the edge, with no jump at either end of the bevel.
+    const slices=Array.from({length:14},(_,k)=>lensCover(100,40,12,127+k,128+k));
+    for(let k=1;k<slices.length;k++)expect(slices[k]).toBeLessThanOrEqual(slices[k-1]);
+    expect(slices[0]).toBe(1);expect(slices[13]).toBe(0);
+    expect(slices[1]).toBeGreaterThan(.98);expect(slices[12]).toBeLessThan(.02);
+  });
+  it('reads the bevel as section-lens.ts draws it',()=>{
+    expect(lensBevel(82,48)).toBe(10.8);
+    expect(lensBevel(120,60)).toBe(12);
+  });
+});
+
+describe('lensZoom',()=>{
+  it('keeps tab content at 1 at rest and on a press, however much the lens covers',()=>{
+    expect(zoomAt(100,100,1)).toBe(1);
+    expect(zoomAt(100,100,1.1)).toBe(1);
+    expect(lensZoom(1.1,1)).toBe(1);
+    expect(lensZoom(STRETCH,0)).toBe(1);
+  });
+  it('magnifies content fully under the raised lens body to the lens magnification',()=>{
+    expect(LENS_ZOOM).toBeGreaterThanOrEqual(1.2);expect(LENS_ZOOM).toBeLessThanOrEqual(1.3);
+    expect(zoomAt(100,100)).toBeCloseTo(LENS_ZOOM,6);
+    // Its neighbours' content sits past the lens face, at most a label tip in the bevel, so they stay at about 1.
+    expect(zoomAt(100,100+TAB)).toBeLessThan(1.002);
+    expect(zoomAt(100,100-TAB)).toBeLessThan(1.002);
+    expect(zoomAt(100,100+TAB*1.5)).toBe(1);
+  });
+  it('visibly enlarges both tabs when the lens sits between them',()=>{
+    const left=zoomAt(100,100-TAB/2),right=zoomAt(100,100+TAB/2);
+    expect(left).toBeCloseTo(right,6);
+    // About two thirds of each tab's content is under the face or bevel: well past the old 1.06.
+    expect(left).toBeGreaterThan(1.13);expect(left).toBeLessThan(LENS_ZOOM);
+  });
+  it('eases a tab down smoothly as the lens slides off it',()=>{
+    let last=zoomAt(100,100);
+    for(let shift=1;shift<=Math.ceil(lensHalf+LABEL/2);shift++){
+      const zoom=zoomAt(100+shift,100);
+      expect(zoom).toBeLessThanOrEqual(last+1e-9);
+      expect(last-zoom).toBeLessThan(.02);
+      last=zoom;
+    }
+    expect(last).toBe(1);
   });
   it('builds the magnification with drag stretch, as the lens rises',()=>{
-    expect(lensZoom(100,45,1.15,100)).toBeGreaterThan(1);
-    expect(lensZoom(100,45,1.15,100)).toBeLessThan(lensZoom(100,45,1.25,100));
+    expect(lensZoom(1.15,1)).toBeGreaterThan(1);
+    expect(lensZoom(1.15,1)).toBeLessThan(lensZoom(1.25,1));
+    expect(lensZoom(1.28,1)).toBeCloseTo(LENS_ZOOM,6);
   });
 });

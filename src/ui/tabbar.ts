@@ -35,30 +35,67 @@ export function nextTabbarState(state:TabbarScroll,y:number,max:number,typing=fa
   return {minimized,lastY:at,travel};
 }
 
-// The drag lens magnifies the tab content it passes over, as the native lens does. This reads only the pill's resolved
-// ::after geometry, which section-lens.ts reads too, and writes one --section-lens-zoom per tab. The lens rises with drag
-// stretch past the 1.1 press width, so a press, a settle and rest stay at 1. CSS applies it only without reduced motion.
-export const LENS_ZOOM=1.2;
+// The drag lens magnifies the tab content it passes over, as the native lens does. Each tab's icon and label take the
+// lens magnification in proportion to how much of them the lens body covers: content inside the flat face reaches
+// LENS_ZOOM, and the weight eases to 0 across the bevel at the lens edge, so a tab half under the lens swells too.
+// This reads only the pill's resolved ::after geometry, which section-lens.ts reads too, and the content's layout boxes,
+// which a scale never moves. The lens rises with drag stretch past the 1.1 press width, so a press, a settle and rest
+// stay at 1. CSS applies the zoom only without reduced motion.
+export const LENS_ZOOM=1.25;
+// The bevel section-lens.ts draws at the lens edge: min(12px, .45 of the capsule radius).
+export const lensBevel=(width:number,height:number)=>Math.min(12,.45*Math.min(width,height)/2);
 const smooth=(t:number)=>{const x=Math.min(1,Math.max(0,t));return x*x*(3-2*x);};
-export function lensZoom(lensCenter:number,halfWidth:number,scaleX:number,tabCenter:number):number{
+// The cover weight summed from the lens edge to a point depth px inside it: the smoothstep ramp across the bevel, then 1.
+const inside=(depth:number,bevel:number)=>{
+  if(depth<=0)return 0;
+  if(depth>=bevel)return bevel/2+depth-bevel;
+  const t=depth/bevel;
+  return bevel*t*t*t*(1-t/2);
+};
+// The share of the span [left, right] under a lens centred at center: 1 across the face, easing to 0 at the edge.
+export function lensCover(center:number,halfWidth:number,bevel:number,left:number,right:number):number{
+  if(halfWidth<=0||right<=left)return 0;
+  const edge=Math.min(Math.max(bevel,0),halfWidth);
+  // Cumulative weight from far left: rising up to the centre, then mirrored on the way out.
+  const total=(x:number)=>x<=center?inside(halfWidth-(center-x),edge):2*inside(halfWidth,edge)-inside(halfWidth-(x-center),edge);
+  return (total(right)-total(left))/(right-left);
+}
+export function lensZoom(scaleX:number,cover:number):number{
   const rise=smooth((scaleX-1.1)/.18);
-  if(!rise||halfWidth<=0)return 1;
-  const reach=1-smooth((Math.abs(tabCenter-lensCenter)/halfWidth-.15)/.85);
-  return 1+(LENS_ZOOM-1)*rise*reach;
+  if(!rise||!(cover>0))return 1;
+  return 1+(LENS_ZOOM-1)*rise*Math.min(1,cover);
+}
+// A tab's cover: its icon and label, each weighted by area, as boxes [left, right, area] in bar coordinates.
+export function tabCover(center:number,halfWidth:number,bevel:number,boxes:readonly (readonly [number,number,number])[]):number{
+  let area=0,covered=0;
+  for(const [left,right,size] of boxes){area+=size;covered+=size*lensCover(center,halfWidth,bevel,left,right);}
+  return area>0?covered/area:0;
 }
 function bindLensZoom(bar:HTMLElement):()=>void{
   let frame=0;
   const tabs=()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
   const clear=()=>{for(const tab of tabs())tab.style.removeProperty('--section-lens-zoom');};
+  // The icon and label boxes of a tab in the bar's coordinates, from layout, which the zoom's own scale never moves.
+  // The label reports its offset box. The icon is an SVG, with no offset box, so it takes its used size, centred in the tab
+  // as the column flex places it.
+  const content=(tab:HTMLElement)=>[...tab.querySelectorAll<HTMLElement|SVGSVGElement>(':scope>:is(.ui-icon,span)')].map(part=>{
+    if(part instanceof HTMLElement){
+      const left=tab.offsetLeft+part.offsetLeft;
+      return [left,left+part.offsetWidth,part.offsetWidth*part.offsetHeight] as const;
+    }
+    const used=getComputedStyle(part),width=parseFloat(used.width)||0,left=tab.offsetLeft+(tab.offsetWidth-width)/2;
+    return [left,left+width,width*(parseFloat(used.height)||0)] as const;
+  });
   const tick=()=>{
     frame=0;
     if(!bar.hasAttribute('data-pill-dragging')){clear();return;}
     const style=getComputedStyle(bar,'::after');
-    const width=parseFloat(style.width)||0;
-    const [scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
+    const width=parseFloat(style.width)||0,height=parseFloat(style.height)||0;
+    const [scaleX,scaleY=scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
     const center=(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
+    const half=width*scaleX/2,bevel=lensBevel(width*scaleX,height*scaleY);
     // Every layout read comes before the first write, so a drag frame forces at most one layout.
-    const zooms=tabs().map(tab=>[tab,lensZoom(center,width*scaleX/2,scaleX,tab.offsetLeft+tab.offsetWidth/2).toFixed(3)] as const);
+    const zooms=tabs().map(tab=>[tab,lensZoom(scaleX,tabCover(center,half,bevel,content(tab))).toFixed(3)] as const);
     for(const [tab,zoom] of zooms)if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
     // The pill's scale eases for 100ms after each move, so keep following it while the drag lasts.
     frame=requestAnimationFrame(tick);
