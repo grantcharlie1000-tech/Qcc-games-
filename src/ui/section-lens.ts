@@ -18,6 +18,7 @@ uniform vec4 pill;
 uniform vec4 samplePill;
 uniform float pillOpacity;
 uniform float pillLift;
+uniform float pillPress;
 uniform float pillMotion;
 uniform float drawPad;
 uniform float pillProjection;
@@ -84,11 +85,17 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.2, mix(1.85, 2.4, pillLift), pillDepth);
-  float specular = mix(.06 + .36 * top + .13 * bottom, .75 * top + .28 * bottom, pillLift);
-  float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom);
-  float inset = (1. - pillLift) * (.075 + .14 * smoothstep(-.5, .8, y));
-  vec3 face = sceneColor * (1. - inset - mix(.21, .13, pillLift) * shade * clearance);
+  float line = 1. - smoothstep(.2, mix(1.85, 3.6, pillLift), pillDepth);
+  float specular = mix(.06 + .36 * top + .13 * bottom, .46 * top + .10 * bottom, pillLift);
+  // The raised lens keeps its lower bevel light so no dark seam forms under the art.
+  float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift);
+  float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
+  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance);
+  // First contact frosts the thumb: a brighter milky core with compressed contrast.
+  float core = smoothstep(.5, 9., pillDepth);
+  float faceLuma = dot(face, vec3(.2126, .7152, .0722));
+  vec3 milk = mix(vec3(faceLuma), face, .55) * .62 + vec3(.34);
+  face = mix(face, milk, pillPress * (.55 + .35 * core));
   return mix(face, vec3(1.), specular * line * clearance);
 }
 void main() {
@@ -103,7 +110,7 @@ void main() {
   vec2 pillAxis = capsuleAxis(pp, pill.zw);
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
-  float selected = pillOpacity * smoothstep(-.5, .5, pillDepth);
+  float selected = pillOpacity * smoothstep(-.5 - .6 * pillLift, .5 + .6 * pillLift, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
     color = vec4(0.);
@@ -121,7 +128,7 @@ void main() {
     float shadowDepth = pillRadius - length(capsuleAxis(shadowPos, pill.zw));
     float shadow = smoothstep(-3.5, 0., shadowDepth) * smoothstep(1.5, 4.5, depth)
                    * smoothstep(-.15, .60, pp.y / pillRadius);
-    rgb *= 1. - pillOpacity * shadow * mix(.12, .30, pillLift);
+    rgb *= 1. - pillOpacity * shadow * mix(.12, .16, pillLift) * (1. - pillPress);
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
@@ -153,7 +160,7 @@ void main() {
 }`;
 
 type Geometry = {
-  bar:DOMRect; crop:Crop; pill:number[]; samplePill:number[]; opacity:number; lift:number;
+  bar:DOMRect; crop:Crop; pill:number[]; samplePill:number[]; opacity:number; lift:number; press:number;
   motion:number; pad:number; projection:number; density:number;
 };
 
@@ -180,7 +187,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
   const uniform = (name:string)=>gl.getUniformLocation(program,name);
   const size = uniform('size'), region = uniform('region'), pill = uniform('pill');
   const samplePill = uniform('samplePill');
-  const opacity = uniform('pillOpacity'), lift = uniform('pillLift');
+  const opacity = uniform('pillOpacity'), lift = uniform('pillLift'), press = uniform('pillPress');
   const motion = uniform('pillMotion'), drawPad = uniform('drawPad'), projection = uniform('pillProjection');
   let width = 0, height = 0;
   return {
@@ -203,6 +210,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
       gl.uniform4fv(samplePill,geometry.samplePill);
       gl.uniform1f(opacity,geometry.opacity);
       gl.uniform1f(lift,geometry.lift);
+      gl.uniform1f(press,geometry.press);
       gl.uniform1f(motion,geometry.motion);
       gl.uniform1f(drawPad,geometry.pad);
       gl.uniform1f(projection,geometry.projection);
@@ -240,8 +248,11 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
   const sideRoom = Math.min(cx,bar.width-cx) + 6 - pillWidth/2;
   const expanded = opacity > 0 && bar.width >= 2 * bar.height &&
     element.dataset.hidden !== 'true' && element.dataset.minimized !== 'true';
+  // A held press only widens the pill. Drag stretch grows scaleX past the press
+  // scale, so the raised lens builds with travel and falls back the same way on release.
+  const rise = smoothstep((scaleX - 1.1) / .18);
   // Use the animated scale through release as well as during the press.
-  const projection = expanded ? smoothstep(lift) * smoothstep(sideRoom/2) : 0;
+  const projection = expanded ? smoothstep(lift) * rise * smoothstep(sideRoom/2) : 0;
   const settledX = (parseFloat(style.getPropertyValue('--ui-pill-x')) || 0) -
     (parseFloat(style.getPropertyValue('--section-pill-bleed')) || 0);
   // Transition progress comes from the resolved pseudo-element geometry, so
@@ -249,7 +260,11 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
   const travel = Math.abs(shiftX-settledX);
   const scale = Math.max(Math.abs(scaleX-1),Math.abs(scaleY-1));
   const moving = expanded && (pillAnimating || element.hasAttribute('data-pressing'));
-  const motion = moving ? Math.min(1,Math.max(lift,travel/24,scale*7)) : 0;
+  // First contact refracts only a little; magnification arrives with the raised lens.
+  const motion = moving ? Math.min(1,Math.max(lift,travel/24,scale*7)) * (.18 + .82 * rise) : 0;
+  const press = expanded ? lift * (1 - rise) : 0;
+  // The frosted thumb reads about 1.15 times wider than the resting pill.
+  const pressWidth = 1 + .045 * press;
   const stretch = Math.min(1,Math.max(0,(1.14-scaleY)/.16));
   // Keep the active sample centered on the bar as the visible capsule flattens and rises.
   const samplePill = projection > 0 ? [
@@ -260,14 +275,14 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean):Geometry|null {
   ] : pill;
   const raisedHeight = bar.height - 8;
   const raisedWidth = Math.min(pillWidth + 2 * sideRoom, Math.max(pillWidth, raisedHeight * (1.36 + .29 * stretch)));
-  const drawnPill = projection > 0 ? [
+  const drawnPill = projection > 0 || press > 0 ? [
     cx,
     cy + projection * (raisedHeight/2 - 2.5 - cy),
-    pillWidth + projection * (raisedWidth - pillWidth),
+    pillWidth * pressWidth + projection * (raisedWidth - pillWidth * pressWidth),
     pillHeight + projection * (raisedHeight - pillHeight),
   ] : pill;
   const pad = projection > 0 ? 8 : 0;
-  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
+  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*rise,press,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */
@@ -335,7 +350,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     const anchor = root.getBoundingClientRect();
     const nextTexture = [anchor.x,anchor.y,crop.x,crop.y,crop.width,crop.height,density].join(',');
     const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,
-      ...geometry.pill,...geometry.samplePill,geometry.opacity,geometry.lift,geometry.motion,pad,geometry.projection].join(',');
+      ...geometry.pill,...geometry.samplePill,geometry.opacity,geometry.lift,geometry.press,geometry.motion,pad,geometry.projection].join(',');
     const changed = texture!==nextTexture || !!live;
     try {
       if (changed) {
