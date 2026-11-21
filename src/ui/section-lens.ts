@@ -129,8 +129,13 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   vec3 chroma = frosted - luma;
   float fieldLuma = dot(field, vec3(.2126, .7152, .0722));
   vec3 fieldChroma = field - fieldLuma;
-  // Dark tones sink and bright art still lifts the bar, so the slope stays near one.
-  float tone = mix(SMOKE_SLOPE * mix(luma, min(luma, fieldLuma), SMOKE_EVEN) - SMOKE_DROP, luma, motion);
+  // Dark tones sink and bright art still lifts the bar, so the slope stays near one. In the
+  // dark theme (pillSmoke) a steeper slope and deeper drop take out the grey veil's lift at
+  // black, as in C30's denser smoke, while #aaa still reads about 113; bright blobs sink
+  // further toward their field so the steeper slope adds no detail.
+  float slope = mix(SMOKE_SLOPE, 1.18, pillSmoke), drop = mix(SMOKE_DROP, .133, pillSmoke);
+  float even = mix(SMOKE_EVEN, .5, pillSmoke);
+  float tone = mix(slope * mix(luma, min(luma, fieldLuma), even) - drop, luma, motion);
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
   // saturated mark keeps most of its hue.
   float spread = max(chroma.r, max(chroma.g, chroma.b)) - min(chroma.r, min(chroma.g, chroma.b));
@@ -218,7 +223,7 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
   // The dark theme's resting selection is a smoked capsule, as in C30, with a crisp lower rim.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
-  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .30 * smoke);
+  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .20 * smoke);
   specular += smoke * .24 * bottom;
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
   // press: the tone follows the average scene under it, so no art or dome shows. Like the
