@@ -215,7 +215,7 @@ vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
   float lit = max(0., facing) * (.45 + .55 * smoothstep(0., 7., pillDepth));
   float shade = max(0., -facing);
   vec3 face = sceneColor * (1. - .45 * shade - .2 * (1. - normal.z));
-  return mix(face, vec3(1.), .9 * lit);
+  return mix(face, vec3(1.), .5 * lit);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
