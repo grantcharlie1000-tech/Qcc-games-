@@ -99,6 +99,15 @@ const float LENS_ZOOM = 1.36, LENS_BEVEL = 14., LENS_SLOPE = 2.4;
 // swells, bends and stretches as it enters the rim. The pull (in bevels) stays under the fold,
 // where it would turn the mapping back on itself: 2 * pull < 1 / LENS_ZOOM.
 const float LENS_PULL = .26;
+// Like the owner's thumb, each end of the lens is a dome: its vertical magnification climbs as
+// (1 - d / LENS_SWELL_SPAN)^3 over the last LENS_SWELL_SPAN css px before the end (d is the
+// distance to the end), to 1 / (1 - LENS_SWELL) times the face's at the very end. A track or
+// card seam thickens and curves away from the centre line as it enters, then settles to the
+// even face. It only draws samples toward the centre, so the furthest sample is unchanged.
+const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
+// The raised lens is neutral, dark clear glass: it keeps part of the colour of the content
+// under it, so it never takes on a navy or teal backdrop's cast. The bevel lighting sits on top.
+const float LENS_NEUTRAL = .35, LENS_NEUTRAL_DIM = .06;
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -272,11 +281,17 @@ void main() {
         // The raised lens refracts through its bevel instead (LENS_PULL): inward only, so its
         // furthest sample is the face's own edge, pill.zw / 2 / LENS_ZOOM from the active sample.
         float u = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
-        vec2 lensWarp = samplePill.xy + pp / LENS_ZOOM - outward * LENS_PULL * lensBevel(pillRadius) * u * u;
+        float swell = 1. - clamp((pill.z * .5 - abs(pp.x)) / LENS_SWELL_SPAN, 0., 1.);
+        vec2 lensWarp = samplePill.xy + pp * vec2(1., 1. - LENS_SWELL * swell * swell * swell) / LENS_ZOOM
+                      - outward * LENS_PULL * lensBevel(pillRadius) * u * u;
         vec2 warped = mix(pressWarp, lensWarp, pillLift);
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion), pillMotion * pillLift), pillMotion, field);
+        // Neutral smoke in the raised lens; it falls with the motion, so the rest pill is unchanged.
+        float neutral = pillMotion * pillLift;
+        float lensLuma = dot(selectionColor, vec3(.2126, .7152, .0722));
+        selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * neutral) * (1. - LENS_NEUTRAL_DIM * neutral);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 selection = pillSurface(selectionColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
