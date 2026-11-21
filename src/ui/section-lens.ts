@@ -111,11 +111,14 @@ const float LENS_PULL = .26;
 // card seam thickens and curves away from the centre line as it enters, then settles to the
 // even face. It only draws samples toward the centre, so the furthest sample is unchanged.
 const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
-// The raised lens is neutral, dark clear glass: dull colour under it (a navy or teal card,
-// chroma spread below about .2) loses LENS_NEUTRAL of its saturation, so the lens never takes on
-// the backdrop's cast, while a vivid mark (spread above about .32) keeps its hue and stays
-// legible. The bevel lighting sits on top.
-const float LENS_NEUTRAL = .35, LENS_NEUTRAL_DIM = .06;
+// The raised lens is neutral, clear glass a little lighter than what lies under it, like the
+// owner's dragged thumb: dull colour under it (a navy or teal card, chroma spread below about .2)
+// loses LENS_NEUTRAL of its saturation, so the lens never takes on the backdrop's cast, while a
+// vivid mark (spread above about .32) keeps its hue and stays legible. LENS_GAIN takes the clear
+// glass tone's .80 transmission back to about one, so a vivid stripe keeps about 94% of its
+// colour, and LENS_LIFT lifts dark content a little, as milky glass does, while bright content
+// barely moves. The bevel lighting sits on top.
+const float LENS_NEUTRAL = .35, LENS_GAIN = 1.25, LENS_LIFT = .09;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 // C30's resting selection is clear glass: the art under it reads through in its own colour,
 // with none of the bar's smoke or grey veil. At rest the pill's face mixes PILL_CLEAR of the
@@ -334,7 +337,8 @@ void main() {
         float lensLuma = dot(selectionColor, vec3(.2126, .7152, .0722));
         float lensSpread = max(selectionColor.r, max(selectionColor.g, selectionColor.b)) - min(selectionColor.r, min(selectionColor.g, selectionColor.b));
         float dull = 1. - smoothstep(LENS_NEUTRAL_VIVID.x, LENS_NEUTRAL_VIVID.y, lensSpread);
-        selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * dull * neutral) * (1. - LENS_NEUTRAL_DIM * neutral);
+        selectionColor = mix(selectionColor, vec3(lensLuma), LENS_NEUTRAL * dull * neutral) * (1. + (LENS_GAIN - 1.) * neutral);
+        selectionColor += LENS_LIFT * neutral * max(0., 1. - dot(selectionColor, vec3(.2126, .7152, .0722)));
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
