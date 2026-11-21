@@ -128,6 +128,7 @@ const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 // nearly unchanged; the dark theme's (.y) keeps a little smoke. It fades out with motion, lift
 // and press, and it is sampled where the selection is, so a sliding pill keeps its refraction.
 const vec2 PILL_CLEAR = vec2(.95, .7);
+const float PILL_DEEPEN = 23. / 255.;
 const float PILL_GAIN = .98 / .80;
 // Over bright art the clear glass, and the dark theme's lighter .20 smoke, would lift the pill
 // toward the selected accent's own luminance and wash the accent out. Once the bar's veiled frost
@@ -244,6 +245,9 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   // The dark theme's resting selection is a smoked capsule, as in C30.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
   vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .20 * smoke);
+  // Apple Music's selected tab is a darker capsule in the bar: in both themes it sits about
+  // PILL_DEEPEN (23/255) below the bar's own tone, over a white page and over black alike.
+  face = max(face - PILL_DEEPEN * (1. - pillLift) * (1. - pillPress), 0.);
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
   // press: the tone follows the average scene under it, so no art or dome shows. Like the
   // owner's thumb it is milky glass, not paint: a hairline catches the light at the rim and
