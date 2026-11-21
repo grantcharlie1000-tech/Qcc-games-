@@ -89,7 +89,7 @@ const vec2 SMOKE_CORE = vec2(.09, .13);
 // keeps its hue. Only dull colour fades (spread below about .45): a vivid field such as a
 // pure red or green panel still reads through at full strength. Bright detail also sinks a little toward the darker field, so blurred titles
 // stay quiet, and broad bright art, which the field shares, still lifts the bar.
-const float SMOKE_FIELD = .45, SMOKE_EVEN = .3, FIELD_TEXEL = 16. / 3.;
+const float SMOKE_FIELD = .15, SMOKE_EVEN = .3, FIELD_TEXEL = 16. / 3.;
 // The field's taps, in css px: the frost's near ring at spread 6, so a 9 px stripe keeps about
 // two fifths of its colour in the field, as with the earlier nine-tap field.
 const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
