@@ -68,7 +68,12 @@
   .section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-line{display:none}
   .section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-fill{display:inline}
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
-    color:var(--section-pill-accent);
+    color:var(--section-pill-accent);font-weight:600;
+    text-shadow:0 0 1px var(--section-pill-ink-halo),0 0 1px var(--section-pill-ink-halo);
+  }
+  /* C30 kept the blue inside the glyph. A soft rim, not a hard outline, still separates it from bright glass. */
+  .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
+    filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo)) drop-shadow(0 0 .75px var(--section-pill-ink-halo));
   }
 }
 @media(prefers-reduced-motion:no-preference){
