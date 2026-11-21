@@ -105,14 +105,16 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
 
-  // The C30 dark archive shows every tab's 24px filled glyph; the light bar keeps its outline glyphs.
+  // C30 shows every tab's 24px filled glyph in both themes, with its #ff375f light accent at weight 600.
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   await expect(movies.locator('.ui-icon')).toHaveCSS('width','24px');
   await expect(movies.locator('.ui-icon-fill')).toHaveCSS('display','inline');
   await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','none');
   await page.emulateMedia({colorScheme:'light'});
-  await expect(movies.locator('.ui-icon')).toHaveCSS('width','16px');
-  await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','inline');
+  await expect(movies.locator('.ui-icon')).toHaveCSS('width','24px');
+  await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','none');
+  await expect(selected.locator(':scope > span')).toHaveCSS('color','rgb(255, 55, 95)');
+  await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
 });
 
 test('section lens falls back on context loss',async({page})=>{

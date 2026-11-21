@@ -40,4 +40,11 @@ describe('clear glass contrast',()=>{
     // A grey that white ink cannot clear through the fill gets the shadow.
     expect(glassInk([[150,150,150]]).halo).not.toBe('transparent');
   });
+  it('lets the frosted section bar drop texture halos but keep them over bright art',()=>{
+    // Dark game art under the nav frost reads plainly, as in C30, even where it is textured.
+    expect(glassInk([[31,90,85]],'light',true,false,.36,7)).toEqual({color:'#fff',halo:'transparent'});
+    // A pale patch that only clears 4.75:1 still gets the shadow at the 7:1 bar for 10px labels.
+    expect(glassInk([[170,170,170]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
+    expect(glassInk([[0,0,0],[255,255,255]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
+  });
 });

@@ -14,11 +14,11 @@ const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,nu
 /** Keep the glyph itself white. Sample only to decide whether a soft dark
  * shadow is needed over bright or busy artwork; never invert labels or scores.
  * Opaque accessibility surfaces bypass this function in the binding below. */
-export function glassInk(samples:readonly RGB[],_preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL):{color:string;halo:string}{
+export function glassInk(samples:readonly RGB[],_preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL,minContrast=4.75):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
   const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,veil))*(selection==='dark'?.91:selection?.99:1));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
-  return {color:'#fff',halo:!textured&&lightContrast>=4.75?'transparent':HALO_DARK};
+  return {color:'#fff',halo:!textured&&lightContrast>=minContrast?'transparent':HALO_DARK};
 }
 
 // Cache one small image readback per source, never per sample or scroll frame.
@@ -182,12 +182,14 @@ function update(){
         if(glyph.closest('.apps-danger,.is-danger')){changes.push({glyph,ink:null});continue;}
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
         if(glyph.closest('.game-button:not(.secondary),.ui-btn.primary')&&!glyph.closest('.arcade-glass'))continue;
-        const key=bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
+        // C30: each section label reads its own backdrop, so one bright tile does not halo all five.
+        const key=bar.matches('.section-tabbar')&&!target.matches('.ui-tabbar-mini')?glyph:bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
         const group=groups.get(key)??[];group.push(glyph);groups.set(key,group);
       }
       const modal=bar.closest('dialog');
       const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
       const selection=bar.matches('.ui-tabbar,.floating-glass-group');
+      const nav=!!bar.closest('.section-navigation');
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
       for(const group of groups.values()){
         const labels=group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
@@ -197,7 +199,10 @@ function update(){
         if(bar.closest('.ui-glass-sheet')&&!accessible)ink={color:'#fff',halo:'transparent'};
         else if(bar.dataset.glass!=='off'&&!accessible){
           const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
-          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),bar.closest('.section-navigation')?NAV_VEIL:CLEAR_VEIL);
+          // The section bar's deep frost blurs fine texture away, so C30 showed plain labels over art.
+          // There only low contrast (bright art, unreadable media) keeps the halo, at a 7:1 bar for 10px text.
+          ink=nav?glassInk(known.length?known:UNKNOWN,preference,selection,false,NAV_VEIL,7)
+            :glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),CLEAR_VEIL);
         }
         for(const glyph of labels)changes.push({glyph,ink});
       }

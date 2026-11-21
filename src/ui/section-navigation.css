@@ -44,36 +44,25 @@
   box-shadow:inset 0 .5px 0 rgb(255 255 255 / .22),inset 0 -2px 3px rgb(0 0 0 / .13);
 }
 .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
-  --section-pill-accent:#ff8ca7;
+  --section-pill-accent:#ff375f;
   --glass-icon-ink:var(--section-pill-accent);
   --section-pill-ink-halo:rgb(0 0 0 / .85);
 }
-/* Keep the C30 accents readable even over bright live artwork. */
+/* C30 shows every tab's 24px filled glyph in both themes, not the 16px outline. */
+.section-tabbar[data-section-lens=webgl] .ui-tab .ui-icon{width:24px;height:24px}
+.section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-line{display:none}
+.section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-fill{display:inline}
+/* C30 keeps the accent inside the glyph. A soft rim, not a hard outline, still separates it from bright glass. */
 .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
-  filter:drop-shadow(1px 0 0 var(--section-pill-ink-halo)) drop-shadow(-1px 0 0 var(--section-pill-ink-halo))
-         drop-shadow(0 1px 0 var(--section-pill-ink-halo)) drop-shadow(0 -1px 0 var(--section-pill-ink-halo));
+  filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo)) drop-shadow(0 0 .75px var(--section-pill-ink-halo));
 }
 .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
-  color:color-mix(in srgb,var(--section-pill-accent) 62%,white);
-  paint-order:normal;
-  text-shadow:1px 0 var(--section-pill-ink-halo),-1px 0 var(--section-pill-ink-halo),
-              0 1px var(--section-pill-ink-halo),0 -1px var(--section-pill-ink-halo);
+  color:var(--section-pill-accent);font-weight:600;paint-order:normal;
+  text-shadow:0 0 1px var(--section-pill-ink-halo),0 0 1px var(--section-pill-ink-halo);
 }
 @media(prefers-color-scheme:dark){
   .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true]){
     --section-pill-accent:#0099ff;
-  }
-  /* C30 dark archive: every tab shows its 24px filled glyph, not the 16px outline. */
-  .section-tabbar[data-section-lens=webgl] .ui-tab .ui-icon{width:24px;height:24px}
-  .section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-line{display:none}
-  .section-tabbar[data-section-lens=webgl] .ui-nav-icon .ui-icon-fill{display:inline}
-  .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
-    color:var(--section-pill-accent);font-weight:600;
-    text-shadow:0 0 1px var(--section-pill-ink-halo),0 0 1px var(--section-pill-ink-halo);
-  }
-  /* C30 kept the blue inside the glyph. A soft rim, not a hard outline, still separates it from bright glass. */
-  .section-tabbar[data-section-lens=webgl] .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
-    filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo)) drop-shadow(0 0 .75px var(--section-pill-ink-halo));
   }
 }
 @media(prefers-reduced-motion:no-preference){
