@@ -13,11 +13,11 @@ vec3 frost(vec2 pos, float spread) {
   vec2 nearY = vec2(-.65, 1.50) * tapScale;
   vec2 farX = vec2(1.15, 3.05) * tapScale;
   vec2 farY = vec2(-3.05, 1.15) * tapScale;
-  vec3 nearSamples = texture(scene, uv + nearX).rgb + texture(scene, uv - nearX).rgb
-                   + texture(scene, uv + nearY).rgb + texture(scene, uv - nearY).rgb;
-  vec3 farSamples = texture(scene, uv + farX).rgb + texture(scene, uv - farX).rgb
-                  + texture(scene, uv + farY).rgb + texture(scene, uv - farY).rgb;
-  return .16 * texture(scene, uv).rgb + .105 * (nearSamples + farSamples);
+  vec3 nearSamples = textureLod(scene, uv + nearX, 0.).rgb + textureLod(scene, uv - nearX, 0.).rgb
+                   + textureLod(scene, uv + nearY, 0.).rgb + textureLod(scene, uv - nearY, 0.).rgb;
+  vec3 farSamples = textureLod(scene, uv + farX, 0.).rgb + textureLod(scene, uv - farX, 0.).rgb
+                  + textureLod(scene, uv + farY, 0.).rgb + textureLod(scene, uv - farY, 0.).rgb;
+  return .16 * textureLod(scene, uv, 0.).rgb + .105 * (nearSamples + farSamples);
 }
 vec3 transmit(vec3 rgb, float transmission, float highlightCompression, float saturation) {
   float luma = dot(rgb, vec3(.2126, .7152, .0722));
@@ -25,14 +25,17 @@ vec3 transmit(vec3 rgb, float transmission, float highlightCompression, float sa
   float exposure = transmission / (1. + highlightCompression * max(0., luma - .27));
   return mix(vec3(luma), rgb, saturation) * exposure;
 }
-vec3 glassColor(vec2 pos, float spread, float clarity) {
+vec3 glassTone(vec3 frosted, float clarity) {
   // Like the owner's frosted Search bar: keep the backdrop colour and its shapes
   // faintly legible, but lift them toward a light grey with compressed contrast.
   // The dragged lens clears into the owner's neutral, dark clear glass: no grey veil, no
   // added saturation and no lift, so each pixel keeps the colour of the content under it
   // and the lens takes on none of the backdrop's average colour.
-  vec3 rgb = transmit(frost(pos, spread * .5), mix(.98, .80, clarity), mix(.66, .28, clarity), mix(1.10, 1., clarity));
+  vec3 rgb = transmit(frosted, mix(.98, .80, clarity), mix(.66, .28, clarity), mix(1.10, 1., clarity));
   return mix(vec3(.44), rgb, mix(.64, 1., clarity));
+}
+vec3 glassColor(vec2 pos, float spread, float clarity) {
+  return glassTone(frost(pos, spread * .5), clarity);
 }
 vec3 glassColor(vec2 pos, float spread) {
   return glassColor(pos, spread, 0.);
@@ -80,13 +83,13 @@ const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .86;
 // Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
 // grey out but a stripe keeps its width at half height.
 const vec2 SMOKE_CORE = vec2(.09, .13);
-// C30's even smoke over large card areas: a wide field sample (taps up to about 18 css px out)
-// tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
+// C30's even smoke over large card areas: a wide field sample (fieldColor, one tap of a mip
+// level about FIELD_TEXEL css px a texel) tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
 // SMOKE_FIELD (teal and mustard card art), while a 9 px stripe, mostly absent from the field,
 // keeps its hue. Only dull colour fades (spread below about .45): a vivid field such as a
 // pure red or green panel still reads through at full strength. Bright detail also sinks a little toward the darker field, so blurred titles
 // stay quiet, and broad bright art, which the field shares, still lifts the bar.
-const float SMOKE_FIELD = .45, SMOKE_FIELD_SPREAD = 5., SMOKE_EVEN = .3;
+const float SMOKE_FIELD = .45, SMOKE_EVEN = .3, FIELD_TEXEL = 32. / 3.;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -128,6 +131,17 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float shared = clamp(length(fieldChroma) / max(length(chroma), .001), 0., 1.) * (1. - smoothstep(.3, .45, spread));
   float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
+}
+// One bilinear tap of mip level L reads base texels up to 1.5 * 2^L away, so the field's reach
+// is fixed in css px at every density. Its centre is held that far, plus RIM_SLACK, inside the
+// crop, so it never reads the clamped edge where the viewport clips the crop margin.
+vec3 fieldColor(vec2 pos) {
+  float density = float(textureSize(scene, 0).x) * region.z;
+  float lod = log2(FIELD_TEXEL * density);
+  float reach = 1.5 * exp2(ceil(lod - .01)) / density + RIM_SLACK;
+  vec2 lo = -region.xy / region.zw + reach;
+  vec2 hi = max(lo, (1. - region.xy) / region.zw - reach);
+  return glassTone(textureLod(scene, region.xy + clamp(pos, lo, hi) * region.zw, lod).rgb, 0.);
 }
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
@@ -238,11 +252,13 @@ void main() {
   vec2 body = bendFace(pos);
   // C30's smoked frost: a wider blur and a darker, flatter grey so titles behind
   // the bar do not read.
-  vec3 field = glassColor(body, BODY_SPREAD * SMOKE_FIELD_SPREAD);
-  vec3 bodyColor = smoked(glassColor(body, BODY_SPREAD), 0., field);
+  vec3 field = fieldColor(body);
   // As in C30, a band at the rim refracts: it draws in what lies past the edge and
   // bends it along the curve, while the centre stays flat under the grey frost.
   float band = 1. - smoothstep(0., 12., depth);
+  // The rim band draws its own sample, so the body sample is taken only where it shows:
+  // inside the band or under a settled selection.
+  vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
   vec2 bent = body + normal * 12. * band * band;
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   vec3 rgb = rim(band > 0. ? smoked(glassColor(bent, mix(BODY_SPREAD, 1., band)), 0., field) : bodyColor, normal, depth, liftEdge);
@@ -330,7 +346,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
   gl.useProgram(program);
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D,texture);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
@@ -344,11 +360,14 @@ function createRenderer(gl:WebGL2RenderingContext) {
     upload(canvas:HTMLCanvasElement) {
       if (width===canvas.width && height===canvas.height) {
         gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,canvas);
+        gl.generateMipmap(gl.TEXTURE_2D);
       } else {
         gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,canvas);
         if (gl.getError()!==gl.NO_ERROR) throw new Error('Section lens texture unavailable');
         width = canvas.width;
         height = canvas.height;
+        // The wide field sample reads a coarse mip level (fieldColor).
+        gl.generateMipmap(gl.TEXTURE_2D);
       }
     },
     draw(geometry:Geometry) {
