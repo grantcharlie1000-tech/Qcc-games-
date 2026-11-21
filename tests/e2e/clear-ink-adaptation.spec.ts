@@ -40,16 +40,22 @@ for(const fallback of [false,true])test(`navigation icons and labels stay white 
  await page.addStyleTag({content:'#content *{visibility:hidden!important}#content{background:transparent!important}'});
  const icons=page.locator('.app-navigation>.arcade-glass svg.ui-icon');
  await expect(icons).toHaveCount(6);
- // C30 draws the selected tab in one fixed accent in both lens paths. Adaptive ink never recolours it, and every other glyph and label stays white.
+ // C30 draws the selected tab in one fixed accent, and every other glyph and label stays white. The WebGL lens keeps the accent everywhere.
+ // The CSS fallback cannot hold the accent at 3:1 over bright art, so where glass-ink flags bright art under the label (data-glass-halo),
+ // the selected tab turns white with the doubled dark .85 rim, as safari-shell.spec.ts's white-artwork test needs. Over normal art it keeps the accent.
  const selected='.app-tabbar .ui-tab:is([aria-current=page],[aria-pressed=true])';
  const accent=await page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color);
  expect(accent).not.toBe('rgb(255, 255, 255)');
  for(const [background,labelColor] of [['#fff','rgb(255, 255, 255)'],['#000','rgb(255, 255, 255)'],['#fff','rgb(255, 255, 255)']]){
   await page.evaluate(background=>{document.body.style.background=background;document.documentElement.style.background=background;dispatchEvent(new Event('resize'));},background);
   await expect.poll(()=>page.locator('.app-tabbar .ui-tab:not([aria-current=page],[aria-pressed=true])>span').first().evaluate(e=>getComputedStyle(e).color)).toBe(labelColor);
-  await expect.poll(()=>page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color)).toBe(accent);
+  // The bare #fff body is bright art: glass-ink flags it with the halo. The #000 body is normal art: no flag.
+  const bright=fallback&&background==='#fff',ink=bright?'rgb(255, 255, 255)':accent;
+  await expect.poll(()=>page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color)).toBe(ink);
+  if(fallback)expect(await page.locator(`${selected}>span`).evaluate(e=>({halo:e.hasAttribute('data-glass-halo'),rim:getComputedStyle(e).textShadow})))
+   .toEqual({halo:bright,rim:'rgba(0, 0, 0, 0.85) 0px 0px 1px, rgba(0, 0, 0, 0.85) 0px 0px 1px'});
   await expect.poll(()=>icons.evaluateAll((es,selected)=>es.map(e=>e.closest(selected)?'accent':getComputedStyle(e).color),selected)).toEqual(Array(await icons.count()).fill('rgb(255, 255, 255)').map((white,index)=>index===0?'accent':white));
-  expect(await page.locator(`${selected}>svg.ui-icon`).evaluate(e=>getComputedStyle(e).color)).toBe(accent);
+  expect(await page.locator(`${selected}>svg.ui-icon`).evaluate(e=>getComputedStyle(e).color)).toBe(ink);
   expect(await icons.evaluateAll(es=>es.every(e=>!(e as HTMLElement).style.getPropertyValue('--glass-adaptive-ink')))).toBe(true);
  }
  // The collapsed dock copies the selected icon and must keep the same colour.
