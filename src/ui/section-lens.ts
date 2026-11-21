@@ -30,7 +30,7 @@ vec3 glassColor(vec2 pos, float spread, float clarity) {
   // faintly legible, but lift them toward a light grey with compressed contrast.
   // The dragged lens clears toward the owner's thumb, whose track keeps its full colour.
   vec3 rgb = transmit(frost(pos, spread * .5), mix(.98, 1.16, clarity), mix(.66, .28, clarity));
-  return mix(vec3(.44), rgb, mix(.64, .93, clarity));
+  return mix(vec3(.44), rgb, mix(.64, .97, clarity));
 }
 vec3 glassColor(vec2 pos, float spread) {
   return glassColor(pos, spread, 0.);
@@ -139,12 +139,14 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   face = mix(face, vec3(milkTone), (.985 - .10 * pressRing) * pillPress);
   face = mix(face, vec3(1.), .16 * pressRim * pillPress * clearance);
   // Like the owner's dragged thumb, the raised slab is a lighter, slightly milky glass.
-  face = mix(face, vec3(.80), .22 * pillLift);
+  face = mix(face, vec3(.80), .07 * pillLift);
   // A thin dark inner shadow runs along its lower edge, under the bottom hairline, and the
   // refractive band darkens a little all round so the slab reads as thick glass.
   float inner = 1. - smoothstep(1., 6.5, pillDepth);
   face *= 1. - pillLift * inner * (.08 + .40 * bottom * bottom);
-  return mix(face, vec3(1.), specular * line * clearance);
+  // A bright gloss sits just inside the slab's top edge, like the owner's thumb.
+  float gloss = pillLift * top * top * (1. - smoothstep(.8, 4., pillDepth));
+  return mix(mix(face, vec3(1.), specular * line * clearance), vec3(1.), .45 * gloss * clearance);
 }
 void main() {
   vec2 pos = unit * (size + 2. * drawPad) - drawPad;
@@ -197,9 +199,9 @@ void main() {
         vec2 outward = pillAxis / max(length(pillAxis), .001);
         // A narrow bevel: a quarter-circle profile, so the content in the last few pixels
         // compresses hard and bends along the rim while the face inside it stays flat.
-        float bevel = min(8., .32 * pillRadius);
+        float bevel = min(12., .45 * pillRadius);
         float edge = clamp(1. - pillDepth / bevel, 0., .985);
-        vec2 warped = samplePill.xy + pp / 1.3 + outward * bevel * 3.2 * (1. - sqrt(1. - edge * edge));
+        vec2 warped = samplePill.xy + pp / 1.36 + outward * bevel * 2.6 * (1. - sqrt(1. - edge * edge));
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         selectionColor = smoked(glassColor(mix(body, warped, pillMotion), mix(1.8, .67, pillMotion), pillMotion * pillLift), pillMotion);
