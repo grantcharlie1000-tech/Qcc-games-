@@ -8,6 +8,30 @@ import {expect,test} from '../fixtures';
 // or dragging once the route has settled.
 test('a drag release that changes the route lets the lens fall without a pop and leaves nothing raised',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the timeline is slowed through the Chromium DevTools protocol');
+  // MOTION-6 (#24 review of MOTION-5, finding 2): the CSS pill's scale eases on its own transition whatever the WebGL lens
+  // does, so the bubble is read from the lens itself. Each section lens's WebGL uniforms (pillLift, pillProjection) are
+  // copied onto the canvas the bar shows when its frame is presented (section-lens.ts draws the WebGL buffer into it).
+  await page.addInitScript(()=>{
+    const gl=WebGL2RenderingContext.prototype,ctx=CanvasRenderingContext2D.prototype;
+    const names=new WeakMap<WebGLUniformLocation,string>();
+    const getLoc=gl.getUniformLocation,uniform=gl.uniform1f,draw=ctx.drawImage;
+    type Lens={pillLift?:number;pillProjection?:number};
+    gl.getUniformLocation=function(this:WebGL2RenderingContext,program:WebGLProgram,name:string){
+      const loc=getLoc.call(this,program,name);
+      if(loc&&(this.canvas as HTMLCanvasElement).classList?.contains('section-lens'))names.set(loc,name);
+      return loc;
+    };
+    gl.uniform1f=function(this:WebGL2RenderingContext,loc:WebGLUniformLocation|null,value:number){
+      const name=loc&&names.get(loc);
+      if(name){const canvas=this.canvas as HTMLCanvasElement&{__lens?:Lens};(canvas.__lens??={})[name as keyof Lens]=value;}
+      return uniform.call(this,loc,value);
+    };
+    ctx.drawImage=function(this:CanvasRenderingContext2D,...args:unknown[]){
+      const source=args[0] as HTMLCanvasElement&{__lens?:Lens};
+      if(source?.__lens&&this.canvas.classList.contains('section-lens'))(this.canvas as HTMLCanvasElement&{__lens?:Lens}).__lens={...source.__lens};
+      return Reflect.apply(draw,this,args);
+    };
+  });
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
@@ -26,7 +50,7 @@ test('a drag release that changes the route lets the lens fall without a pop and
   await cdp.send('Animation.enable');
   await cdp.send('Animation.setPlaybackRate',{playbackRate:.1});
   await page.evaluate(()=>{
-    type Sample={t:number;bars:{origin:boolean;lift:number;pad:string}[]};
+    type Sample={t:number;bars:{origin:boolean;lift:number;pad:string;webgl:boolean;shown:boolean;lensLift:number;projection:number}[]};
     const w=window as Window&{__trace?:Sample[];__released?:number};
     document.querySelector('.app-tabbar')!.setAttribute('data-route-origin','');
     w.__trace=[];
@@ -37,8 +61,10 @@ test('a drag release that changes the route lets the lens fall without a pop and
       const bars=[...document.querySelectorAll<HTMLElement>('.section-tabbar')].filter(el=>el.isConnected&&el.getBoundingClientRect().width>0&&getComputedStyle(el).visibility!=='hidden').map(el=>{
         const scale=getComputedStyle(el,'::after').scale;
         const [sx,sy=sx]=scale==='none'?[1]:scale.split(' ').map(Number);
-        const lens=el.querySelector<HTMLCanvasElement>('canvas.section-lens');
-        return {origin:el.hasAttribute('data-route-origin'),lift:Math.min(1,Math.max(0,(sx*sy-1.07)/.18)),pad:lens?.style.getPropertyValue('--section-lens-pad-x')??''};
+        const lens=el.querySelector<HTMLCanvasElement&{__lens?:{pillLift?:number;pillProjection?:number}}>('canvas.section-lens');
+        const webgl=el.dataset.sectionLens==='webgl',shown=webgl&&!!lens&&getComputedStyle(lens).visibility!=='hidden';
+        return {origin:el.hasAttribute('data-route-origin'),lift:Math.min(1,Math.max(0,(sx*sy-1.07)/.18)),pad:lens?.style.getPropertyValue('--section-lens-pad-x')??'',
+          webgl,shown,lensLift:shown?lens!.__lens?.pillLift??0:0,projection:shown?lens!.__lens?.pillProjection??0:0};
       });
       w.__trace!.push({t,bars});
       if(t<end)requestAnimationFrame(sample);
@@ -51,7 +77,7 @@ test('a drag release that changes the route lets the lens fall without a pop and
   await cdp.send('Animation.setPlaybackRate',{playbackRate:1});
   await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
   const {trace,released}=await page.evaluate(()=>{
-    const w=window as Window&{__trace?:{t:number;bars:{origin:boolean;lift:number;pad:string}[]}[];__released?:number};
+    const w=window as Window&{__trace?:{t:number;bars:{origin:boolean;lift:number;pad:string;webgl:boolean;shown:boolean;lensLift:number;projection:number}[]}[];__released?:number};
     return {trace:w.__trace!,released:w.__released!};
   });
   const before=trace.filter(sample=>sample.t<released), after=trace.filter(sample=>sample.t>=released);
@@ -61,6 +87,19 @@ test('a drag release that changes the route lets the lens fall without a pop and
   const origin=after.map(sample=>sample.bars.find(entry=>entry.origin)?.lift).filter((lift):lift is number=>lift!==undefined);
   expect(origin[0]??0,JSON.stringify(origin)).toBeGreaterThan(.6);
   expect(Math.max(0,...origin.slice(1).map((lift,i)=>origin[i]-lift)),JSON.stringify(origin)).toBeLessThanOrEqual(.3);
+  // MOTION-6: and so does the bubble the WebGL lens draws. While the Games bar is on screen and its pill still swells, its lens
+  // stays the WebGL lens, shown and raised (a torn-down lens falls back to the CSS pill, which hides the canvas), and the
+  // lens's own lift and projection never drop by more than a third in a frame. (In Chromium the new route hides the Games
+  // navigation, main.ts setChromeInert, within a frame or two of the lift, so the bubble is seen for about one frame: there it
+  // must still be the raised WebGL lens.)
+  const lenses=after.map(sample=>sample.bars.find(entry=>entry.origin)).filter((entry):entry is NonNullable<typeof entry>=>!!entry);
+  expect(lenses[0]?.lensLift??0,JSON.stringify(lenses.slice(0,4))).toBeGreaterThan(.6);
+  const torn=lenses.filter(entry=>entry.lift>.05&&!(entry.shown&&entry.pad!==''));
+  expect(torn,JSON.stringify(torn.slice(0,4))).toEqual([]);
+  for(const key of ['lensLift','projection'] as const){
+    const series=lenses.map(entry=>entry[key]);
+    expect(Math.max(0,...series.slice(1).map((value,i)=>series[i]-value)),`${key} ${JSON.stringify(series)}`).toBeLessThanOrEqual(.3);
+  }
   // A bar the route brings in was never pressed, so it never shows a raised bubble.
   const others=after.flatMap(sample=>sample.bars.filter(entry=>!entry.origin));
   expect(others.filter(entry=>entry.lift>0||entry.pad!==''),JSON.stringify(others.slice(0,6))).toEqual([]);
