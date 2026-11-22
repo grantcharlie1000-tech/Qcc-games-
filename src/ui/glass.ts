@@ -231,6 +231,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     tab:HTMLElement;
     pointerId:number;
     drag:{x:number;y:number;active:boolean;center:number}|null;
+    // The bar's growth when the press began (section-navigation.css grows a pressed section bar about its centre).
+    growth:[number,number];
   }|null=null;
   let scrubbedPointer:number|null=null;
   let placedLeft:number|null=null;
@@ -243,6 +245,18 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // the transition and drop the bubble in one frame, so a selection made by the release rides the spring instead.
   const releasing=()=>section&&typeof CSSTransition==='function'&&bar.getAnimations({subtree:true}).some(animation=>
     animation instanceof CSSTransition&&animation.transitionProperty==='scale'&&(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after');
+  // The bar's on-screen size over its layout size, and the screen point that sits where a point sat in a press that began at
+  // another growth: the bar grows about its centre, so a point keeps its place in the layout by scaling its offset from it.
+  const growthOf=():[number,number]=>{
+    const box=bar.getBoundingClientRect();
+    return [box.width/(bar.offsetWidth||1)||1,box.height/(bar.offsetHeight||1)||1];
+  };
+  const throughGrowth=(x:number,y:number,from:[number,number]):[number,number]=>{
+    const box=bar.getBoundingClientRect(),[sx,sy]=growthOf();
+    const cx=box.left+box.width/2,cy=box.top+box.height/2;
+    return [cx+(x-cx)*sx/from[0],cy+(y-cy)*sy/from[1]];
+  };
+  const tabAt=(x:number,y:number)=>document.elementFromPoint(x,y)?.closest('.ui-tab')??null;
   // The tab whose centre is nearest a point along the bar, in its layout px.
   const nearestTab=(center:number)=>{
     let best:HTMLElement|null=null,gap=Infinity;
@@ -285,7 +299,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
     const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0}:null;
-    press={tab,pointerId:event.pointerId,drag};
+    press={tab,pointerId:event.pointerId,drag,growth:growthOf()};
     bar.setAttribute('data-pressing','');
     if(drag)document.addEventListener('pointermove',move,{passive:true});
     document.addEventListener('pointerup',up);
@@ -352,7 +366,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const release=(event:PointerEvent|null,cancelled:boolean)=>{
     if(!press)return;
-    const {tab,drag}=press;
+    const {tab,drag,growth}=press;
     press=null;
     stopListening();
     if(drag?.active){
@@ -361,7 +375,16 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     }
     bar.removeAttribute('data-pressing');
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
-    const tapped=!drag?.active&&!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
+    // The point is taken in the layout the press began in: the pressed bar has grown about its centre since, so a pointer
+    // that has not moved can sit over the next tab's grown edge (about 4 px at Games/Movies at 390 px).
+    const tapped=!drag?.active&&!cancelled&&!!event&&tabAt(...throughGrowth(event.clientX,event.clientY,growth))===tab;
+    // There the browser's own click follows the grown bar: a mouse's goes to the bar (the common ancestor of the two tabs)
+    // and selects nothing, and a touch's may go to the neighbour. The tap selects the tab it began on, and that click is
+    // dropped as a scrub's is.
+    if(tapped&&section&&tabAt(event!.clientX,event!.clientY)!==tab){
+      scrubbedPointer=event!.pointerId;
+      tab.click();
+    }
     // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current, and the
     // observer below follows the change. If the click changes nothing, the pill still sits under the tapped tab, so the next
     // frame puts it back under the current one. Anything else springs back to the current tab now.

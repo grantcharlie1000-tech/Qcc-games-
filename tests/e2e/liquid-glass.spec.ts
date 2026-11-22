@@ -1091,6 +1091,61 @@ test('a touch that slides off the tab springs the pill back and selects nothing'
   await expect(tv).toHaveAttribute('aria-pressed','false');
 });
 
+// MOTION-4 (#24): the pressed section bar grows about its centre (x1.046, section-navigation.css), which carries the next tab's
+// edge, or the gap, under a pointer that has not moved: about 4 px of Games's inner edge at 390 px. A mouse's click there went
+// to the bar, the two tabs' common ancestor, and selected nothing, and the pill sprang to the current tab. A tap selects the
+// tab it began on, once, and the pill stays with it. Selections are made in place, as the route would make them.
+for(const input of ['mouse','touch'] as const) test(`a ${input} tap on a tab's inner edge selects that tab though the pressed bar grows`,async({page,browserName})=>{
+  test.skip(input==='touch'&&browserName!=='chromium','touch input is sent through the Chromium DevTools protocol');
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true}), movies=bar.getByRole('link',{name:'Movies',exact:true});
+  await expectPillUnder(bar,games);
+  await page.evaluate(()=>{
+    const w=window as Window&{__clicks?:string[]};w.__clicks=[];
+    document.addEventListener('click',event=>{
+      const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.app-tabbar .ui-tab'):null;
+      w.__clicks!.push(tab?.querySelector('span')?.textContent??'(none)');
+      if(!(tab instanceof HTMLAnchorElement))return;
+      event.preventDefault();
+      document.querySelector('.app-tabbar [aria-current="page"]')?.removeAttribute('aria-current');
+      tab.setAttribute('aria-current','page');
+    });
+    document.querySelector('.app-tabbar [aria-current="page"]')?.removeAttribute('aria-current');
+    document.querySelector('.app-tabbar a[href="#/movies/browse/movie"]')!.setAttribute('aria-current','page');
+  });
+  await expectPillUnder(bar,movies);
+  const box=(await games.boundingBox())!, barBox=(await bar.boundingBox())!;
+  const centre=barBox.x+barBox.width/2, right=box.x+box.width;
+  // Midway across the band the growth takes from Games: its grown inner edge sits at centre-(centre-right)*1.046.
+  const x=(right+centre-(centre-right)*1.046)/2, y=box.y+box.height/2;
+  const gamesCentre=box.x+box.width/2;
+  expect(right-x).toBeGreaterThan(1);
+  const cdp=input==='touch'?await page.context().newCDPSession(page):null;
+  if(cdp)await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+  else{await page.mouse.move(x,y);await page.mouse.down();}
+  await expect.poll(()=>bar.evaluate(el=>{const box=el.getBoundingClientRect(),bar=el as HTMLElement;return Math.round(box.width/bar.offsetWidth*1000)/1000;})).toBe(1.046);
+  await page.evaluate(()=>{
+    const w=window as Window&{__pill?:number[]};w.__pill=[];
+    const el=document.querySelector<HTMLElement>('.app-tabbar')!,end=performance.now()+700;
+    const sample=()=>{
+      const pill=getComputedStyle(el,'::after'),box=el.getBoundingClientRect();
+      w.__pill!.push(box.left+(el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2)*box.width/el.offsetWidth);
+      if(performance.now()<end)requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  if(cdp)await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  else await page.mouse.up();
+  await expect(games).toHaveAttribute('aria-current','page');
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(()=>(window as Window&{__clicks?:string[]}).__clicks)).toEqual(['Games']);
+  const pill=await page.evaluate(()=>(window as Window&{__pill?:number[]}).__pill!);
+  expect(Math.max(...pill)-gamesCentre,JSON.stringify(pill)).toBeLessThan(10);
+  await expectPillUnder(bar,games);
+});
+
 // The Study tab becomes a tab that selects nothing, so a tap changes nothing. The pill must not stay under the tapped tab.
 test('a tap that selects nothing puts the pill back under the current tab',async({page})=>{
   await page.setViewportSize({width:390,height:844});
