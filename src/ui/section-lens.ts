@@ -117,10 +117,13 @@ const float RIM_TINT = 3.;
 // Apple's dark rim is about +70 over the bar at its outer device px, +47 and +33 at the next two, then gone.
 const vec4 RIM_REST = vec4(.9, 1.6, .35, 1.15);
 // Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
-// the mirror keeps MIRROR_MIX of its contrast, light then dark. The dark smoke (DARK_SMOKE) then takes it to about
-// three quarters, as the flipped title reads in Apple's dark still.
+// the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then takes about a
+// quarter off, so the flipped title reads mid-grey as in Apple's dark still.
 const float MIRROR_BAND = 8., MIRROR_K = 2.;
-const vec2 MIRROR_MIX = vec2(.29, 1.);
+const vec2 MIRROR_MIX = vec2(.29, .75);
+// In that still the flipped "New Releases for You" reads as crisp letters, so the dark theme's mirrored zone frosts at
+// MIRROR_SPREAD (about a third of the band's), where its strokes were smeared into streaks.
+const float MIRROR_SPREAD = .35;
 // Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
 // light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
 // almost none of its detail. The mirrored top band is as milky, but keeps MILK_MIRROR of its flipped
@@ -400,7 +403,9 @@ void main() {
   float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
-  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, bodyBlur * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  // The dark theme's mirrored zone frosts at MIRROR_SPREAD, so the flipped title stays crisp.
+  float bandSpread = mix(mix(BODY_SPREAD, 1., band), MIRROR_SPREAD, mirrorZone * pillSmoke);
+  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, bandSpread), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, bodyBlur * (1. - band) * (1. - mirrorZone)) : bodyColor;
   // The dark theme's bar is Apple's dark smoke (DARK_SMOKE), the same at every motion: only the selection moves.
   surface = mix(surface, darkSmoke(surface), pillSmoke);
   // The light theme's milk (MILK_MIX). The mirrored band keeps MILK_MIRROR of its strokes over the milk.
