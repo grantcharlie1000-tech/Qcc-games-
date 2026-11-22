@@ -38,10 +38,22 @@ async function dragLensTo(page:Page,at:(tabs:{x:number;width:number}[])=>number)
   // finger from Games as drawn on the grown bar, so the target is read from the grown tabs and reached by that travel.
   await expect.poll(()=>bar.evaluate(el=>Math.round(el.getBoundingClientRect().width/(el as HTMLElement).offsetWidth*1000)/1000)).toBe(1.046);
   const grown=await bar.locator('.ui-tab').evaluateAll(list=>list.map(tab=>{const r=tab.getBoundingClientRect();return {x:r.x,width:r.width};}));
-  await page.mouse.move(x+at(grown)-(grown[0].x+grown[0].width/2),y,{steps:8});
+  // MOTION-5 (#24): Games is an end tab, so its pill is Apple's capsule held at the bar's inset (glass.ts capsulePill), a few px
+  // right of the tab's centre, and the drag leaves from there: the travel is measured from the pill's own centre on screen.
+  const start=await bar.evaluate(el=>{
+    const pill=getComputedStyle(el,'::after'),box=el.getBoundingClientRect();
+    return box.left+(el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2)*box.width/(el as HTMLElement).offsetWidth;
+  });
+  await page.mouse.move(x+at(grown)-start,y,{steps:8});
   await expect(bar).toHaveAttribute('data-pill-dragging','');
-  // The pill's stretch eases for 100ms after the last move.
-  await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el,'::after').scale)).toBe('1.32 0.98');
+  // The pill's stretch eases for 100ms after the last move. MOTION-5 (#24): was a wait for '1.32 0.98', the stretch after a
+  // full tab of travel; from Games' capsule, held a few px in, the hop to Movies' centre is 48.9 layout px, just under the
+  // 53 px tab, so the stretch settles at about 1.30. The wait is for the eased scale to reach the one the drag set.
+  await expect.poll(()=>bar.evaluate(el=>{
+    const want=(el as HTMLElement).style.getPropertyValue('--ui-pill-drag-scale').trim().split(/\s+/).map(Number);
+    const got=getComputedStyle(el,'::after').scale.split(' ').map(Number);
+    return want.length===2&&got.length===2&&want.every((value,i)=>Math.abs(value-got[i])<1e-3)&&want[0]>=1.28;
+  })).toBe(true);
   return {bar,rest};
 }
 
