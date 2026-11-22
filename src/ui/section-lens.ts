@@ -124,9 +124,10 @@ const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
 // mark (spread above about .32) keeps its hue. LENS_GAIN takes the clear glass tone's .80
 // transmission back to about one, and LENS_LIFT no longer lifts dark content toward milk.
 const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
-// Its edge is a thin crisp rim LENS_RIM css px deep, brightest along the top, whose light splits
+// Its edge is a thin crisp rim about LENS_RIM css px deep, even across it and falling off over a
+// px either side of its inner edge (Apple's rim reads about 3.5 px), brightest along the top, whose light splits
 // into a faint rainbow (LENS_FRINGE), red at the outside running to blue inside, as Apple's does.
-const float LENS_RIM = 2.6, LENS_FRINGE = .4;
+const float LENS_RIM = 3., LENS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 // C30's resting selection is clear glass: the art under it reads through in its own colour,
 // with none of the bar's smoke or grey veil. At rest the pill's face mixes PILL_CLEAR of the
@@ -237,7 +238,7 @@ vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
   float shade = max(0., -facing);
   vec3 face = sceneColor * (1. - .22 * shade - .1 * (1. - normal.z));
   float t = clamp(pillDepth / LENS_RIM, 0., 1.);
-  float line = smoothstep(-.8, .5, pillDepth) * (1. - smoothstep(.7, LENS_RIM, pillDepth));
+  float line = smoothstep(-.8, .5, pillDepth) * (1. - smoothstep(LENS_RIM - 1., LENS_RIM + 1., pillDepth));
   float lit = .34 + .46 * max(0., facing) + .16 * max(0., outward.y);
   vec3 spectrum = .5 + .5 * cos(6.2832 * (.8 * t + vec3(0., .33, .67)));
   return mix(face, mix(vec3(1.), spectrum, LENS_FRINGE), lit * line);
