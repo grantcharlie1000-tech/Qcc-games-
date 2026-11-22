@@ -69,7 +69,10 @@ test('the companion Menu hides and restores with the home island and keyboard fo
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar'),menu=page.getByRole('button',{name:'Open menu',exact:true});
   await page.evaluate(()=>scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
-  await expect(menu).toHaveCSS('pointer-events','none');
+  // MOTION-7: was 'none'. Apple Music's compact bar keeps its search circle live beside the selected tab's circle
+  // (Charlie's video, 34.25 s), so the minimised bar's menu circle stays a live 48 px control (2a6791de); only the
+  // full hide below takes it away.
+  await expect(menu).toHaveCSS('pointer-events','auto');
   await page.keyboard.press('Tab');await menu.focus();
   await expect(menu).toHaveCSS('pointer-events','auto');
   await expect.poll(async()=>(await bar.boundingBox())!.width).toBeGreaterThan(250);
@@ -100,7 +103,8 @@ for(const preference of ['media','class'])test(`home companion preserves reduced
   if(preference==='class')await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
   const menu=page.getByRole('button',{name:'Open menu',exact:true}),bar=page.locator('.app-tabbar');
   await page.evaluate(()=>scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
-  await expect(menu).toHaveCSS('pointer-events','none');
+  // MOTION-7: was 'none'. The compact menu circle stays live, as the video's search circle (34.25 s).
+  await expect(menu).toHaveCSS('pointer-events','auto');
   await page.keyboard.press('Tab');await menu.focus();
   await expect(menu).toHaveCSS('pointer-events','auto');await expect(bar).toHaveCSS('opacity','1');
   await bar.evaluate(e=>e.setAttribute('data-hidden','true'));await expect(bar).toHaveCSS('opacity','1');
