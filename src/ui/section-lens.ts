@@ -127,7 +127,9 @@ const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // Its edge is a thin crisp rim about LENS_RIM css px deep, even across it and falling off over a
 // px either side of its inner edge (Apple's rim reads about 3.5 px), brightest along the top, whose light splits
 // into a faint rainbow (LENS_FRINGE), red at the outside running to blue inside, as Apple's does.
-const float LENS_RIM = 3., LENS_FRINGE = .4;
+const float LENS_RIM = 3., LENS_FRINGE = .3;
+// The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
+const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 // C30's resting selection is clear glass: the art under it reads through in its own colour,
 // with none of the bar's smoke or grey veil. At rest the pill's face mixes PILL_CLEAR of the
@@ -275,7 +277,7 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   face = mix(face, vec3(1.), .16 * pressRim * pillPress * clearance);
   // Its rim carries the raised lens's faint rainbow, red outside to blue inside, as Apple's held bubble.
   vec3 pressSpectrum = .5 + .5 * cos(6.2832 * (.8 * clamp(pillDepth / 2., 0., 1.) + vec3(0., .33, .67)));
-  face = mix(face, pressSpectrum, LENS_FRINGE * pressRim * pillPress * clearance);
+  face = mix(face, pressSpectrum, PRESS_FRINGE * pressRim * pillPress * clearance);
   // Like the owner's dragged thumb, the raised slab is a lighter, slightly milky glass.
   face = mix(face, vec3(.80), .07 * pillLift);
   // A thin dark inner shadow runs along its lower edge, under the bottom hairline, and the
