@@ -102,20 +102,25 @@ const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // about a tenth of the backdrop's detail. The rim band sharpens toward the edge, so the mirrored
 // title stays crisp, and motion clears the blur, so the moving lens is unchanged.
 const float BODY_BLUR = .9;
+// Apple's dark bar blurs less: titles and posters behind it still show their shapes (Charlie's still and video, 32.5 s),
+// so the dark theme takes DARK_BLUR of the wide field instead.
+const float DARK_BLUR = .25;
 // Apple's blur bleeds colour: art behind its bar tints it, .46-1.12 of the art's own chroma over a 40 css px
 // window (Charlie's video, 32.5-32.75 s). The smoked wide field keeps BLUR_CHROMA of its colour, uncored, so a
 // mark smeared below SMOKE_CORE still tints the bar (a 9 px stripe keeps about half its colour over the window).
 const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(1., .6);
+const vec2 RIM_LIGHT = vec2(1., .5);
 const float RIM_TINT = 3.;
 // Apple's resting rim, light then dark: full light to RIM_REST.x css px deep, gone by .y (light), .z and .w (dark).
-const vec4 RIM_REST = vec4(.9, 1.6, .7, 1.5);
+// Apple's dark rim is about +70 over the bar at its outer device px, +47 and +33 at the next two, then gone.
+const vec4 RIM_REST = vec4(.9, 1.6, .35, 1.15);
 // Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
-// the mirror keeps MIRROR_MIX of its contrast, light then dark.
+// the mirror keeps MIRROR_MIX of its contrast, light then dark. The dark smoke (DARK_SMOKE) then takes it to about
+// three quarters, as the flipped title reads in Apple's dark still.
 const float MIRROR_BAND = 8., MIRROR_K = 2.;
-const vec2 MIRROR_MIX = vec2(.29, .7);
+const vec2 MIRROR_MIX = vec2(.29, 1.);
 // Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
 // light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
 // almost none of its detail. The mirrored top band is as milky, but keeps MILK_MIRROR of its flipped
@@ -126,6 +131,17 @@ const float MILK_TONE = 1., MILK_MIX = .86, MILK_MIRROR = 1., PILL_MILK_DROP = 2
 // Apple's frost is pale but not opaque: the blurred art's shapes still show faintly through the milk, and its
 // colour bleeds through: the milk keeps MILK_BLEED more of the blurred art's chroma, so each card tints the bar.
 const float MILK_BLEED = .55;
+// Apple Music's dark bar is a dark smoke over the art, not a grey veil: black under it reads about 30/255 (DARK_BLACK),
+// and brighter art sinks toward the smoke while its colour and shapes still bleed through (Charlie's video, 32.5 s:
+// the gold Hamilton poster stays gold under the bar). At rest the dark theme keeps DARK_SMOKE.y of the frost's tone
+// over a floor of DARK_SMOKE.x, so a mid-grey poster reads about a quarter darker than the art, and DARK_HUE times
+// that of its colour, so the art's hue reads through the smoke instead of greying out.
+const vec2 DARK_SMOKE = vec2(.04, .72);
+const float DARK_HUE = 1.5, DARK_BLACK = 30. / 255.;
+// Apple's dark selected tab is a visible dark capsule: about 10/255 over a black page, 21 under the bar, and over
+// bright art a darker, smokier piece than the bar. The dark rest pill keeps PILL_DARK.y of the bar's tone above the
+// bar's black, on a floor of PILL_DARK.x.
+const vec2 PILL_DARK = vec2(10. / 255., .74);
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -208,6 +224,11 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float shared = clamp(length(fieldChroma) / max(length(chroma), .001), 0., 1.) * (1. - smoothstep(.3, .45, spread));
   float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
+}
+// Apple Music's dark smoke (DARK_SMOKE, DARK_HUE): an even darkening of the bar's frost that keeps more of its colour.
+vec3 darkSmoke(vec3 rgb) {
+  float luma = dot(rgb, vec3(.2126, .7152, .0722));
+  return vec3(DARK_SMOKE.x + DARK_SMOKE.y * luma) + DARK_HUE * DARK_SMOKE.y * (rgb - luma);
 }
 // The smoked wide field of the heavy blur: smoked()'s tone, with BLUR_CHROMA of the field's colour kept
 // uncored. Motion clears it as smoked() does.
@@ -366,7 +387,8 @@ void main() {
   vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
   // Apple Music's heavy blur (BODY_BLUR): the smoked frost gives way to the smoked wide field.
   vec3 blurColor = smokedBlur(field, 0.);
-  bodyColor = mix(bodyColor, blurColor, BODY_BLUR);
+  float bodyBlur = mix(BODY_BLUR, DARK_BLUR, pillSmoke);
+  bodyColor = mix(bodyColor, blurColor, bodyBlur);
   // Like Apple Music's bar at rest, the top band mirrors the content just under it: at depth d
   // inside MIRROR_BAND it draws from depth MIRROR_BAND + MIRROR_K * (MIRROR_BAND - d), so a title
   // behind the bar shows flipped and squeezed in the top edge. Sides and bottom bend outward.
@@ -378,7 +400,9 @@ void main() {
   float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
-  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, bodyBlur * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  // The dark theme's bar is Apple's dark smoke (DARK_SMOKE), the same at every motion: only the selection moves.
+  surface = mix(surface, darkSmoke(surface), pillSmoke);
   // The light theme's milk (MILK_MIX). The mirrored band keeps MILK_MIRROR of its strokes over the milk.
   float milk = MILK_MIX * (1. - pillSmoke);
   surface = mix(surface, vec3(MILK_TONE), milk) + MILK_MIRROR * milk * mirrorZone * (surface - blurColor)
@@ -429,11 +453,11 @@ void main() {
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         // One frost sample serves the moving selection and the clear glass it fades from.
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
-        selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), BODY_BLUR * (1. - pillMotion));
+        selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
         if (clear > 0.) {
           // The bright-art hold reads the unblurred frost, so the pill's tone gate is unchanged by the blur.
           plainGlass = glassTone(frosted, 0.);
-          clearGlass = glassTone(mix(frosted, wide, BODY_BLUR * (1. - pillMotion)), 1.);
+          clearGlass = glassTone(mix(frosted, wide, bodyBlur * (1. - pillMotion)), 1.);
         }
         // Neutral smoke in the raised lens; it falls with the motion, so the rest pill is unchanged.
         float neutral = pillMotion * pillLift;
@@ -444,7 +468,7 @@ void main() {
         selectionColor += LENS_LIFT * neutral * max(0., 1. - dot(selectionColor, vec3(.2126, .7152, .0722)));
       } else if (clear > 0.) {
         vec3 frosted = frost(body, BODY_SPREAD * .5);
-        clearGlass = glassTone(mix(frosted, wide, BODY_BLUR), 1.);
+        clearGlass = glassTone(mix(frosted, wide, bodyBlur), 1.);
         plainGlass = glassTone(frosted, 0.);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
@@ -466,6 +490,11 @@ void main() {
         deepen *= 1. - bright * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       }
       vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone, deepen);
+      // The dark theme's resting pill is Apple's dark capsule (PILL_DARK): the bar's own smoke at this pixel, deepened
+      // toward a near-black floor, so it reads under the bar over a black page and over bright art alike. A press and
+      // the raised lens take it back to their milky and clear pieces.
+      vec3 barSmoke = darkSmoke(selectionColor);
+      selection = mix(selection, PILL_DARK.x + PILL_DARK.y * max(barSmoke - DARK_BLACK, 0.), pillSmoke * (1. - pillLift) * (1. - pillPress));
       // The light theme's resting pill is the bar's milk, PILL_MILK_DROP darker. A press lifts it to the bar's milk,
       // as the dark theme's press lifts its pill toward the frosted milk; the raised lens clears it smoothly.
       selection = mix(selection, vec3(MILK_TONE - PILL_MILK_DROP * (1. - pillPress)), MILK_MIX * (1. - pillSmoke) * (1. - pillLift));
