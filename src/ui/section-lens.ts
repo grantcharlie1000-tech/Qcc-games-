@@ -621,8 +621,9 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   const lift = Math.min(1, Math.max(0, (scaleX * scaleY - 1.07) / .18));
   const opacity = w&&h?Number(style.opacity):0;
   const [cx,cy,pillWidth,pillHeight] = pill;
-  // Leave room for the adjacent menu even when a scrub reaches the outer tab.
-  const sideRoom = Math.min(cx,bar.width-cx) + 6 - pillWidth/2;
+  // Leave room for the adjacent menu even when a scrub reaches the outer tab. The room is the resting capsule's
+  // (glass.ts capsulePill), which already stops at the bar's inset; its press and drag stretch is the lens's own.
+  const sideRoom = Math.min(cx,bar.width-cx) + 6 - w*sx/2;
   const expanded = opacity > 0 && bar.width >= 2 * bar.height &&
     element.dataset.hidden !== 'true' && element.dataset.minimized !== 'true';
   // Drag stretch grows scaleX past the press scale; it shapes the lens into the drag lens.

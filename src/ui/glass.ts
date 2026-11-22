@@ -126,6 +126,19 @@ export function glassMode(brands:readonly Brand[]|undefined,flags:{reducedTransp
 }
 
 const round=(value:number)=>Math.round(value*100)/100;
+// Apple Music's selected tab is a capsule PILL_SHARE of a tab's share of the bar wide, not one tab: Charlie's dark still
+// 84 of a 350 px five-tab bar (1.2), his video 82-84 of 347-349 (1.17-1.21), the light still 71.5 of about 260 for four
+// (1.1). It is centred on its tab, and an end tab's capsule stops at the bar's inset, the gap the pill keeps above and
+// below (Apple's Home pill sits 4 px inside the bar), so there it sits a few px in from its tab's centre.
+export const PILL_SHARE=1.2;
+// The pill's box for a tab of a section bar, in the same terms as the tab's own: left and width without the bleed the
+// stylesheet adds on each side. A bar too narrow to hold the capsule (a minimised bar) keeps the tab's own box.
+export function capsulePill(tab:{left:number;width:number},bar:{width:number;tabs:number;inset:number;bleed:number}):{left:number;width:number}{
+  const width=Math.max(tab.width+2*bar.bleed,PILL_SHARE*bar.width/Math.max(1,bar.tabs));
+  if(width+2*bar.inset>bar.width)return tab;
+  const centre=Math.min(Math.max(tab.left+tab.width/2,bar.inset+width/2),bar.width-bar.inset-width/2);
+  return {left:centre-width/2+bar.bleed,width:width-2*bar.bleed};
+}
 // The custom properties that place the pill over a tab. With no current tab only its visibility changes, so it fades
 // out where it was instead of sliding to the edge.
 export function pillVars(tab:{left:number;width:number}|null):Record<string,string>{
@@ -230,7 +243,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let press:{
     tab:HTMLElement;
     pointerId:number;
-    drag:{x:number;y:number;active:boolean;center:number}|null;
+    // A drag's pill: its box when the drag began, and the span its centre may travel (in the bar's layout px).
+    drag:{x:number;y:number;active:boolean;center:number;pill:{left:number;width:number};range:[number,number]}|null;
     // The bar's growth when the press began (section-navigation.css grows a pressed section bar about its centre).
     growth:[number,number];
   }|null=null;
@@ -256,6 +270,15 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     const cx=box.left+box.width/2,cy=box.top+box.height/2;
     return [cx+(x-cx)*sx/from[0],cy+(y-cy)*sy/from[1]];
   };
+  // A section bar's pill is Apple's capsule (capsulePill): its inset is the pill's own top (section-navigation.css), so
+  // the ends keep the gap the pill keeps above and below. Every other bar's pill is its tab's box.
+  const pillBox=(tab:HTMLElement)=>{
+    const box={left:tab.offsetLeft,width:tab.offsetWidth};
+    if(!section)return box;
+    const style=getComputedStyle(bar,'::after');
+    const tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(entry=>entry.offsetWidth).length;
+    return capsulePill(box,{width:bar.clientWidth,tabs,inset:parseFloat(style.top)||0,bleed:parseFloat(style.getPropertyValue('--section-pill-bleed'))||0});
+  };
   const tabAt=(x:number,y:number)=>document.elementFromPoint(x,y)?.closest('.ui-tab')??null;
   // The tab whose centre is nearest a point along the bar, in its layout px.
   const nearestTab=(center:number)=>{
@@ -273,7 +296,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const place=(tab:HTMLElement|null,animate:boolean,pressing=false)=>{
     if(disposed)return;
     if(!bar.offsetWidth){bar.removeAttribute('data-pill-ready');return;}
-    const box=tab?{left:tab.offsetLeft,width:tab.offsetWidth}:null;
+    const box=tab?pillBox(tab):null;
     for(const [name,value] of Object.entries(pillVars(box)))bar.style.setProperty(name,value);
     if(!bar.hasAttribute('data-pill-ready')){
       // Read the layout so the instant write is applied before transitions are switched on.
@@ -298,7 +321,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0}:null;
+    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0,pill:{left:0,width:0},range:[0,0] as [number,number]}:null;
     press={tab,pointerId:event.pointerId,drag,growth:growthOf()};
     bar.setAttribute('data-pressing','');
     if(drag)document.addEventListener('pointermove',move,{passive:true});
@@ -316,19 +339,26 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     // Leave taps and vertical pans alone until the pointer makes a horizontal move.
     if(!drag.active&&(Math.abs(dx)<6||Math.abs(dx)<=Math.abs(event.clientY-drag.y)))return;
     const width=tab.offsetWidth;
-    const available=bar.clientWidth;
-    if(!width||!available)return;
+    if(!width||!bar.clientWidth)return;
+    const begins=!drag.active;
+    if(begins){
+      // The capsule leaves from where it sat and its centre travels between the end tabs' capsules (capsulePill), so a
+      // drag from an end tab, whose capsule sits a few px in from its tab, starts with no jump.
+      const tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(entry=>entry.offsetWidth);
+      const centre=(box:{left:number;width:number})=>box.left+box.width/2;
+      drag.pill=pillBox(tab);
+      drag.range=[centre(pillBox(tabs[0]??tab)),centre(pillBox(tabs[tabs.length-1]??tab))];
+    }
     // The bar grows while it is pressed (section-navigation.css), so a px of finger travel is 1/scale of a layout px:
     // the pill moves that much, and stays 1:1 with the finger on screen.
     const travel=dx/(bar.getBoundingClientRect().width/bar.offsetWidth||1);
     const deformation=Math.min(1,Math.abs(travel)/width);
     const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
-    const halfWidth=width*scaleX/2;
-    const center=Math.max(halfWidth,Math.min(available-halfWidth,tab.offsetLeft+width/2+travel));
+    const center=Math.max(drag.range[0],Math.min(drag.range[1],drag.pill.left+drag.pill.width/2+travel));
     drag.center=center;
-    bar.style.setProperty('--ui-pill-drag-x',`${round(center-width/2)}px`);
+    bar.style.setProperty('--ui-pill-drag-x',`${round(center-drag.pill.width/2)}px`);
     bar.style.setProperty('--ui-pill-drag-scale',`${scaleX} ${scaleY}`);
-    if(!drag.active){
+    if(begins){
       // The gesture takes over from any in-flight selection stretch.
       stretch?.cancel();
       drag.active=true;

@@ -26,9 +26,6 @@ function pillCentre(bar:Locator){
     return box.left+(el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2)*box.width/(el as HTMLElement).offsetWidth;
   });
 }
-function centreOf(target:Locator){
-  return target.evaluate(el=>{const box=el.getBoundingClientRect();return box.left+box.width/2;});
-}
 // The tab's box once it is on screen. Movies mounts its island after the route loads, so the box waits for it.
 async function boxOf(target:Locator){
   await expect(target).toBeVisible();
@@ -37,9 +34,26 @@ async function boxOf(target:Locator){
   await expect.poll(async()=>{const found=await target.boundingBox();if(found)boxes.push(found);return boxes.length>0;}).toBe(true);
   return boxes[0];
 }
-// The pill sits under the tab when its centre is within 2 px of the tab's centre.
+// MOTION-5 (#24): a section bar's pill is Apple's capsule (glass.ts capsulePill), 1.2 tab shares wide (Charlie's dark still:
+// 84 of a 350 px five-tab bar) and centred on its tab, and an end tab's capsule stops at the inset the pill keeps above and
+// below, as Apple's Home pill sits 4 px inside the bar, so its centre is held a few px in from the tab's. This is that centre
+// on screen, through the bar's growth as pillCentre reads it; on any other bar, and on a middle tab, it is the tab's centre.
+function capsuleCentreOf(tab:Locator){
+  return tab.evaluate(el=>{
+    const own=el as HTMLElement,bar=own.closest<HTMLElement>('.ui-tabbar')!,box=bar.getBoundingClientRect();
+    let centre=own.offsetLeft+own.offsetWidth/2;
+    if(bar.classList.contains('section-tabbar')){
+      const style=getComputedStyle(bar,'::after'),inset=parseFloat(style.top)||0,bleed=parseFloat(style.getPropertyValue('--section-pill-bleed'))||0;
+      const tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(entry=>entry.offsetWidth).length;
+      const width=Math.max(own.offsetWidth+2*bleed,1.2*bar.clientWidth/Math.max(1,tabs));
+      if(width+2*inset<=bar.clientWidth)centre=Math.min(Math.max(centre,inset+width/2),bar.clientWidth-inset-width/2);
+    }
+    return box.left+(bar.clientLeft+centre)*box.width/bar.offsetWidth;
+  });
+}
+// The pill sits under the tab when its centre is within 2 px of the tab's capsule centre (the tab's own centre but at an end tab).
 async function expectPillUnder(bar:Locator,tab:Locator){
-  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(await centreOf(tab)))).toBeLessThanOrEqual(2);
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(await capsuleCentreOf(tab)))).toBeLessThanOrEqual(2);
 }
 const oneFrame=(page:import('@playwright/test').Page)=>page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
 
@@ -177,10 +191,9 @@ test('the pill appears under the current tab on load without sliding in from the
   const games=bar.locator('[aria-current="page"]');
   await expectPillUnder(bar,games);
   const samples=await page.evaluate(()=>(window as Window&{__pillCentres?:number[]}).__pillCentres??[]);
-  const tabCentre=await games.evaluate(el=>{
-    const tab=el as HTMLElement;
-    return tab.offsetLeft+tab.offsetWidth/2;
-  });
+  // MOTION-5 (#24): Games is an end tab, so its capsule's centre is held at the bar's inset (capsuleCentreOf). The samples
+  // are in the bar's own px, so the screen centre is taken back by the bar's left edge.
+  const tabCentre=(await capsuleCentreOf(games))-(await bar.evaluate(el=>el.getBoundingClientRect().left+el.clientLeft));
   expect(Math.abs(samples[samples.length-1]-tabCentre)).toBeLessThan(1);
   // The unplaced pill is centred at 0. A centre between 0 and the tab is a slide.
   expect(samples.filter(centre=>Math.abs(centre)>0.5&&Math.abs(centre-tabCentre)>0.5)).toEqual([]);
@@ -243,7 +256,8 @@ test('a horizontal drag carries the pill across tabs and selects the tab nearest
   // MOTION-3 (#24): the bar grows about its centre while pressed (video 349x62 -> 365x66, x1.046 x1.065), so the pill
   // starts from Games as drawn on the grown bar (5 px left of the finger) and moves 1:1 with the finger from there.
   await expect.poll(()=>bar.evaluate(el=>{const box=el.getBoundingClientRect(),bar=el as HTMLElement;return [box.width/bar.offsetWidth,box.height/bar.offsetHeight].map(v=>Math.round(v*1000)/1000);})).toEqual([1.046,1.065]);
-  const from=await centreOf(games);
+  // MOTION-5 (#24): Games is an end tab, so the drag leaves from its capsule's centre, held a few px in at the bar's inset.
+  const from=await capsuleCentreOf(games);
   await page.mouse.move(farX,y,{steps:5});
   await expect.poll(async()=>Math.abs((await pillCentre(bar))-(from+farX-x))).toBeLessThan(3);
   const reverseX=farX-40;
@@ -690,7 +704,7 @@ test('reduced motion moves the pill at once and never stretches it',async({page}
   await expect(tv).toHaveAttribute('aria-pressed','true');
   await oneFrame(page);
   // One frame after the change the pill is already under TV, so nothing is in transit.
-  expect(Math.abs((await pillCentre(bar))-(await centreOf(tv)))).toBeLessThanOrEqual(2);
+  expect(Math.abs((await pillCentre(bar))-(await capsuleCentreOf(tv)))).toBeLessThanOrEqual(2);
   expect(await page.evaluate(()=>document.getAnimations().filter(animation=>(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after').length)).toBe(0);
 });
 

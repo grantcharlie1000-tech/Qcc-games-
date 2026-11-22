@@ -1,5 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
+import {ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,capsulePill,glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,PILL_SHARE,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
 
 // The island is 366 by 64 px at a 390 px viewport (12 px from each screen edge), and its lens field covers it plus the margin.
 const W=366,H=64;
@@ -217,4 +217,27 @@ test('pillVars turns a tab box into the pill custom properties, and no tab into 
   expect(pillVars({left:12.5,width:90.25})).toEqual({'--ui-pill-x':'12.5px','--ui-pill-w':'90.25px','--ui-pill-on':'1'});
   // With no current tab only the visibility changes, so the pill fades without sliding to the edge.
   expect(pillVars(null)).toEqual({'--ui-pill-on':'0'});
+});
+
+// Apple Music's selected tab is a capsule 1.2 tab shares wide (Charlie's dark still: 84 of a 350 px five-tab bar), centred
+// on its tab, and an end tab's capsule stops at the inset the pill keeps above and below. The QCC section bar at 390 px:
+// 286 px, five 53 px tabs 55.2 px apart from 6 px in, a 4.5 px inset and a 2 px bleed each side.
+test('capsulePill widens a section tab into a centred capsule and keeps the end tabs inside the inset',()=>{
+  const bar={width:286,tabs:5,inset:4.5,bleed:2};
+  const shown=(box:{left:number;width:number})=>[box.left-bar.bleed,box.width+2*bar.bleed];
+  const centre=(box:{left:number;width:number})=>box.left+box.width/2;
+  expect(PILL_SHARE).toBe(1.2);
+  const movies=capsulePill({left:61,width:53},bar);
+  expect(shown(movies)[1]).toBeCloseTo(1.2*286/5,6);
+  expect(centre(movies)).toBeCloseTo(61+26.5,6);
+  // Games, the first tab, is centred 32.5 px in: its 68.64 px capsule would reach 1.8 px past the bar, so it stops at the inset.
+  const games=capsulePill({left:6,width:53},bar);
+  expect(shown(games)[0]).toBeCloseTo(4.5,6);
+  expect(centre(games)).toBeCloseTo(4.5+1.2*286/10,6);
+  // Study, the last tab, stops at the same inset from the right.
+  const study=capsulePill({left:227,width:53},bar);
+  expect(shown(study)[0]+shown(study)[1]).toBeCloseTo(286-4.5,6);
+  // A tab already wider than the share keeps its own box, and a bar too narrow for the capsule keeps the tab's.
+  expect(capsulePill({left:100,width:80},bar)).toEqual({left:100,width:80});
+  expect(capsulePill({left:4,width:48},{width:56,tabs:5,inset:4,bleed:2})).toEqual({left:4,width:48});
 });
