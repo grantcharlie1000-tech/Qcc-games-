@@ -5,7 +5,27 @@ import type {Crop} from './section-backdrop';
 // The frosted scene sample, shared by both stages.
 const GLASS = `uniform sampler2D scene;
 uniform vec4 region;
+// Apple's dark bar blurs a title behind it into soft letters at their own size (the still's "Releases for You"), where
+// the frost's nine sparse taps smeared ours into streaks. While softFrostMix is set (the dark body and its band below
+// the mirrored zone), frost() reads softFrost instead: nine taps, a ring of eight DARK_RING css px round the sample, on
+// a mip level whose texels fill the .77 DARK_RING gaps between them, so a stroke spreads evenly instead of repeating at
+// each tap. Its reach, DARK_RING plus 1.5 texels of the next whole mip level (about 5.8 css px at 1.5x), stays inside
+// the crop's 12 px floor under the bar.
+float softFrostMix = 0.;
+const float DARK_RING = 1.8;
+vec3 softFrost(vec2 pos) {
+  vec2 uv = region.xy + pos * region.zw;
+  float density = float(textureSize(scene, 0).x) * region.z;
+  float lod = log2(max(1., .77 * DARK_RING * density));
+  vec3 rgb = 2. * textureLod(scene, uv, lod).rgb;
+  for (int i = 0; i < 8; i++) {
+    float a = .3927 + .7854 * float(i);
+    rgb += textureLod(scene, uv + vec2(cos(a), sin(a)) * DARK_RING * region.zw, lod).rgb;
+  }
+  return rgb * .1;
+}
 vec3 frost(vec2 pos, float spread) {
+  if (softFrostMix > .5) return softFrost(pos);
   vec2 uv = region.xy + pos * region.zw;
   // Stagger the RGB samples to soften edges across angles.
   vec2 tapScale = region.zw * spread;
@@ -105,11 +125,9 @@ const float BODY_BLUR = .9;
 // Apple's dark bar blurs less: titles and posters behind it still show their shapes (Charlie's still and video, 32.5 s),
 // so the dark theme takes DARK_BLUR of the wide field instead.
 const float DARK_BLUR = .25;
-// Apple's dark bar blurs a title behind it into soft letters at their own size (the still's "Releases for You"), where
-// the frost's nine sparse taps and the C30 face bend smeared ours into tall streaks. The dark body keeps DARK_BEND of
-// that bend and frosts with softFrost: a ring of eight taps DARK_RING css px round the sample, at a mip level whose
-// texels fill the gaps between them, so a stroke spreads evenly instead of repeating at each tap.
-const float DARK_BEND = .3, DARK_RING = 1.8;
+// The C30 face bend stretched a title behind the dark bar 1.2-1.5x vertically into tall streaks; the dark theme keeps
+// DARK_BEND of it, and its body frosts soft (softFrost).
+const float DARK_BEND = .3;
 // Apple's blur bleeds colour: art behind its bar tints it, .46-1.12 of the art's own chroma over a 40 css px
 // window (Charlie's video, 32.5-32.75 s). The smoked wide field keeps BLUR_CHROMA of its colour, uncored, so a
 // mark smeared below SMOKE_CORE still tints the bar (a 9 px stripe keeps about half its colour over the window).
@@ -262,20 +280,6 @@ vec3 fieldSample(vec2 pos) {
            + textureLod(scene, uv + tapY, lod).rgb + textureLod(scene, uv - tapY, lod).rgb;
   return rgb * .25;
 }
-// The dark body's soft frost (DARK_RING): nine taps, as the frost's. Adjacent ring taps sit .77 DARK_RING apart, and a
-// mip level of that footprint fills the gap. Its reach, DARK_RING plus 1.5 texels of the next whole mip level (about
-// 5.8 css px at 1.5x), stays inside the crop's 12 px floor under the bar.
-vec3 softFrost(vec2 pos) {
-  vec2 uv = region.xy + pos * region.zw;
-  float density = float(textureSize(scene, 0).x) * region.z;
-  float lod = log2(max(1., .77 * DARK_RING * density));
-  vec3 rgb = 2. * textureLod(scene, uv, lod).rgb;
-  for (int i = 0; i < 8; i++) {
-    float a = .3927 + .7854 * float(i);
-    rgb += textureLod(scene, uv + vec2(cos(a), sin(a)) * DARK_RING * region.zw, lod).rgb;
-  }
-  return rgb * .1;
-}
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
 }
@@ -398,7 +402,7 @@ void main() {
   }
 
   vec2 normal = axis / max(length(axis), .001);
-  vec2 body = bendFace(pos);
+  vec2 body = mix(pos, bendFace(pos), mix(1., DARK_BEND, pillSmoke));
   // C30's smoked frost: a wider blur and a darker, flatter grey so titles behind
   // the bar do not read.
   vec3 wide = fieldSample(body);
@@ -408,10 +412,9 @@ void main() {
   float band = 1. - smoothstep(0., 12., depth);
   // The rim band draws its own sample, so the body sample is taken only where it shows:
   // inside the band or under a settled selection.
-  // The dark theme's body is Apple's soft blur (softFrost, DARK_BEND).
-  vec2 softBody = mix(pos, body, DARK_BEND);
-  vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0.
-    ? smoked(pillSmoke > .5 ? glassTone(softFrost(softBody), 0.) : glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
+  // The dark theme's body is Apple's soft blur (softFrost).
+  softFrostMix = pillSmoke;
+  vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
   // Apple Music's heavy blur (BODY_BLUR): the smoked frost gives way to the smoked wide field.
   vec3 blurColor = smokedBlur(field, 0.);
   float bodyBlur = mix(BODY_BLUR, DARK_BLUR, pillSmoke);
@@ -430,9 +433,10 @@ void main() {
   // The dark theme's mirrored zone frosts at MIRROR_SPREAD, so the flipped title stays crisp.
   float bandSpread = mix(mix(BODY_SPREAD, 1., band), MIRROR_SPREAD, mirrorZone * pillSmoke);
   // Below the mirrored zone the dark band frosts as the dark body does, so a title does not streak where the band begins.
-  vec3 surface = band > 0. ? mix(smoked(mix(field, pillSmoke > .5 && mirrorZone <= 0.
-      ? glassTone(softFrost(softBody + normal * 12. * band * band * (1. - topFacing)), 0.) : glassColor(bent, bandSpread),
-    1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, bodyBlur * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  softFrostMix = pillSmoke * (1. - step(.001, mirrorZone));
+  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, bandSpread), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, bodyBlur * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  // The moving selection and the rest pill's clear glass keep the frost.
+  softFrostMix = 0.;
   // The dark theme's bar is Apple's dark smoke (DARK_SMOKE), the same at every motion: only the selection moves.
   surface = mix(surface, darkSmoke(surface), pillSmoke);
   // The light theme's pale frost (MILK_LIFT, MILK_GAIN). The mirrored band keeps MILK_MIRROR of its strokes over it.
