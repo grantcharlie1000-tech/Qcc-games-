@@ -632,20 +632,37 @@ const LENS_END_ROOM = 14, LENS_MENU_ROOM = 8, LENS_MIN_ASPECT = 1.36, LENS_PROUD
  * (sx, sy) against its layout box. tabbar.ts sizes the glyph zoom from it, so the zoom covers the wide bubble. */
 export const drawnLenses = new WeakMap<HTMLElement,{pill:number[]; sx:number; sy:number}>();
 
+// MOTION-6 (#24 review): the frost's wide field reads mip level 3 of the backdrop crop (fieldSample: 8 device px a texel
+// at density 1.5), whose texel grid is anchored at the crop's origin and pitched by its size. Rounding the bar's own edges
+// moved that origin and size as the bar grows under a press (2 css px down and 7 css px wider at 390 px), so the same
+// screen point read the field at another grid phase and the frosted body shifted by 3-5/255 with no change in the look.
+// The crop now starts and ends on the screen's own grid of CROP_GRID device px, the mip-3 footprint: the rest and the
+// grown bar read the field on the same screen grid (at 390 px they share the origin), and an end the viewport does not
+// clip halves exactly down the mip chain, so the body holds still: assemble.py's body strip at Games +18 read max 3, mean
+// .35/255 before and max 1, mean .03 after. The grid only ever widens the crop, by under CROP_GRID device px.
+export const CROP_GRID = 8;
+/** The backdrop crop for a bar's screen box: pad css px round it, inside the viewport, on the CROP_GRID device px grid. */
+export function sectionCrop(bar:{left:number;top:number;right:number;bottom:number}, density:number, viewWidth:number, viewHeight:number, pad = 28):Crop|null {
+  const near = (edge:number) => Math.max(0, Math.floor((edge - pad) * density / CROP_GRID) * CROP_GRID);
+  const far = (edge:number, limit:number) => Math.min(Math.floor(limit * density), Math.ceil((edge + pad) * density / CROP_GRID) * CROP_GRID);
+  const x = near(bar.left), y = near(bar.top);
+  const width = far(bar.right, viewWidth) - x, height = far(bar.bottom, viewHeight) - y;
+  if (width<=0 || height<=0) return null;
+  return {x:x / density, y:y / density, width:width / density, height:height / density};
+}
+
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
-  // The field bends inward. The margin holds the furthest sample any pose reaches: the press
-  // warp's rim pull, which shows only while the press raises the lens (up to about 26 px past
-  // the lens face at 1/1.36, so about 20 px past the bar top and 27 px past an outer tab's end),
-  // plus the frost taps. The bar's own rim band reaches 12 px plus its taps, and
-  // the raised lens refracts inward only, so its furthest sample is its face edge, a couple
-  // of px past the bar. The shader caps the thumb's pull where the viewport clips this margin.
-  const cropPad = 28;
-  const x = Math.max(0,Math.floor(bar.left)-cropPad), y = Math.max(0,Math.floor(bar.top)-cropPad);
-  const width = Math.min(innerWidth,Math.ceil(bar.right)+cropPad)-x;
-  const height = Math.min(innerHeight,Math.ceil(bar.bottom)+cropPad)-y;
-  if (width<=0 || height<=0) return null;
+  // The margin holds the furthest sample any pose reaches: the press warp's rim pull, which shows
+  // only while the press raises the lens (up to about 26 px past the lens face at 1/1.36, so about
+  // 20 px past the bar top and 27 px past an outer tab's end), plus the frost taps. The bar's own
+  // rim band reaches 12 px plus its taps. The raised lens's bevel reaches LENS_EDGE_REACH outward,
+  // a couple of px past its own edge, and the shader cuts that reach, as the thumb's pull, where
+  // the viewport clips this margin.
+  const density = Math.min(1.5,devicePixelRatio);
+  const crop = sectionCrop(bar,density,innerWidth,innerHeight);
+  if (!crop) return null;
   const style = getComputedStyle(element,'::after');
   const w = parseFloat(style.width)||0, h = parseFloat(style.height)||0;
   const shiftX = parseFloat(style.translate)||0;
@@ -718,7 +735,7 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     pressedHeight + projection * (raisedHeight - pressedHeight),
   ] : pill;
   const pad = projection > 0 ? LENS_PAD : 0;
-  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*raise,press,smoke:dark?1:0,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
+  return {bar,crop,pill:drawnPill,samplePill,opacity,lift:lift*raise,press,smoke:dark?1:0,motion,pad,projection,density};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */
