@@ -272,6 +272,9 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   float pressRing = (1. - smoothstep(1.2, 4.5, pillDepth)) * (1. - pressRim);
   face = mix(face, vec3(milkTone), (.985 - .10 * pressRing) * pillPress);
   face = mix(face, vec3(1.), .16 * pressRim * pillPress * clearance);
+  // Its rim carries the raised lens's faint rainbow, red outside to blue inside, as Apple's held bubble.
+  vec3 pressSpectrum = .5 + .5 * cos(6.2832 * (.8 * clamp(pillDepth / 2., 0., 1.) + vec3(0., .33, .67)));
+  face = mix(face, pressSpectrum, LENS_FRINGE * .5 * pressRim * pillPress * clearance);
   // Like the owner's dragged thumb, the raised slab is a lighter, slightly milky glass.
   face = mix(face, vec3(.80), .07 * pillLift);
   // A thin dark inner shadow runs along its lower edge, under the bottom hairline, and the
