@@ -112,7 +112,9 @@ test('a touch-focused tab still adapts the visible mini after scrolling',async({
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect(mini).toHaveCSS('opacity','1');
   await page.addStyleTag({content:'html,body{background:#000!important}#content{visibility:hidden}'});
-  await expect(mini.locator('svg')).toHaveCSS('color','rgb(255, 255, 255)');
+  // MOTION-7: was white. Apple's compact circle keeps the selected tab's accent glyph (Charlie's video, 34.25 s), so the
+  // visible mini carries the light theme's selected accent, #ff375f, as the expanded bar's selected tab does.
+  await expect(mini.locator('svg')).toHaveCSS('color','rgb(255, 55, 95)');
 });
 
 test('Games and Movies sheet closes use the same clear material and release it on close',async({page,browserName})=>{

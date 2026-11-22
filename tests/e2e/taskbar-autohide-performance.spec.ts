@@ -113,10 +113,13 @@ test('canceling a morph to its cached size restores both map and filter bounds',
     return {filter:[filter?.getAttribute('width'),filter?.getAttribute('height')],image:[image?.getAttribute('width'),image?.getAttribute('height')]};
   });
   const original=await geometry();
+  // MOTION-7: counts the bar's maps only (wider than twice their height). Since 2a6791de the compact bar keeps its menu
+  // circle, Apple's search circle (Charlie's video, 34.25 s), which morphs 60 -> 48 with the minimise and builds its own
+  // square settled map (the bound above allows bar and menu); that encode is the menu's, not the cancelled bar's.
   await page.evaluate(()=>{
     const w=window as LensDiagnostics;w.__lensEncodes=0;
     const encode=HTMLCanvasElement.prototype.toDataURL;
-    HTMLCanvasElement.prototype.toDataURL=function(...args){w.__lensEncodes!++;return encode.apply(this,args);};
+    HTMLCanvasElement.prototype.toDataURL=function(...args){if(this.width>2*this.height)w.__lensEncodes!++;return encode.apply(this,args);};
   });
   await bar.evaluate(el=>new Promise<void>(resolve=>{
     const hold=(event:Event)=>{

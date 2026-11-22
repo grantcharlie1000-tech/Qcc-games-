@@ -340,13 +340,17 @@ test('keyboard activation moves the pill but never swells it',async({page})=>{
   expect(await page.evaluate(()=>(window as Window&{__sawPressing?:boolean}).__sawPressing)).toBe(false);
 });
 
-test('one glass surface shrinks in 300 ms while its labels fade in the first 80 ms',async({page})=>{
+test('one glass surface shrinks in 150 ms while its labels fade in the first 80 ms',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar'),tab=bar.locator('[aria-current="page"]'),capsule=page.locator('.ui-tabbar-mini');
   await expect(bar).toBeVisible();
-  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.16s',delay:'0.14s'});
+  // MOTION-7: was 0.3s each way. Every frame of Charlie's video puts the compact morph at about 150 ms to minimise
+  // (33.65-33.80 s) and about 120 ms to expand (38.35-38.47 s); the expanded bar's transition is the expand's.
+  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.12s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  // MOTION-7: was 0.16s after 0.14s, which began after the 120 ms expand; the video's tabs return as the bar opens.
+  expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.09s',delay:'0.04s'});
   await page.evaluate(()=>scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
+  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.15s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
   expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
   await expect(bar).toHaveCSS('opacity','1');
   // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
@@ -508,8 +512,9 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
   // The icon is a copy of the current tab's icon and always stays white.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  // The light theme's milky capsule takes Apple Music's mid-grey glyph ink, as the bar's own glyphs.
-  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(110, 110, 115)');
+  // MOTION-7: was the bar's mid-grey ink. Apple's compact circle keeps the selected tab's accent glyph (Charlie's video,
+  // 34.25 s), so the light theme's capsule glyph is the selected tab's #ff375f.
+  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(255, 55, 95)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   // MOTION-6 (#24): was 56 x 48 at x 12 on the bar's bottom line (832). Apple's compact selected tab (Charlie's video, 34.25 s)

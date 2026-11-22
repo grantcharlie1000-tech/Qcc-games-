@@ -58,13 +58,18 @@
   -webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
   backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
 }
+/* MOTION-7: Charlie's video expands the compact bar back to full width in about 120 ms (38.35-38.47 s), so the expanded
+   bar takes its box on a 120 ms drawer curve (was 300 ms); the minimise has its own 150 ms below. */
 .section-navigation>.section-tabbar.ui-tabbar{
   width:min(calc(100vw - var(--home-inset) - var(--home-inset) - var(--home-action) - var(--home-gap)),calc(440px - var(--home-action) - var(--home-gap)));
   right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
-  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+  transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
 /* Keep vertical scrolling and pinch zoom native while the pill tracks horizontal drags. */
 .section-tabbar .ui-tab{touch-action:pan-y pinch-zoom}
+/* MOTION-7: the video's tabs come back while the bar is still opening (38.37-38.44 s of a 120 ms expand), so the expand
+   fades them in over 90 ms from 40 ms, where they waited 140 ms, past the end of the morph. */
+.section-navigation>.section-tabbar .ui-tab{transition:transform var(--t-fast) var(--ease),opacity 90ms var(--ease) 40ms}
 .section-tabbar.ui-tabbar::after{
   --section-pill-bleed:2px;
   /* Apple Music's selected tab fills its bar but for an even 4px above and below: 52 of its 60 css px (.87 of the height;
@@ -94,13 +99,13 @@
 @media(prefers-reduced-motion:no-preference){
   :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:not([data-hidden=true]):not([data-minimized=true]){
     transform-origin:50% 50%;
-    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 200ms var(--ease-out);
-    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 200ms var(--ease-out);
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
       scale 300ms linear(0, .039, .136, .265, .405, .542, .668, .776, .865, .935, .986, 1.021, 1.043, 1.055, 1.059, 1.057, 1.051, 1.044, 1.036, 1.028, 1.02, 1.014, 1.008, 1.004, 1);
   }
   :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:is([data-pressing],[data-pill-dragging]):not([data-hidden=true]):not([data-minimized=true]){
     scale:1.046 1.065;
-    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 34ms var(--ease-out);
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 34ms var(--ease-out);
   }
 }
 .section-tabbar.arcade-glass.ui-tabbar:not([data-glass=off])::after{
@@ -225,12 +230,14 @@
    player, and the search circle, 48 px, 314.6-362.5. Ours is the selected tab's circle and the menu circle at those sizes
    and places (12 px in from the navigation's ends, centred on the 60 px bar's line), with no accessory. The video's
    minimise (33.65-33.80 s) contracts the bar toward its leading end while search moves out to its circle, and its expand
-   (38.35-38.47 s) reverses that; here both pieces morph on the bar's 300 ms drawer curve. */
+   (38.35-38.47 s) reverses that. MOTION-7: every frame of those spans puts the minimise's contraction at about 150 ms
+   (the bar's trailing end 389 -> 262 by 33.687, 166 by 33.737, the 48 px circle by 33.803) and the expand at about 120 ms
+   (the circle opens from 38.353, full width by 38.437-38.470), where both pieces took 300 ms here. */
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
   left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));width:48px;height:48px;min-height:48px;
   bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom) + (var(--tabbar-h) - 48px)/2);
   --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;
-  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+  transition:width 150ms var(--ease-drawer),height 150ms var(--ease-drawer),min-height 150ms var(--ease-drawer),left 150ms var(--ease-drawer),bottom 150ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true])::before,
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]) :is(.ui-glass-lens,.ui-glass-glow){opacity:1;transition:none}
@@ -239,9 +246,26 @@
   left:max(var(--home-inset),calc((100vw - 440px)/2));width:48px;height:48px;
   bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom) + (var(--tabbar-h) - 48px)/2);
   translate:0 0;scale:1;color:var(--glass-ink);
-  transition:left 300ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
+  transition:left 120ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
 }
-.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));transition:left 300ms var(--ease-drawer),opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));transition:left 150ms var(--ease-drawer),opacity 120ms var(--ease) 40ms,translate 180ms var(--ease-out)}
+/* MOTION-7: the video's selected glyph stays in sight through the whole minimise (33.65-33.80 s), so the circle's copy of it
+   fades in while the bar's own glyph fades out (80 ms), not after the morph (was a 160 ms delay). */
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini .ui-icon{transition:opacity 100ms var(--ease) 30ms}
+/* MOTION-7: Apple's compact circle keeps the selected tab's accent glyph (Charlie's video, 34.25 s: the Home glyph in the
+   blue of its selected tab), where ours drew the bar's grey ink. It takes the selected tab's accent and halo: the dark
+   theme's #0099ff with its soft .85 dark rim (5.5:1 over the black page's smoke). The light theme's #ff375f sits on the
+   bare frost here, not on the pill held at 200/255 (about 188 over black art, 1.8:1), so it keeps a thin dark rim. Glass
+   off (more contrast, reduced transparency, forced colours) keeps the plain ink (theme.css). */
+.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#ff375f;--section-mini-halo:rgb(0 0 0 / .6)}
+@media(prefers-color-scheme:dark){.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#0099ff;--section-mini-halo:rgb(0 0 0 / .85)}}
+.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini .ui-icon{filter:drop-shadow(0 0 .75px var(--section-mini-halo)) drop-shadow(0 0 .75px var(--section-mini-halo))}
+/* As the selected tab on the CSS fallback: where glass-ink.ts flagged bright art under its label, white ink, full rim. */
+@media not (prefers-contrast:more){@media (forced-colors:none){
+  .section-navigation>.section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]):has(.ui-tab:is([aria-current=page],[aria-pressed=true])>span[data-glass-halo])~.ui-tabbar-mini{
+    --glass-icon-ink:#fff;--section-mini-halo:rgb(0 0 0 / .85);
+  }
+}}
 .section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left))}
 /* Hidden companions have no filtered box for WebKit to leave on its compositor. MOTION-6: the compact bar keeps the menu
    circle as its second piece, Apple's search circle: 48 px (style.css --home-action), centred on the bar's line, its
@@ -251,7 +275,11 @@
 .section-navigation:not(:has(:focus-visible)):has(>.section-tabbar[data-minimized=true]:not([data-hidden=true]))>.section-menu{right:12px}
 @media(prefers-reduced-motion:no-preference){
   :root:not(.reduce-motion) .section-navigation>.section-menu:not([data-pressing]){
-    transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease),width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-width 300ms var(--ease-drawer),margin-top 300ms var(--ease-drawer),right 300ms var(--ease-drawer);
+    transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease),width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-width 120ms var(--ease-drawer),margin-top 120ms var(--ease-drawer),right 120ms var(--ease-drawer);
+  }
+  /* MOTION-7: the menu circle moves out to its compact place on the minimise's 150 ms, and back on the expand's 120 ms. */
+  :root:not(.reduce-motion) .section-navigation:not(:has(:focus-visible)):has(>.section-tabbar[data-minimized=true]:not([data-hidden=true]))>.section-menu:not([data-pressing]){
+    transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease),width 150ms var(--ease-drawer),height 150ms var(--ease-drawer),min-width 150ms var(--ease-drawer),margin-top 150ms var(--ease-drawer),right 150ms var(--ease-drawer);
   }
 }
 .section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible))>.ui-glass-lens{display:none}

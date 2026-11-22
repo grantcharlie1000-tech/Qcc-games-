@@ -63,7 +63,10 @@ for(const fallback of [false,true])test(`navigation icons and labels stay white 
  // The collapsed dock copies the selected icon and must keep the same colour.
  await page.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();document.querySelector('.app-tabbar')!.setAttribute('data-minimized','true');});
  await expect(page.locator('.app-navigation .ui-tabbar-mini')).toBeVisible();
- await expect(page.locator('.app-navigation .ui-tabbar-mini svg')).toHaveCSS('color','rgb(255, 255, 255)');
+ // MOTION-7: was white. Apple's compact circle keeps the selected tab's accent glyph (Charlie's video, 34.25 s: the Home
+ // glyph in its tab's blue), so the copy now keeps the selected icon's own colour: the accent, or white with the rim where
+ // the CSS fallback flagged bright art (the last body here is #fff).
+ await expect(page.locator('.app-navigation .ui-tabbar-mini svg')).toHaveCSS('color',fallback?'rgb(255, 255, 255)':accent);
 });
 
 test('icon palette still respects high contrast and forced colours',async({page})=>{
