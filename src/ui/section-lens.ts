@@ -295,8 +295,8 @@ void main() {
   vec2 pillAxis = capsuleAxis(pp, pill.zw);
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
-  // The pressed thumb and the raised slab keep a crisp glass edge, as the owner's do.
-  float soft = .5 + .9 * pillLift + .6 * pillPress;
+  // The pressed thumb keeps a soft glass edge; the raised lens's is crisp, as Apple's thin rim.
+  float soft = .5 + .3 * pillLift + .6 * pillPress;
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
@@ -540,8 +540,10 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     pillWidth + projection * Math.min(8,2*sideRoom),
     pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
   ] : pill;
-  // Like the owner's thumb, the raised lens stays inset in the bar, clear of its top and bottom.
-  const raisedHeight = bar.height - 10;
+  // Apple Music's drag lens is a large bubble, about 1.1 bar heights tall. The freeze still keeps
+  // the raised lens inset in the bar behind a 3 px gap of the bar's own glass, so it fills the bar
+  // to 4 css px from its top and bottom.
+  const raisedHeight = bar.height - 8;
   const raisedWidth = Math.min(pillWidth + 2 * sideRoom, Math.max(pillWidth, raisedHeight * (1.36 + .29 * stretch)));
   const drawnPill = projection > 0 || press > 0 ? [
     cx,
