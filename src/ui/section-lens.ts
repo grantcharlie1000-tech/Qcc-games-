@@ -151,10 +151,13 @@ const float PILL_DARK_CEIL = .31;
 // drawn at device density, so the bevel spans LENS_BEVEL * DPR device px. Its slope, and so
 // its normal, grows as u^2: the face meets the bevel without a seam.
 const float LENS_ZOOM = 1.36, LENS_BEVEL = 14., LENS_SLOPE = 2.4;
-// Like thick glass, the bevel bends each ray toward the centre along its normal, so content
-// swells, bends and stretches as it enters the rim. The pull (in bevels) stays under the fold,
-// where it would turn the mapping back on itself: 2 * pull < 1 / LENS_ZOOM.
-const float LENS_PULL = .26;
+// Like thick glass, the bevel bends each ray along its normal. MOTION-5 (#24 council): Apple's raised lens visibly bends
+// the art at its edge (Charlie's video, 12.75-13.5 s and 24.85 s: glyphs and titles under the rim squeeze and curve
+// along it), where the old inward pull only swelled the rim a little. So across the bevel the sample now reaches
+// outward, by LENS_EDGE_REACH css px at the rim: the face stays evenly magnified, and the bevel draws in the art from
+// the face's edge to a couple of px past the lens's own, squeezed about 2.5x at the rim, so straight edges bend into it.
+// A push outward never folds the mapping. The reach is cut where the backdrop crop would run out, as the press's is.
+const float LENS_EDGE_REACH = 12.;
 // Like the owner's thumb, each end of the lens is a dome: its vertical magnification climbs as
 // (1 - d / LENS_SWELL_SPAN)^3 over the last LENS_SWELL_SPAN css px before the end (d is the
 // distance to the end), to 1 / (1 - LENS_SWELL) times the face's at the very end. A track or
@@ -167,19 +170,18 @@ const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
 // mark (spread above about .32) keeps its hue. LENS_GAIN takes the clear glass tone's .80
 // transmission back to about one, and LENS_LIFT no longer lifts dark content toward milk.
 const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
-// Its edge is a thin crisp rim about LENS_RIM css px deep, even across it and falling off over a
-// px either side of its inner edge (Apple's rim reads about 3.5 px), brightest along the top, whose light splits
-// into a faint rainbow (LENS_FRINGE), red at the outside running to blue inside, as Apple's does.
-const float LENS_RIM = 3., LENS_FRINGE = .3;
-// In the light theme the raised lens is clear, bright glass: the magnified, unfrosted art shows
-// through it, lifted LENS_LIGHT of the way to white, so it reads no darker than the milky resting
-// pill while it keeps about three times the bar's contrast, and the dark ink on it stays legible.
-// Its bevel shading comes after the lift, so its edge still reads. The dark theme's lens is clear.
-// Through drag travel the lens is Apple's clear drag bubble (Charlie's video, 13.5 s): the art under it shows
-// unfrosted, magnified and in its own colour and contrast, lifted only LENS_LIGHT_DRAG, and the ink over it turns
-// light (section-navigation.css, data-lens-under). The raised lens samples the scene LENS_SHARP as wide as the
-// moving thumb's frost, so the magnified art stays crisp.
-const float LENS_LIGHT = .8, LENS_LIGHT_DRAG = .1, LENS_SHARP = .7;
+// Its edge is a thin crisp rim about LENS_RIM css px deep, falling off over half a px either side of its inner edge
+// (MOTION-5: the video's hold and drag rims read about 2 px at half height, ours read 4.5 and 3 at LENS_RIM 3), lit
+// all round and brightest along the top, whose light splits into a thin rainbow (LENS_FRINGE), red at the outside
+// running to blue inside, as Apple's does.
+const float LENS_RIM = 1.5, LENS_FRINGE = .45;
+// The raised lens is Apple's clear, bright bubble (Charlie's video, 12.75-13.5 s; MOTION-5 council): held or dragged,
+// the art under it shows unfrosted, magnified and in its own colour and contrast, lifted a little toward white:
+// LENS_LIGHT held and LENS_LIGHT_DRAG through drag travel in the light theme, LENS_LIGHT_DARK in the dark. The held
+// lens was lifted .8, a milky disc. Its bevel shading comes after the lift, so its edge still reads, and the ink over
+// a dragged lens turns light (section-navigation.css, data-lens-under). The raised lens samples the scene LENS_SHARP
+// as wide as the moving thumb's frost, so the magnified art stays crisp.
+const float LENS_LIGHT = .25, LENS_LIGHT_DRAG = .25, LENS_LIGHT_DARK = .1, LENS_SHARP = .7;
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
@@ -308,8 +310,8 @@ vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u, float lig
   float shade = max(0., -facing);
   vec3 face = mix(sceneColor, vec3(1.), light) * (1. - .22 * shade - .1 * (1. - normal.z));
   float t = clamp(pillDepth / LENS_RIM, 0., 1.);
-  float line = smoothstep(-.8, .5, pillDepth) * (1. - smoothstep(LENS_RIM - 1., LENS_RIM + 1., pillDepth));
-  float lit = .34 + .46 * max(0., facing) + .16 * max(0., outward.y);
+  float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(LENS_RIM - .5, LENS_RIM + .5, pillDepth));
+  float lit = .5 + .38 * max(0., facing) + .12 * max(0., outward.y);
   vec3 spectrum = .5 + .5 * cos(6.2832 * (.8 * t + vec3(0., .33, .67)));
   return mix(face, mix(vec3(1.), spectrum, LENS_FRINGE), lit * line);
 }
@@ -446,12 +448,16 @@ void main() {
         vec2 room = min(samplePill.xy - core - lo, hi - samplePill.xy - core);
         vec2 fit = clamp(room / max(reach, .001), 0., 1.);
         vec2 pressWarp = samplePill.xy + pp / 1.36 + outward * fit * reach * (1. - sqrt(1. - edge * edge)) / (1. - sqrt(1. - .985 * .985));
-        // The raised lens refracts through its bevel instead (LENS_PULL): inward only, so its
-        // furthest sample is the face's own edge, pill.zw / 2 / LENS_ZOOM from the active sample.
+        // The raised lens bends through its bevel instead (LENS_EDGE_REACH): outward, so the art just past its face
+        // squeezes into the rim. Its furthest sample is LENS_EDGE_REACH past the face's own edge, pill.zw / 2 /
+        // LENS_ZOOM from the active sample; where the crop would run out first (an end tab near the screen edge),
+        // the reach is cut to the room, the same over the whole lens, so it never samples the clamped edge.
         float u = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
         float swell = 1. - clamp((pill.z * .5 - abs(pp.x)) / LENS_SWELL_SPAN, 0., 1.);
+        vec2 face = pill.zw * .5 / LENS_ZOOM;
+        vec2 edgeReach = clamp(min(samplePill.xy - face - lo, hi - samplePill.xy - face), 0., LENS_EDGE_REACH);
         vec2 lensWarp = samplePill.xy + pp * vec2(1., 1. - LENS_SWELL * swell * swell * swell) / LENS_ZOOM
-                      - outward * LENS_PULL * lensBevel(pillRadius) * u * u;
+                      + outward * edgeReach * u * u;
         vec2 warped = mix(pressWarp, lensWarp, pillLift);
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
@@ -505,7 +511,7 @@ void main() {
       vec3 lightPill = mix(MILK_LIFT + MILK_GAIN * selectionColor - PILL_MILK_DROP, MILK_LIFT + MILK_GAIN * selection, pillPress);
       selection = mix(selection, lightPill, (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
-      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, mix(LENS_LIGHT_DRAG, LENS_LIGHT, pillPress) * (1. - pillSmoke)), pillLift);
+      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, mix(mix(LENS_LIGHT_DRAG, LENS_LIGHT, pillPress), LENS_LIGHT_DARK, pillSmoke)), pillLift);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
