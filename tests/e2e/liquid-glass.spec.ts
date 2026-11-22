@@ -481,7 +481,8 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
   // The icon is a copy of the current tab's icon and always stays white.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(255, 255, 255)');
+  // The light theme's milky capsule takes Apple Music's mid-grey glyph ink, as the bar's own glyphs.
+  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(110, 110, 115)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   expect(box.width).toBeCloseTo(56,0);
@@ -788,12 +789,17 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
 // A tab's computed colour and weight.
 const tabInk=(locator:Locator)=>locator.evaluate(el=>{const style=getComputedStyle(el);return {color:style.color,weight:style.fontWeight};});
 
+// The dark theme's smoked island keeps white ink; the light theme's milky island takes Apple Music's grey label ink.
+const islandInk={dark:'rgb(255, 255, 255)',light:'rgb(92, 92, 96)'} as const;
 test('the arcade light island uses white ink and a bold current tab',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
-  const bar=page.locator('.app-tabbar');
-  await expect(bar).toHaveAttribute('data-glass-tone','light');
-  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
-  expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  await page.setViewportSize({width:390,height:844});
+  for (const scheme of ['dark','light'] as const) {
+    await page.emulateMedia({colorScheme:scheme});await page.goto('/');
+    const bar=page.locator('.app-tabbar');
+    await expect(bar).toHaveAttribute('data-glass-tone','light');
+    await expect.poll(()=>tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:islandInk[scheme],weight:'500'});
+    expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:islandInk[scheme],weight:'700'});
+  }
 });
 
 test('the Movies island uses the same white ink and bold selection as Games',async({page})=>{
@@ -803,12 +809,23 @@ test('the Movies island uses the same white ink and bold selection as Games',asy
   await expect(bar).toBeVisible();
   // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
-  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:islandInk.light,weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:islandInk.light,weight:'700'});
+  await page.emulateMedia({colorScheme:'dark'});
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:islandInk.dark,weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:islandInk.dark,weight:'700'});
 });
 
 test('the fallback navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/?glass=fallback');
+  // The dark theme's fallback keeps #92's smoked frost. The light theme's is Apple Music's milky frost: a .9 near-white
+  // tint, a deeper 20px blur and a grey pill a step darker than the bar.
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/?glass=fallback');
+  const light=page.locator('.app-tabbar');await expect(light).toBeVisible();
+  expect(alphaOf(await light.evaluate(el=>getComputedStyle(el,'::before').backgroundColor))).toBeCloseTo(.9,2);
+  expect(await frostFilter(light)).toBe('blur(20px) saturate(1.2)');
+  expect(await light.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(0, 0, 0, 0.1)');
+  await page.emulateMedia({colorScheme:'dark'});await page.goto('/?glass=fallback');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
   // #92 frosts navigation at .36. Without the WebGL lens the selection pill is the C30 smoke, a clear step darker than the bar.

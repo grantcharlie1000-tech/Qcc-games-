@@ -56,7 +56,8 @@ for(const scheme of ['light','dark'] as const){
   });
 
   // The other side of the scope: the frosted CSS fallback (no WebGL lens, as after context loss or a rejected crop) still
-  // draws the C30 accent and smoked pill. ?glass=fallback skips the section lens outright.
+  // draws the C30 accent and its pill: smoked in the dark theme, a grey step on the milky light bar. ?glass=fallback skips
+  // the section lens outright.
   test(`the CSS blur fallback keeps the C30 accent selection (${scheme})`,async({page})=>{
     await page.emulateMedia({colorScheme:scheme});
     await page.goto('/?glass=fallback');
@@ -69,6 +70,6 @@ for(const scheme of ['light','dark'] as const){
       const tab=el.querySelector('.ui-tab[aria-current=page]')!;
       return {label:getComputedStyle(tab.querySelector(':scope>span')!).color,glyph:getComputedStyle(tab.querySelector(':scope>.ui-icon')!).color,
         pill:getComputedStyle(el,'::after').backgroundColor};
-    })).toEqual({label:accent,glyph:accent,pill:'rgba(0, 0, 0, 0.34)'});
+    })).toEqual({label:accent,glyph:accent,pill:scheme==='light'?'rgba(0, 0, 0, 0.1)':'rgba(0, 0, 0, 0.34)'});
   });
 }

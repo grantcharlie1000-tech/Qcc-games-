@@ -75,6 +75,8 @@ for(const mode of ['flag','WebKit brands'])test(`${mode} selects one fallback su
    return Reflect.apply(getContext,this,args);
   };
  });
+ // The dark theme's smoked frost; the light theme's milky frost is pinned in liquid-glass.spec.ts.
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto(`/${mode==='flag'?'?glass=fallback':''}#/collection`);
  const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu');
  await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
@@ -117,7 +119,9 @@ for(const stuck of ['fetch','body','restore'])test(`a stalled catalog ${stuck} r
  await page.evaluate(()=>(window as any).__releaseCatalog());await expect(page.getByRole('heading',{name:'TV Shows',exact:true})).toBeVisible();await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
 });
 
+// The dark theme's smoked Menu keeps white ink over any content; the light theme's milky Menu takes Apple's grey ink.
 for(const route of ['collection','movies'])test(`${route} fallback Menu icon stays white on black and white content`,async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto(`/?glass=fallback#/${route}`);const menu=page.locator(route==='collection'?'.app-menu':'.movies-menu');
  await expect(menu).toHaveAttribute('data-glass','frost');
  if(route==='movies')await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
@@ -154,7 +158,9 @@ test.describe('live Movies motion preference',()=>{
  });
 });
 
+// The dark theme's smoked bar; the light theme's milky bar keeps its accent on the grey pill.
 for(const press of [false,true])test(`selected label and icon remain white over white artwork${press?' while pressed':''}`,async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto('/?glass=fallback#/movies');await expect(page.locator('.movies-hero')).toBeVisible();
  await page.evaluate(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none;background:white';document.querySelector('.movies-view')!.append(art);});
  const tab=page.locator('.movies-mobile-nav [aria-pressed=true]');await tab.evaluate(e=>e.classList.add('contrast-target'));

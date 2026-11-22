@@ -34,7 +34,9 @@ test('live canvas ink stays white across bright and dark frames',async({page})=>
  await expect(ink).toHaveCSS('-webkit-text-stroke-width','0px');
 });
 
+// The dark theme's smoked navigation keeps white ink. The light theme's is Apple Music's milky glass with grey ink (below).
 for(const fallback of [false,true])test(`navigation icons and labels stay white (${fallback?'fallback':'native'})`,async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
  await page.locator('.app-tabbar .ui-tab').first().focus();
  await page.addStyleTag({content:'#content *{visibility:hidden!important}#content{background:transparent!important}'});
@@ -65,6 +67,7 @@ for(const fallback of [false,true])test(`navigation icons and labels stay white 
 });
 
 test('icon palette still respects high contrast and forced colours',async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto('/#/collection');
  const menu=page.locator('.app-navigation .section-menu'),icon=menu.locator('svg.ui-icon');
  await expect(icon).toHaveCSS('color','rgb(255, 255, 255)');
@@ -77,6 +80,30 @@ test('icon palette still respects high contrast and forced colours',async({page}
  await page.emulateMedia({forcedColors:'none'});
  await expect(menu).not.toHaveAttribute('data-glass','off');
  await expect(icon).toHaveCSS('color','rgb(255, 255, 255)');
+});
+
+// Apple Music's light bar is milky, near-white glass: unselected glyphs are mid-grey and labels a darker grey, which
+// must still read at 4.5:1 over the lens's milk where it is darkest, over black art.
+test('the light theme\'s milky navigation keeps Apple\'s grey ink legible at 4.5:1',async({page})=>{
+ await page.emulateMedia({colorScheme:'light'});
+ await page.goto('/#/collection');
+ const bar=page.locator('.app-tabbar');
+ await expect(bar).toHaveAttribute('data-section-lens','webgl');
+ await page.addStyleTag({content:'#content *{visibility:hidden!important}#content,body,html{background:#000!important}'});
+ const label=bar.locator('.ui-tab:not([aria-current=page])>span').first();
+ await expect.poll(()=>label.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(92, 92, 96)');
+ await expect(bar.locator('.ui-tab:not([aria-current=page]) svg.ui-icon').first()).toHaveCSS('color','rgb(110, 110, 115)');
+ const contrast=()=>bar.locator('canvas.section-lens').evaluate((surface,index)=>{
+  const canvas=surface as HTMLCanvasElement,rect=canvas.getBoundingClientRect(),sx=canvas.width/rect.width,sy=canvas.height/rect.height;
+  const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+  const span=canvas.closest('.app-tabbar')!.querySelectorAll('.ui-tab:not([aria-current=page])>span')[index]!,box=span.getBoundingClientRect();
+  const ink=lum(getComputedStyle(span).color.match(/[\d.]+/g)!.slice(0,3).map(Number));
+  const data=canvas.getContext('2d')!.getImageData(Math.round((box.left-rect.left)*sx),Math.round((box.top-rect.top)*sy),Math.max(1,Math.round(box.width*sx)),Math.max(1,Math.round(box.height*sy))).data;
+  let lowest=Infinity;
+  for(let i=0;i<data.length;i+=4)if(data[i+3]>250)lowest=Math.min(lowest,(lum([data[i],data[i+1],data[i+2]])+.05)/(ink+.05));
+  return lowest;
+ },0);
+ await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
 });
 
 test('game icons stay white across canvas changes and repeated menu opens',async({page})=>{
