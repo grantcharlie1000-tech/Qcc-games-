@@ -816,8 +816,9 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
 // A tab's computed colour and weight.
 const tabInk=(locator:Locator)=>locator.evaluate(el=>{const style=getComputedStyle(el);return {color:style.color,weight:style.fontWeight};});
 
-// The dark theme's smoked island keeps white ink; the light theme's milky island takes Apple Music's grey label ink.
-const islandInk={dark:'rgb(255, 255, 255)',light:'rgb(92, 92, 96)'} as const;
+// The dark theme's smoked island keeps white ink; the light theme's see-through frost takes Apple Music's dark grey label
+// ink, #333336 (Apple's light still reads its labels about 45; glass-ink.ts keeps it at 4.5:1 or adds the white halo).
+const islandInk={dark:'rgb(255, 255, 255)',light:'rgb(51, 51, 54)'} as const;
 test('the arcade light island uses white ink and a bold current tab',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   for (const scheme of ['dark','light'] as const) {
@@ -844,12 +845,13 @@ test('the Movies island uses the same white ink and bold selection as Games',asy
 });
 
 test('the fallback navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
-  // The dark theme's fallback keeps #92's smoked frost. The light theme's is Apple Music's milky frost: a .9 near-white
-  // tint, a deeper 20px blur and a grey pill a step darker than the bar.
+  // The dark theme's fallback keeps #92's smoked frost. The light theme's is Apple Music's pale see-through frost, as the
+  // WebGL lens and the menu circle: a .8 light grey tint (glass-ink.ts models it for the 4.5:1 labels), a deeper 20px
+  // blur and a grey pill a step darker than the bar.
   await page.setViewportSize({width:390,height:844});
   await page.goto('/?glass=fallback');
   const light=page.locator('.app-tabbar');await expect(light).toBeVisible();
-  expect(alphaOf(await light.evaluate(el=>getComputedStyle(el,'::before').backgroundColor))).toBeCloseTo(.9,2);
+  expect(alphaOf(await light.evaluate(el=>getComputedStyle(el,'::before').backgroundColor))).toBeCloseTo(.8,2);
   expect(await frostFilter(light)).toBe('blur(20px) saturate(1.2)');
   expect(await light.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(0, 0, 0, 0.1)');
   await page.emulateMedia({colorScheme:'dark'});await page.goto('/?glass=fallback');
