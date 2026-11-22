@@ -268,3 +268,10 @@
 .section-tabbar[data-section-lens=webgl] :is(.ui-glass-lens,.ui-glass-glow),
 .section-tabbar[data-section-lens=webgl]::before,
 .section-tabbar[data-section-lens=webgl]::after{visibility:hidden}
+/* The WebGL lens hides the bar's CSS layers, the veil that carries the light theme's soft shadow among them (bb123a61), in
+   Chromium and WebKit alike, so the lens canvas casts it instead: a drop shadow of the capsule it draws, the same 15px
+   blur (sigma 7.5px) at .18 as the menu circle's. The bar's own box keeps no shadow, so the bar and circle keep one
+   material (navigation-material.spec). */
+@media not (prefers-color-scheme:dark){
+  .section-navigation>.section-tabbar[data-section-lens=webgl]>.section-lens{filter:drop-shadow(0 0 15px rgb(0 0 0 / .18))}
+}
