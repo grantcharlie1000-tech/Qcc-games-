@@ -247,7 +247,7 @@ vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
   vec3 spectrum = .5 + .5 * cos(6.2832 * (.8 * t + vec3(0., .33, .67)));
   return mix(face, mix(vec3(1.), spectrum, LENS_FRINGE), lit * line);
 }
-vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone) {
+vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone, float deepen) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
   float clearance = smoothstep(1., 4.5, barDepth - max(0., pillDepth));
   clearance = max(clearance, liftEdge * smoothstep(.4, 2.5, -barDepth));
@@ -266,8 +266,9 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
   vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .20 * smoke);
   // Apple Music's selected tab is a darker capsule in the bar: in both themes it sits about
-  // PILL_DEEPEN (23/255) below the bar's own tone, over a white page and over black alike.
-  face = max(face - PILL_DEEPEN * (1. - pillLift) * (1. - pillPress), 0.);
+  // PILL_DEEPEN (23/255) below the bar's own tone. Over bright art the pill is already held to the
+  // smoked pill's tone for the accent's contrast (PILL_BRIGHT), so the deepening fades there.
+  face = max(face - deepen * (1. - pillLift) * (1. - pillPress), 0.);
   // First contact turns the thumb one solid, even light-grey milk, as in the owner's
   // press: the tone follows the average scene under it, so no art or dome shows. Like the
   // owner's thumb it is milky glass, not paint: a hairline catches the light at the rim and
@@ -394,6 +395,7 @@ void main() {
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 faceColor = selectionColor;
+      float deepen = PILL_DEEPEN;
       if (clear > 0.) {
         faceColor = mix(selectionColor, clearGlass * PILL_GAIN + PILL_VEIL * pillSmoke, clear);
         // Hold bright art to the plain smoked pill (PILL_BRIGHT). Its tone eases to the frost's
@@ -404,9 +406,12 @@ void main() {
         float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
         float ceiling = max(0., plainTone) * (1. - .30 * smoke) / (1. - .20 * smoke);
         float faceLuma = dot(faceColor, vec3(.2126, .7152, .0722));
-        faceColor *= mix(1., min(1., ceiling / max(faceLuma, .001)), smoothstep(PILL_BRIGHT.x, PILL_BRIGHT.y, plain));
+        float bright = smoothstep(PILL_BRIGHT.x, PILL_BRIGHT.y, plain);
+        faceColor *= mix(1., min(1., ceiling / max(faceLuma, .001)), bright);
+        // Fades with the clear look (motion, lift, press), so the deepening returns without a step.
+        deepen *= 1. - bright * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       }
-      vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone);
+      vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone, deepen);
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
       selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
 
