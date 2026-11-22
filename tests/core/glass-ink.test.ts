@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {glassInk} from '../../src/ui/glass-ink';
+import {glassInk,milkInk,MILK_INK} from '../../src/ui/glass-ink';
 
 describe('clear glass contrast',()=>{
   it('keeps pure white ink on bright and dark content',()=>{
@@ -46,5 +46,11 @@ describe('clear glass contrast',()=>{
     // A pale patch that only clears 4.75:1 still gets the shadow at the 7:1 bar for 10px labels.
     expect(glassInk([[170,170,170]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
     expect(glassInk([[0,0,0],[255,255,255]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
+  });
+  it('gives the light theme\'s milky section bar dark ink, legible over any art',()=>{
+    // The milk (.9 of rgb 244 244 246) keeps dark ink above 7:1 over black, white and saturated art alike.
+    for(const art of [[0,0,0],[255,255,255],[255,0,0],[0,40,200],[31,90,85]] as const)
+      expect(milkInk([art])).toEqual({color:MILK_INK,halo:'transparent'});
+    expect(milkInk([])).toEqual({color:MILK_INK,halo:'transparent'});
   });
 });
