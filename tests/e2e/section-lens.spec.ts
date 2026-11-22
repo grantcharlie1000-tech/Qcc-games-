@@ -131,7 +131,9 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // dark 1.26:1 (.227) and a light pill brighter than its accent (.451). Pin the dark smoked pill's
 // values, with a little room for rasterisation. The light theme's pill is now Apple Music's milky grey,
 // well above the accent at about 2.3:1 (the smoked light pill gave 1.25:1): pin that side instead.
-test('the selected accent keeps its contrast against the WebGL pill over white art',async({page})=>{
+// Since the light frost lets the art through (133d37f2), black art is the light pill's worst case: the pill followed it
+// down to about 166/255 and the #ff375f accent read 1.45:1. The same floors hold over a black patch.
+test('the selected accent keeps its contrast against the WebGL pill over white art and over black art',async({page})=>{
   const floor={dark:{ratio:2.5,pill:.091},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
   for (const scheme of ['dark','light'] as const) {
     await page.emulateMedia({colorScheme:scheme});
@@ -141,6 +143,9 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     await expect(bar.getByRole('link',{name:'Games',exact:true})).toHaveAttribute('aria-current','page');
     await page.locator('.game-grid').evaluate(grid=>{
       const patch=document.createElement('div');
+      // The hash route keeps the document, so drop the last scheme's patch.
+      document.getElementById('contrast-patch')?.remove();
+      patch.id='contrast-patch';
       patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:#fff;pointer-events:none';
       grid.append(patch);
     });
@@ -181,6 +186,19 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     expect(ratio).toBeGreaterThanOrEqual(floor[scheme].ratio);
     expect(pill).toBeLessThanOrEqual(floor[scheme].pill);
     expect(pill).toBeGreaterThanOrEqual(milky[scheme]);
+    // Black art: wait for the bar to darken under it (light frost about 188, dark smoke about 32), then two equal reads.
+    await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#000';});
+    await expect.poll(()=>canvas.evaluate(element=>{
+      const surface=element as HTMLCanvasElement;
+      return surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data[1];
+    })).toBeLessThan(scheme==='light'?225:110);
+    previous='';
+    await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
+    const [blackRatio,blackPill]=previous.split(' ').map(Number);
+    console.log(`selected accent over black art, ${scheme}: ${blackRatio}:1, pill luminance ${blackPill}`);
+    expect(blackRatio).toBeGreaterThanOrEqual(floor[scheme].ratio);
+    expect(blackPill).toBeLessThanOrEqual(floor[scheme].pill);
+    expect(blackPill).toBeGreaterThanOrEqual(milky[scheme]);
   }
 });
 

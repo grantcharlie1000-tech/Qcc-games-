@@ -154,7 +154,10 @@ const float MIRROR_SPREAD = .35;
 // top band keeps MILK_MIRROR of its flipped title's strokes against the field over that lift, so the title still reads
 // in it, and its rim reads brighter (RIM_LIGHT.x). The resting pill is the bar's own frost PILL_MILK_DROP darker, as
 // Apple's grey selected tab (209 under its 234 bar); a press lifts it to the frost, and the raised lens clears it.
-const float MILK_LIFT = .683, MILK_GAIN = .483, MILK_MIRROR = 1., PILL_MILK_DROP = 22. / 255.;
+// Over black art that frost reads about 188 and the pill followed it to about 166, where the #ff375f accent read 1.45:1.
+// The pill is held at PILL_LIGHT_FLOOR luma or lighter (the light side of PILL_DARK_CEIL), eased toward white, so the
+// accent keeps about 2.1:1 over any art (section-lens.spec's black patch); over bright art it stays the step darker.
+const float MILK_LIFT = .683, MILK_GAIN = .483, MILK_MIRROR = 1., PILL_MILK_DROP = 22. / 255., PILL_LIGHT_FLOOR = 200. / 255.;
 // Apple Music's dark bar is a light smoke over the art (Charlie's still and video): black under it reads about 32/255,
 // and the art shows through nearly at its own tone, a little lifted (a floor under the video's man at 32.5 s reads
 // about 76 raw and 98 through the bar, the gold Hamilton poster about 117 and 132), its colour a little greyed. At rest
@@ -538,6 +541,8 @@ void main() {
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
       // frost of its milky thumb, as the dark theme's press lifts its pill; the raised lens clears it smoothly.
       vec3 lightPill = mix(MILK_LIFT + MILK_GAIN * selectionColor - PILL_MILK_DROP, MILK_LIFT + MILK_GAIN * selection, pillPress);
+      float lightLuma = dot(lightPill, vec3(.2126, .7152, .0722));
+      lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
       selection = mix(selection, lightPill, (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
       selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, mix(mix(LENS_LIGHT_DRAG, LENS_LIGHT, pillPress), LENS_LIGHT_DARK, pillSmoke)), pillLift);

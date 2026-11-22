@@ -70,6 +70,20 @@ for(const scheme of ['light','dark'] as const){
       const tab=el.querySelector('.ui-tab[aria-current=page]')!;
       return {label:getComputedStyle(tab.querySelector(':scope>span')!).color,glyph:getComputedStyle(tab.querySelector(':scope>.ui-icon')!).color,
         pill:getComputedStyle(el,'::after').backgroundColor};
-    })).toEqual({label:accent,glyph:accent,pill:scheme==='light'?'rgba(0, 0, 0, 0.1)':'rgba(0, 0, 0, 0.34)'});
+    })).toEqual({label:accent,glyph:accent,pill:scheme==='light'?'rgba(208, 208, 212, 0.55)':'rgba(0, 0, 0, 0.34)'});
+    // Every QCC page is #000, so black art is the pill's common case: there the pill sits on the bar's tint alone.
+    // Composite the tint, then the pill, over black: the accent keeps 2:1 or better, the WebGL pin's light floor
+    // (section-lens.spec). The light theme's .1 black pill on the .8 frost gave 1.51:1.
+    const overBlack=await bar.evaluate(el=>{
+      const parse=(color:string)=>color.match(/[\d.]+/g)!.map(Number);
+      const [tr,tg,tb,ta=1]=parse(getComputedStyle(el,'::before').backgroundColor);
+      const [pr,pg,pb,pa=1]=parse(getComputedStyle(el,'::after').backgroundColor);
+      const tint=[tr,tg,tb].map(value=>value*ta);
+      const pill=[pr,pg,pb].map((value,i)=>value*pa+tint[i]*(1-pa));
+      const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+      const ink=lum(parse(getComputedStyle(el.querySelector('.ui-tab[aria-current=page]>span')!).color).slice(0,3)),bg=lum(pill);
+      return (Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05);
+    });
+    expect(overBlack).toBeGreaterThanOrEqual(2);
   });
 }

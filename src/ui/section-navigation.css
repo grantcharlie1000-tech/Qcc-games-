@@ -145,7 +145,7 @@
     --section-pill-accent:#0099ff;
   }
 }
-/* The light theme's accent sits on the milky grey pill, which is lighter than the accent: no dark rim. */
+/* The light theme's accent sits on the pale grey pill, held lighter than the accent over any art: no dark rim. */
 @media not (prefers-color-scheme:dark){
   .section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){--section-pill-ink-halo:transparent}
 }
@@ -166,9 +166,11 @@
   background:rgb(255 255 255 / .2);
   box-shadow:inset 0 .5px 0 rgb(255 255 255 / .55),inset 0 0 0 .5px rgb(255 255 255 / .25),0 4px 12px -4px rgb(0 0 0 / .35);
 }
+/* The light pill pulls the frost toward a 208 grey: about 18 under the bar over white art, and about 199 over the
+   black page (the frost's 189), where a .1 black step left the #ff375f accent at 1.5:1. It keeps 2.1:1 there. */
 @media not (prefers-color-scheme:dark){
   .section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])::after{
-    background:rgb(0 0 0 / .1);box-shadow:inset 0 .5px 0 rgb(255 255 255 / .5);
+    background:rgb(208 208 212 / .55);box-shadow:inset 0 .5px 0 rgb(255 255 255 / .5);
   }
 }
 /* Contrast guards, for a bar whose mode is not yet off: a light pill and the bar's own plain ink. Once glass.ts marks it

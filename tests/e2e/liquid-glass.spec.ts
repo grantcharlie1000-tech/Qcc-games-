@@ -847,13 +847,13 @@ test('the Movies island uses the same white ink and bold selection as Games',asy
 test('the fallback navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
   // The dark theme's fallback keeps #92's smoked frost. The light theme's is Apple Music's pale see-through frost, as the
   // WebGL lens and the menu circle: a .8 light grey tint (glass-ink.ts models it for the 4.5:1 labels), a deeper 20px
-  // blur and a grey pill a step darker than the bar.
+  // blur and a grey pill a step darker than the bar over bright art, held near 199 over the black page (accent 2.1:1).
   await page.setViewportSize({width:390,height:844});
   await page.goto('/?glass=fallback');
   const light=page.locator('.app-tabbar');await expect(light).toBeVisible();
   expect(alphaOf(await light.evaluate(el=>getComputedStyle(el,'::before').backgroundColor))).toBeCloseTo(.8,2);
   expect(await frostFilter(light)).toBe('blur(20px) saturate(1.2)');
-  expect(await light.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(0, 0, 0, 0.1)');
+  expect(await light.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(208, 208, 212, 0.55)');
   await page.emulateMedia({colorScheme:'dark'});await page.goto('/?glass=fallback');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
