@@ -62,9 +62,9 @@
   --section-pill-ink-halo:rgb(0 0 0 / .85);
 }
 /* C30 shows every tab's filled glyph in both themes and in every glass mode, not the 16px outline. Apple Music's
-   glyph ink stands about .40 of the bar's height: 34px boxes, with the label kept and the column's gap closed. */
+   glyph ink stands about .40 of the bar's height: 32px boxes, with the label kept and the column's gap closed. */
 .section-tabbar .ui-tab{padding-block:0;gap:0}
-.section-tabbar .ui-tab .ui-icon{width:34px;height:34px}
+.section-tabbar .ui-tab .ui-icon{width:32px;height:32px}
 .section-tabbar .ui-nav-icon .ui-icon-line{display:none}
 .section-tabbar .ui-nav-icon .ui-icon-fill{display:inline}
 /* C30 keeps the accent inside the glyph. A soft rim, not a hard outline, still separates it from bright glass. */

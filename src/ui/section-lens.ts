@@ -113,10 +113,11 @@ const float RIM_TINT = 3.;
 const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
 // light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
-// almost none of its detail. The mirrored top band keeps MILK_BAND more of the art, so the flipped
-// title still reads in it, and its rim reads brighter (RIM_LIGHT.x). The resting pill takes the same
-// milk PILL_MILK_DROP darker, as Apple's grey selected tab; press and the raised lens clear it.
-const float MILK_TONE = .955, MILK_MIX = .9, MILK_BAND = .55, PILL_MILK_DROP = 25. / 255.;
+// almost none of its detail. The mirrored top band is as milky, but keeps MILK_MIRROR of its flipped
+// title's strokes against the field, so the title still reads in it, and its rim reads brighter
+// (RIM_LIGHT.x). The resting pill takes the same milk PILL_MILK_DROP darker, as Apple's grey selected
+// tab; press and the raised lens clear it.
+const float MILK_TONE = .955, MILK_MIX = .9, MILK_MIRROR = .7, PILL_MILK_DROP = 25. / 255.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -164,7 +165,7 @@ const float PILL_GAIN = .98 / .80;
 const vec2 PILL_BRIGHT = vec2(.45, .55);
 // The dark theme's resting pill keeps PILL_SMOKE of smoke over normal art, so it sits about 22 under the
 // bar as Apple Music's; the bright-art hold still trades it for the plain pill's .30.
-const float PILL_SMOKE = .06;
+const float PILL_SMOKE = 0., PILL_DEEPEN_DARK = 6. / 255.;
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -360,8 +361,9 @@ void main() {
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
   vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor;
-  // The light theme's milk (MILK_MIX), lighter in the mirrored band so its flipped title shows.
-  surface = mix(surface, vec3(MILK_TONE), MILK_MIX * (1. - pillSmoke) * (1. - MILK_BAND * mirrorZone));
+  // The light theme's milk (MILK_MIX). The mirrored band keeps MILK_MIRROR of its strokes over the milk.
+  float milk = MILK_MIX * (1. - pillSmoke);
+  surface = mix(surface, vec3(MILK_TONE), milk) + MILK_MIRROR * milk * mirrorZone * (surface - blurColor);
   vec3 rgb = rim(surface, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
@@ -428,7 +430,7 @@ void main() {
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 faceColor = selectionColor;
-      float deepen = PILL_DEEPEN;
+      float deepen = mix(PILL_DEEPEN, PILL_DEEPEN_DARK, pillSmoke);
       if (clear > 0.) {
         faceColor = mix(selectionColor, clearGlass * PILL_GAIN + PILL_VEIL * pillSmoke, clear);
         // Hold bright art to the plain smoked pill (PILL_BRIGHT). Its tone eases to the frost's

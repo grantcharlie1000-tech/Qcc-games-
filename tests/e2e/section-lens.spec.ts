@@ -121,10 +121,11 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // WebGL pill under the selected glyph and label over a white patch and compare it with the
 // accent ink. The smoked pill before the clear pill (900e080c), measured by this same test, gave
 // dark 2.52:1 at pill luminance .089 and light 1.25:1 at .188; the unlimited clear pill gave
-// dark 1.26:1 (.227) and a light pill brighter than its accent (.451). Pin the smoked pill's
-// values, with a little room for rasterisation.
+// dark 1.26:1 (.227) and a light pill brighter than its accent (.451). Pin the dark smoked pill's
+// values, with a little room for rasterisation. The light theme's pill is now Apple Music's milky grey,
+// well above the accent at about 2.3:1 (the smoked light pill gave 1.25:1): pin that side instead.
 test('the selected accent keeps its contrast against the WebGL pill over white art',async({page})=>{
-  const floor={dark:{ratio:2.5,pill:.091},light:{ratio:1.23,pill:.19}};
+  const floor={dark:{ratio:2.5,pill:.091},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
   for (const scheme of ['dark','light'] as const) {
     await page.emulateMedia({colorScheme:scheme});
     await page.goto('/#/collection');
@@ -172,6 +173,7 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     // by crossing over the accent (light theme) while the art still washes it out.
     expect(ratio).toBeGreaterThanOrEqual(floor[scheme].ratio);
     expect(pill).toBeLessThanOrEqual(floor[scheme].pill);
+    expect(pill).toBeGreaterThanOrEqual(milky[scheme]);
   }
 });
 
