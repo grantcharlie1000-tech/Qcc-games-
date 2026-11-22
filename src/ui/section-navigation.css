@@ -132,6 +132,15 @@
 .section-tabbar .ui-tab .ui-icon{width:24px;height:24px;margin-block:4px;transform:scale(1.35)}
 .section-tabbar .ui-nav-icon .ui-icon-line{display:none}
 .section-tabbar .ui-nav-icon .ui-icon-fill{display:inline}
+/* LOOK-5 (owner: the dark bar's heavy white icons): at that size every filled twin is a block of 362-534 css px^2 of ink,
+   where Apple's unselected New, Radio and Library hold 297, 146 and 307 (its light still; Radio's strokes about 2.3 css
+   px) and its selected Home 364. In white on the dark smoke they read as solid slabs, so the dark theme's unselected tabs
+   draw theme.css's 1.75 line twin (a 2.4 css px stroke, 191-300 px^2) and the tab carrying the accent keeps the filled
+   one (Games 377). The light theme keeps C30's grey filled glyphs. */
+@media (prefers-color-scheme:dark){
+  .section-tabbar .ui-tab:not([aria-current=page],[aria-pressed=true]) .ui-nav-icon .ui-icon-line{display:inline}
+  .section-tabbar .ui-tab:not([aria-current=page],[aria-pressed=true]) .ui-nav-icon .ui-icon-fill{display:none}
+}
 /* C30 keeps the accent inside the glyph. A soft rim, not a hard outline, still separates it from bright glass. */
 .section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
   filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo)) drop-shadow(0 0 .75px var(--section-pill-ink-halo));
@@ -216,6 +225,14 @@
   }
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:not([aria-current=page],[aria-pressed=true])>span{
     color:var(--section-lens-accent);
+  }
+  /* LOOK-5: in the dark theme the filled glyph goes with the accent, so the release that makes the target current swaps
+     no glyph. */
+  @media (prefers-color-scheme:dark){
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target] .ui-nav-icon .ui-icon-line,
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:is([aria-current=page],[aria-pressed=true]):not([data-lens-target]) .ui-nav-icon .ui-icon-fill{display:none}
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target] .ui-nav-icon .ui-icon-fill,
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:is([aria-current=page],[aria-pressed=true]):not([data-lens-target]) .ui-nav-icon .ui-icon-line{display:inline}
   }
 }
 .section-tabbar{--section-lens-accent:#ff375f}

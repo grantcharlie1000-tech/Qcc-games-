@@ -110,15 +110,52 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
 
-  // C30 shows every tab's 24px filled glyph in both themes, drawn at 32.4px (ink about .39 of the 60px bar, as Apple Music's),
-  // with its #ff375f light accent at weight 600.
+  // C30 shows every tab's 24px glyph in both themes, drawn at 32.4px (ink about .39 of the 60px bar, as Apple Music's),
+  // with its #ff375f light accent at weight 600. Apple's light still (pr-183, 2.6 px a css px) holds 146-307 css px^2 of
+  // ink in its unselected glyphs (New 297, Radio 146, Library 307) and 364 in its selected Home. Every tab's filled twin
+  // drew 362-534 here (TV 534), solid white slabs on the dark smoke, so the dark theme's unselected tabs draw the line
+  // twin, inside Apple's range, and the selected tab the filled one (Games 377). The light theme keeps the filled twins.
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   await expect(movies.locator('.ui-icon')).toHaveCSS('width','24px');
   await expect(movies.locator('.ui-icon')).toHaveCSS('transform',/^matrix\(1\.35,/);
-  await expect(movies.locator('.ui-icon-fill')).toHaveCSS('display','inline');
-  await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','none');
+  await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','inline');
+  await expect(movies.locator('.ui-icon-fill')).toHaveCSS('display','none');
+  await expect(selected.locator('.ui-icon-fill')).toHaveCSS('display','inline');
+  // The ink of each tab's shown glyph at its drawn size in css px^2: that twin alone, rasterised black on clear.
+  const ink=await bar.evaluate(async element=>{
+    const K=4,found:{selected:number;unselected:Record<string,number>}={selected:0,unselected:{}};
+    for (const tab of element.querySelectorAll<HTMLElement>('.ui-tab')) {
+      const icon=tab.querySelector<SVGSVGElement>('.ui-icon'),box=icon?.getBoundingClientRect();
+      if (!icon||!box||!box.width) continue;
+      const copy=icon.cloneNode(true) as SVGSVGElement,shown=[...icon.children],copied=[...copy.children];
+      shown.forEach((part,i)=>{if (getComputedStyle(part).display==='none') copied[i].remove();});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(K*box.width);canvas.height=Math.round(K*box.height);
+      copy.setAttribute('xmlns','http://www.w3.org/2000/svg');copy.setAttribute('color','#000');
+      copy.setAttribute('width',String(canvas.width));copy.setAttribute('height',String(canvas.height));
+      const image=new Image();
+      image.src=`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(copy))}`;
+      await image.decode();
+      const context=canvas.getContext('2d')!;
+      context.drawImage(image,0,0,canvas.width,canvas.height);
+      let sum=0;
+      for (const [i,alpha] of context.getImageData(0,0,canvas.width,canvas.height).data.entries()) if (i%4===3) sum+=alpha/255;
+      if (tab.matches('[aria-current="page"],[aria-pressed="true"]')) found.selected=Math.round(sum/K/K);
+      else found.unselected[tab.textContent!.trim()]=Math.round(sum/K/K);
+    }
+    return found;
+  });
+  console.log(`tab glyph ink, css px^2: ${JSON.stringify(ink)}`);
+  expect(Object.keys(ink.unselected)).toHaveLength(4);
+  for (const [name,area] of Object.entries(ink.unselected)) {
+    expect(area,name).toBeGreaterThanOrEqual(130);
+    expect(area,name).toBeLessThanOrEqual(330);
+  }
+  expect(ink.selected).toBeGreaterThanOrEqual(330);
+  expect(ink.selected).toBeLessThanOrEqual(400);
   await page.emulateMedia({colorScheme:'light'});
   await expect(movies.locator('.ui-icon')).toHaveCSS('width','24px');
+  await expect(movies.locator('.ui-icon-fill')).toHaveCSS('display','inline');
   await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','none');
   await expect(selected.locator(':scope > span')).toHaveCSS('color','rgb(255, 55, 95)');
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
