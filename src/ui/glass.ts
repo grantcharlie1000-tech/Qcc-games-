@@ -238,6 +238,11 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let stretch:Animation|undefined;
 
   const current=()=>bar.querySelector<HTMLElement>(CURRENT);
+  // A section pill still easing out of a press (its swell or a drag's stretch) is on the release spring, and the section
+  // lens reads its raised bubble from that scale (section-lens.ts lift). The stretch's first '1 1' frame would win over
+  // the transition and drop the bubble in one frame, so a selection made by the release rides the spring instead.
+  const releasing=()=>section&&typeof CSSTransition==='function'&&bar.getAnimations({subtree:true}).some(animation=>
+    animation instanceof CSSTransition&&animation.transitionProperty==='scale'&&(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after');
   // The tab whose centre is nearest a point along the bar, in its layout px.
   const nearestTab=(center:number)=>{
     let best:HTMLElement|null=null,gap=Infinity;
@@ -260,7 +265,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       // Read the layout so the instant write is applied before transitions are switched on.
       void bar.offsetWidth;
       bar.setAttribute('data-pill-ready','');
-    }else if(animate&&box&&placedLeft!==null&&Math.abs(box.left-placedLeft)>0.5&&stretchable&&!reduceMotion()){
+    }else if(animate&&box&&placedLeft!==null&&Math.abs(box.left-placedLeft)>0.5&&stretchable&&!reduceMotion()&&!releasing()){
       stretch?.cancel();
       stretch=bar.animate([{scale:'1 1'},{scale:'1.18 .9',offset:.4},{scale:'1 1'}],{duration:340,easing:'ease-out',pseudoElement:'::after'});
     }

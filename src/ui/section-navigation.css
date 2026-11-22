@@ -76,11 +76,13 @@
 /* Charlie's video: the clear lens is up one frame after the press (19.650-19.667 s), so the press swell takes two. */
 .section-tabbar.ui-tabbar[data-pressing]::after{transition-duration:0ms,34ms,120ms}
 /* A release snaps the pill to its tab on a damped spring (damping .64): one overshoot of about 7% of the travel at 200 ms,
-   a faint recoil of about .5% at 420 ms, settled by 460 ms, inside the 500 ms the settle checks wait. */
+   a faint recoil of about .5% at 420 ms, settled by 460 ms, inside the 500 ms the settle checks wait. The press swell
+   rides the same spring, and the section lens's raised bubble falls with it (glass.ts keeps the selection stretch off a
+   releasing pill), so the bubble eases down on every release, the ones that change the tab too. */
 @supports (transition-timing-function:linear(0,1)){
   .section-tabbar.ui-tabbar:not([data-pressing])::after{
-    transition-duration:460ms,240ms,120ms;
-    transition-timing-function:linear(0, .035, .125, .245, .379, .514, .641, .753, .847, .923, .981, 1.023, 1.05, 1.066, 1.072, 1.072, 1.067, 1.059, 1.05, 1.04, 1.03, 1.021, 1.014, 1.008, 1.003, 1, .997, .995, .995, .996, .997, .999, 1),var(--ease-glass),var(--ease);
+    transition-duration:460ms,460ms,120ms;
+    transition-timing-function:linear(0, .035, .125, .245, .379, .514, .641, .753, .847, .923, .981, 1.023, 1.05, 1.066, 1.072, 1.072, 1.067, 1.059, 1.05, 1.04, 1.03, 1.021, 1.014, 1.008, 1.003, 1, .997, .995, .995, .996, .997, .999, 1),linear(0, .035, .125, .245, .379, .514, .641, .753, .847, .923, .981, 1.023, 1.05, 1.066, 1.072, 1.072, 1.067, 1.059, 1.05, 1.04, 1.03, 1.021, 1.014, 1.008, 1.003, 1, .997, .995, .995, .996, .997, .999, 1),var(--ease);
   }
 }
 /* Charlie's video (b24s/MEASUREMENTS.md, b24-apple stills.json): the whole bar grows about its centre while a press lasts,

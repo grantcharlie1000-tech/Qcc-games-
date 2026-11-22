@@ -619,7 +619,11 @@ test('a pill move stretches the pill with a web animation',async({page})=>{
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
-  await tv.click();
+  // MOTION-4 (#24): was a mouse tap. A section bar's tap now lets its press swell ride the release spring instead (the
+  // stretch's first '1 1' frame dropped the lens's raised bubble at once, section-lens.spec.ts), so a move with no press,
+  // the keyboard's, is the one that stretches.
+  await tv.focus();
+  await page.keyboard.press('Enter');
   await expect(tv).toHaveAttribute('aria-pressed','true');
   // A three-keyframe scale animation on the pill itself, not a transition of the bar.
   await expect.poll(()=>page.evaluate(()=>document.getAnimations().some(animation=>{

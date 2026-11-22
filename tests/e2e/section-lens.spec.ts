@@ -284,3 +284,67 @@ test('section lens rises above the bar on first press, as Charlie\'s video, and 
   await expect.poll(raised).toBe('');
   await expect(bar.getByRole('link',{name:'Games',exact:true})).toHaveAttribute('aria-current','page');
 });
+
+// MOTION-4 (#24): a release that changes the tab (a tap on Movies while Games is current, or a drag let go over Movies)
+// used to start the selection stretch, whose first '1 1' frame beat the release transition: the lens's lift (read from
+// the pill's scale, section-lens.ts) fell from 1 to 0 in one frame and the raised bubble vanished. The bubble now falls
+// back on the release spring every time. The CSS timeline runs at .1x, so each frame is a small step of the spring; the
+// selection is made in place (no route change), so the Games scene and its lens stay up throughout.
+for(const gesture of ['tap','drag'] as const) test(`a ${gesture} release that changes the tab lets the raised lens ease down on the release spring`,async({page,browserName})=>{
+  test.skip(browserName!=='chromium','the timeline is slowed through the Chromium DevTools protocol');
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  const games=bar.getByRole('link',{name:'Games',exact:true}), movies=bar.getByRole('link',{name:'Movies',exact:true});
+  await page.evaluate(()=>document.addEventListener('click',event=>{
+    const link=event.target instanceof Element?event.target.closest('.app-tabbar a[href="#/movies/browse/movie"]'):null;
+    if(!link)return;
+    event.preventDefault();event.stopPropagation();
+    document.querySelector('.app-tabbar [aria-current="page"]')?.removeAttribute('aria-current');
+    link.setAttribute('aria-current','page');
+  },true));
+  const from=(await (gesture==='tap'?movies:games).boundingBox())!, to=(await movies.boundingBox())!;
+  const y=from.y+from.height/2;
+  await page.mouse.move(from.x+from.width/2,y);
+  await page.mouse.down();
+  if(gesture==='drag')await page.mouse.move(to.x+to.width/2,y,{steps:6});
+  await expect.poll(()=>bar.locator('canvas.section-lens').evaluate(el=>(el as HTMLCanvasElement).style.getPropertyValue('--section-lens-pad-x'))).not.toBe('');
+  await page.waitForTimeout(300);
+  const cdp=await page.context().newCDPSession(page);
+  await cdp.send('Animation.enable');
+  await cdp.send('Animation.setPlaybackRate',{playbackRate:.1});
+  await page.evaluate(()=>{
+    const w=window as Window&{__trace?:{t:number;lift:number;pad:string}[];__released?:number};
+    const bar=document.querySelector<HTMLElement>('.app-tabbar')!;
+    w.__trace=[];
+    addEventListener('pointerup',()=>{w.__released??=performance.now();},{capture:true,once:true});
+    const end=performance.now()+2600;
+    // performance.now(), not the frame's timestamp: a frame that handles the pointer-up starts before the event.
+    const sample=()=>{
+      const t=performance.now();
+      const scale=getComputedStyle(bar,'::after').scale;
+      const [sx,sy=sx]=scale==='none'?[1]:scale.split(' ').map(Number);
+      const lens=bar.querySelector<HTMLCanvasElement>('canvas.section-lens');
+      w.__trace!.push({t,lift:Math.min(1,Math.max(0,(sx*sy-1.07)/.18)),pad:lens?.style.getPropertyValue('--section-lens-pad-x')??''});
+      if(t<end)requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+  await page.waitForTimeout(2800);
+  await cdp.send('Animation.setPlaybackRate',{playbackRate:1});
+  await expect(movies).toHaveAttribute('aria-current','page');
+  const {trace,released}=await page.evaluate(()=>{const w=window as Window&{__trace?:{t:number;lift:number;pad:string}[];__released?:number};return {trace:w.__trace!,released:w.__released!};});
+  const before=trace.filter(sample=>sample.t<released), after=trace.filter(sample=>sample.t>=released);
+  expect(before.at(-1)?.lift,'held lift').toBe(1);
+  expect(after.length).toBeGreaterThan(8);
+  const lifts=after.map(sample=>sample.lift);
+  // The first frame after the lift-off still shows the raised bubble, and it never falls by more than a third in a frame.
+  expect(lifts[0],JSON.stringify(lifts)).toBeGreaterThan(.6);
+  expect(Math.max(...lifts.slice(1).map((lift,i)=>lifts[i]-lift)),JSON.stringify(lifts)).toBeLessThanOrEqual(.3);
+  expect(lifts.at(-1)).toBe(0);
+  // The lens stays raised (padded past the bar) for several frames of the fall, not one.
+  expect(after.filter(sample=>sample.pad!=='').length,JSON.stringify(after.map(sample=>sample.pad))).toBeGreaterThanOrEqual(4);
+  void games;
+});
