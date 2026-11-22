@@ -89,9 +89,11 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  // Apple's dark smoke keeps about .72 of the art's tone over a 30/255 floor, so the bright patch is #ddd: the glass
+  // over it reads about 115, past the 110 this test calls bright (#aaa now reads about 102).
   await page.locator('.game-grid').evaluate(grid=>{
     const patch=document.createElement('div');
-    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:#aaa;pointer-events:none';
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:#ddd;pointer-events:none';
     grid.append(patch);
   });
   const canvas=bar.locator('canvas.section-lens');
