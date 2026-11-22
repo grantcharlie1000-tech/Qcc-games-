@@ -123,14 +123,15 @@ const float LENS_PULL = .26;
 // card seam thickens and curves away from the centre line as it enters, then settles to the
 // even face. It only draws samples toward the centre, so the furthest sample is unchanged.
 const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
-// The raised lens is neutral, clear glass a little lighter than what lies under it, like the
-// owner's dragged thumb: dull colour under it (a navy or teal card, chroma spread below about .2)
-// loses LENS_NEUTRAL of its saturation, so the lens never takes on the backdrop's cast, while a
-// vivid mark (spread above about .32) keeps its hue and stays legible. LENS_GAIN takes the clear
-// glass tone's .80 transmission back to about one, so a vivid stripe keeps about 94% of its
-// colour, and LENS_LIFT lifts dark content a little, as milky glass does, while bright content
-// barely moves. The bevel lighting sits on top.
-const float LENS_NEUTRAL = .35, LENS_GAIN = 1.25, LENS_LIFT = .09;
+// The raised lens is clear glass, as Apple Music's held and dragged bubble: the content under it
+// shows through in its own colour and contrast, not milky. Dull colour under it (a navy or teal
+// card, chroma spread below about .2) loses only LENS_NEUTRAL of its saturation, while a vivid
+// mark (spread above about .32) keeps its hue. LENS_GAIN takes the clear glass tone's .80
+// transmission back to about one, and LENS_LIFT no longer lifts dark content toward milk.
+const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
+// Its edge is a thin crisp rim LENS_RIM css px deep, brightest along the top, whose light splits
+// into a faint rainbow (LENS_FRINGE), red at the outside running to blue inside, as Apple's does.
+const float LENS_RIM = 2.6, LENS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
 // C30's resting selection is clear glass: the art under it reads through in its own colour,
 // with none of the bar's smoke or grey veil. At rest the pill's face mixes PILL_CLEAR of the
@@ -231,18 +232,20 @@ vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
 float lensBevel(float radius) {
   return min(LENS_BEVEL, .6 * radius);
 }
-// The raised lens's surface, lit from the same bevel normal that refracts it: a broad soft
-// lit band along the top, a softer dark band along the bottom and a little darkening all
-// round where the glass tilts away. The light on the outermost px is held to about half, then
-// climbs over 7 px to a broad band about 5 px in: the top edge still reads clearly brighter
-// than the bar beside it, through a transition about 4.5 px wide, never a bright 1 px outline.
+// The raised lens's surface: clear glass, darkened only a little where the bevel tilts away
+// from the light, with no broad lit band over the content. Its edge is Apple's thin crisp rim
+// (LENS_RIM), brightest along the top and still clear along the bottom, carrying the faint
+// rainbow fringe (LENS_FRINGE) across its depth.
 vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
   vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
   float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
-  float lit = max(0., facing) * (.45 + .55 * smoothstep(0., 7., pillDepth));
   float shade = max(0., -facing);
-  vec3 face = sceneColor * (1. - .45 * shade - .2 * (1. - normal.z));
-  return mix(face, vec3(1.), .37 * lit);
+  vec3 face = sceneColor * (1. - .22 * shade - .1 * (1. - normal.z));
+  float t = clamp(pillDepth / LENS_RIM, 0., 1.);
+  float line = smoothstep(-.8, .5, pillDepth) * (1. - smoothstep(.7, LENS_RIM, pillDepth));
+  float lit = .34 + .46 * max(0., facing) + .16 * max(0., outward.y);
+  vec3 spectrum = .5 + .5 * cos(6.2832 * (.8 * t + vec3(0., .33, .67)));
+  return mix(face, mix(vec3(1.), spectrum, LENS_FRINGE), lit * line);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
