@@ -80,6 +80,10 @@ const float BODY_SPREAD = 2.4;
 // The field fade below takes about a fifth of a 9 px stripe's colour, so the stripe's own keep
 // rises to hold it near its old .70.
 const float SMOKE_SLOPE = 1., SMOKE_DROP = .045, SMOKE_CHROMA = .86;
+// Apple Music's dark bar is smoked glass with a grey veil: black under it reads about 30/255
+// (SMOKE_DARK_DROP). The dark theme's clear resting pill takes PILL_VEIL of the same veil, so it
+// stays a near-black capsule about 25 below the bar.
+const float SMOKE_DARK_DROP = .075, PILL_VEIL = .096;
 // Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
 // grey out but a stripe keeps its width at half height.
 const vec2 SMOKE_CORE = vec2(.09, .13);
@@ -95,7 +99,7 @@ const float SMOKE_FIELD = .15, SMOKE_EVEN = .3, FIELD_TEXEL = 16. / 3.;
 const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(.30, .42);
+const vec2 RIM_LIGHT = vec2(.30, .47);
 const float RIM_TINT = 3.;
 const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -152,10 +156,10 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float fieldLuma = dot(field, vec3(.2126, .7152, .0722));
   vec3 fieldChroma = field - fieldLuma;
   // Dark tones sink and bright art still lifts the bar, so the slope stays near one. In the
-  // dark theme (pillSmoke) a steeper slope and deeper drop take out the grey veil's lift at
-  // black, as in C30's denser smoke, while #aaa still reads about 113; bright blobs sink
+  // dark theme (pillSmoke) a steeper slope and a deeper drop make Apple Music's denser smoke:
+  // black still reads about 30 under its grey veil; bright blobs sink
   // further toward their field so the steeper slope adds no detail.
-  float slope = mix(SMOKE_SLOPE, 1.18, pillSmoke), drop = mix(SMOKE_DROP, .133, pillSmoke);
+  float slope = mix(SMOKE_SLOPE, 1.18, pillSmoke), drop = mix(SMOKE_DROP, SMOKE_DARK_DROP, pillSmoke);
   float even = mix(SMOKE_EVEN, .5, pillSmoke);
   float tone = mix(slope * mix(luma, min(luma, fieldLuma), even) - drop, luma, motion);
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
@@ -382,7 +386,7 @@ void main() {
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 faceColor = selectionColor;
       if (clear > 0.) {
-        faceColor = mix(selectionColor, clearGlass * PILL_GAIN, clear);
+        faceColor = mix(selectionColor, clearGlass * PILL_GAIN + PILL_VEIL * pillSmoke, clear);
         // Hold bright art to the plain smoked pill (PILL_BRIGHT). Its tone eases to the frost's
         // luma with motion, as smoked() does, and pillSurface's .20 dark smoke is traded for .30.
         float plain = dot(plainGlass, vec3(.2126, .7152, .0722));
