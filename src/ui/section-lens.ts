@@ -110,6 +110,8 @@ const float BLUR_CHROMA = .86;
 const float RIM_SLACK = 2.;
 const vec2 RIM_LIGHT = vec2(.85, .47);
 const float RIM_TINT = 3.;
+// Over the light theme's milk the 1.1 px rim line all but vanishes; it runs RIM_MILK px deep there.
+const float RIM_MILK = 2.;
 const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
 // light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
@@ -117,7 +119,7 @@ const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // title's strokes against the field, so the title still reads in it, and its rim reads brighter
 // (RIM_LIGHT.x). The resting pill takes the same milk PILL_MILK_DROP darker, as Apple's grey selected
 // tab; press and the raised lens clear it.
-const float MILK_TONE = .955, MILK_MIX = .9, MILK_MIRROR = .7, PILL_MILK_DROP = 25. / 255.;
+const float MILK_TONE = .955, MILK_MIX = .9, MILK_MIRROR = 1., PILL_MILK_DROP = 25. / 255.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -244,7 +246,7 @@ vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
   // which keeps the bar's glass in the lens's top gap dark.
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.25, mix(1.1, 1.25, liftEdge), depth);
+  float line = 1. - smoothstep(.25, mix(mix(RIM_MILK, 1.1, pillSmoke), 1.25, liftEdge), depth);
   // Apple Music's bar rim is a thin, dim light line, not a bright outline: about +40 luma over
   // the dark bar and fainter still in the light theme (RIM_LIGHT, light then dark). It catches
   // the colour of the art under it: the light it mixes toward keeps RIM_TINT times the art's
