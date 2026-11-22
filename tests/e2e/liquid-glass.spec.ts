@@ -222,7 +222,11 @@ test('a press that slides off the tab springs the pill back and selects nothing'
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
-test('a horizontal drag carries the pill across tabs and springs back on an off-tab release',async({page})=>{
+// MOTION-3 (#24): was 'springs back on an off-tab release' (pill back under Games, route unchanged). Charlie's video
+// (pass-9/b24s, 13.5-15.183 s) lets go with the lens over Library and the page turns to Library: the release selects the
+// tab nearest the lens, never the current one. The reverse is 40 px short of TV Shows (was 30), so the nearest tab is
+// plainly Movies (15 px away; the tabs are 55 px apart) rather than within 2 px of the Movies/TV Shows midpoint.
+test('a horizontal drag carries the pill across tabs and selects the tab nearest it on release',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
@@ -236,17 +240,18 @@ test('a horizontal drag carries the pill across tabs and springs back on an off-
   await page.mouse.down();
   await page.mouse.move(farX,y,{steps:5});
   await expect.poll(async()=>Math.abs((await pillCentre(bar))-farX)).toBeLessThan(3);
-  const reverseX=farX-30;
+  const reverseX=farX-40;
   await page.mouse.move(reverseX,y,{steps:3});
   await expect.poll(async()=>Math.abs((await pillCentre(bar))-reverseX)).toBeLessThan(3);
   await page.mouse.up();
   await expect(bar).not.toHaveAttribute('data-pressing');
-  await expectPillUnder(bar,games);
-  await expect(games).toHaveAttribute('aria-current','page');
-  await expect(page).toHaveURL(/#\/collection$/);
+  await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
 });
 
-test('a scrub back to an unselected link leaves the Games route active',async({page})=>{
+// MOTION-3 (#24): was 'leaves the Games route active' (the release sprang back to the current tab). Charlie's video
+// (pass-9/b24s, 15.183 s) selects the tab under the lens at the lift, so a scrub that comes back to an unselected link
+// selects that link, once: the browser's own click on the link the press began on is still suppressed.
+test('a scrub back to an unselected link selects it on release',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
@@ -255,6 +260,8 @@ test('a scrub back to an unselected link leaves the Games route active',async({p
   await expectPillUnder(bar,games);
   const box=await boxOf(tv);
   const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.evaluate(()=>{const w=window as Window&{__tvClicks?:number};w.__tvClicks=0;
+    document.querySelector('.app-tabbar a[href="#/movies/browse/tv"]')!.addEventListener('click',event=>{if(!event.defaultPrevented)w.__tvClicks!++;});});
   await page.mouse.move(x,y);
   await page.mouse.down();
   // Move within the same link so the browser still dispatches a click on release.
@@ -262,14 +269,10 @@ test('a scrub back to an unselected link leaves the Games route active',async({p
   await expect(bar).toHaveAttribute('data-pill-dragging','');
   await page.mouse.move(x,y,{steps:3});
   await page.mouse.up();
-  await expect(page).toHaveURL(/#\/collection$/);
-  await expectPillUnder(bar,games);
-  await expect(bar).not.toHaveAttribute('data-pill-dragging');
-  await expect(page.locator('.game-grid')).toBeVisible();
-
-  await tv.click();
   await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
+  await expect(bar).not.toHaveAttribute('data-pill-dragging');
   await expect(page.locator('.movies-mobile-nav').getByRole('button',{name:'TV Shows'})).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>(window as Window&{__tvClicks?:number}).__tvClicks)).toBe(1);
 });
 
 test('reduced motion leaves section link drags to the browser',async({page})=>{

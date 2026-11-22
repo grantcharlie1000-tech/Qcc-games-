@@ -230,13 +230,23 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let press:{
     tab:HTMLElement;
     pointerId:number;
-    drag:{x:number;y:number;active:boolean}|null;
+    drag:{x:number;y:number;active:boolean;center:number}|null;
   }|null=null;
   let scrubbedPointer:number|null=null;
   let placedLeft:number|null=null;
+  let settleTimer=0;
   let stretch:Animation|undefined;
 
   const current=()=>bar.querySelector<HTMLElement>(CURRENT);
+  // The tab whose centre is nearest a point along the bar, in its layout px.
+  const nearestTab=(center:number)=>{
+    let best:HTMLElement|null=null,gap=Infinity;
+    for(const tab of bar.querySelectorAll<HTMLElement>('.ui-tab')){
+      const away=Math.abs(tab.offsetLeft+tab.offsetWidth/2-center);
+      if(tab.offsetWidth&&away<gap){best=tab;gap=away;}
+    }
+    return best;
+  };
   // Moves the pill over a tab. The first placement after the bar has a size is instant, so the pill never slides in
   // from the edge. A bar with no size (detached, or hidden with display:none) is not measured, and its next placement is instant too.
   // A press moves the pill under the finger without settling it: the selection that the tap causes is still a move from the
@@ -269,7 +279,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false}:null;
+    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0}:null;
     press={tab,pointerId:event.pointerId,drag};
     bar.setAttribute('data-pressing','');
     if(drag)document.addEventListener('pointermove',move,{passive:true});
@@ -293,6 +303,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
     const halfWidth=width*scaleX/2;
     const center=Math.max(halfWidth,Math.min(available-halfWidth,tab.offsetLeft+width/2+dx));
+    drag.center=center;
     bar.style.setProperty('--ui-pill-drag-x',`${round(center-width/2)}px`);
     bar.style.setProperty('--ui-pill-drag-scale',`${scaleX} ${scaleY}`);
     if(!drag.active){
@@ -347,6 +358,17 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     // observer below follows the change. If the click changes nothing, the pill still sits under the tapped tab, so the next
     // frame puts it back under the current one. Anything else springs back to the current tab now.
     if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
+    // Charlie's video (b24s, 13.5-15.2 s): a drag that lets go selects the tab under the lens, the one nearest the pill's
+    // centre, as a tap on it would (the page turns to Library at the lift), and the pill springs there, not back to the
+    // current tab. A cancelled drag springs back. If the click selects nothing, the pill goes back once the spring is done.
+    const target=drag?.active&&!cancelled?nearestTab(drag.center):null;
+    if(target&&target!==current()){
+      place(target,true);
+      target.click();
+      clearTimeout(settleTimer);
+      settleTimer=window.setTimeout(()=>{settleTimer=0;sync(true);},500);
+      return;
+    }
     sync(true);
   };
   const up=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(event,false);};
@@ -489,6 +511,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       if(press?.drag?.active)clearDrag();
       stopListening();
       press=null;
+      clearTimeout(settleTimer);
       stretch?.cancel();
       live.dispose();
       lens.remove();
