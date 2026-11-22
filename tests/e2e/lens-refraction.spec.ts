@@ -266,7 +266,9 @@ test.describe('frost, in every browser but Chromium',()=>{
     await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
     const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu'),mini=page.locator('.app-navigation .ui-tabbar-mini');
     await page.evaluate(()=>window.scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
-    await expect(menu).toHaveCSS('opacity','0');await expect(mini).toHaveCSS('opacity','1');
+    // MOTION-6 (#24): was opacity 0. Apple's compact bar keeps its search circle beside the selected tab (Charlie's video,
+    // 34.25 s), so the menu circle stays as the compact bar's second piece; only the full hide removes it.
+    await expect(menu).toHaveCSS('opacity','1');await expect(mini).toHaveCSS('opacity','1');
     await bar.evaluate(e=>e.setAttribute('data-hidden','true'));await expect(mini).toHaveCSS('opacity','0');
     await bar.evaluate(e=>e.removeAttribute('data-hidden'));await expect(mini).toHaveCSS('opacity','1');
     await page.evaluate(()=>window.scrollTo(0,0));await expect(menu).toHaveCSS('opacity','1');
@@ -281,7 +283,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await page.evaluate(()=>window.scrollTo(0,400));
     await expect(bar).toHaveAttribute('data-minimized','true');
     await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
-    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.evaluate(()=>window.scrollTo(0,368));
     await expect(bar).not.toHaveAttribute('data-minimized');
@@ -289,7 +291,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await page.evaluate(()=>window.scrollTo(0,432));
     await expect(bar).toHaveAttribute('data-minimized','true');
     await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
-    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);
     expect(await bar.evaluate(el=>getComputedStyle(el).translate)).toBe('none');
   });
 

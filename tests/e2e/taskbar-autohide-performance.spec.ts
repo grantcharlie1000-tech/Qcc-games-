@@ -21,9 +21,11 @@ for(const width of [390,1440])test(`auto-hide builds only the settled refraction
   });
   await page.evaluate(()=>scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
-  await expect.poll(()=>bar.evaluate(el=>Math.round(el.getBoundingClientRect().width))).toBe(56);
+  await expect.poll(()=>bar.evaluate(el=>Math.round(el.getBoundingClientRect().width))).toBe(48);// MOTION-6 (#24): was 56 (Apple's 48 px compact circle).
   await expect.poll(()=>page.evaluate(()=>(window as LensDiagnostics).__lensEncodes)).toBeGreaterThan(0);
-  expect(await page.evaluate(()=>(window as LensDiagnostics).__lensEncodes)).toBeLessThanOrEqual(1);
+  // MOTION-6 (#24): was <= 1. The compact bar keeps its menu circle (Apple's search circle, video 34.25 s), which morphs
+  // 60 -> 48 with the bar and builds its own settled map once, as the expand below already allows: bar and companion menu.
+  expect(await page.evaluate(()=>(window as LensDiagnostics).__lensEncodes)).toBeLessThanOrEqual(2);
   await page.evaluate(()=>{(window as LensDiagnostics).__lensEncodes=0;scrollTo(0,340);});
   await expect(bar).not.toHaveAttribute('data-minimized');
   await expect.poll(()=>bar.evaluate(el=>el.getAnimations().length)).toBe(0);

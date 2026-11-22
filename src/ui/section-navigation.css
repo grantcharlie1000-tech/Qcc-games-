@@ -61,7 +61,7 @@
 .section-navigation>.section-tabbar.ui-tabbar{
   width:min(calc(100vw - var(--home-inset) - var(--home-inset) - var(--home-action) - var(--home-gap)),calc(440px - var(--home-action) - var(--home-gap)));
   right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
-  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
 /* Keep vertical scrolling and pinch zoom native while the pill tracks horizontal drags. */
 .section-tabbar .ui-tab{touch-action:pan-y pinch-zoom}
@@ -94,13 +94,13 @@
 @media(prefers-reduced-motion:no-preference){
   :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:not([data-hidden=true]):not([data-minimized=true]){
     transform-origin:50% 50%;
-    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 200ms var(--ease-out);
-    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
+    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 200ms var(--ease-out);
+    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
       scale 300ms linear(0, .039, .136, .265, .405, .542, .668, .776, .865, .935, .986, 1.021, 1.043, 1.055, 1.059, 1.057, 1.051, 1.044, 1.036, 1.028, 1.02, 1.014, 1.008, 1.004, 1);
   }
   :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:is([data-pressing],[data-pill-dragging]):not([data-hidden=true]):not([data-minimized=true]){
     scale:1.046 1.065;
-    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 34ms var(--ease-out);
+    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 34ms var(--ease-out);
   }
 }
 .section-tabbar.arcade-glass.ui-tabbar:not([data-glass=off])::after{
@@ -220,24 +220,40 @@
     filter:drop-shadow(0 0 1px rgb(0 0 0 / .55));
   }
 }}
+/* MOTION-6 (#24): Apple Music's compact bar (Charlie's video, 34.25 s) is separate glass pieces on the bar's own centre
+   line: the selected tab as a 48 css px circle 27.7-75.6 of 390 (about 7 px in from the bar's leading end), the mini
+   player, and the search circle, 48 px, 314.6-362.5. Ours is the selected tab's circle and the menu circle at those sizes
+   and places (12 px in from the navigation's ends, centred on the 60 px bar's line), with no accessory. The video's
+   minimise (33.65-33.80 s) contracts the bar toward its leading end while search moves out to its circle, and its expand
+   (38.35-38.47 s) reverses that; here both pieces morph on the bar's 300 ms drawer curve. */
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
-  left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;
+  left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));width:48px;height:48px;min-height:48px;
+  bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom) + (var(--tabbar-h) - 48px)/2);
   --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;
-  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),bottom 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true])::before,
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]) :is(.ui-glass-lens,.ui-glass-glow){opacity:1;transition:none}
 .section-navigation>.ui-tabbar-mini{
   background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
-  left:max(var(--home-inset),calc((100vw - 440px)/2));
+  left:max(var(--home-inset),calc((100vw - 440px)/2));width:48px;height:48px;
+  bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom) + (var(--tabbar-h) - 48px)/2);
   translate:0 0;scale:1;color:var(--glass-ink);
   transition:left 300ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
 }
-.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left));transition:left 300ms var(--ease-drawer),opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
-.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left))}
-/* Hidden companions have no filtered box for WebKit to leave on its compositor. */
-.section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu{width:0;height:0;min-width:0;min-height:0;overflow:hidden}
-.section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu>.ui-glass-lens{display:none}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));transition:left 300ms var(--ease-drawer),opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
+.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left))}
+/* Hidden companions have no filtered box for WebKit to leave on its compositor. MOTION-6: the compact bar keeps the menu
+   circle as its second piece, Apple's search circle: 48 px (style.css --home-action), centred on the bar's line, its
+   trailing edge 12 px in from the navigation's (362 of 390, Apple 362.5), so only the full hide removes it. */
+.section-navigation:has(.section-tabbar[data-hidden=true]):not(:has(:focus-visible))>.section-menu{width:0;height:0;min-width:0;min-height:0;overflow:hidden}
+.section-navigation:has(.section-tabbar[data-hidden=true]):not(:has(:focus-visible))>.section-menu>.ui-glass-lens{display:none}
+.section-navigation:not(:has(:focus-visible)):has(>.section-tabbar[data-minimized=true]:not([data-hidden=true]))>.section-menu{right:12px}
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-navigation>.section-menu:not([data-pressing]){
+    transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease),width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-width 300ms var(--ease-drawer),margin-top 300ms var(--ease-drawer),right 300ms var(--ease-drawer);
+  }
+}
 .section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible))>.ui-glass-lens{display:none}
 .section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible)){-webkit-backdrop-filter:none;backdrop-filter:none}
 @media(prefers-reduced-motion:reduce){

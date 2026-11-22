@@ -302,7 +302,7 @@ test('reduced motion changes the minimized pill bounds without slide or scale',a
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','1');
- await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+ await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);// MOTION-6 (#24): was 56 (Apple's 48 px compact circle).
  await expect(bar).toHaveCSS('pointer-events','none');
 });
 
@@ -317,7 +317,7 @@ test('the app reduce-motion setting changes pill bounds without motion',async({p
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','1');
- await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+ await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);// MOTION-6 (#24): was 56 (Apple's 48 px compact circle).
 });
 
 test('the island floats and minimizes on scroll on desktop too',async({page})=>{

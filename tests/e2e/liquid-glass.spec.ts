@@ -349,7 +349,8 @@ test('one glass surface shrinks in 300 ms while its labels fade in the first 80 
   await page.evaluate(()=>scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
   expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
   await expect(bar).toHaveCSS('opacity','1');
-  await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+  // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
+  await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);
   await expect(capsule).toHaveCSS('backdrop-filter','none');
   await expect(capsule).toHaveCSS('box-shadow','none');
   await expect(capsule.locator('.ui-icon')).toHaveCSS('opacity','1');
@@ -364,7 +365,8 @@ test('the transparent mini stays small, and the single glass surface lands exact
   // The mini has no material to leave behind, and never stretches over the bar.
   const start=expanded.capsule;
   expect(Math.abs(start.x-expanded.bar.x)).toBeLessThan(1);
-  expect(start.width).toBe(56);expect(start.height).toBe(48);
+  // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
+  expect(start.width).toBe(48);expect(start.height).toBe(48);
   expect(expanded.bar.width).toBeGreaterThan(200);
   await expect(page.locator('.ui-tabbar-mini')).toHaveCSS('backdrop-filter','none');
   await page.evaluate(()=>window.scrollTo(0,400));
@@ -401,7 +403,9 @@ test('the bounded morph uses CSS geometry and opacity transitions, with no scrip
     }).length,
   }));
   expect(runs.length).toBeGreaterThan(0);
-  for(const property of runs)expect(['width','height','min-height','left','opacity']).toContain(property);
+  // MOTION-6 (#24): bottom joins them. Apple's compact pieces sit on the rest bar's centre line (video 34.25 s), so the
+  // 48 px circle rises 6 px as the 60 px bar shrinks into it.
+  for(const property of runs)expect(['width','height','min-height','left','bottom','opacity']).toContain(property);
   expect(scripted).toBe(0);
 });
 
@@ -508,10 +512,12 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(110, 110, 115)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
-  expect(box.width).toBeCloseTo(56,0);
+  // MOTION-6 (#24): was 56 x 48 at x 12 on the bar's bottom line (832). Apple's compact selected tab (Charlie's video, 34.25 s)
+  // is a 48 css px circle at 27.7-75.6 of 390, centred on the rest bar's line: 12 px in from the navigation, 6 px up.
+  expect(box.width).toBeCloseTo(48,0);
   expect(box.height).toBeCloseTo(48,0);
-  expect(box.x).toBeCloseTo(12,0);
-  expect(box.y+box.height).toBeCloseTo(832,0);
+  expect(box.x).toBeCloseTo(28,0);
+  expect(box.y+box.height).toBeCloseTo(826,0);
   expect(icon.x+icon.width/2).toBeCloseTo(box.x+box.width/2,0);
   expect(icon.y+icon.height/2).toBeCloseTo(box.y+box.height/2,0);
   // Its pointer box is the capsule, and the bar's own tabs are no longer reachable by a tap.
@@ -656,7 +662,8 @@ for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) cha
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>barShown(bar)).toBe(1);
-  expect((await bar.boundingBox())!.width).toBe(56);
+  // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
+  expect((await bar.boundingBox())!.width).toBe(48);
   await expect.poll(()=>capsuleShown(page)).toBe(1);
   // The material remains; geometry changes at once, without slide or scale.
   for(const element of [bar,capsule]){

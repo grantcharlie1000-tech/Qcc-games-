@@ -60,7 +60,7 @@ for(const width of [390,1366])test(`Movies shares navigation geometry, actions a
  await page.keyboard.press('Enter');await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('#menu')).toHaveAttribute('data-glass-tone','dark');
  await page.keyboard.press('Escape');await expect(menu).toBeFocused();
  await page.evaluate(()=>{(document.activeElement as HTMLElement).blur();document.documentElement.dataset.input='pointer';});
- await bar.evaluate(e=>e.setAttribute('data-minimized','true'));await expect(menu).toHaveCSS('opacity','0');
+ await bar.evaluate(e=>e.setAttribute('data-minimized','true'));await expect(menu).toHaveCSS('opacity','1');// MOTION-6 (#24): was 0; the compact bar keeps the menu circle (Apple's search circle, video 34.25 s).
  await menu.focus();await expect(menu).toHaveCSS('opacity','1');await expect(bar).toHaveCSS('opacity','1');
  await page.keyboard.press('Enter');await page.locator('#search').fill('snake');await expect(page).toHaveURL(/#\/collection$/);await page.keyboard.press('Escape');await expect(page.getByRole('link',{name:'Play Snake',exact:true})).toBeVisible();
 });
