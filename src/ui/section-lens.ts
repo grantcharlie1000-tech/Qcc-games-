@@ -328,7 +328,7 @@ void main() {
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
   // The pressed thumb keeps a soft glass edge; the raised lens's is crisp, as Apple's thin rim.
-  float soft = .5 + .3 * pillLift + .6 * pillPress;
+  float soft = .5 + .3 * pillLift + .6 * pillPress * (1. - pillLift);
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
@@ -537,9 +537,10 @@ function smoothstep(value:number) {
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
-  // The field bends inward. The margin holds the furthest sample any pose reaches: the held
-  // thumb's rim pull (up to about 26 px past its face, so about 27 px past the bar over an
-  // outer tab) plus the frost taps. The bar's own rim band reaches 12 px plus its taps, and
+  // The field bends inward. The margin holds the furthest sample any pose reaches: the press
+  // warp's rim pull, which shows only while the press raises the lens (up to about 26 px past
+  // the lens face at 1/1.36, so about 20 px past the bar top and 27 px past an outer tab's end),
+  // plus the frost taps. The bar's own rim band reaches 12 px plus its taps, and
   // the raised lens refracts inward only, so its furthest sample is its face edge, a couple
   // of px past the bar. The shader caps the thumb's pull where the viewport clips this margin.
   const cropPad = 28;
@@ -562,11 +563,12 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   const sideRoom = Math.min(cx,bar.width-cx) + 6 - pillWidth/2;
   const expanded = opacity > 0 && bar.width >= 2 * bar.height &&
     element.dataset.hidden !== 'true' && element.dataset.minimized !== 'true';
-  // A held press only widens the pill. Drag stretch grows scaleX past the press
-  // scale, so the raised lens builds with travel and falls back the same way on release.
+  // Drag stretch grows scaleX past the press scale; it shapes the lens into the drag lens.
   const rise = smoothstep((scaleX - 1.1) / .18);
-  // Use the animated scale through release as well as during the press.
-  const projection = expanded ? smoothstep(lift) * rise * smoothstep(sideRoom/2) : 0;
+  // Charlie's video (b24s): a press raises the clear lens at once (19.650-19.667 s), so the lens
+  // rises with the press itself, follows the animated scale through release, and falls back on it.
+  const raise = smoothstep(lift);
+  const projection = expanded ? raise * smoothstep(sideRoom/2) : 0;
   const settledX = (parseFloat(style.getPropertyValue('--ui-pill-x')) || 0) -
     (parseFloat(style.getPropertyValue('--section-pill-bleed')) || 0);
   // Transition progress comes from the resolved pseudo-element geometry, so
@@ -574,8 +576,8 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   const travel = Math.abs(shiftX-settledX);
   const scale = Math.max(Math.abs(scaleX-1),Math.abs(scaleY-1));
   const moving = expanded && (pillAnimating || element.hasAttribute('data-pressing'));
-  // First contact refracts only a little; magnification arrives with the raised lens.
-  const motion = moving ? Math.min(1,Math.max(lift,travel/24,scale*7)) * (.18 + .82 * rise) : 0;
+  // Magnification arrives with the raised lens, which the press now raises.
+  const motion = moving ? Math.min(1,Math.max(lift,travel/24,scale*7)) * (.18 + .82 * raise) : 0;
   const press = expanded ? lift * (1 - rise) : 0;
   // The frosted thumb reads about 1.15 times wider than the resting pill.
   const pressWidth = 1 + .045 * press;
@@ -587,20 +589,22 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     pillWidth + projection * Math.min(8,2*sideRoom),
     pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
   ] : pill;
-  // Apple Music's drag lens is a large bubble, about 1.1 bar heights tall. The freeze still keeps
-  // the raised lens inset in the bar behind a 3 px gap of the bar's own glass, so it fills the bar
-  // to 4 css px from its top and bottom.
-  const raisedHeight = bar.height - 8;
-  const raisedWidth = Math.min(pillWidth + 2 * sideRoom, Math.max(pillWidth, raisedHeight * (1.36 + .29 * stretch)));
+  // Charlie's video (b24s/MEASUREMENTS.md): the held lens is a large clear bubble, 1.24x the rest
+  // pill wide and 1.11 bar heights tall, centred on the bar, so it stands about 4 px above the bar
+  // top and 3 px below its bottom. The drag lens is 1.06 bar heights tall at aspect 1.44 (1.40-1.47).
+  const restWidth = w * sx;
+  const raisedHeight = bar.height * (1.11 - .05 * rise);
+  const raisedWidth = Math.min(pillWidth + 2 * sideRoom,
+    Math.max(1.26 * restWidth, 1.26 * restWidth + rise * (1.44 * raisedHeight - 1.26 * restWidth)));
+  const pressedWidth = pillWidth * pressWidth, pressedHeight = pillHeight * (1 - .1 * press);
   const drawnPill = projection > 0 || press > 0 ? [
     cx,
     cy + projection * (bar.height/2 - cy),
-    pillWidth * pressWidth + projection * (raisedWidth - pillWidth * pressWidth),
-    // A held press sits clearly lower than the bar, as the owner's thumb does in its track.
-    pillHeight * (1 - .1 * press) + projection * (raisedHeight - pillHeight),
+    pressedWidth + projection * (raisedWidth - pressedWidth),
+    pressedHeight + projection * (raisedHeight - pressedHeight),
   ] : pill;
   const pad = projection > 0 ? 8 : 0;
-  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*rise,press,smoke:dark?1:0,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
+  return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*raise,press,smoke:dark?1:0,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
 }
 
 /** Owns the section bar's GPU surface and the live updates for its backdrop. */

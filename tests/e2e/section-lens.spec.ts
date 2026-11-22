@@ -236,37 +236,44 @@ test('section lens keeps Movies art visible through CSS fallback',async({browser
   }))).toBe(true);
 });
 
-test('section lens stays inside the bar on first press and rises only with drag travel',async({page})=>{
+test('section lens rises above the bar on first press, as Charlie\'s video, and through drag travel',async({page})=>{
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-section-lens','webgl');
   const canvas=bar.locator('canvas.section-lens');
   // The surface grows past the bar only while the raised lens is drawn.
   const raised=()=>canvas.evaluate(element=>(element as HTMLCanvasElement).style.getPropertyValue('--section-lens-pad-x'));
+  // The opaque rows of the padded surface above the bar over the lens: Charlie's video holds the lens top
+  // about 4 px above the bar (2-6 px) on a press and 2 px above it through a drag.
+  const overhang=(lensX:number)=>canvas.evaluate((element,lensX)=>{
+    const surface=element as HTMLCanvasElement, rect=surface.getBoundingClientRect();
+    const bar=surface.parentElement!.getBoundingClientRect();
+    const scale=surface.width/rect.width, column=Math.round((lensX-rect.left)*scale);
+    const rows=Math.floor((bar.top-rect.top)*scale)-1;
+    const alpha=surface.getContext('2d')!.getImageData(column-4,0,9,rows).data;
+    let opaque=0;
+    for(let row=0;row<rows;row++){
+      let max=0;
+      for(let i=row*36+3;i<row*36+36;i+=4)max=Math.max(max,alpha[i]);
+      if(max>127)opaque++;
+    }
+    return {rows,opaque:opaque/scale};
+  },lensX);
   const box=(await bar.getByRole('link',{name:'Games',exact:true}).boundingBox())!;
   const x=box.x+box.width/2,y=box.y+box.height/2;
   await page.mouse.move(x,y);
   await page.mouse.down();
   await expect(bar).toHaveAttribute('data-pressing','');
-  await page.waitForTimeout(300);
-  expect(await raised()).toBe('');
-  await page.mouse.move(x+138,y,{steps:4});
   await expect.poll(raised).not.toBe('');
+  await page.waitForTimeout(300);
+  const held=await overhang(x);
+  expect(held.rows).toBeGreaterThan(6);
+  expect(held.opaque).toBeGreaterThanOrEqual(1.5);expect(held.opaque).toBeLessThanOrEqual(7);
+  await page.mouse.move(x+138,y,{steps:4});
   await page.waitForTimeout(400);
-  // Like the owner's thumb, the raised lens stays inset in the bar: the padded rows above
-  // the bar stay clear over the lens, where a lifted lens would overhang.
-  const overhang=await canvas.evaluate((element,lensX)=>{
-    const surface=element as HTMLCanvasElement, rect=surface.getBoundingClientRect();
-    const bar=surface.parentElement!.getBoundingClientRect();
-    const scale=surface.width/rect.width, column=Math.round((lensX-rect.left)*scale);
-    const rows=Math.floor((bar.top-rect.top)*scale)-1;
-    const alpha=surface.getContext('2d')!.getImageData(column-20,0,41,rows).data;
-    let max=0;
-    for(let i=3;i<alpha.length;i+=4)max=Math.max(max,alpha[i]);
-    return {rows,max};
-  },x+138);
-  expect(overhang.rows).toBeGreaterThan(6);
-  expect(overhang.max).toBe(0);
+  expect(await raised()).not.toBe('');
+  const drag=await overhang(x+138);
+  expect(drag.opaque).toBeGreaterThanOrEqual(.5);expect(drag.opaque).toBeLessThanOrEqual(6);
   await page.mouse.move(x+4,y,{steps:4});
   await page.mouse.up();
   await expect.poll(raised).toBe('');

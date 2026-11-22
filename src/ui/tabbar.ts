@@ -39,9 +39,10 @@ export function nextTabbarState(state:TabbarScroll,y:number,max:number,typing=fa
 // lens magnification in proportion to how much of them the lens body covers: content inside the flat face reaches
 // LENS_ZOOM, and the weight eases to 0 across the bevel at the lens edge, so a tab half under the lens swells too.
 // This reads only the pill's resolved ::after geometry, which section-lens.ts reads too, and the content's layout boxes,
-// which a scale never moves. The lens rises with drag stretch past the 1.1 press width, so a press, a settle and rest
-// stay at 1. CSS applies the zoom only without reduced motion.
-export const LENS_ZOOM=1.25;
+// which a scale never moves. As in Charlie's video (b24s), the press raises the lens, so the glyph under a held or
+// dragged lens grows about 1.17x; the zoom follows the pill's press area, so a settle and rest stay at 1. CSS applies
+// the zoom only without reduced motion.
+export const LENS_ZOOM=1.18;
 // The bevel section-lens.ts draws at the lens edge: min(12px, .45 of the capsule radius).
 export const lensBevel=(width:number,height:number)=>Math.min(12,.45*Math.min(width,height)/2);
 const smooth=(t:number)=>{const x=Math.min(1,Math.max(0,t));return x*x*(3-2*x);};
@@ -60,8 +61,9 @@ export function lensCover(center:number,halfWidth:number,bevel:number,left:numbe
   const total=(x:number)=>x<=center?inside(halfWidth-(center-x),edge):2*inside(halfWidth,edge)-inside(halfWidth-(x-center),edge);
   return (total(right)-total(left))/(right-left);
 }
-export function lensZoom(scaleX:number,cover:number):number{
-  const rise=smooth((scaleX-1.1)/.18);
+// The lens rises with the pill's press area, as section-lens.ts reads it: 1.07 at rest to 1.25 held.
+export function lensZoom(scaleX:number,cover:number,scaleY=1.14):number{
+  const rise=smooth((scaleX*scaleY-1.07)/.18);
   if(!rise||!(cover>0))return 1;
   return 1+(LENS_ZOOM-1)*rise*Math.min(1,cover);
 }
@@ -88,20 +90,20 @@ function bindLensZoom(bar:HTMLElement):()=>void{
   });
   const tick=()=>{
     frame=0;
-    if(!bar.hasAttribute('data-pill-dragging')){clear();return;}
+    if(!bar.hasAttribute('data-pill-dragging')&&!bar.hasAttribute('data-pressing')){clear();return;}
     const style=getComputedStyle(bar,'::after');
     const width=parseFloat(style.width)||0,height=parseFloat(style.height)||0;
     const [scaleX,scaleY=scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
     const center=(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
     const half=width*scaleX/2,bevel=lensBevel(width*scaleX,height*scaleY);
     // Every layout read comes before the first write, so a drag frame forces at most one layout.
-    const zooms=tabs().map(tab=>[tab,lensZoom(scaleX,tabCover(center,half,bevel,content(tab))).toFixed(3)] as const);
+    const zooms=tabs().map(tab=>[tab,lensZoom(scaleX,tabCover(center,half,bevel,content(tab)),scaleY).toFixed(3)] as const);
     for(const [tab,zoom] of zooms)if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
-    // The pill's scale eases for 100ms after each move, so keep following it while the drag lasts.
+    // The pill's scale eases for 100ms after each move, so keep following it while the press lasts.
     frame=requestAnimationFrame(tick);
   };
   const watch=new MutationObserver(()=>{if(!frame)frame=requestAnimationFrame(tick);});
-  watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging']});
+  watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing']});
   return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;clear();};
 }
 

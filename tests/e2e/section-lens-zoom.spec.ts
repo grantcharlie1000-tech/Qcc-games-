@@ -16,8 +16,8 @@ const boxes=(page:Page)=>page.locator('.app-tabbar .ui-tab').evaluateAll(tabs=>t
   const rect=tab.getBoundingClientRect(),el=tab as HTMLElement;
   return [el.offsetLeft,el.offsetWidth,Math.round(rect.left*10)/10,Math.round(rect.width*10)/10];
 }));
-// LENS_ZOOM in tabbar.ts.
-const LENS_ZOOM=1.25;
+// LENS_ZOOM in tabbar.ts (Charlie's video: the glyph under the lens grows 1.17x).
+const LENS_ZOOM=1.18;
 
 // Drags the lens from Games until its centre sits at x: over a tab's centre, or on the gap between two tabs.
 async function dragLensTo(page:Page,at:(tabs:{x:number;width:number}[])=>number){
@@ -68,7 +68,7 @@ test('a tab under the lens face takes the full lens magnification, and its neigh
 test('both tabs under a lens between them are visibly magnified, about equally',async({page})=>{
   await page.goto('/#/collection');
   const {rest}=await dragLensTo(page,tabs=>(tabs[1].x+tabs[1].width+tabs[2].x)/2);
-  await expect.poll(async()=>Math.min(...(await zooms(page)).slice(1,3).map(Number))).toBeGreaterThan(1.12);
+  await expect.poll(async()=>Math.min(...(await zooms(page)).slice(1,3).map(Number))).toBeGreaterThan(1+.6*(LENS_ZOOM-1));
   const [games,left,right,...far]=(await zooms(page)).map(Number);
   // The old distance rule peaked near 1.05 here. Each tab now has most of its content under the face or bevel.
   expect(Math.max(left,right)).toBeLessThan(LENS_ZOOM-.03);
