@@ -95,6 +95,7 @@ const float SMOKE_FIELD = .15, SMOKE_EVEN = .3, FIELD_TEXEL = 16. / 3.;
 const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
+const vec2 RIM_LIGHT = vec2(.30, .42);
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -209,7 +210,9 @@ vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
   float line = 1. - smoothstep(.25, mix(1.1, 1.25, liftEdge), depth);
-  return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * line);
+  // Apple Music's bar rim is a thin, dim light line, not a bright outline: about +40 luma over
+  // the dark bar and fainter still in the light theme (RIM_LIGHT, light then dark).
+  return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
 }
 float lensBevel(float radius) {
   return min(LENS_BEVEL, .6 * radius);
