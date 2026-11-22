@@ -11,16 +11,26 @@ const CLEAR_FILL:RGB=[8,12,18];
 const CLEAR_VEIL=.2,NAV_VEIL=.36;
 const HALO_DARK='rgb(0 0 0 / .8)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
-// The light theme's section navigation is milky, near-white glass (section-lens.ts MILK_TONE/MILK_MIX and the CSS
-// fallback's .9 tint), so its labels take Apple Music's grey ink. Over the milk's darkest case (black art under the
-// lens's .86 milk) it still reaches about 4.7:1, so the white halo only returns below 4.5:1.
-export const MILK_INK='#5c5c60';
-const MILK:RGB=[255,255,255],MILK_VEIL=.86;
+// The light theme's section navigation is pale frost the art shows through (section-lens.ts MILK_LIFT/MILK_GAIN and
+// the CSS fallback's .8 tint): about 188 over black art and 240 over white, modelled here as .8 of a 236 grey over the
+// art. Its labels take Apple Music's dark grey label ink (about 45 in Apple's light still), which keeps about 6.6:1
+// over the frost's darkest case (black art), so the white halo only returns below 4.5:1.
+export const MILK_INK='#333336';
+const MILK:RGB=[236,236,236],MILK_VEIL=.8;
 export function milkInk(samples:readonly RGB[]):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
-  const ink=luminance([92,92,96]);
+  const ink=luminance([51,51,54]);
   const contrast=Math.min(...colors.map(rgb=>(luminance(mix(rgb,MILK,MILK_VEIL))+.05)/(ink+.05)));
   return {color:MILK_INK,halo:contrast>=4.5?'transparent':'rgb(255 255 255 / .8)'};
+}
+// The dark theme's WebGL bar (section-lens.ts DARK_SMOKE) is a lighter smoke than the CSS frost's .36 dark tint: about
+// .2 of a 160 grey over the art (black about 32, white about 236). Section labels keep the dark halo wherever either
+// surface would leave white ink under the 7:1 bar for 10px labels.
+const NAV_SMOKE:RGB=[160,160,160],NAV_SMOKE_VEIL=.2;
+export function navInk(samples:readonly RGB[],selection:boolean):{color:string;halo:string}{
+  const frost=glassInk(samples,'light',selection,false,NAV_VEIL,7);
+  const smoke=glassInk(samples.map(rgb=>mix(rgb,NAV_SMOKE,NAV_SMOKE_VEIL)),'light',selection,false,0,7);
+  return frost.halo==='transparent'&&smoke.halo==='transparent'?frost:{color:'#fff',halo:HALO_DARK};
 }
 /** Keep the glyph itself white. Sample only to decide whether a soft dark
  * shadow is needed over bright or busy artwork; never invert labels or scores.
@@ -215,7 +225,7 @@ function update(){
           // The section bar's deep frost blurs fine texture away, so C30 showed plain labels over art.
           // There only low contrast (bright art, unreadable media) keeps the halo, at a 7:1 bar for 10px text.
           ink=milky?milkInk(known.length?known:UNKNOWN)
-            :nav?glassInk(known.length?known:UNKNOWN,preference,selection,false,NAV_VEIL,7)
+            :nav?navInk(known.length?known:UNKNOWN,selection)
             :glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),CLEAR_VEIL);
         }
         for(const glyph of labels)changes.push({glyph,ink});

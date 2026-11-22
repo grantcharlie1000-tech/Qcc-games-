@@ -13,13 +13,13 @@
   --glass-tint:rgb(8 12 18 / .36);--glass-frost:blur(12px);
   --glass-tone:saturate(1.4) brightness(.94);
 }
-/* Apple Music's light bar and its menu circle are milky, near-white glass over any page, so the light theme's
-   navigation takes Apple's grey ink: mid-grey glyphs and darker grey labels (glass-ink.ts's MILK_INK), which keep
-   4.5:1 over the milk. The WebGL lens draws the same milk (section-lens.ts). */
+/* Apple Music's light bar and its menu circle are pale frost the art shows through (about .2 of it under a light grey),
+   so the light theme's navigation takes Apple's ink: mid-grey glyphs and dark grey labels (glass-ink.ts's MILK_INK),
+   which keep 4.5:1 over the frost's darkest case. The WebGL lens draws the same frost (section-lens.ts). */
 @media not (prefers-color-scheme:dark){
   .section-navigation>:is(.arcade-glass,.arcade-glass-mini):not([data-glass=off]){
-    --glass-tint:rgb(244 244 246 / .9);--glass-frost:blur(20px);--glass-tone:saturate(1.2);
-    --glass-ink:#5c5c60;--glass-icon-ink:#6e6e73;
+    --glass-tint:rgb(236 236 238 / .8);--glass-frost:blur(20px);--glass-tone:saturate(1.2);
+    --glass-ink:#333336;--glass-icon-ink:#6e6e73;
   }
 }
 /* The menu circle carries the bar's crisp light rim (section-lens.ts RIM_REST), about 1.2 css px: brightest along the
