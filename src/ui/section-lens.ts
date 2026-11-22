@@ -96,6 +96,7 @@ const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 const vec2 RIM_LIGHT = vec2(.30, .42);
+const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -301,9 +302,17 @@ void main() {
   // The rim band draws its own sample, so the body sample is taken only where it shows:
   // inside the band or under a settled selection.
   vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
-  vec2 bent = body + normal * 12. * band * band;
+  // Like Apple Music's bar at rest, the top band mirrors the content just under it: at depth d
+  // inside MIRROR_BAND it draws from depth MIRROR_BAND + MIRROR_K * (MIRROR_BAND - d), so a title
+  // behind the bar shows flipped and squeezed in the top edge. Sides and bottom bend outward.
+  float topFacing = smoothstep(.25, .75, -normal.y);
+  float mirror = topFacing * (1. + MIRROR_K) * max(0., MIRROR_BAND - depth);
+  vec2 bent = body + normal * (12. * band * band * (1. - topFacing) - mirror);
+  // The mirrored title stays crisp but reads at Apple's low strength: it keeps MIRROR_MIX of
+  // its contrast against the wide field colour.
+  float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
-  vec3 rgb = rim(band > 0. ? smoked(glassColor(bent, mix(BODY_SPREAD, 1., band)), 0., field) : bodyColor, normal, depth, liftEdge);
+  vec3 rgb = rim(band > 0. ? smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field) : bodyColor, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
