@@ -25,10 +25,14 @@
 /* The menu circle carries the bar's crisp light rim (section-lens.ts RIM_REST), about 1.2 css px: brightest along the
    top and bottom, fainter at the sides. Over the light milk the default .19 white rim does not show. The bar's own CSS
    material takes the same rim, so both keep one material: under the WebGL lens its CSS layers are hidden, and the
-   CSS fallback bar shows the lens's crisp rim. */
+   CSS fallback bar shows the lens's crisp rim.
+   Outside that rim Apple's light bar and search circle cast a soft shadow on the page: about -21 luma at the rim, -12
+   at 4 css px and gone by 15. The rim took the default's .5px dark ring with it, and the default 60px lift reads only
+   -3, so this lift (sigma 7.5px) is the circle's only edge on a white page. */
 @media not (prefers-color-scheme:dark){
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off]){
     --glass-rim-edge:inset 0 1.2px 0 rgb(255 255 255 / .95),inset 0 -1.2px 0 rgb(255 255 255 / .9),inset 0 0 0 1.2px rgb(255 255 255 / .4);
+    --glass-lift:0 0 15px rgb(0 0 0 / .18);
   }
 }
 /* In the dark theme the circle's rim matches the bar's Apple profile (section-lens.ts RIM_REST): a line about 1 css px

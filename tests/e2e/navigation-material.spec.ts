@@ -61,6 +61,10 @@ for(const fallback of [false,true]){
       expect(companion.root.filter).toBe('blur(12px) saturate(1.4) brightness(0.94)');
     }
     expect(companion).toEqual(mixed?{...initial,root:{...initial.root,filter:'blur(12px) saturate(1.4) brightness(0.94)'}}:initial);
+    // Apple's search circle and bar keep a soft shadow outside their crisp rim, so the shared material keeps an outer
+    // shadow dark enough to show on a white page.
+    const outer=companion.veil.shadow.split(/,(?![^(]*\))/).filter(s=>!s.includes('inset'));
+    expect(Math.max(0,...outer.map(s=>Number(/rgba\(0, 0, 0, ([\d.]+)\)/.exec(s)?.[1]??0))),companion.veil.shadow).toBeGreaterThanOrEqual(.1);
     const miniRoot=await page.locator('.app-navigation .ui-tabbar-mini').evaluate(el=>{
       const s=getComputedStyle(el);return {filter:s.backdropFilter,background:s.background,border:s.border,shadow:s.boxShadow};
     });
