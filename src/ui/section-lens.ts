@@ -663,12 +663,20 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   const endRoom = Math.min(LENS_END_ROOM, Math.max(0, bar.left - 6));
   // The bar's growth while pressed (section-navigation.css) already reaches half its extra width toward the menu.
   const menuRoom = Math.max(0, LENS_MENU_ROOM - (bar.width - element.offsetWidth) / 2);
-  const raisedWidth = Math.min(naturalHeight * (1.40 + .07 * rise),
-    2 * Math.min(cx + endRoom, bar.width - cx + menuRoom));
+  // MOTION-5 (#24 council): at an end tab Apple's lens keeps its width and moves inward, clamped inside the screen
+  // (Charlie's video, 24.85 s: the lens over Home stands a few px in from the bar's end, centred past the Home glyph),
+  // where ours was capped by the screen edge into a round disc. So the raised lens keeps its natural width wherever the
+  // span from endRoom past the bar's screen end to menuRoom past its menu end holds it, and its centre slides inward
+  // just enough to stay in that span.
+  const raisedWidth = Math.min(naturalHeight * (1.40 + .07 * rise), bar.width + endRoom + menuRoom);
+  const raisedCx = Math.min(Math.max(cx, raisedWidth / 2 - endRoom), bar.width + menuRoom - raisedWidth / 2);
   const raisedHeight = Math.min(naturalHeight, Math.max(bar.height + 2 * LENS_PROUD, raisedWidth / LENS_MIN_ASPECT));
   const pressedWidth = pillWidth * pressWidth, pressedHeight = pillHeight * (1 - .1 * press);
+  const drawnCx = cx + projection * (raisedCx - cx);
+  // The lens magnifies what lies under its own centre.
+  if (projection > 0) samplePill[0] = drawnCx;
   const drawnPill = projection > 0 || press > 0 ? [
-    cx,
+    drawnCx,
     cy + projection * (bar.height/2 - cy),
     pressedWidth + projection * (raisedWidth - pressedWidth),
     pressedHeight + projection * (raisedHeight - pressedHeight),
