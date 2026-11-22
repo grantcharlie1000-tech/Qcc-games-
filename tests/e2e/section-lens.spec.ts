@@ -105,9 +105,10 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
 
-  // C30 shows every tab's 24px filled glyph in both themes, with its #ff375f light accent at weight 600.
+  // C30 shows every tab's 24px filled glyph in both themes, drawn at 32px as Apple Music's, with its #ff375f light accent at weight 600.
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   await expect(movies.locator('.ui-icon')).toHaveCSS('width','24px');
+  await expect(movies.locator('.ui-icon')).toHaveCSS('transform',/^matrix\(1\.333/);
   await expect(movies.locator('.ui-icon-fill')).toHaveCSS('display','inline');
   await expect(movies.locator('.ui-icon-line')).toHaveCSS('display','none');
   await page.emulateMedia({colorScheme:'light'});
