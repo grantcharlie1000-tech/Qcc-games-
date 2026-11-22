@@ -108,10 +108,10 @@ const float BODY_BLUR = .9;
 const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(.85, .47);
+const vec2 RIM_LIGHT = vec2(1., .6);
 const float RIM_TINT = 3.;
-// Over the light theme's milk the 1.1 px rim line all but vanishes; it runs RIM_MILK px deep there.
-const float RIM_MILK = 2.;
+// Apple's resting rim, light then dark: full light to RIM_REST.x css px deep, gone by .y (light), .z and .w (dark).
+const vec4 RIM_REST = vec4(.9, 1.6, .7, 1.5);
 const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
 // light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
@@ -119,7 +119,10 @@ const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // title's strokes against the field, so the title still reads in it, and its rim reads brighter
 // (RIM_LIGHT.x). The resting pill takes the same milk PILL_MILK_DROP darker, as Apple's grey selected
 // tab; a press lifts it to the bar's own milk, and the raised lens clears it.
-const float MILK_TONE = .955, MILK_MIX = .9, MILK_MIRROR = 1., PILL_MILK_DROP = 25. / 255.;
+const float MILK_TONE = .985, MILK_MIX = .92, MILK_MIRROR = 1., PILL_MILK_DROP = 25. / 255.;
+// Apple's frost lets the colour of the art under it bleed through: the milk keeps MILK_BLEED more of the blurred
+// art's chroma, so the pale bar takes a faint tint of each card while its tone stays near white.
+const float MILK_BLEED = .45;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -246,13 +249,15 @@ vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
   // which keeps the bar's glass in the lens's top gap dark.
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  float line = 1. - smoothstep(.25, mix(mix(RIM_MILK, 1.1, pillSmoke), 1.25, liftEdge), depth);
+  // At rest it is Apple's crisp line, about 1.2 css px of full light inside the edge (RIM_REST, light then dark).
+  vec2 rest = mix(RIM_REST.xy, RIM_REST.zw, pillSmoke);
+  float line = 1. - smoothstep(mix(rest.x, .25, liftEdge), mix(rest.y, 1.25, liftEdge), depth);
   // Apple Music's bar rim is a thin, dim light line, not a bright outline: about +40 luma over
   // the dark bar and fainter still in the light theme (RIM_LIGHT, light then dark). It catches
   // the colour of the art under it: the light it mixes toward keeps RIM_TINT times the art's
   // chroma, so over orange art the rim reads light orange and over grey it stays white.
   vec3 light = clamp(vec3(1.) + RIM_TINT * (rgb - dot(rgb, vec3(.2126, .7152, .0722))), 0., 1.);
-  return mix(rgb, light, (.10 + .62 * top + .25 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
+  return mix(rgb, light, min(1., mix(.6, .10, pillSmoke) + .62 * top + .5 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
 }
 float lensBevel(float radius) {
   return min(LENS_BEVEL, .6 * radius);
@@ -285,11 +290,10 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   // edge keeps only a hairline.
   float specular = mix((.06 + .36 * top + .13 * bottom) * pillPress, .62 * top * top + .05 * bottom, pillLift) * (1. - .8 * pillPress);
   // The raised lens keeps its lower bevel light so no dark seam forms under the art.
-  float shade = (1. - smoothstep(.4, 5., pillDepth)) * (.25 + .75 * bottom) * (1. - pillLift) * (1. - pillPress);
-  float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
+  float inset = (1. - pillLift) * (1. - pillPress) * .13;
   // The dark theme's resting selection is a smoked capsule, as in C30.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
-  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - PILL_SMOKE * smoke);
+  vec3 face = sceneColor * (1. - inset) * (1. - PILL_SMOKE * smoke);
   // Apple Music's selected tab is a darker capsule in the bar: in both themes it sits about
   // PILL_DEEPEN (23/255) below the bar's own tone. Over bright art the pill is already held to the
   // smoked pill's tone for the accent's contrast (PILL_BRIGHT), so the deepening fades there.
@@ -328,7 +332,7 @@ void main() {
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
   // The pressed thumb keeps a soft glass edge; the raised lens's is crisp, as Apple's thin rim.
-  float soft = .5 + .3 * pillLift + .6 * pillPress * (1. - pillLift);
+  float soft = .5 + .3 * pillLift + .6 * pillPress * (1. - pillLift) + .5 * (1. - pillLift) * (1. - pillPress);
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
@@ -365,7 +369,8 @@ void main() {
   vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor;
   // The light theme's milk (MILK_MIX). The mirrored band keeps MILK_MIRROR of its strokes over the milk.
   float milk = MILK_MIX * (1. - pillSmoke);
-  surface = mix(surface, vec3(MILK_TONE), milk) + MILK_MIRROR * milk * mirrorZone * (surface - blurColor);
+  surface = mix(surface, vec3(MILK_TONE), milk) + MILK_MIRROR * milk * mirrorZone * (surface - blurColor)
+          + MILK_BLEED * milk * (blurColor - dot(blurColor, vec3(.2126, .7152, .0722)));
   vec3 rgb = rim(surface, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
@@ -376,7 +381,7 @@ void main() {
     // Under the raised lens it is a soft outer shadow all round, deepest below.
     float below = mix(smoothstep(-.15, .60, pp.y / pillRadius), .4 + .6 * smoothstep(-.6, .8, pp.y / pillRadius), pillLift);
     float shadow = smoothstep(-mix(3.5, 7., pillLift), 0., shadowDepth) * smoothstep(1.5, 4.5, depth) * below;
-    rgb *= 1. - pillOpacity * shadow * mix(.12, .22, pillLift) * (1. - pillPress);
+    rgb *= 1. - pillOpacity * shadow * mix(0., .22, pillLift) * (1. - pillPress);
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;

@@ -41,6 +41,9 @@ test('section lens ignores game mutations and resumes live sampling at the resto
     };
     Object.defineProperty(window,'sectionLensFrames',{get:()=>queued});
   });
+  // The light theme's bar is Apple Music's pale frost, which lets only a faint tint of the art through. Live
+  // sampling is read in the dark theme, whose smoke keeps the patch's own colour.
+  await page.emulateMedia({colorScheme:'dark'});
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar'),canvas=bar.locator('canvas.section-lens');
   await expect(bar).toHaveAttribute('data-section-lens','webgl');
