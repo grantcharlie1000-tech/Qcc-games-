@@ -22,6 +22,13 @@
     --glass-ink:#5c5c60;--glass-icon-ink:#6e6e73;
   }
 }
+/* The menu circle carries the bar's crisp light rim (section-lens.ts RIM_REST), about 1.2 css px: brightest along the
+   top and bottom, fainter at the sides. Over the light milk the default .19 white rim does not show. */
+@media not (prefers-color-scheme:dark){
+  .section-navigation>.section-menu.arcade-glass:not([data-glass=off]){
+    --glass-rim-edge:inset 0 1.2px 0 rgb(255 255 255 / .95),inset 0 -1.2px 0 rgb(255 255 255 / .9),inset 0 0 0 1.2px rgb(255 255 255 / .4);
+  }
+}
 /* Apple Music's side margins: about 16 css px at 390, not 12, with an 8 px gap to the menu circle. */
 @media (min-width:360px){.section-navigation.section-navigation{--home-inset:16px;--home-gap:8px}}
 .section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
