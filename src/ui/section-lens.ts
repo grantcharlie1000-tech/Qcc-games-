@@ -123,8 +123,9 @@ const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // title stays crisp, and motion clears the blur, so the moving lens is unchanged.
 const float BODY_BLUR = .9;
 // Apple's dark bar blurs less: titles and posters behind it still show their shapes (Charlie's still and video, 32.5 s),
-// so the dark theme takes DARK_BLUR of the wide field instead.
-const float DARK_BLUR = .25;
+// so the dark theme takes DARK_BLUR of the wide field instead. LOOK-5: was .25, which still hazed the posters and blurred
+// a title under the bar into blobs; Apple's video at 32.5 s keeps an arm and the Hamilton star sharp through its bar.
+const float DARK_BLUR = .1;
 // The C30 face bend stretched a title behind the dark bar 1.2-1.5x vertically into tall streaks; the dark theme keeps
 // DARK_BEND of it, and its body frosts soft (softFrost).
 const float DARK_BEND = .3;
@@ -165,12 +166,20 @@ const float MILK_LIFT = .683, MILK_GAIN = .483, MILK_MIRROR = 1., PILL_MILK_DROP
 // about 32, white about 230), and DARK_HUE of that gain of its colour, about four fifths of the art's own.
 const vec2 DARK_SMOKE = vec2(-.047, 1.55);
 const float DARK_HUE = 1.;
+// LOOK-5 (owner: our dark bar read as a near-black slab beside Apple's see-through smoke): that gain on the veiled frost
+// lifted dark art at a slope of 1.15 (the floor's 76 read 118, mid grey 160) and sank white to 230, so posters read hazy
+// and flat. The smoke now undoes the frost's veil and roll-off and the dark smoked() slope first (uniform art a tones to
+// DARK_TONE.x + DARK_TONE.y * a * E(a), E being glassTone's exposure), then takes Apple's straight line on the art's own
+// tone: DARK_GLASS.x + DARK_GLASS.y of it (black 32, 76 -> 98, 117 -> 135, as the video at 32.5 s), the art's contrast
+// kept, rolling off past DARK_GLASS.z by DARK_GLASS.w of the square, so white still reads 230.
+const vec2 DARK_TONE = vec2(1.18 * .44 * .36 - SMOKE_DARK_DROP, 1.18 * .64);
+const vec4 DARK_GLASS = vec4(32. / 255., .875, .5, .402);
 // Apple's dark selected tab is a smoked capsule a little darker than the bar: about 10/255 over a black page, 22
 // under the bar, and about 30 under it over mid art (the video's floor at 32.5 s). The dark rest pill keeps
 // PILL_DARK.y of the bar's tone less PILL_DARK.x. Over bright art it is held at PILL_DARK_CEIL, so the blue accent
 // keeps its 2.5:1 there (section-lens.spec).
 const vec2 PILL_DARK = vec2(19. / 255., .9);
-const float PILL_DARK_CEIL = .31;
+const float PILL_DARK_CEIL = .31, PILL_DARK_RIM = .15;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -256,10 +265,14 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
 }
-// Apple Music's dark smoke (DARK_SMOKE, DARK_HUE): an even darkening of the bar's frost that keeps more of its colour.
+// Apple Music's dark smoke (DARK_GLASS on the art's tone, DARK_HUE): see-through glass that keeps the art's contrast and
+// more of its colour.
 vec3 darkSmoke(vec3 rgb) {
   float luma = dot(rgb, vec3(.2126, .7152, .0722));
-  return vec3(DARK_SMOKE.x + DARK_SMOKE.y * luma) + DARK_HUE * DARK_SMOKE.y * (rgb - luma);
+  float h = max(0., (luma - DARK_TONE.x) / DARK_TONE.y);
+  float art = min(1., h <= .98 * .27 ? h / .98 : (1. - .66 * .27) * h / max(.98 - .66 * h, .2));
+  float over = max(0., art - DARK_GLASS.z);
+  return vec3(DARK_GLASS.x + DARK_GLASS.y * art - DARK_GLASS.w * over * over) + DARK_HUE * DARK_SMOKE.y * (rgb - luma);
 }
 // The smoked wide field of the heavy blur: smoked()'s tone, with BLUR_CHROMA of the field's colour kept
 // uncored. Motion clears it as smoked() does.
@@ -396,7 +409,8 @@ void main() {
   float pillRadius = capsuleRadius(pill.zw);
   float pillDepth = pillRadius - length(pillAxis);
   // The pressed thumb keeps a soft glass edge; the raised lens's is crisp, as Apple's thin rim.
-  float soft = .5 + .3 * pillLift + .6 * pillPress * (1. - pillLift) + .5 * (1. - pillLift) * (1. - pillPress);
+  // LOOK-5: Apple's dark rest pill meets its bar within about a css px (its dark still), where ours blurred over two.
+  float soft = .5 + .3 * pillLift + .6 * pillPress * (1. - pillLift) + (.5 - .3 * pillSmoke) * (1. - pillLift) * (1. - pillPress);
   float selected = pillOpacity * smoothstep(-soft, soft, pillDepth);
   float liftEdge = smoothstep(0., .25, pillProjection);
   if (coverage <= 0. && selected * liftEdge <= 0.) {
@@ -547,6 +561,11 @@ void main() {
       // lens take it back to their milky and clear pieces.
       vec3 darkPill = max(darkSmoke(selectionColor) * PILL_DARK.y - PILL_DARK.x, 0.);
       darkPill *= min(1., PILL_DARK_CEIL / max(dot(darkPill, vec3(.2126, .7152, .0722)), .001));
+      // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
+      // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
+      // over the bar rim's dark depth (RIM_REST.zw).
+      float pillRim = 1. - smoothstep(RIM_REST.z, RIM_REST.w, pillDepth);
+      darkPill = mix(darkPill, vec3(1.), PILL_DARK_RIM * pillRim * (.55 + .45 * max(abs(pillNormal.x), max(0., pillNormal.y))));
       selection = mix(selection, darkPill, pillSmoke * (1. - pillLift) * (1. - pillPress));
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
       // frost of its milky thumb, as the dark theme's press lifts its pill; the raised lens clears it smoothly.
