@@ -142,7 +142,31 @@
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab>:is(.ui-icon,span){
     scale:var(--section-lens-zoom,1);transition:none;
   }
+  /* Charlie's video (12.75-13.5 s): the tab under the raised bubble takes the selection's accent while the press lasts
+     and the current tab gives it up until the release (tabbar.ts data-lens-target). */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:is([aria-current=page],[aria-pressed=true]):not([data-lens-target]){
+    --section-pill-accent:var(--glass-ink);
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:not([aria-current=page],[aria-pressed=true]){
+    --glass-icon-ink:var(--section-lens-accent);
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:not([aria-current=page],[aria-pressed=true])>span{
+    color:var(--section-lens-accent);
+  }
 }
+.section-tabbar{--section-lens-accent:#ff375f}
+@media(prefers-color-scheme:dark){.section-tabbar{--section-lens-accent:#0099ff}}
+/* The light theme's clear drag bubble shows the art under it unfrosted (section-lens.ts LENS_LIGHT_DRAG), so the grey ink of
+   a tab mostly under it turns white with a soft dark rim, as the video's glyphs over its art; the accent keeps its colour. */
+@media(prefers-reduced-motion:no-preference){@media not (prefers-color-scheme:dark){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]:not([data-lens-target]){
+    --glass-icon-ink:#fff;--section-pill-accent:#fff;
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]:not([data-lens-target])>span{color:#fff}
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]>:is(.ui-icon,span){
+    filter:drop-shadow(0 0 1px rgb(0 0 0 / .55));
+  }
+}}
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
   left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;
   --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;

@@ -2,6 +2,7 @@ import {expect,originalTheme,test,type Page} from '../fixtures';
 
 // tabbar.ts magnifies each tab's icon and label by how much of them the raised drag lens covers: content under the
 // lens face reaches the lens magnification, and it eases off across the bevel, so two tabs sharing the lens both swell.
+// The lens is the wide bubble section-lens.ts draws (about 1.55 bar heights, Charlie's video), not the narrower CSS pill.
 // A release or a cancel hands every tab back at 1, and reduced motion never raises the lens, so nothing is magnified.
 test.beforeEach(async({context,page})=>{
   await originalTheme(context);
@@ -50,13 +51,14 @@ async function dragFromGames(page:Page,lens=true){
   return bar;
 }
 
-test('a tab under the lens face takes the full lens magnification, and its neighbours none',async({page})=>{
+test('a tab under the lens face takes the full lens magnification, and its neighbours at most a trace',async({page})=>{
   await page.goto('/#/collection');
   const {rest}=await dragLensTo(page,tabs=>tabs[1].x+tabs[1].width/2);
   await expect.poll(async()=>Number((await zooms(page))[1])).toBeGreaterThan(LENS_ZOOM-.02);
   const [games,over,next,...far]=(await zooms(page)).map(Number);
   expect(over).toBeLessThanOrEqual(LENS_ZOOM);
-  expect(games).toBeLessThan(1.005);expect(next).toBeLessThan(1.005);
+  // The wide bubble's bevel just reaches the neighbours' outer content (1.013 at 390 px), so they barely swell.
+  expect(games).toBeLessThan(1.04);expect(next).toBeLessThan(1.04);
   expect(far).toEqual([1,1]);
   // Movies and the tabs past it keep their layout and screen boxes; Games keeps its layout box under its own press.
   const held=await boxes(page);
@@ -70,8 +72,9 @@ test('both tabs under a lens between them are visibly magnified, about equally',
   const {rest}=await dragLensTo(page,tabs=>(tabs[1].x+tabs[1].width+tabs[2].x)/2);
   await expect.poll(async()=>Math.min(...(await zooms(page)).slice(1,3).map(Number))).toBeGreaterThan(1+.6*(LENS_ZOOM-1));
   const [games,left,right,...far]=(await zooms(page)).map(Number);
-  // The old distance rule peaked near 1.05 here. Each tab now has most of its content under the face or bevel.
-  expect(Math.max(left,right)).toBeLessThan(LENS_ZOOM-.03);
+  // The old distance rule peaked near 1.05 here. The wide bubble covers both tabs' content, as the video's 13.5 s drag
+  // magnifies the two glyphs it spans, so each reaches about the full 1.17.
+  expect(Math.max(left,right)).toBeLessThanOrEqual(LENS_ZOOM);
   expect(Math.abs(left-right)).toBeLessThan(.03);
   expect([games,...far]).toEqual([1,1,1]);
   const held=await boxes(page);

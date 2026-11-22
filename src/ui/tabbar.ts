@@ -3,6 +3,7 @@
 // theme.css draws both states, and data-hidden is left to the caller that hides the bar fully, such as Up next in Movies.
 import {bindGlass} from './glass';
 import {bindSectionNavigationLens} from './navigation';
+import {drawnLenses} from './section-lens';
 export interface TabbarScroll{minimized:boolean;lastY:number;travel:number}
 // px of downward travel before the bar minimizes, and of upward travel before it expands again.
 export const TABBAR_MINIMIZE=64;
@@ -45,6 +46,8 @@ export function nextTabbarState(state:TabbarScroll,y:number,max:number,typing=fa
 export const LENS_ZOOM=1.18;
 // The bevel section-lens.ts draws at the lens edge: min(12px, .45 of the capsule radius).
 export const lensBevel=(width:number,height:number)=>Math.min(12,.45*Math.min(width,height)/2);
+// The raised bubble's own bevel there (LENS_BEVEL): min(14px, .6 of its radius).
+const raisedBevel=(width:number,height:number)=>Math.min(14,.6*Math.min(width,height)/2);
 const smooth=(t:number)=>{const x=Math.min(1,Math.max(0,t));return x*x*(3-2*x);};
 // The cover weight summed from the lens edge to a point depth px inside it: the smoothstep ramp across the bevel, then 1.
 const inside=(depth:number,bevel:number)=>{
@@ -76,7 +79,7 @@ export function tabCover(center:number,halfWidth:number,bevel:number,boxes:reado
 function bindLensZoom(bar:HTMLElement):()=>void{
   let frame=0;
   const tabs=()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
-  const clear=()=>{for(const tab of tabs())tab.style.removeProperty('--section-lens-zoom');};
+  const clear=()=>{for(const tab of tabs()){tab.style.removeProperty('--section-lens-zoom');tab.removeAttribute('data-lens-target');tab.removeAttribute('data-lens-under');}};
   // The icon and label boxes of a tab in the bar's coordinates, from layout, which the zoom's own scale never moves.
   // The label reports its offset box. The icon is an SVG, with no offset box, so it takes its used size, centred in the tab
   // as the column flex places it.
@@ -94,11 +97,26 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const style=getComputedStyle(bar,'::after');
     const width=parseFloat(style.width)||0,height=parseFloat(style.height)||0;
     const [scaleX,scaleY=scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
-    const center=(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
-    const half=width*scaleX/2,bevel=lensBevel(width*scaleX,height*scaleY);
+    // Charlie's video: the bubble the lens draws (section-lens.ts) stands about 1.55 bar heights wide, past the CSS pill,
+    // and the glyphs under all of it swell. Its box is in the bar's on-screen px, so it is taken back to layout px.
+    const drawn=drawnLenses.get(bar);
+    const center=drawn?drawn.pill[0]/drawn.sx:(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
+    const lensWidth=drawn?drawn.pill[2]/drawn.sx:width*scaleX,lensHeight=drawn?drawn.pill[3]/drawn.sy:height*scaleY;
+    const half=lensWidth/2,bevel=drawn?raisedBevel(lensWidth,lensHeight):lensBevel(lensWidth,lensHeight);
     // Every layout read comes before the first write, so a drag frame forces at most one layout.
-    const zooms=tabs().map(tab=>[tab,lensZoom(scaleX,tabCover(center,half,bevel,content(tab)),scaleY).toFixed(3)] as const);
-    for(const [tab,zoom] of zooms)if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
+    const zooms=tabs().map(tab=>{
+      const cover=tabCover(center,half,bevel,content(tab));
+      return [tab,lensZoom(scaleX,cover,scaleY).toFixed(3),cover,Math.abs(tab.offsetLeft+tab.offsetWidth/2-center)] as const;
+    });
+    // The tab nearest the bubble's centre takes the selection's accent while the press lasts, as the video's Radio
+    // under the held lens turns blue while Library gives it up; the ink of every tab mostly under the clear bubble
+    // turns light over the art it shows (section-navigation.css).
+    const target=zooms.reduce((best,entry)=>entry[3]<best[3]?entry:best,zooms[0])?.[0];
+    for(const [tab,zoom,cover] of zooms){
+      if(tab.style.getPropertyValue('--section-lens-zoom')!==zoom)tab.style.setProperty('--section-lens-zoom',zoom);
+      if(tab.hasAttribute('data-lens-target')!==(tab===target))tab.toggleAttribute('data-lens-target',tab===target);
+      if(tab.hasAttribute('data-lens-under')!==(cover>=.5))tab.toggleAttribute('data-lens-under',cover>=.5);
+    }
     // The pill's scale eases for 100ms after each move, so keep following it while the press lasts.
     frame=requestAnimationFrame(tick);
   };

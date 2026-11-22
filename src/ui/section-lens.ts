@@ -156,9 +156,11 @@ const float LENS_RIM = 3., LENS_FRINGE = .3;
 // through it, lifted LENS_LIGHT of the way to white, so it reads no darker than the milky resting
 // pill while it keeps about three times the bar's contrast, and the dark ink on it stays legible.
 // Its bevel shading comes after the lift, so its edge still reads. The dark theme's lens is clear.
-// Through drag travel the lens shows more of the art (LENS_LIGHT_DRAG), as Apple's clear drag lens
-// does, so the live scene under it reads and still keeps the dark ink on it legible.
-const float LENS_LIGHT = .8, LENS_LIGHT_DRAG = .35;
+// Through drag travel the lens is Apple's clear drag bubble (Charlie's video, 13.5 s): the art under it shows
+// unfrosted, magnified and in its own colour and contrast, lifted only LENS_LIGHT_DRAG, and the ink over it turns
+// light (section-navigation.css, data-lens-under). The raised lens samples the scene LENS_SHARP as wide as the
+// moving thumb's frost, so the magnified art stays crisp.
+const float LENS_LIGHT = .8, LENS_LIGHT_DRAG = .1, LENS_SHARP = .45;
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
@@ -426,7 +428,7 @@ void main() {
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         // One frost sample serves the moving selection and the clear glass it fades from.
-        vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion) * .5);
+        vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), BODY_BLUR * (1. - pillMotion));
         if (clear > 0.) {
           // The bright-art hold reads the unblurred frost, so the pill's tone gate is unchanged by the blur.
@@ -552,8 +554,13 @@ function smoothstep(value:number) {
 
 // The raised lens may stand past the bar's end by up to LENS_END_ROOM css px toward the screen edge and
 // LENS_MENU_ROOM toward the menu button (12 px away), and keeps at least LENS_MIN_ASPECT where that
-// caps it. LENS_PAD is the surface's margin past the bar while it is drawn: the end room plus its edge.
-const LENS_END_ROOM = 14, LENS_MENU_ROOM = 8, LENS_MIN_ASPECT = 1.36, LENS_PAD = 16;
+// caps it, standing at least LENS_PROUD css px past the bar top and bottom. LENS_PAD is the surface's
+// margin past the bar while it is drawn: the end room plus its edge.
+const LENS_END_ROOM = 14, LENS_MENU_ROOM = 8, LENS_MIN_ASPECT = 1.36, LENS_PROUD = 3, LENS_PAD = 16;
+
+/** The lens each bar last drew: [cx, cy, width, height] in the bar's on-screen css px, and the bar's own scale
+ * (sx, sy) against its layout box. tabbar.ts sizes the glyph zoom from it, so the zoom covers the wide bubble. */
+export const drawnLenses = new WeakMap<HTMLElement,{pill:number[]; sx:number; sy:number}>();
 
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
@@ -615,13 +622,13 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   // stands about 4 px above the bar top and 3 px below its bottom. The drag lens is 1.06 bar heights
   // tall at aspect 1.47. It stays centred on its tab and may stand past the bar's ends: by
   // LENS_END_ROOM toward the screen edge, keeping 6 px of it, and by LENS_MENU_ROOM toward the menu.
-  // Where that caps its width at an outer tab it flattens toward 2 px over each bar edge, so it
-  // keeps its capsule (aspect LENS_MIN_ASPECT) instead of turning round.
+  // Where that caps its width at an outer tab it flattens toward LENS_PROUD px over each bar edge (the
+  // video's hold lens stands 3-4 px proud), so it keeps a capsule (aspect LENS_MIN_ASPECT), not a circle.
   const naturalHeight = bar.height * (1.11 - .05 * rise);
   const endRoom = Math.min(LENS_END_ROOM, Math.max(0, bar.left - 6));
   const raisedWidth = Math.min(naturalHeight * (1.40 + .07 * rise),
     2 * Math.min(cx + endRoom, bar.width - cx + LENS_MENU_ROOM));
-  const raisedHeight = Math.min(naturalHeight, Math.max(bar.height + 4, raisedWidth / LENS_MIN_ASPECT));
+  const raisedHeight = Math.min(naturalHeight, Math.max(bar.height + 2 * LENS_PROUD, raisedWidth / LENS_MIN_ASPECT));
   const pressedWidth = pillWidth * pressWidth, pressedHeight = pillHeight * (1 - .1 * press);
   const drawnPill = projection > 0 || press > 0 ? [
     cx,
@@ -656,6 +663,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   let releaseFrame:(()=>void)|undefined;
 
   function fallback() {
+    drawnLenses.delete(bar);
     bar.removeAttribute('data-section-lens');
     rendered = '';
   }
@@ -696,6 +704,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
       return;
     }
     const {crop,density,pad} = geometry;
+    drawnLenses.set(bar,{pill:geometry.pill,sx:geometry.bar.width/(bar.offsetWidth||1),sy:geometry.bar.height/(bar.offsetHeight||1)});
     const anchor = root.getBoundingClientRect();
     const nextTexture = [anchor.x,anchor.y,crop.x,crop.y,crop.width,crop.height,density].join(',');
     const nextRender = [geometry.bar.x,geometry.bar.y,geometry.bar.width,geometry.bar.height,
