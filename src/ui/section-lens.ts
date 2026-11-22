@@ -118,7 +118,7 @@ const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // almost none of its detail. The mirrored top band is as milky, but keeps MILK_MIRROR of its flipped
 // title's strokes against the field, so the title still reads in it, and its rim reads brighter
 // (RIM_LIGHT.x). The resting pill takes the same milk PILL_MILK_DROP darker, as Apple's grey selected
-// tab; press and the raised lens clear it.
+// tab; a press lifts it to the bar's own milk, and the raised lens clears it.
 const float MILK_TONE = .955, MILK_MIX = .9, MILK_MIRROR = 1., PILL_MILK_DROP = 25. / 255.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
@@ -449,8 +449,9 @@ void main() {
         deepen *= 1. - bright * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       }
       vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone, deepen);
-      // The light theme's resting pill is the bar's milk, PILL_MILK_DROP darker. Press and lift clear it smoothly.
-      selection = mix(selection, vec3(MILK_TONE - PILL_MILK_DROP), MILK_MIX * (1. - pillSmoke) * (1. - pillLift) * (1. - pillPress));
+      // The light theme's resting pill is the bar's milk, PILL_MILK_DROP darker. A press lifts it to the bar's milk,
+      // as the dark theme's press lifts its pill toward the frosted milk; the raised lens clears it smoothly.
+      selection = mix(selection, vec3(MILK_TONE - PILL_MILK_DROP * (1. - pillPress)), MILK_MIX * (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
       selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
 
