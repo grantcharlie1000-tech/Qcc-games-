@@ -176,7 +176,7 @@ const float LENS_RIM = 3., LENS_FRINGE = .3;
 // unfrosted, magnified and in its own colour and contrast, lifted only LENS_LIGHT_DRAG, and the ink over it turns
 // light (section-navigation.css, data-lens-under). The raised lens samples the scene LENS_SHARP as wide as the
 // moving thumb's frost, so the magnified art stays crisp.
-const float LENS_LIGHT = .8, LENS_LIGHT_DRAG = .1, LENS_SHARP = .45;
+const float LENS_LIGHT = .8, LENS_LIGHT_DRAG = .1, LENS_SHARP = .7;
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
