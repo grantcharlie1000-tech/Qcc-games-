@@ -87,7 +87,7 @@ const float SMOKE_DARK_DROP = .075, PILL_VEIL = .096;
 // Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
 // grey out but a stripe keeps its width at half height.
 const vec2 SMOKE_CORE = vec2(.09, .13);
-// C30's even smoke over large card areas: a wide field sample (fieldColor: four taps of a mip
+// C30's even smoke over large card areas: a wide field sample (fieldSample: four taps of a mip
 // level about FIELD_TEXEL css px a texel, about 10 css px out) tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
 // SMOKE_FIELD (teal and mustard card art), while a 9 px stripe, mostly absent from the field,
 // keeps its hue. Only dull colour fades (spread below about .45): a vivid field such as a
@@ -319,7 +319,10 @@ void main() {
   float band = 1. - smoothstep(0., 12., depth);
   // The rim band draws its own sample, so the body sample is taken only where it shows:
   // inside the band or under a settled selection.
-  vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassTone(mix(frost(body, BODY_SPREAD * .5), wide, BODY_BLUR), 0.), 0., field) : vec3(0.);
+  vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
+  // Apple Music's heavy blur (BODY_BLUR): the smoked frost gives way to the smoked wide field.
+  vec3 blurColor = smoked(field, 0., field);
+  bodyColor = mix(bodyColor, blurColor, BODY_BLUR);
   // Like Apple Music's bar at rest, the top band mirrors the content just under it: at depth d
   // inside MIRROR_BAND it draws from depth MIRROR_BAND + MIRROR_K * (MIRROR_BAND - d), so a title
   // behind the bar shows flipped and squeezed in the top edge. Sides and bottom bend outward.
@@ -330,7 +333,7 @@ void main() {
   // its contrast against the wide field colour.
   float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
-  vec3 rgb = rim(band > 0. ? smoked(mix(field, glassTone(mix(frost(bent, mix(BODY_SPREAD, 1., band) * .5), wide, BODY_BLUR * (1. - band)), 0.), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field) : bodyColor, normal, depth, liftEdge);
+  vec3 rgb = rim(band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band)) : bodyColor, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -375,9 +378,10 @@ void main() {
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         // One frost sample serves the moving selection and the clear glass it fades from.
-        vec3 frosted = mix(frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion) * .5), wide, BODY_BLUR * (1. - pillMotion));
-        selectionColor = smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field);
+        vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion) * .5);
+        selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smoked(field, pillMotion, field), BODY_BLUR * (1. - pillMotion));
         if (clear > 0.) {
+          frosted = mix(frosted, wide, BODY_BLUR * (1. - pillMotion));
           clearGlass = glassTone(frosted, 1.);
           plainGlass = glassTone(frosted, 0.);
         }
