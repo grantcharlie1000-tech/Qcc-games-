@@ -96,6 +96,7 @@ const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 const vec2 RIM_LIGHT = vec2(.30, .42);
+const float RIM_TINT = 3.;
 const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
@@ -212,8 +213,11 @@ vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
   float bottom = max(0., normal.y);
   float line = 1. - smoothstep(.25, mix(1.1, 1.25, liftEdge), depth);
   // Apple Music's bar rim is a thin, dim light line, not a bright outline: about +40 luma over
-  // the dark bar and fainter still in the light theme (RIM_LIGHT, light then dark).
-  return mix(rgb, vec3(1.), (.10 + .62 * top + .25 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
+  // the dark bar and fainter still in the light theme (RIM_LIGHT, light then dark). It catches
+  // the colour of the art under it: the light it mixes toward keeps RIM_TINT times the art's
+  // chroma, so over orange art the rim reads light orange and over grey it stays white.
+  vec3 light = clamp(vec3(1.) + RIM_TINT * (rgb - dot(rgb, vec3(.2126, .7152, .0722))), 0., 1.);
+  return mix(rgb, light, (.10 + .62 * top + .25 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
 }
 float lensBevel(float radius) {
   return min(LENS_BEVEL, .6 * radius);
