@@ -156,7 +156,9 @@ const float LENS_RIM = 3., LENS_FRINGE = .3;
 // through it, lifted LENS_LIGHT of the way to white, so it reads no darker than the milky resting
 // pill while it keeps about three times the bar's contrast, and the dark ink on it stays legible.
 // Its bevel shading comes after the lift, so its edge still reads. The dark theme's lens is clear.
-const float LENS_LIGHT = .8;
+// Through drag travel the lens shows more of the art (LENS_LIGHT_DRAG), as Apple's clear drag lens
+// does, so the live scene under it reads and still keeps the dark ink on it legible.
+const float LENS_LIGHT = .8, LENS_LIGHT_DRAG = .35;
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
@@ -466,7 +468,7 @@ void main() {
       // as the dark theme's press lifts its pill toward the frosted milk; the raised lens clears it smoothly.
       selection = mix(selection, vec3(MILK_TONE - PILL_MILK_DROP * (1. - pillPress)), MILK_MIX * (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
-      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, LENS_LIGHT * (1. - pillSmoke)), pillLift);
+      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, mix(LENS_LIGHT_DRAG, LENS_LIGHT, pillPress) * (1. - pillSmoke)), pillLift);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
