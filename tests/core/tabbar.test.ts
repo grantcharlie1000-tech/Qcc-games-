@@ -1,5 +1,5 @@
 import {describe,expect,it,test} from 'vitest';
-import {LENS_ZOOM,lensBevel,lensCover,lensZoom,nextTabbarState,tabCover,type TabbarScroll} from '../../src/ui/tabbar';
+import {GLYPH_RISE,LENS_ZOOM,glyphRise,lensBevel,lensCover,lensZoom,nextTabbarState,tabCover,type TabbarScroll} from '../../src/ui/tabbar';
 
 const expanded=(lastY:number):TabbarScroll=>({minimized:false,lastY,travel:0});
 const minimized=(lastY:number):TabbarScroll=>({minimized:true,lastY,travel:0});
@@ -181,5 +181,22 @@ describe('lensZoom',()=>{
     for(let k=1;k<release.length;k++)expect(release[k]).toBeLessThanOrEqual(release[k-1]);
     expect(release[2]).toBeGreaterThan(1);expect(release[2]).toBeLessThan(LENS_ZOOM);
     expect(release[5]).toBe(1);
+  });
+});
+
+describe('glyphRise',()=>{
+  // MOTION-7: Charlie's video press (19.587-19.920 s): the glyph's whole growth is x1.015 at 17 ms, 1.08 at 50, 1.146 at
+  // 100, 1.193 at 133 and 1.21 by 217, about a fifth of it the bar's own spring. The lens's own share eases in over 200 ms.
+  it('starts at 0, eases out and is whole by GLYPH_RISE',()=>{
+    expect(GLYPH_RISE).toBe(200);
+    expect(glyphRise(0)).toBe(0);expect(glyphRise(-5)).toBe(0);
+    expect(glyphRise(GLYPH_RISE)).toBe(1);expect(glyphRise(1000)).toBe(1);
+    let last=0;
+    for(let ms=10;ms<=GLYPH_RISE;ms+=10){const rise=glyphRise(ms);expect(rise).toBeGreaterThan(last);last=rise;}
+  });
+  it('follows the video\'s glyph curve, about half way by 50 ms and nine tenths by 140 ms',()=>{
+    expect(glyphRise(50)).toBeGreaterThan(.4);expect(glyphRise(50)).toBeLessThan(.5);
+    expect(glyphRise(100)).toBeCloseTo(.75,6);
+    expect(glyphRise(140)).toBeGreaterThan(.9);
   });
 });

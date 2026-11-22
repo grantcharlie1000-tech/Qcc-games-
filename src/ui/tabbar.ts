@@ -50,6 +50,12 @@ export const lensBevel=(width:number,height:number)=>Math.min(12,.45*Math.min(wi
 // The raised bubble's own bevel there (LENS_BEVEL): min(14px, .6 of its radius).
 const raisedBevel=(width:number,height:number)=>Math.min(14,.6*Math.min(width,height)/2);
 const smooth=(t:number)=>{const x=Math.min(1,Math.max(0,t));return x*x*(3-2*x);};
+// MOTION-7: every frame of Charlie's video press (19.587-19.920 s) shows the glyph under the rising lens growing over about
+// 200 ms, not with the lens's two-frame rise: x1.015 at 17 ms, 1.08 at 50, 1.146 at 100, 1.193 at 133 and 1.21 by 217
+// (the bar's own growth, on its spring, is part of that). The lens's own share of the zoom eases in as a quadratic ease-out
+// over GLYPH_RISE ms from the press, which with the bar's spring follows the video's curve; a release still eases back.
+export const GLYPH_RISE=200;
+export const glyphRise=(elapsed:number)=>{const t=Math.min(1,Math.max(0,elapsed/GLYPH_RISE));return 1-(1-t)*(1-t);};
 // The cover weight summed from the lens edge to a point depth px inside it: the smoothstep ramp across the bevel, then 1.
 const inside=(depth:number,bevel:number)=>{
   if(depth<=0)return 0;
@@ -79,8 +85,10 @@ export function tabCover(center:number,halfWidth:number,bevel:number,boxes:reado
 }
 function bindLensZoom(bar:HTMLElement):()=>void{
   let frame=0;
+  // When the current press began (glyphRise), or null outside a press.
+  let pressedAt:number|null=null;
   const tabs=()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
-  const clear=()=>{for(const tab of tabs()){tab.style.removeProperty('--section-lens-zoom');tab.removeAttribute('data-lens-target');tab.removeAttribute('data-lens-under');}};
+  const clear=()=>{pressedAt=null;for(const tab of tabs()){tab.style.removeProperty('--section-lens-zoom');tab.removeAttribute('data-lens-target');tab.removeAttribute('data-lens-under');}};
   // The icon and label boxes of a tab in the bar's coordinates, from layout, which the zoom's own scale never moves.
   // The label reports its offset box. The icon is an SVG, with no offset box, so it takes its used size, centred in the tab
   // as the column flex places it.
@@ -104,10 +112,13 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const center=drawn?drawn.pill[0]/drawn.sx:(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
     const lensWidth=drawn?drawn.pill[2]/drawn.sx:width*scaleX,lensHeight=drawn?drawn.pill[3]/drawn.sy:height*scaleY;
     const half=lensWidth/2,bevel=drawn?raisedBevel(lensWidth,lensHeight):lensBevel(lensWidth,lensHeight);
+    const now=performance.now();
+    pressedAt??=now;
+    const rise=glyphRise(now-pressedAt);
     // Every layout read comes before the first write, so a drag frame forces at most one layout.
     const zooms=tabs().map(tab=>{
       const cover=tabCover(center,half,bevel,content(tab));
-      return [tab,lensZoom(scaleX,cover,scaleY).toFixed(3),cover,Math.abs(tab.offsetLeft+tab.offsetWidth/2-center)] as const;
+      return [tab,(1+(lensZoom(scaleX,cover,scaleY)-1)*rise).toFixed(3),cover,Math.abs(tab.offsetLeft+tab.offsetWidth/2-center)] as const;
     });
     // The tab nearest the bubble's centre takes the selection's accent while the press lasts, as the video's Radio
     // under the held lens turns blue while Library gives it up; the ink of every tab mostly under the clear bubble

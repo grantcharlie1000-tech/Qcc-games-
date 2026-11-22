@@ -103,9 +103,15 @@
     transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
       scale 300ms linear(0, .039, .136, .265, .405, .542, .668, .776, .865, .935, .986, 1.021, 1.043, 1.055, 1.059, 1.057, 1.051, 1.044, 1.036, 1.028, 1.02, 1.014, 1.008, 1.004, 1);
   }
+  /* MOTION-7: every frame of the video's press (19.587-19.920 s, sub-px bar edges) shows the bar growing on a spring, not
+     in one frame: it starts about a frame after the touch, is half grown by about 45 ms, reaches its size at about 110 ms,
+     overshoots its growth by about 10% at 160 ms (363.2 against 362.0 css px) and settles by about 300 ms. Here a damped
+     spring (damping .6, 24 rad/s) over 360 ms, where it was a 34 ms ease. The lens still rises on the pill's own swell. */
   :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:is([data-pressing],[data-pill-dragging]):not([data-hidden=true]):not([data-minimized=true]){
     scale:1.046 1.065;
-    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 34ms var(--ease-out);
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 100ms var(--ease-out);
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
+      scale 360ms linear(0, .026, .094, .19, .303, .422, .54, .651, .752, .84, .914, .974, 1.02, 1.054, 1.076, 1.089, 1.095, 1.094, 1.089, 1.081, 1.071, 1.06, 1.049, 1.038, 1.028, 1.02, 1.012, 1.007, 1.002, .999, .997, .996, .996, .996, .997, .998, 1);
   }
 }
 .section-tabbar.arcade-glass.ui-tabbar:not([data-glass=off])::after{
@@ -196,7 +202,7 @@
     transition:scale 100ms var(--ease-out),opacity 120ms var(--ease);
   }
   /* The raised lens, held or dragged, magnifies the icon and label under it (tabbar.ts). Release eases them back to 1. */
-  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl] .ui-tab>:is(.ui-icon,span){transition:scale 180ms var(--ease-out)}
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl] .ui-tab>:is(.ui-icon,span){transition:scale 180ms var(--ease-out),opacity 180ms var(--ease-out)}
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab>:is(.ui-icon,span){
     scale:var(--section-lens-zoom,1);transition:none;
   }
@@ -214,6 +220,29 @@
 }
 .section-tabbar{--section-lens-accent:#ff375f}
 @media(prefers-color-scheme:dark){.section-tabbar{--section-lens-accent:#0099ff}}
+/* MOTION-7: Charlie's video (19.60-19.80 s): the glyph under the rising lens turns lighter and translucent, the art under
+   the lens passing through it (its ink 154 -> 193 luma and its texture spread 11 -> 26 by 19.75 s), as it grows. So the
+   tab under the raised bubble takes its accent a sixth of the way to white and lets .15 of the lens through, easing in
+   with the glyph's growth and back on the release. */
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]>:is(.ui-icon,span){
+    opacity:.85;transition:opacity 150ms var(--ease-out);
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]{
+    --section-lens-accent:color-mix(in srgb,#ff375f 84%,#fff);
+  }
+  :root:not(.reduce-motion) .section-tabbar:not([data-glass=off])[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-accent:color-mix(in srgb,#ff375f 84%,#fff);
+  }
+}
+@media(prefers-reduced-motion:no-preference) and (prefers-color-scheme:dark){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]{
+    --section-lens-accent:color-mix(in srgb,#0099ff 84%,#fff);
+  }
+  :root:not(.reduce-motion) .section-tabbar:not([data-glass=off])[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-accent:color-mix(in srgb,#0099ff 84%,#fff);
+  }
+}
 /* The light theme's clear drag bubble shows the art under it unfrosted (section-lens.ts LENS_LIGHT_DRAG), so the grey ink of
    a tab mostly under it turns white with a soft dark rim, as the video's glyphs over its art; the accent keeps its colour. */
 @media(prefers-reduced-motion:no-preference){@media not (prefers-color-scheme:dark){
