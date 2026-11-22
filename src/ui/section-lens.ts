@@ -87,7 +87,7 @@ const float SMOKE_DARK_DROP = .075, PILL_VEIL = .096;
 // Coring fades chroma below .13 (about half a saturated 9 px stripe's), so dull fields
 // grey out but a stripe keeps its width at half height.
 const vec2 SMOKE_CORE = vec2(.09, .13);
-// C30's even smoke over large card areas: a wide field sample (fieldColor: four taps of a mip
+// C30's even smoke over large card areas: a wide field sample (fieldSample: four taps of a mip
 // level about FIELD_TEXEL css px a texel, about 10 css px out) tells broad colour from a narrow mark. Colour the field shares with the pixel fades by
 // SMOKE_FIELD (teal and mustard card art), while a 9 px stripe, mostly absent from the field,
 // keeps its hue. Only dull colour fades (spread below about .45): a vivid field such as a
@@ -97,6 +97,15 @@ const float SMOKE_FIELD = .15, SMOKE_EVEN = .3, FIELD_TEXEL = 16. / 3.;
 // The field's taps, in css px: the frost's near ring at spread 6, so a 9 px stripe keeps about
 // two fifths of its colour in the field, as with the earlier nine-tap field.
 const vec2 FIELD_TAP_X = vec2(9., 3.9), FIELD_TAP_Y = vec2(-3.9, 9.);
+// Apple Music's bar is heavily blurred: titles behind it do not read and colours bleed. At rest
+// the frost takes BODY_BLUR of the wide field sample (about 20 css px across), so the bar keeps
+// about a tenth of the backdrop's detail. The rim band sharpens toward the edge, so the mirrored
+// title stays crisp, and motion clears the blur, so the moving lens is unchanged.
+const float BODY_BLUR = .9;
+// Apple's blur bleeds colour: art behind its bar tints it, .46-1.12 of the art's own chroma over a 40 css px
+// window (Charlie's video, 32.5-32.75 s). The smoked wide field keeps BLUR_CHROMA of its colour, uncored, so a
+// mark smeared below SMOKE_CORE still tints the bar (a 9 px stripe keeps about half its colour over the window).
+const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
 const vec2 RIM_LIGHT = vec2(.30, .47);
@@ -173,11 +182,17 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float keep = mix(SMOKE_CHROMA * smoothstep(SMOKE_CORE.x, SMOKE_CORE.y, spread) * (1. - SMOKE_FIELD * shared), 1., motion);
   return vec3(tone) + chroma * keep;
 }
+// The smoked wide field of the heavy blur: smoked()'s tone, with BLUR_CHROMA of the field's colour kept
+// uncored. Motion clears it as smoked() does.
+vec3 smokedBlur(vec3 field, float motion) {
+  float luma = dot(field, vec3(.2126, .7152, .0722));
+  return smoked(vec3(luma), motion, field) + (field - luma) * mix(BLUR_CHROMA, 1., motion);
+}
 // A bilinear tap of mip level L reads base texels up to 1.5 * 2^L away, so the field's reach is
 // its furthest tap offset (9 css px on each axis) plus that, at every density. Its centre is held
 // that far, plus RIM_SLACK, inside the crop, so it never reads the clamped edge where the
 // viewport clips the crop margin.
-vec3 fieldColor(vec2 pos) {
+vec3 fieldSample(vec2 pos) {
   float density = float(textureSize(scene, 0).x) * region.z;
   float lod = log2(FIELD_TEXEL * density);
   float reach = 9. + 1.5 * exp2(ceil(lod - .01)) / density + RIM_SLACK;
@@ -187,7 +202,7 @@ vec3 fieldColor(vec2 pos) {
   vec2 tapX = FIELD_TAP_X * region.zw, tapY = FIELD_TAP_Y * region.zw;
   vec3 rgb = textureLod(scene, uv + tapX, lod).rgb + textureLod(scene, uv - tapX, lod).rgb
            + textureLod(scene, uv + tapY, lod).rgb + textureLod(scene, uv - tapY, lod).rgb;
-  return glassTone(rgb * .25, 0.);
+  return rgb * .25;
 }
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
@@ -313,13 +328,17 @@ void main() {
   vec2 body = bendFace(pos);
   // C30's smoked frost: a wider blur and a darker, flatter grey so titles behind
   // the bar do not read.
-  vec3 field = fieldColor(body);
+  vec3 wide = fieldSample(body);
+  vec3 field = glassTone(wide, 0.);
   // As in C30, a band at the rim refracts: it draws in what lies past the edge and
   // bends it along the curve, while the centre stays flat under the grey frost.
   float band = 1. - smoothstep(0., 12., depth);
   // The rim band draws its own sample, so the body sample is taken only where it shows:
   // inside the band or under a settled selection.
   vec3 bodyColor = band <= 0. || selected > 0. && pillMotion <= 0. ? smoked(glassColor(body, BODY_SPREAD), 0., field) : vec3(0.);
+  // Apple Music's heavy blur (BODY_BLUR): the smoked frost gives way to the smoked wide field.
+  vec3 blurColor = smokedBlur(field, 0.);
+  bodyColor = mix(bodyColor, blurColor, BODY_BLUR);
   // Like Apple Music's bar at rest, the top band mirrors the content just under it: at depth d
   // inside MIRROR_BAND it draws from depth MIRROR_BAND + MIRROR_K * (MIRROR_BAND - d), so a title
   // behind the bar shows flipped and squeezed in the top edge. Sides and bottom bend outward.
@@ -330,7 +349,8 @@ void main() {
   // its contrast against the wide field colour.
   float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
-  vec3 rgb = rim(band > 0. ? smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field) : bodyColor, normal, depth, liftEdge);
+  // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
+  vec3 rgb = rim(band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -376,10 +396,11 @@ void main() {
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         // One frost sample serves the moving selection and the clear glass it fades from.
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67, pillMotion) * .5);
-        selectionColor = smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field);
+        selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), BODY_BLUR * (1. - pillMotion));
         if (clear > 0.) {
-          clearGlass = glassTone(frosted, 1.);
+          // The bright-art hold reads the unblurred frost, so the pill's tone gate is unchanged by the blur.
           plainGlass = glassTone(frosted, 0.);
+          clearGlass = glassTone(mix(frosted, wide, BODY_BLUR * (1. - pillMotion)), 1.);
         }
         // Neutral smoke in the raised lens; it falls with the motion, so the rest pill is unchanged.
         float neutral = pillMotion * pillLift;
@@ -390,7 +411,7 @@ void main() {
         selectionColor += LENS_LIFT * neutral * max(0., 1. - dot(selectionColor, vec3(.2126, .7152, .0722)));
       } else if (clear > 0.) {
         vec3 frosted = frost(body, BODY_SPREAD * .5);
-        clearGlass = glassTone(frosted, 1.);
+        clearGlass = glassTone(mix(frosted, wide, BODY_BLUR), 1.);
         plainGlass = glassTone(frosted, 0.);
       }
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
@@ -467,7 +488,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
         if (gl.getError()!==gl.NO_ERROR) throw new Error('Section lens texture unavailable');
         width = canvas.width;
         height = canvas.height;
-        // The wide field sample reads a coarse mip level (fieldColor).
+        // The wide field sample reads a coarse mip level (fieldSample).
         gl.generateMipmap(gl.TEXTURE_2D);
       }
     },
