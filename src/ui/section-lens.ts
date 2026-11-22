@@ -149,6 +149,11 @@ const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // px either side of its inner edge (Apple's rim reads about 3.5 px), brightest along the top, whose light splits
 // into a faint rainbow (LENS_FRINGE), red at the outside running to blue inside, as Apple's does.
 const float LENS_RIM = 3., LENS_FRINGE = .3;
+// In the light theme the raised lens is clear, bright glass: the magnified, unfrosted art shows
+// through it, lifted LENS_LIGHT of the way to white, so it reads no darker than the milky resting
+// pill while it keeps about three times the bar's contrast, and the dark ink on it stays legible.
+// Its bevel shading comes after the lift, so its edge still reads. The dark theme's lens is clear.
+const float LENS_LIGHT = .8;
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
@@ -243,15 +248,15 @@ vec2 bendFace(vec2 pos) {
   float y = p.y * (.83 - .12 * column * column - .08 * across2 * (1. + across2));
   return size * .5 + vec2(x, y);
 }
-vec3 rim(vec3 rgb, vec2 normal, float depth, float liftEdge) {
-  // C30's top and bottom specular edges, shaped by the capsule normal. At rest the band is
-  // C30's single thin, crisp rim, about 1.1 px deep; under the raised lens it runs 1.25 px,
-  // which keeps the bar's glass in the lens's top gap dark.
+vec3 rim(vec3 rgb, vec2 normal, float depth) {
+  // C30's top and bottom specular edges, shaped by the capsule normal. The band is C30's single
+  // thin, crisp rim, about 1.2 px deep (RIM_REST). It is the same under a press
+  // or drag: the raised lens now rises past the bar, so the bar body away from it never changes.
   float top = max(0., dot(normal, vec2(-.30, -.95)));
   float bottom = max(0., normal.y);
-  // At rest it is Apple's crisp line, about 1.2 css px of full light inside the edge (RIM_REST, light then dark).
+  // It is Apple's crisp line, about 1.2 css px of full light inside the edge (RIM_REST, light then dark).
   vec2 rest = mix(RIM_REST.xy, RIM_REST.zw, pillSmoke);
-  float line = 1. - smoothstep(mix(rest.x, .25, liftEdge), mix(rest.y, 1.25, liftEdge), depth);
+  float line = 1. - smoothstep(rest.x, rest.y, depth);
   // Apple Music's bar rim is a thin, dim light line, not a bright outline: about +40 luma over
   // the dark bar and fainter still in the light theme (RIM_LIGHT, light then dark). It catches
   // the colour of the art under it: the light it mixes toward keeps RIM_TINT times the art's
@@ -266,11 +271,11 @@ float lensBevel(float radius) {
 // from the light, with no broad lit band over the content. Its edge is Apple's thin crisp rim
 // (LENS_RIM), brightest along the top and still clear along the bottom, carrying the faint
 // rainbow fringe (LENS_FRINGE) across its depth.
-vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u) {
+vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u, float light) {
   vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
   float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
   float shade = max(0., -facing);
-  vec3 face = sceneColor * (1. - .22 * shade - .1 * (1. - normal.z));
+  vec3 face = mix(sceneColor, vec3(1.), light) * (1. - .22 * shade - .1 * (1. - normal.z));
   float t = clamp(pillDepth / LENS_RIM, 0., 1.);
   float line = smoothstep(-.8, .5, pillDepth) * (1. - smoothstep(LENS_RIM - 1., LENS_RIM + 1., pillDepth));
   float lit = .34 + .46 * max(0., facing) + .16 * max(0., outward.y);
@@ -371,7 +376,7 @@ void main() {
   float milk = MILK_MIX * (1. - pillSmoke);
   surface = mix(surface, vec3(MILK_TONE), milk) + MILK_MIRROR * milk * mirrorZone * (surface - blurColor)
           + MILK_BLEED * milk * (blurColor - dot(blurColor, vec3(.2126, .7152, .0722)));
-  vec3 rgb = rim(surface, normal, depth, liftEdge);
+  vec3 rgb = rim(surface, normal, depth);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -458,7 +463,7 @@ void main() {
       // as the dark theme's press lifts its pill toward the frosted milk; the raised lens clears it smoothly.
       selection = mix(selection, vec3(MILK_TONE - PILL_MILK_DROP * (1. - pillPress)), MILK_MIX * (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
-      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
+      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, LENS_LIGHT * (1. - pillSmoke)), pillLift);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
@@ -540,6 +545,11 @@ function smoothstep(value:number) {
   return t * t * (3 - 2 * t);
 }
 
+// The raised lens may stand past the bar's end by up to LENS_END_ROOM css px toward the screen edge and
+// LENS_MENU_ROOM toward the menu button (12 px away), and keeps at least LENS_MIN_ASPECT where that
+// caps it. LENS_PAD is the surface's margin past the bar while it is drawn: the end room plus its edge.
+const LENS_END_ROOM = 14, LENS_MENU_ROOM = 8, LENS_MIN_ASPECT = 1.36, LENS_PAD = 16;
+
 function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Geometry|null {
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
@@ -595,13 +605,18 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     pillWidth + projection * Math.min(8,2*sideRoom),
     pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
   ] : pill;
-  // Charlie's video (b24s/MEASUREMENTS.md): the held lens is a large clear bubble, 1.24x the rest
-  // pill wide and 1.11 bar heights tall, centred on the bar, so it stands about 4 px above the bar
-  // top and 3 px below its bottom. The drag lens is 1.06 bar heights tall at aspect 1.44 (1.40-1.47).
-  const restWidth = w * sx;
-  const raisedHeight = bar.height * (1.11 - .05 * rise);
-  const raisedWidth = Math.min(pillWidth + 2 * sideRoom,
-    Math.max(1.26 * restWidth, 1.26 * restWidth + rise * (1.44 * raisedHeight - 1.26 * restWidth)));
+  // Charlie's video (b24s/MEASUREMENTS.md): the held lens is a wide clear bubble, 1.55 x 1.11 bar
+  // heights (102 x 73 css px, aspect 1.40) across about a tab and a half, centred on the bar, so it
+  // stands about 4 px above the bar top and 3 px below its bottom. The drag lens is 1.06 bar heights
+  // tall at aspect 1.47. It stays centred on its tab and may stand past the bar's ends: by
+  // LENS_END_ROOM toward the screen edge, keeping 6 px of it, and by LENS_MENU_ROOM toward the menu.
+  // Where that caps its width at an outer tab it flattens toward 2 px over each bar edge, so it
+  // keeps its capsule (aspect LENS_MIN_ASPECT) instead of turning round.
+  const naturalHeight = bar.height * (1.11 - .05 * rise);
+  const endRoom = Math.min(LENS_END_ROOM, Math.max(0, bar.left - 6));
+  const raisedWidth = Math.min(naturalHeight * (1.40 + .07 * rise),
+    2 * Math.min(cx + endRoom, bar.width - cx + LENS_MENU_ROOM));
+  const raisedHeight = Math.min(naturalHeight, Math.max(bar.height + 4, raisedWidth / LENS_MIN_ASPECT));
   const pressedWidth = pillWidth * pressWidth, pressedHeight = pillHeight * (1 - .1 * press);
   const drawnPill = projection > 0 || press > 0 ? [
     cx,
@@ -609,7 +624,7 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
     pressedWidth + projection * (raisedWidth - pressedWidth),
     pressedHeight + projection * (raisedHeight - pressedHeight),
   ] : pill;
-  const pad = projection > 0 ? 8 : 0;
+  const pad = projection > 0 ? LENS_PAD : 0;
   return {bar,crop:{x,y,width,height},pill:drawnPill,samplePill,opacity,lift:lift*raise,press,smoke:dark?1:0,motion,pad,projection,density:Math.min(1.5,devicePixelRatio)};
 }
 

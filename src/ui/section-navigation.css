@@ -50,7 +50,8 @@
   translate:calc(var(--ui-pill-x, 0px) - var(--section-pill-bleed)) 0;
   transition-duration:240ms,240ms,120ms;
 }
-.section-tabbar.ui-tabbar[data-pressing]::after{transition-duration:0ms,100ms,120ms}
+/* Charlie's video: the clear lens is up one frame after the press (19.650-19.667 s), so the press swell takes two. */
+.section-tabbar.ui-tabbar[data-pressing]::after{transition-duration:0ms,34ms,120ms}
 .section-tabbar.arcade-glass.ui-tabbar:not([data-glass=off])::after{
   box-shadow:inset 0 .5px 0 rgb(255 255 255 / .22),inset 0 -2px 3px rgb(0 0 0 / .13);
 }
