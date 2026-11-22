@@ -108,9 +108,15 @@ const float BODY_BLUR = .9;
 const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(.30, .47);
+const vec2 RIM_LIGHT = vec2(.85, .47);
 const float RIM_TINT = 3.;
 const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
+// Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
+// light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
+// almost none of its detail. The mirrored top band keeps MILK_BAND more of the art, so the flipped
+// title still reads in it, and its rim reads brighter (RIM_LIGHT.x). The resting pill takes the same
+// milk PILL_MILK_DROP darker, as Apple's grey selected tab; press and the raised lens clear it.
+const float MILK_TONE = .955, MILK_MIX = .9, MILK_BAND = .55, PILL_MILK_DROP = 25. / 255.;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -155,7 +161,10 @@ const float PILL_GAIN = .98 / .80;
 // passes PILL_BRIGHT.x luma (grey art about #464646), the pill eases to the plain smoked pill's
 // tone (slope one, .30 dark smoke), and from PILL_BRIGHT.y (about #727272) it is never brighter
 // than that, while darker card art keeps the clear look.
-const vec2 PILL_BRIGHT = vec2(.33, .41);
+const vec2 PILL_BRIGHT = vec2(.45, .55);
+// The dark theme's resting pill keeps PILL_SMOKE of smoke over normal art, so it sits about 22 under the
+// bar as Apple Music's; the bright-art hold still trades it for the plain pill's .30.
+const float PILL_SMOKE = .06;
 in vec2 unit;
 flat in float milkTone;
 out vec4 color;
@@ -277,7 +286,7 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   float inset = (1. - pillLift) * (1. - pillPress) * (.075 + .14 * smoothstep(-.5, .8, y));
   // The dark theme's resting selection is a smoked capsule, as in C30.
   float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
-  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - .20 * smoke);
+  vec3 face = sceneColor * (1. - inset - .21 * shade * clearance) * (1. - PILL_SMOKE * smoke);
   // Apple Music's selected tab is a darker capsule in the bar: in both themes it sits about
   // PILL_DEEPEN (23/255) below the bar's own tone. Over bright art the pill is already held to the
   // smoked pill's tone for the accent's contrast (PILL_BRIGHT), so the deepening fades there.
@@ -350,7 +359,10 @@ void main() {
   float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
-  vec3 rgb = rim(band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor, normal, depth, liftEdge);
+  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  // The light theme's milk (MILK_MIX), lighter in the mirrored band so its flipped title shows.
+  surface = mix(surface, vec3(MILK_TONE), MILK_MIX * (1. - pillSmoke) * (1. - MILK_BAND * mirrorZone));
+  vec3 rgb = rim(surface, normal, depth, liftEdge);
 
   if (pillOpacity > 0.) {
     // The soft contact shadow moves down as the selection lifts and fades at the bar edge.
@@ -425,7 +437,7 @@ void main() {
         float fieldLuma = dot(field, vec3(.2126, .7152, .0722));
         float plainTone = mix(SMOKE_SLOPE * mix(plain, min(plain, fieldLuma), SMOKE_EVEN) - SMOKE_DROP, plain, pillMotion);
         float smoke = pillSmoke * (1. - pillLift) * (1. - pillPress);
-        float ceiling = max(0., plainTone) * (1. - .30 * smoke) / (1. - .20 * smoke);
+        float ceiling = max(0., plainTone) * (1. - .30 * smoke) / (1. - PILL_SMOKE * smoke);
         float faceLuma = dot(faceColor, vec3(.2126, .7152, .0722));
         float bright = smoothstep(PILL_BRIGHT.x, PILL_BRIGHT.y, plain);
         faceColor *= mix(1., min(1., ceiling / max(faceLuma, .001)), bright);
@@ -433,6 +445,8 @@ void main() {
         deepen *= 1. - bright * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       }
       vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone, deepen);
+      // The light theme's resting pill is the bar's milk, PILL_MILK_DROP darker. Press and lift clear it smoothly.
+      selection = mix(selection, vec3(MILK_TONE - PILL_MILK_DROP), MILK_MIX * (1. - pillSmoke) * (1. - pillLift) * (1. - pillPress));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
       selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU), pillLift);
 

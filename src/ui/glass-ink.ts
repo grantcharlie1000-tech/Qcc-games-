@@ -11,6 +11,17 @@ const CLEAR_FILL:RGB=[8,12,18];
 const CLEAR_VEIL=.2,NAV_VEIL=.36;
 const HALO_DARK='rgb(0 0 0 / .8)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
+// The light theme's section navigation is milky, near-white glass (section-lens.ts MILK_TONE/MILK_MIX and the CSS
+// fallback's .9 tint), so its labels take Apple Music's dark ink. It reaches about 14:1 over the milk, and stays
+// above 7:1 even where the milk lets bright art lift it no further.
+export const MILK_INK='#1d1d1f';
+const MILK:RGB=[244,244,246],MILK_VEIL=.9;
+export function milkInk(samples:readonly RGB[]):{color:string;halo:string}{
+  const colors=samples.length?samples:[[25,29,28] as RGB];
+  const ink=luminance([29,29,31]);
+  const contrast=Math.min(...colors.map(rgb=>(luminance(mix(rgb,MILK,MILK_VEIL))+.05)/(ink+.05)));
+  return {color:MILK_INK,halo:contrast>=7?'transparent':'rgb(255 255 255 / .8)'};
+}
 /** Keep the glyph itself white. Sample only to decide whether a soft dark
  * shadow is needed over bright or busy artwork; never invert labels or scores.
  * Opaque accessibility surfaces bypass this function in the binding below. */
@@ -145,6 +156,7 @@ let frame=0;
 let liveTimer:ReturnType<typeof setTimeout>|undefined;
 let observer:MutationObserver|undefined;
 let density:MediaQueryList|undefined;
+let scheme:MediaQueryList|undefined;
 /** Retained for existing sheet callers; icons now use their original strokes. */
 export function syncSheetIconInk(sheet:HTMLElement):void{
   for(const outline of sheet.querySelectorAll('.glass-vector-halo'))outline.remove();
@@ -191,6 +203,7 @@ function update(){
       const selection=bar.matches('.ui-tabbar,.floating-glass-group');
       const nav=!!bar.closest('.section-navigation');
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
+      const milky=nav&&!matchMedia('(prefers-color-scheme: dark)').matches;
       for(const group of groups.values()){
         const labels=group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
         if(!labels.length)continue;
@@ -201,7 +214,8 @@ function update(){
           const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
           // The section bar's deep frost blurs fine texture away, so C30 showed plain labels over art.
           // There only low contrast (bright art, unreadable media) keeps the halo, at a 7:1 bar for 10px text.
-          ink=nav?glassInk(known.length?known:UNKNOWN,preference,selection,false,NAV_VEIL,7)
+          ink=milky?milkInk(known.length?known:UNKNOWN)
+            :nav?glassInk(known.length?known:UNKNOWN,preference,selection,false,NAV_VEIL,7)
             :glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),CLEAR_VEIL);
         }
         for(const glyph of labels)changes.push({glyph,ink});
@@ -236,6 +250,8 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     window.addEventListener('resize',schedule,{passive:true});
     density??=window.matchMedia('(max-resolution: 1.5dppx)');
     density.addEventListener('change',schedule);
+    scheme??=window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change',schedule);
     observer=new MutationObserver(records=>{
       const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
       if(records.some(r=>{
@@ -263,6 +279,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     if(!bindings.size){
       observer?.disconnect();observer=undefined;
       density?.removeEventListener('change',schedule);density=undefined;
+      scheme?.removeEventListener('change',schedule);scheme=undefined;
       document.removeEventListener('scroll',schedule,true);document.removeEventListener('load',schedule,true);document.removeEventListener('visibilitychange',schedule);document.removeEventListener('transitionend',schedule,true);document.removeEventListener('focusin',schedule,true);document.removeEventListener('focusout',schedule,true);window.removeEventListener('resize',schedule);
       cancelAnimationFrame(frame);frame=0;clearTimeout(liveTimer);syncCanvasInkSource(null);
     }
