@@ -82,8 +82,8 @@ test('icon palette still respects high contrast and forced colours',async({page}
  await expect(icon).toHaveCSS('color','rgb(255, 255, 255)');
 });
 
-// Apple Music's light bar is milky, near-white glass: unselected glyphs are mid-grey and labels a darker grey, which
-// must still read at 4.5:1 over the lens's milk where it is darkest, over black art.
+// Apple Music's light bar is pale, see-through frost: unselected glyphs are mid-grey and labels a dark grey (about 45 in
+// Apple's light still, #333336 here), which must still read at 4.5:1 over the lens's frost where it is darkest, over black art.
 test('the light theme\'s milky navigation keeps Apple\'s grey ink legible at 4.5:1',async({page})=>{
  await page.emulateMedia({colorScheme:'light'});
  await page.goto('/#/collection');
@@ -91,7 +91,7 @@ test('the light theme\'s milky navigation keeps Apple\'s grey ink legible at 4.5
  await expect(bar).toHaveAttribute('data-section-lens','webgl');
  await page.addStyleTag({content:'#content *{visibility:hidden!important}#content,body,html{background:#000!important}'});
  const label=bar.locator('.ui-tab:not([aria-current=page])>span').first();
- await expect.poll(()=>label.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(92, 92, 96)');
+ await expect.poll(()=>label.evaluate(e=>getComputedStyle(e).color)).toBe('rgb(51, 51, 54)');
  await expect(bar.locator('.ui-tab:not([aria-current=page]) svg.ui-icon').first()).toHaveCSS('color','rgb(110, 110, 115)');
  const contrast=()=>bar.locator('canvas.section-lens').evaluate((surface,index)=>{
   const canvas=surface as HTMLCanvasElement,rect=canvas.getBoundingClientRect(),sx=canvas.width/rect.width,sy=canvas.height/rect.height;
