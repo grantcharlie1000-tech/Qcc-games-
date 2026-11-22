@@ -112,17 +112,20 @@ const vec2 RIM_LIGHT = vec2(1., .6);
 const float RIM_TINT = 3.;
 // Apple's resting rim, light then dark: full light to RIM_REST.x css px deep, gone by .y (light), .z and .w (dark).
 const vec4 RIM_REST = vec4(.9, 1.6, .7, 1.5);
-const float MIRROR_BAND = 8., MIRROR_K = 2., MIRROR_MIX = .29;
+// Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
+// the mirror keeps MIRROR_MIX of its contrast, light then dark.
+const float MIRROR_BAND = 8., MIRROR_K = 2.;
+const vec2 MIRROR_MIX = vec2(.29, .7);
 // Apple Music's light bar is milky glass, near white (about 234/255) over any page, dark ones too: the
 // light theme's bar mixes MILK_MIX of the way to MILK_TONE, so the art keeps only a faint tint and
 // almost none of its detail. The mirrored top band is as milky, but keeps MILK_MIRROR of its flipped
 // title's strokes against the field, so the title still reads in it, and its rim reads brighter
 // (RIM_LIGHT.x). The resting pill takes the same milk PILL_MILK_DROP darker, as Apple's grey selected
 // tab; a press lifts it to the bar's own milk, and the raised lens clears it.
-const float MILK_TONE = .985, MILK_MIX = .92, MILK_MIRROR = 1., PILL_MILK_DROP = 25. / 255.;
-// Apple's frost lets the colour of the art under it bleed through: the milk keeps MILK_BLEED more of the blurred
-// art's chroma, so the pale bar takes a faint tint of each card while its tone stays near white.
-const float MILK_BLEED = .45;
+const float MILK_TONE = 1., MILK_MIX = .86, MILK_MIRROR = 1., PILL_MILK_DROP = 27. / 255.;
+// Apple's frost is pale but not opaque: the blurred art's shapes still show faintly through the milk, and its
+// colour bleeds through: the milk keeps MILK_BLEED more of the blurred art's chroma, so each card tints the bar.
+const float MILK_BLEED = .55;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -371,7 +374,7 @@ void main() {
   float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
-  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - MIRROR_MIX) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor;
+  vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, mix(BODY_SPREAD, 1., band)), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, BODY_BLUR * (1. - band) * (1. - mirrorZone)) : bodyColor;
   // The light theme's milk (MILK_MIX). The mirrored band keeps MILK_MIRROR of its strokes over the milk.
   float milk = MILK_MIX * (1. - pillSmoke);
   surface = mix(surface, vec3(MILK_TONE), milk) + MILK_MIRROR * milk * mirrorZone * (surface - blurColor)

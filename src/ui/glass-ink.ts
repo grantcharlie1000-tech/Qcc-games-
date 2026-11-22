@@ -12,15 +12,15 @@ const CLEAR_VEIL=.2,NAV_VEIL=.36;
 const HALO_DARK='rgb(0 0 0 / .8)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
 // The light theme's section navigation is milky, near-white glass (section-lens.ts MILK_TONE/MILK_MIX and the CSS
-// fallback's .9 tint), so its labels take Apple Music's dark ink. It reaches about 14:1 over the milk, and stays
-// above 7:1 even where the milk lets bright art lift it no further.
-export const MILK_INK='#1d1d1f';
-const MILK:RGB=[244,244,246],MILK_VEIL=.9;
+// fallback's .9 tint), so its labels take Apple Music's grey ink. Over the milk's darkest case (black art under the
+// lens's .86 milk) it still reaches about 4.7:1, so the white halo only returns below 4.5:1.
+export const MILK_INK='#5c5c60';
+const MILK:RGB=[255,255,255],MILK_VEIL=.86;
 export function milkInk(samples:readonly RGB[]):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
-  const ink=luminance([29,29,31]);
+  const ink=luminance([92,92,96]);
   const contrast=Math.min(...colors.map(rgb=>(luminance(mix(rgb,MILK,MILK_VEIL))+.05)/(ink+.05)));
-  return {color:MILK_INK,halo:contrast>=7?'transparent':'rgb(255 255 255 / .8)'};
+  return {color:MILK_INK,halo:contrast>=4.5?'transparent':'rgb(255 255 255 / .8)'};
 }
 /** Keep the glyph itself white. Sample only to decide whether a soft dark
  * shadow is needed over bright or busy artwork; never invert labels or scores.

@@ -47,8 +47,8 @@ describe('clear glass contrast',()=>{
     expect(glassInk([[170,170,170]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
     expect(glassInk([[0,0,0],[255,255,255]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
   });
-  it('gives the light theme\'s milky section bar dark ink, legible over any art',()=>{
-    // The milk (.9 of rgb 244 244 246) keeps dark ink above 7:1 over black, white and saturated art alike.
+  it('gives the light theme\'s milky section bar grey ink, legible over any art',()=>{
+    // The milk (.86 of white) keeps Apple's grey label ink above 4.5:1 over black, white and saturated art alike.
     for(const art of [[0,0,0],[255,255,255],[255,0,0],[0,40,200],[31,90,85]] as const)
       expect(milkInk([art])).toEqual({color:MILK_INK,halo:'transparent'});
     expect(milkInk([])).toEqual({color:MILK_INK,halo:'transparent'});
