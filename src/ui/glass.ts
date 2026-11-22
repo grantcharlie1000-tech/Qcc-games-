@@ -299,10 +299,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     const width=tab.offsetWidth;
     const available=bar.clientWidth;
     if(!width||!available)return;
-    const deformation=Math.min(1,Math.abs(dx)/width);
+    // The bar grows while it is pressed (section-navigation.css), so a px of finger travel is 1/scale of a layout px:
+    // the pill moves that much, and stays 1:1 with the finger on screen.
+    const travel=dx/(bar.getBoundingClientRect().width/bar.offsetWidth||1);
+    const deformation=Math.min(1,Math.abs(travel)/width);
     const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
     const halfWidth=width*scaleX/2;
-    const center=Math.max(halfWidth,Math.min(available-halfWidth,tab.offsetLeft+width/2+dx));
+    const center=Math.max(halfWidth,Math.min(available-halfWidth,tab.offsetLeft+width/2+travel));
     drag.center=center;
     bar.style.setProperty('--ui-pill-drag-x',`${round(center-width/2)}px`);
     bar.style.setProperty('--ui-pill-drag-scale',`${scaleX} ${scaleY}`);

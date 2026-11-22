@@ -16,12 +16,14 @@ test.beforeEach(async({page})=>{
   await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
-// The centre of the pill, from its computed translate and width. The pill is the bar's ::after.
+// The centre of the pill on screen, from its computed translate and width. The pill is the bar's ::after. MOTION-3 (#24):
+// the section bar grows about its centre while pressed (Charlie's video, x1.046), so its layout px are taken through
+// that growth; at rest the growth is 1 and this is the layout sum it always was.
 function pillCentre(bar:Locator){
   return bar.evaluate(el=>{
     const pill=getComputedStyle(el,'::after');
     const box=el.getBoundingClientRect();
-    return box.left+el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2;
+    return box.left+(el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2)*box.width/(el as HTMLElement).offsetWidth;
   });
 }
 function centreOf(target:Locator){
@@ -238,11 +240,15 @@ test('a horizontal drag carries the pill across tabs and selects the tab nearest
   const farX=end.x+end.width/2;
   await page.mouse.move(x,y);
   await page.mouse.down();
+  // MOTION-3 (#24): the bar grows about its centre while pressed (video 349x62 -> 365x66, x1.046 x1.065), so the pill
+  // starts from Games as drawn on the grown bar (5 px left of the finger) and moves 1:1 with the finger from there.
+  await expect.poll(()=>bar.evaluate(el=>{const box=el.getBoundingClientRect(),bar=el as HTMLElement;return [box.width/bar.offsetWidth,box.height/bar.offsetHeight].map(v=>Math.round(v*1000)/1000);})).toEqual([1.046,1.065]);
+  const from=await centreOf(games);
   await page.mouse.move(farX,y,{steps:5});
-  await expect.poll(async()=>Math.abs((await pillCentre(bar))-farX)).toBeLessThan(3);
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(from+farX-x))).toBeLessThan(3);
   const reverseX=farX-40;
   await page.mouse.move(reverseX,y,{steps:3});
-  await expect.poll(async()=>Math.abs((await pillCentre(bar))-reverseX)).toBeLessThan(3);
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(from+reverseX-x))).toBeLessThan(3);
   await page.mouse.up();
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);

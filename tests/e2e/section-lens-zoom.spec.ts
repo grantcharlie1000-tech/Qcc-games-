@@ -12,13 +12,17 @@ test.beforeEach(async({context,page})=>{
 const zooms=(page:Page)=>page.locator('.app-tabbar .ui-tab').evaluateAll(tabs=>tabs.map(tab=>(tab as HTMLElement).style.getPropertyValue('--section-lens-zoom')));
 const scales=(page:Page)=>page.locator('.app-tabbar .ui-tab>.ui-icon').evaluateAll(icons=>icons.map(icon=>getComputedStyle(icon).scale));
 const magnified=async(page:Page)=>Math.max(1,...(await zooms(page)).map(Number).filter(Number.isFinite));
-// The layout boxes and the screen boxes of the tabs: the zoom scales only their content, so neither moves.
+// The layout boxes and the screen boxes of the tabs: the zoom scales only their content, so neither moves. MOTION-3 (#24):
+// the bar itself grows about its centre while pressed (Charlie's video, 349x62 -> 365x66), so the screen boxes are read in
+// the bar's own frame, with that growth undone; at rest it is 1 and they are the screen boxes as before.
 const boxes=(page:Page)=>page.locator('.app-tabbar .ui-tab').evaluateAll(tabs=>tabs.map(tab=>{
-  const rect=tab.getBoundingClientRect(),el=tab as HTMLElement;
-  return [el.offsetLeft,el.offsetWidth,Math.round(rect.left*10)/10,Math.round(rect.width*10)/10];
+  const rect=tab.getBoundingClientRect(),el=tab as HTMLElement,bar=el.closest<HTMLElement>('.app-tabbar')!,frame=bar.getBoundingClientRect();
+  const grow=frame.width/bar.offsetWidth,centre=frame.left+frame.width/2;
+  return [el.offsetLeft,el.offsetWidth,Math.round((centre+(rect.left-centre)/grow)*10)/10,Math.round(rect.width/grow*10)/10];
 }));
 // LENS_ZOOM in tabbar.ts (Charlie's video: the glyph under the lens grows 1.17x).
-const LENS_ZOOM=1.18;
+// MOTION-3 (#24): was 1.18; the bar's growth while pressed (x1.046 x 1.065, the video's) carries the rest of the 1.17.
+const LENS_ZOOM=1.16;
 
 // Drags the lens from Games until its centre sits at x: over a tab's centre, or on the gap between two tabs.
 async function dragLensTo(page:Page,at:(tabs:{x:number;width:number}[])=>number){
@@ -30,7 +34,11 @@ async function dragLensTo(page:Page,at:(tabs:{x:number;width:number}[])=>number)
   await page.mouse.move(x,y);
   await page.mouse.down();
   await expect(bar).toHaveAttribute('data-pressing','');
-  await page.mouse.move(at(tabs),y,{steps:8});
+  // MOTION-3 (#24): the bar grows about its centre while pressed (video x1.046 x1.065) and the lens moves 1:1 with the
+  // finger from Games as drawn on the grown bar, so the target is read from the grown tabs and reached by that travel.
+  await expect.poll(()=>bar.evaluate(el=>Math.round(el.getBoundingClientRect().width/(el as HTMLElement).offsetWidth*1000)/1000)).toBe(1.046);
+  const grown=await bar.locator('.ui-tab').evaluateAll(list=>list.map(tab=>{const r=tab.getBoundingClientRect();return {x:r.x,width:r.width};}));
+  await page.mouse.move(x+at(grown)-(grown[0].x+grown[0].width/2),y,{steps:8});
   await expect(bar).toHaveAttribute('data-pill-dragging','');
   // The pill's stretch eases for 100ms after the last move.
   await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el,'::after').scale)).toBe('1.32 0.98');

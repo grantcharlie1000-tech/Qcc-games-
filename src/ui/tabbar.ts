@@ -42,8 +42,9 @@ export function nextTabbarState(state:TabbarScroll,y:number,max:number,typing=fa
 // This reads only the pill's resolved ::after geometry, which section-lens.ts reads too, and the content's layout boxes,
 // which a scale never moves. As in Charlie's video (b24s), the press raises the lens, so the glyph under a held or
 // dragged lens grows about 1.17x; the zoom follows the pill's press area, so a settle and rest stay at 1. CSS applies
-// the zoom only without reduced motion.
-export const LENS_ZOOM=1.18;
+// the zoom only without reduced motion. MOTION-3: was 1.18. The bar now grows about 1.055x under the press as the video's
+// does, and the video's 1.17 is the glyph's whole growth, so the lens's own share is 1.16 (measured 1.25 drag, 1.11 hold).
+export const LENS_ZOOM=1.16;
 // The bevel section-lens.ts draws at the lens edge: min(12px, .45 of the capsule radius).
 export const lensBevel=(width:number,height:number)=>Math.min(12,.45*Math.min(width,height)/2);
 // The raised bubble's own bevel there (LENS_BEVEL): min(14px, .6 of its radius).

@@ -660,8 +660,10 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   // video's hold lens stands 3-4 px proud), so it keeps a capsule (aspect LENS_MIN_ASPECT), not a circle.
   const naturalHeight = bar.height * (1.11 - .05 * rise);
   const endRoom = Math.min(LENS_END_ROOM, Math.max(0, bar.left - 6));
+  // The bar's growth while pressed (section-navigation.css) already reaches half its extra width toward the menu.
+  const menuRoom = Math.max(0, LENS_MENU_ROOM - (bar.width - element.offsetWidth) / 2);
   const raisedWidth = Math.min(naturalHeight * (1.40 + .07 * rise),
-    2 * Math.min(cx + endRoom, bar.width - cx + LENS_MENU_ROOM));
+    2 * Math.min(cx + endRoom, bar.width - cx + menuRoom));
   const raisedHeight = Math.min(naturalHeight, Math.max(bar.height + 2 * LENS_PROUD, raisedWidth / LENS_MIN_ASPECT));
   const pressedWidth = pillWidth * pressWidth, pressedHeight = pillHeight * (1 - .1 * press);
   const drawnPill = projection > 0 || press > 0 ? [

@@ -79,6 +79,23 @@
     transition-timing-function:linear(0, .035, .125, .245, .379, .514, .641, .753, .847, .923, .981, 1.023, 1.05, 1.066, 1.072, 1.072, 1.067, 1.059, 1.05, 1.04, 1.03, 1.021, 1.014, 1.008, 1.003, 1, .997, .995, .995, .996, .997, .999, 1),var(--ease-glass),var(--ease);
   }
 }
+/* Charlie's video (b24s/MEASUREMENTS.md, b24-apple stills.json): the whole bar grows about its centre while a press lasts,
+   349x62 -> 365x66 (x1.046 wide, x1.065 tall), a frame after the press (19.650 -> 19.667 s). After the lift it is back
+   within 1 px by about 134 ms and recoils once by about 1 px (15.183 -> 15.367 s): here a damped spring, within 1 px by
+   112 ms, a .8 px recoil at 175 ms, still by 300 ms. glass.ts keeps a drag 1:1 with the finger on the grown bar. The
+   section bar's minimise and hide keep scale 1, so its origin can sit at the centre, as the video's growth does. */
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:not([data-hidden=true]):not([data-minimized=true]){
+    transform-origin:50% 50%;
+    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 200ms var(--ease-out);
+    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
+      scale 300ms linear(0, .039, .136, .265, .405, .542, .668, .776, .865, .935, .986, 1.021, 1.043, 1.055, 1.059, 1.057, 1.051, 1.044, 1.036, 1.028, 1.02, 1.014, 1.008, 1.004, 1);
+  }
+  :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:is([data-pressing],[data-pill-dragging]):not([data-hidden=true]):not([data-minimized=true]){
+    scale:1.046 1.065;
+    transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 34ms var(--ease-out);
+  }
+}
 .section-tabbar.arcade-glass.ui-tabbar:not([data-glass=off])::after{
   box-shadow:inset 0 .5px 0 rgb(255 255 255 / .22),inset 0 -2px 3px rgb(0 0 0 / .13);
 }
