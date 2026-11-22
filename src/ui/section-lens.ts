@@ -496,6 +496,16 @@ void main() {
         // One frost sample serves the moving selection and the clear glass it fades from.
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
+        // The dark rest pill is the body's soft frost (softFrost), so as the motion falls the selection eases into that
+        // sample: the last moving frame is the rest pill, and a press's first frame leaves it without a step. The clear
+        // and plain glass below keep the frost, as at rest.
+        float soften = pillSmoke * (1. - pillMotion);
+        if (soften > 0.) {
+          softFrostMix = pillSmoke;
+          vec3 soft = mix(smoked(glassColor(body, BODY_SPREAD), 0., field), blurColor, bodyBlur);
+          softFrostMix = 0.;
+          selectionColor = mix(selectionColor, soft, soften);
+        }
         if (clear > 0.) {
           // The bright-art hold reads the unblurred frost, so the pill's tone gate is unchanged by the blur.
           plainGlass = glassTone(frosted, 0.);

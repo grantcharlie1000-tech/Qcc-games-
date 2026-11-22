@@ -202,6 +202,71 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
   }
 });
 
+// 93a36a80 frosts the dark resting pill soft (softFrost) while the moving selection kept the sparse frost, so letters
+// under the pill snapped between streaked and soft on the settle frame and on a press's first frame (17-33/255). The
+// last moving frame must be the rest pill: force pillMotion to .001 for one draw over a white title on black and compare
+// that draw with the rest draw under the pill.
+test('the dark pill\'s last moving frame over a title is its rest frame',async({page})=>{
+  await page.addInitScript(()=>{
+    const gl=WebGL2RenderingContext.prototype,getLocation=gl.getUniformLocation,uniform1f=gl.uniform1f;
+    const names=new WeakMap<WebGLUniformLocation,string>();
+    gl.getUniformLocation=function(this:WebGL2RenderingContext,program:WebGLProgram,name:string){
+      const location=getLocation.call(this,program,name);
+      if(location)names.set(location,name);
+      return location;
+    };
+    gl.uniform1f=function(this:WebGL2RenderingContext,location:WebGLUniformLocation|null,value:number){
+      const forced=(window as unknown as {forceMotion?:number}).forceMotion;
+      return uniform1f.call(this,location,forced!==undefined&&location&&names.get(location)==='pillMotion'?forced:value);
+    };
+  });
+  await page.emulateMedia({colorScheme:'dark'});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await expect(bar.getByRole('link',{name:'Games',exact:true})).toHaveAttribute('aria-current','page');
+  await page.locator('.game-grid').evaluate(grid=>{
+    const patch=document.createElement('div');
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:1;background:#000;color:#fff;pointer-events:none;'
+      +'font:700 22px/22px system-ui,sans-serif;padding:44px 0 0 14px;white-space:nowrap';
+    patch.textContent='New Releases for You';
+    grid.append(patch);
+  });
+  const canvas=bar.locator('canvas.section-lens');
+  // The rows under the selected tab's label and glyph, as the contrast pin reads them.
+  const pill=()=>canvas.evaluate(element=>{
+    const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+    const sx=surface.width/rect.width,sy=surface.height/rect.height;
+    const tab=surface.closest('.app-tabbar')!.querySelector('[aria-current="page"]')!.getBoundingClientRect();
+    const x=Math.round((tab.left+6-rect.left)*sx),y=Math.round((tab.top+8-rect.top)*sy);
+    return [...surface.getContext('2d')!.getImageData(x,y,Math.round((tab.width-12)*sx),Math.round((tab.height-16)*sy)).data];
+  });
+  const steady=async()=>{
+    let previous='';
+    await expect.poll(async()=>{const current=(await pill()).join();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
+    return previous.split(',').map(Number);
+  };
+  // Redraw by a one px scroll and back, so both reads are taken at the top of the page: the fixed title stays where it
+  // is under the bar.
+  const redraw=async()=>{
+    await page.evaluate(()=>scrollTo(0,1));await page.waitForTimeout(300);
+    await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(400);
+  };
+  await redraw();
+  const rest=await steady();
+  await page.evaluate(()=>{(window as unknown as {forceMotion?:number}).forceMotion=.001;});
+  await redraw();
+  const moving=await steady();
+  await page.evaluate(()=>{delete (window as unknown as {forceMotion?:number}).forceMotion;});
+  let worst=0,spread=0;
+  for (let i=0;i<rest.length;i+=4) for (let c=0;c<3;c++) worst=Math.max(worst,Math.abs(rest[i+c]-moving[i+c]));
+  for (let i=4;i<rest.length;i+=4) spread=Math.max(spread,Math.abs(rest[i+1]-rest[i-3]));
+  console.log(`dark pill, last moving frame against rest over a title: max ${worst}/255 (title strokes ${spread}/255)`);
+  // The title must show under the pill, or the comparison proves nothing.
+  expect(spread).toBeGreaterThan(8);
+  expect(worst).toBeLessThanOrEqual(2);
+});
+
 test('section lens falls back on context loss',async({page})=>{
   await page.addInitScript(()=>{
     const getContext=HTMLCanvasElement.prototype.getContext;
