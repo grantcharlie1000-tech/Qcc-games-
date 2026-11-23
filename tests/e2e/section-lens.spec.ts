@@ -179,9 +179,14 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // Since the light frost lets the art through (133d37f2), black art is the light pill's worst case: the pill followed it
 // down to about 166/255 and the #ff375f accent read 1.45:1. The same floors hold over a black patch.
 // LOOK-10 (council on aa6359ee): the dark pill was held at .091 so #0099ff kept 2.5:1, which sat it 79 under a 136 bar over
-// mid-grey art. It now sits a little darker than the bar over every art (a bar-to-pill luminance contrast of 1.21 over black
-// art, Apple's 1.15-1.21, easing to 1.08 over mid and bright art since LOOK-16), and the selected icon and label keep the 2:1 selected floor by their ink (section-lens.ts
+// mid-grey art. It now sits a step darker than the bar over every art, and the selected icon and label keep the 2:1 selected floor by their ink (section-lens.ts
 // selectionAccent): checked over white, black and, dark only, a #777 patch, where #0099ff alone would read about 1.4:1.
+// LOOK-17 (Charlie's FAST LOOP: re-pin the guards that block Apple's behaviour): the 1.05-1.35 step guard was our own
+// (0313c4af), and Apple's frames break it over bright art. Read by this test's step, (Lbar+.05)/(Lpill+.05), in pairs
+// across the capsule's ends on Apple's dark rest frames (fast/look/tools-look17/apple_step.py), Apple's pill sits 1.16
+// under its bar over black (video 38.75 s; the 16 Nov still 1.21), 1.68 over a bright green poster (19.5 s, bar 137/255)
+// and 2.05-2.08 over a bright photo (32.5-32.75 s). The guard is now Apple's with a little room: 1.10-1.30 over black,
+// 1.45-2.30 over white and #777 art (PILL_STEP 1.21 rising to 1.65).
 test('the selected accent keeps its contrast against the WebGL pill over white art and over black art',async({page})=>{
   const floor={dark:{ratio:2,pill:1},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
   for (const scheme of ['dark','light'] as const) {
@@ -244,8 +249,8 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     if (scheme==='dark') {
       const step=await barToPill(pill);
       console.log(`dark bar to pill over white art: ${step.toFixed(2)}`);
-      expect(step).toBeGreaterThanOrEqual(1.05);
-      expect(step).toBeLessThanOrEqual(1.35);
+      expect(step).toBeGreaterThanOrEqual(1.45);
+      expect(step).toBeLessThanOrEqual(2.3);
     }
     // Black art: wait for the bar to darken under it (light frost about 188, dark smoke about 32), then two equal reads.
     await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#000';});
@@ -263,8 +268,8 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     if (scheme==='dark') {
       const blackStep=await barToPill(blackPill);
       console.log(`dark bar to pill over black art: ${blackStep.toFixed(2)}`);
-      expect(blackStep).toBeGreaterThanOrEqual(1.05);
-      expect(blackStep).toBeLessThanOrEqual(1.35);
+      expect(blackStep).toBeGreaterThanOrEqual(1.1);
+      expect(blackStep).toBeLessThanOrEqual(1.3);
       // Mid-grey art, where #0099ff alone would read about 1.4:1 against the lighter pill: its ink keeps the floor.
       await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#777';});
       await expect.poll(()=>canvas.evaluate(element=>{
@@ -277,8 +282,8 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       const greyStep=await barToPill(greyPill);
       console.log(`selected accent over #777 art, dark: ${greyRatio}:1, pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)}`);
       expect(greyRatio).toBeGreaterThanOrEqual(floor.dark.ratio);
-      expect(greyStep).toBeGreaterThanOrEqual(1.05);
-      expect(greyStep).toBeLessThanOrEqual(1.35);
+      expect(greyStep).toBeGreaterThanOrEqual(1.45);
+      expect(greyStep).toBeLessThanOrEqual(2.3);
     }
   }
 });

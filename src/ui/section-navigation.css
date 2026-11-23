@@ -199,8 +199,8 @@
   .section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
     --section-pill-accent:#0099ff;
   }
-  /* LOOK-10 (council on aa6359ee): the WebGL bar's resting pill sits only a little darker than the bar over every art
-     (section-lens.ts PILL_STEP), no longer held dark for the accent. Where #0099ff would fall under 2:1 against it,
+  /* LOOK-10 (council on aa6359ee): the WebGL bar's resting pill is the bar's own smoke a step darker, deeper over bright
+     art as Apple's capsule (section-lens.ts PILL_STEP, LOOK-17), no longer held dark for the accent. Where #0099ff would fall under 2:1 against it,
      glass-ink.ts gives the selected tab the nearest lighter or deeper blue that keeps it; press and drag keep theirs. */
   .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
     --section-pill-accent:var(--section-pill-adaptive-accent,#0a84ff);
