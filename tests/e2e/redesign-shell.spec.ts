@@ -448,8 +448,15 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
- await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
+ // MOTION-15 (#24): was toBeHidden. 0742c32a (Charlie's video, 15.183 s: the tab bar never leaves the screen when a tab turns
+ // the page) keeps the Games bar up through a route's loading page in a handover, inert as its navigation is, its pill
+ // sprung to the tab it was sent to, until the page goes. So while Movies loads the bar stands on Movies and takes no input.
+ const chrome=page.locator('.app-navigation');
+ await expect(chrome).toHaveAttribute('data-route-handover','');
+ await expect(chrome).toHaveJSProperty('inert',true);
+ await expect(page.locator('.app-tabbar a.ui-tab[aria-current=page]')).toHaveAttribute('href','#/movies/browse/movie');
+ // The bar is up and not minimised, so its mini control stays unpainted (was toBeHidden, with the whole navigation hidden).
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('opacity','0');
  await expect(back).toHaveClass('game-button secondary');
  const loadingBox=await back.boundingBox();
  expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
