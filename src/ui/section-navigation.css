@@ -315,10 +315,12 @@
 .section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini .ui-icon{transition:opacity 100ms var(--ease) 30ms}
 /* MOTION-7: Apple's compact circle keeps the selected tab's accent glyph (Charlie's video, 34.25 s: the Home glyph in the
    blue of its selected tab), where ours drew the bar's grey ink. It takes the selected tab's accent and halo: the dark
-   theme's #0099ff with its soft .85 dark rim (5.5:1 over the black page's smoke). The light theme's #ff375f sits on the
-   bare frost here, not on the pill held at 200/255 (about 188 over black art, 1.8:1), so it keeps a thin dark rim. Glass
-   off (more contrast, reduced transparency, forced colours) keeps the plain ink (theme.css). */
-.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#ff375f;--section-mini-halo:rgb(0 0 0 / .6)}
+   theme's #0099ff with its soft .85 dark rim (5.5:1 over the black page's smoke). The light theme's accent sits on the
+   bare frost here, not on the pill held at 200/255: about 188 over black art, where #ff375f reads 1.85:1, under the
+   accent's 2:1 floor (MOTION-8, #24 review of MOTION-7). So the circle draws the accent a little deeper, #e02a52, 2.4:1
+   on that frost and 2:1 down to a frost of about 172, with the thin dark rim on top. Glass off (more contrast, reduced
+   transparency, forced colours) keeps the plain ink (theme.css). */
+.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#e02a52;--section-mini-halo:rgb(0 0 0 / .6)}
 @media(prefers-color-scheme:dark){.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#0099ff;--section-mini-halo:rgb(0 0 0 / .85)}}
 .section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini .ui-icon{filter:drop-shadow(0 0 .75px var(--section-mini-halo)) drop-shadow(0 0 .75px var(--section-mini-halo))}
 /* As the selected tab on the CSS fallback: where glass-ink.ts flagged bright art under its label, white ink, full rim. */

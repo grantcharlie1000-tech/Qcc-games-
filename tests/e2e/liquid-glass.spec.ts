@@ -513,8 +513,9 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   // The icon is a copy of the current tab's icon and always stays white.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
   // MOTION-7: was the bar's mid-grey ink. Apple's compact circle keeps the selected tab's accent glyph (Charlie's video,
-  // 34.25 s), so the light theme's capsule glyph is the selected tab's #ff375f.
-  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(255, 55, 95)');
+  // 34.25 s), so the light theme's capsule glyph is the selected tab's accent. MOTION-8: a little deeper than the pill's
+  // #ff375f, #e02a52, since it sits on the bare frost, which reads about 188 over black art (2.4:1 there, clear-glass.spec).
+  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(224, 42, 82)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   // MOTION-6 (#24): was 56 x 48 at x 12 on the bar's bottom line (832). Apple's compact selected tab (Charlie's video, 34.25 s)

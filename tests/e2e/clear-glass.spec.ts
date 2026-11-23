@@ -112,9 +112,21 @@ test('a touch-focused tab still adapts the visible mini after scrolling',async({
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect(mini).toHaveCSS('opacity','1');
   await page.addStyleTag({content:'html,body{background:#000!important}#content{visibility:hidden}'});
-  // MOTION-7: was white. Apple's compact circle keeps the selected tab's accent glyph (Charlie's video, 34.25 s), so the
-  // visible mini carries the light theme's selected accent, #ff375f, as the expanded bar's selected tab does.
-  await expect(mini.locator('svg')).toHaveCSS('color','rgb(255, 55, 95)');
+  // MOTION-8 (#24 review of MOTION-7, finding 2): this pinned white ink over black art until MOTION-7 re-pinned it to the
+  // light accent #ff375f, which reads 1.85:1 on the circle's bare frost there (about 188), under the accent's 2:1 floor
+  // (section-lens.spec.ts). Apple's compact circle keeps its tab's accent glyph (Charlie's video, 34.25 s), so the glyph is
+  // measured instead: its ink against the frost behind it, the rim left out, 2:1 or more over black art.
+  const svg=mini.locator('svg');
+  await expect(svg).toHaveCSS('opacity','1');
+  await page.waitForTimeout(400);
+  const bounds=(await mini.boundingBox())!;
+  const boxes=await mini.evaluate(e=>{const b=e.getBoundingClientRect(),icon=e.querySelector('svg')!,r=icon.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(icon).color}];});
+  const mask=await glyphFillMask(page,mini,'.app-navigation .ui-tabbar-mini svg',true);
+  const hide=await page.addStyleTag({content:'.app-navigation .ui-tabbar-mini svg{visibility:hidden!important}'});
+  const frost=(await mini.screenshot({animations:'disabled'})).toString('base64');
+  await hide.evaluate(e=>e.remove());
+  const ratios=await glyphContrast(page,frost,mask,boxes,bounds);
+  expect(Math.min(...ratios),JSON.stringify({ratios,boxes})).toBeGreaterThanOrEqual(2);
 });
 
 test('Games and Movies sheet closes use the same clear material and release it on close',async({page,browserName})=>{
