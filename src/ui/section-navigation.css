@@ -223,9 +223,12 @@
     transition:scale 100ms var(--ease-out),opacity 120ms var(--ease);
   }
   /* The raised lens, held or dragged, magnifies the icon and label under it (tabbar.ts). Release eases them back to 1. */
-  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl] .ui-tab>:is(.ui-icon,span){transition:scale 180ms var(--ease-out),opacity 180ms var(--ease-out)}
+  /* MOTION-8: the accent the raised lens hands from tab to tab, and its lighter press shade below, ease with the glyph's
+     growth (tabbar.ts glyphRise: a quadratic ease-out over 200 ms), as the video's glyph ink does (154 -> 193 luma over
+     about 200 ms, 19.60-19.80 s), where they stepped in one frame. */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl] .ui-tab>:is(.ui-icon,span){transition:scale 180ms var(--ease-out),opacity 180ms var(--ease-out),color 200ms cubic-bezier(.5,1,.89,1)}
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab>:is(.ui-icon,span){
-    scale:var(--section-lens-zoom,1);transition:none;
+    scale:var(--section-lens-zoom,1);transition:color 200ms cubic-bezier(.5,1,.89,1);
   }
   /* Charlie's video (12.75-13.5 s): the tab under the raised bubble takes the selection's accent while the press lasts
      and the current tab gives it up until the release (tabbar.ts data-lens-target). */
@@ -255,7 +258,7 @@
    with the glyph's growth and back on the release. */
 @media(prefers-reduced-motion:no-preference){
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]>:is(.ui-icon,span){
-    opacity:.85;transition:opacity 150ms var(--ease-out);
+    opacity:.85;transition:opacity 150ms var(--ease-out),color 200ms cubic-bezier(.5,1,.89,1);
   }
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]{
     --section-lens-accent:color-mix(in srgb,#ff375f 84%,#fff);
