@@ -135,13 +135,14 @@ function bindLensWarp(bar:HTMLElement){
     // The bubble in the bar's layout px (centre x, centre y, width, height, bevel) and its lift. Each tab it crosses bends.
     set(tab:HTMLElement,lens:readonly [number,number,number,number,number]|null,lift=1){
       if(!lens){if(tab.style.filter)tab.style.removeProperty('filter');return;}
-      const [cx,cy,width,height,bevel]=lens,next=`${Math.round(width/2)*2}x${Math.round(height/2)*2}x${Math.round(bevel)}`;
-      if(next!==size){size=next;map=warpMap(Math.round(width/2)*2,Math.round(height/2)*2,bevel);for(const {image} of filters.values())image.setAttribute('href',map);}
+      // The map is drawn at the bubble's size to the nearest 2 css px, and centred on the bubble.
+      const [cx,cy,,,bevel]=lens,width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,next=`${width}x${height}x${Math.round(bevel)}`;
+      if(next!==size){size=next;map=warpMap(width,height,bevel);for(const {image} of filters.values())image.setAttribute('href',map);}
       const {id,image,filter,displace}=make(tab);
       if(image.getAttribute('href')!==map)image.setAttribute('href',map);
       const attributes:[SVGElement,string,number][]=[[displace,'scale',WARP_SPAN*lift],[filter,'x',-24],[filter,'y',-24],[filter,'width',tab.offsetWidth+48],
         [filter,'height',tab.offsetHeight+48],[image,'x',cx-width/2-tab.offsetLeft],[image,'y',cy-height/2-tab.offsetTop],
-        [image,'width',Math.round(width/2)*2],[image,'height',Math.round(height/2)*2]];
+        [image,'width',width],[image,'height',height]];
       for(const [element,name,value] of attributes)if(element.getAttribute(name)!==value.toFixed(2))element.setAttribute(name,value.toFixed(2));
       if(tab.style.filter!==`url("#${id}")`)tab.style.setProperty('filter',`url("#${id}")`);
     },
