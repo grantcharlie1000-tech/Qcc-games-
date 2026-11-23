@@ -931,7 +931,8 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   const changes = new MutationObserver(records=>{
     const hostChanged = records.some(({target})=>target===host);
     if (hostChanged || records.some(({target,attributeName})=>target===bar && attributeName==='data-glass')) refreshScene();
-    if (hostChanged || records.some(({target})=>target===document.documentElement || target===document.body)) invalidate();
+    if (hostChanged || records.some(({target})=>target===document.documentElement || target===document.body ||
+        document.head.contains(target))) invalidate();
     else schedule();
   });
   // Route renders replace the host's direct children. Only the current
@@ -940,9 +941,14 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   changes.observe(bar,{childList:true,attributes:true,attributeFilter:attributes});
   changes.observe(document.documentElement,{attributes:true,attributeFilter:['class','data-theme','data-input']});
   changes.observe(document.body,{attributes:true,attributeFilter:['class']});
+  // MOTION-11: a stylesheet added, edited or removed in <head> restyles the scene with no change inside it, so the lens
+  // takes a fresh backdrop then, and again when a linked sheet loads. Without it the bar kept showing the old art
+  // (clear-glass.spec :207 hides #content with a style tag and shoots the bar at once).
+  changes.observe(document.head,{childList:true,subtree:true,characterData:true});
   if (bar.parentElement) changes.observe(bar.parentElement,{attributes:true,attributeFilter:['data-sheet-hidden']});
 
   const signal = events.signal;
+  document.head.addEventListener('load',invalidate,{capture:true,signal});
   document.addEventListener('scroll',event=>{
     if (event.target===document || event.target===host) schedule();
     else if (root && event.target instanceof Node && host.contains(event.target)) invalidate();
