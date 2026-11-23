@@ -285,8 +285,14 @@ const vec2 LENS_BAND_DARK = vec2(.25, .45);
 // contrast, a gain and not a veil. So the face is the clear art times LENS_BRIGHT over a small floor: LENS_LIGHT in the
 // light theme, and in the dark LENS_LIGHT_DARK, about the dark smoke's own black, so dark art reads as through the bar.
 // The light theme's gain is larger (LENS_BRIGHT.x), so on its pale bar the clear bubble still reads bright.
-const float LENS_LIGHT = .08, LENS_LIGHT_DRAG = .08, LENS_LIGHT_DARK = .1, LENS_SHARP = .7;
-const vec2 LENS_BRIGHT = vec2(1.25, 1.12);
+// MOTION-14 (#24 council on ea5b395c, both seats: over the pink and orange posters the light held, dragged and releasing
+// lens was milky and washed the art out, where Apple's is near-invisible: the poster at full colour, the lens seen by its
+// rim and the larger glyph). The light lens's floor (LENS_LIGHT .08 of white) and its 1.25 gain over the frost's
+// highlight-compressed sample lifted navy card art 27 levels over the art it shows and clipped a poster's bright channels
+// to pastel. The light lens is now the clear art under it (the bent, unfrosted sample) times LENS_CLEAR, the video's
+// small gain (its lens reads 7-11% over bright art), with no floor and no veil. The dark lens keeps its smoked sample
+// over LENS_LIGHT_DARK at LENS_BRIGHT.
+const float LENS_LIGHT_DARK = .1, LENS_SHARP = .7, LENS_BRIGHT = 1.12, LENS_CLEAR = 1.08;
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
@@ -413,11 +419,11 @@ float lensBevel(float radius) {
 // from the light, with no broad lit band over the content. Its edge is Apple's thin crisp rim
 // (LENS_RIM), brightest along the top and still clear along the bottom, carrying the faint
 // rainbow fringe (LENS_FRINGE) across its depth.
-vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u, float light) {
+vec3 lensFace(vec3 sceneColor, vec3 clearArt, vec2 outward, float pillDepth, float u) {
   vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
   float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
   float shade = max(0., -facing);
-  vec3 face = light + (1. - light) * min(sceneColor * mix(LENS_BRIGHT.x, LENS_BRIGHT.y, pillSmoke), vec3(1.));
+  vec3 face = mix(min(clearArt * LENS_CLEAR, vec3(1.)), LENS_LIGHT_DARK + (1. - LENS_LIGHT_DARK) * min(sceneColor * LENS_BRIGHT, vec3(1.)), pillSmoke);
   float band = smoothstep(LENS_BAND.x, LENS_BAND.y, pillDepth) * (1. - smoothstep(LENS_BAND.z, LENS_BAND.w, pillDepth));
   face *= (1. - .22 * shade - .1 * (1. - normal.z)) * (1. - mix(LENS_BAND_DARK.x, LENS_BAND_DARK.y, pillSmoke) * band * outward.y * outward.y);
   float facing2 = outward.y * outward.y, facing4 = facing2 * facing2, facing8 = facing4 * facing4;
@@ -457,7 +463,10 @@ vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, 
   // a little of the scene shows through just inside it.
   float pressRim = smoothstep(-.2, .5, pillDepth) * (1. - smoothstep(1., 2., pillDepth));
   float pressRing = (1. - smoothstep(1.2, 4.5, pillDepth)) * (1. - pressRim);
-  face = mix(face, vec3(milkTone), (.985 - .10 * pressRing) * pillPress);
+  // MOTION-14 (#24 council on ea5b395c: the light lens was milky at the release too): that milk belongs to the press before
+  // the lens rises. Through a release the press eases out while the lens falls, and the falling light lens showed it; so in
+  // the light theme it fades as the lens rises, and the falling lens clears into the rest pill's frost alone.
+  face = mix(face, vec3(milkTone), (.985 - .10 * pressRing) * pillPress * (1. - pillLift * (1. - pillSmoke)));
   face = mix(face, vec3(1.), .16 * pressRim * pillPress * clearance);
   // Its rim carries the raised lens's faint rainbow, red outside to blue inside, as Apple's held bubble.
   vec3 pressSpectrum = .5 + .5 * cos(6.2832 * (.8 * clamp(pillDepth / 2., 0., 1.) + vec3(0., .33, .67)));
@@ -549,6 +558,8 @@ void main() {
     if (selected > 0.) {
       // A settled selection uses the exact same scene sample as the bar.
       vec3 selectionColor = bodyColor;
+      // The raised light lens's face: the art under it, bent and unfrosted (lensFace).
+      vec3 clearArt = selectionColor;
       float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       vec3 clearGlass = vec3(0.), plainGlass = vec3(0.);
       if (pillMotion > 0.) {
@@ -585,6 +596,7 @@ void main() {
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         // One frost sample serves the moving selection and the clear glass it fades from.
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
+        clearArt = frosted;
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
         // The dark rest pill is the body's soft frost (softFrost), so as the motion falls the selection eases into that
         // sample: the last moving frame is the rest pill, and a press's first frame leaves it without a step. The clear
@@ -654,7 +666,7 @@ void main() {
       lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
       selection = mix(selection, lightPill, (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
-      selection = mix(selection, lensFace(selectionColor, pillNormal, pillDepth, lensU, mix(mix(LENS_LIGHT_DRAG, LENS_LIGHT, pillPress), LENS_LIGHT_DARK, pillSmoke)), pillLift);
+      selection = mix(selection, lensFace(selectionColor, clearArt, pillNormal, pillDepth, lensU), pillLift);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
