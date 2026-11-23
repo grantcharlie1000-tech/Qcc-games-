@@ -46,6 +46,14 @@ for(const fallback of [false,true])test(`navigation icons and labels stay white 
  // The CSS fallback cannot hold the accent at 3:1 over bright art, so where glass-ink flags bright art under the label (data-glass-halo),
  // the selected tab turns white with the doubled dark .85 rim, as safari-shell.spec.ts's white-artwork test needs. Over normal art it keeps the accent.
  const selected='.app-tabbar .ui-tab:is([aria-current=page],[aria-pressed=true])';
+ // MOTION-10: the WebGL bar eases its tab ink (colour, 200 ms, f8dd2db1), so the lens taking the bar over can still be
+ // easing the accent here: each one-off colour read waits until no colour transition runs in the bar for two frames.
+ const inkSettled=()=>expect.poll(()=>page.locator('.app-tabbar').evaluate(async el=>{
+  const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+  const easing=()=>el.getAnimations({subtree:true}).some(a=>a.playState==='running'&&(a as CSSTransition).transitionProperty==='color');
+  if(easing())return false;await frame();if(easing())return false;await frame();return !easing();
+ })).toBe(true);
+ await inkSettled();
  const accent=await page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color);
  expect(accent).not.toBe('rgb(255, 255, 255)');
  for(const [background,labelColor] of [['#fff','rgb(255, 255, 255)'],['#000','rgb(255, 255, 255)'],['#fff','rgb(255, 255, 255)']]){
@@ -57,6 +65,7 @@ for(const fallback of [false,true])test(`navigation icons and labels stay white 
   if(fallback)expect(await page.locator(`${selected}>span`).evaluate(e=>({halo:e.hasAttribute('data-glass-halo'),rim:getComputedStyle(e).textShadow})))
    .toEqual({halo:bright,rim:'rgba(0, 0, 0, 0.85) 0px 0px 1px, rgba(0, 0, 0, 0.85) 0px 0px 1px'});
   await expect.poll(()=>icons.evaluateAll((es,selected)=>es.map(e=>e.closest(selected)?'accent':getComputedStyle(e).color),selected)).toEqual(Array(await icons.count()).fill('rgb(255, 255, 255)').map((white,index)=>index===0?'accent':white));
+  await inkSettled();
   expect(await page.locator(`${selected}>svg.ui-icon`).evaluate(e=>getComputedStyle(e).color)).toBe(ink);
   expect(await icons.evaluateAll(es=>es.every(e=>!(e as HTMLElement).style.getPropertyValue('--glass-adaptive-ink')))).toBe(true);
  }
