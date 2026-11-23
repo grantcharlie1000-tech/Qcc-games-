@@ -140,11 +140,16 @@ const float DARK_BEND = .3;
 const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(1., .5);
+const vec2 RIM_LIGHT = vec2(1., .38);
 const float RIM_TINT = 3.;
 // Apple's resting rim, light then dark: full light to RIM_REST.x css px deep, gone by .y (light), .z and .w (dark).
 // Apple's dark rim is about +70 over the bar at its outer device px, +47 and +33 at the next two, then gone.
-const vec4 RIM_REST = vec4(.9, 1.6, .35, 1.15);
+// LOOK-10: at css px Apple's dark rim spans two px in its still (+87 and +50 over the bar, black page) and in the video's
+// rest frame (+21 and +28, compression softening it), where ours read one bright px (+54, then +2). The dark line now
+// holds full light to .9 css px and is gone by 2.2 (RIM_LIGHT.y .38 of white at the top): about +58 and +32 over a black
+// page, two px as both, its brightness between the still's and the video's. The dark pill's faint edge keeps PILL_RIM.
+const vec4 RIM_REST = vec4(.9, 1.6, .9, 2.2);
+const vec2 PILL_RIM = vec2(.35, 1.15);
 // Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
 // about half again, so the flipped title reads mid-grey as in Apple's dark still.
@@ -592,8 +597,8 @@ void main() {
       vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / PILL_STEP - .05, 0.)));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
       // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
-      // over the bar rim's dark depth (RIM_REST.zw).
-      float pillRim = 1. - smoothstep(RIM_REST.z, RIM_REST.w, pillDepth);
+      // over the bar rim's old dark depth (PILL_RIM).
+      float pillRim = 1. - smoothstep(PILL_RIM.x, PILL_RIM.y, pillDepth);
       darkPill = mix(darkPill, vec3(1.), PILL_DARK_RIM * pillRim * (.55 + .45 * max(abs(pillNormal.x), max(0., pillNormal.y))));
       selection = mix(selection, darkPill, pillSmoke * (1. - pillLift) * (1. - pillPress));
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
@@ -891,8 +896,9 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   let root:HTMLElement|null = null;
   let source:HTMLCanvasElement|null = null;
   let releaseFrame:(()=>void)|undefined;
-  // LOOK-10: the crop the backdrop canvas holds, and the selected tab last inked against its pill (inkSelection).
-  let paintedCrop:Crop|null = null, inkedTab:Element|null = null, inkTimer:ReturnType<typeof setTimeout>|undefined;
+  // LOOK-10: the crop the backdrop canvas holds and its paint count, and the paint and tab last inked (inkSelection).
+  let paintedCrop:Crop|null = null, paints = 0, inkedPaint = -1, inkedTab:Element|null = null;
+  let inkTimer:ReturnType<typeof setTimeout>|undefined;
   const selectedTab = ()=>bar.querySelector<HTMLElement>('.ui-tab:is([aria-current=page],[aria-pressed=true])');
   function inkSelection() {
     inkTimer = undefined;
@@ -910,6 +916,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     if (accent) tab.style.setProperty('--section-pill-adaptive-accent',accent);
     else tab.style.removeProperty('--section-pill-adaptive-accent');
     inkedTab = tab;
+    inkedPaint = paints;
   }
 
   function fallback() {
@@ -974,7 +981,10 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
         if (!live) listenToSource(null);
         texture = nextTexture;
         textureReady = result;
-        if (result) paintedCrop = crop;
+        if (result) {
+          paintedCrop = crop;
+          paints++;
+        }
         if (result) {
           if (!gpu) {
             gl = renderCanvas.getContext('webgl2',{antialias:false,depth:false,stencil:false,premultipliedAlpha:true});
@@ -1008,9 +1018,10 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
         if (canvas.parentElement!==bar) bar.prepend(canvas);
         bar.dataset.sectionLens = 'webgl';
         rendered = nextRender;
-        // LOOK-10: once the dark rest pill holds still on a new backdrop or a new tab, ink the selected tab against it.
+        // LOOK-10: once the dark rest pill holds still on a repainted backdrop or a new tab, ink the selected tab against it
+        // (also after a light spell, whose scrolls repainted the backdrop with no dark rest frame to ink it).
         if (geometry.smoke && geometry.opacity>0 && !geometry.motion && !geometry.press && !geometry.lift && !geometry.projection &&
-            (changed || inkedTab!==selectedTab())) {
+            (inkedPaint!==paints || inkedTab!==selectedTab())) {
           clearTimeout(inkTimer);
           inkTimer = setTimeout(inkSelection,120);
         }
