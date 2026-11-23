@@ -228,10 +228,13 @@ function bindLensZoom(bar:HTMLElement):()=>void{
 const SETTLE_FRAMES=2;
 // A bar that never comes to rest (an endless animation in it) is repainted after this many frames instead.
 const SETTLE_LIMIT=120;
+// LOOK-11 (review I-1 on 691f4616): the dark section lens inks each tab from its backdrop (section-lens.ts requestInk). A
+// paint not yet inked holds data-ink-pending, so the settle waits for the ink as for any motion, and an ink that changes
+// bumps data-ink, which re-arms the settle: the repaint then follows its colour ease (a scroll that stops, late art).
 function bindSettleRepaint(bar:HTMLElement):()=>void{
   let frame=0,quiet=0,frames=0,size='';
   const held=()=>bar.matches('[data-pressing],[data-pill-dragging]');
-  const moving=()=>typeof bar.getAnimations==='function'&&bar.getAnimations({subtree:true}).some(animation=>
+  const moving=()=>bar.hasAttribute('data-ink-pending')||typeof bar.getAnimations==='function'&&bar.getAnimations({subtree:true}).some(animation=>
     animation.playState==='running'&&animation.effect?.getComputedTiming().iterations!==Infinity);
   const repaint=()=>{
     for(const icon of bar.querySelectorAll<SVGElement>('.ui-tab>.ui-icon')){
@@ -260,7 +263,7 @@ function bindSettleRepaint(bar:HTMLElement):()=>void{
     quiet=frames=0;size='';
     frame=requestAnimationFrame(tick);
   });
-  watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing']});
+  watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing','data-ink']});
   return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;};
 }
 // MOTION-8: Apple's tab bar never leaves the screen when one of its tabs turns the page (Charlie's video, 15.183 s: the bar

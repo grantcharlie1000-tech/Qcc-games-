@@ -672,7 +672,7 @@ function createRenderer(gl:WebGL2RenderingContext) {
     /** LOOK-11: starts reading the uploaded backdrop's bytes over a texel box into a pack buffer, top row first as
      * getImageData gives them (the texture's first row is the canvas's top). poll() gives them once the GPU has written
      * them (null until then), so neither thread waits: the 2D backdrop is never read back, which made the browser stop
-     * accelerating it, and a plain readPixels stalled 56 ms on the busy GPU thread in swiftshader (inkSelection). */
+     * accelerating it, and a plain readPixels stalled 56 ms on the busy GPU thread in swiftshader (requestInk). */
     read(left:number, top:number, w:number, h:number) {
       const pack = gl.createBuffer();
       reader ??= gl.createFramebuffer();
@@ -785,6 +785,10 @@ export function inkRegion(width:number, height:number, crop:Crop, boxes:DOMRect[
 /** The dark rest pill's luminance every 2 css px over each box (viewport css px), from the backdrop's RGBA bytes over its
  * ink region, top row first. */
 export function pillUnder(data:ArrayLike<number>, region:InkRegion, crop:Crop, boxes:DOMRect[]):number[] {
+  return pillTables(data,region,crop)(boxes);
+}
+/** pillUnder for several sets of boxes over one region: the summed-area table is built once. */
+export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):(boxes:DOMRect[])=>number[] {
   const {left,top,w,h,sx,sy} = region;
   // A summed-area table of the art's tone gives each box mean in four reads.
   const sum = new Float64Array((w+1)*(h+1));
@@ -801,16 +805,18 @@ export function pillUnder(data:ArrayLike<number>, region:InkRegion, crop:Crop, b
     const y0 = Math.max(0,Math.round(y-reach*sy)), y1 = Math.min(h,Math.round(y+reach*sy)+1);
     return (sum[y1*(w+1)+x1]-sum[y0*(w+1)+x1]-sum[y1*(w+1)+x0]+sum[y0*(w+1)+x0])/Math.max(1,(x1-x0)*(y1-y0));
   };
-  const pills:number[] = [];
-  for (const box of boxes) for (let v=box.top+1;v<box.bottom;v+=2) for (let u=box.left+1;u<box.right;u+=2) {
-    const x = (u-crop.x)*sx-left, y = (v-crop.y)*sy-top;
-    if (x<0 || y<0 || x>=w || y>=h) continue;
-    const field = mean(x,y,INK_FIELD), soft = mean(x,y,INK_SOFT);
-    const art = INK_BLUR*field+(1-INK_BLUR)*(soft+INK_EVEN*(Math.min(soft,field)-soft)), over = Math.max(0,art-.5);
-    const tone = Math.min(1,32/255+.875*art-.402*over*over);
-    pills.push(Math.max(0,(srgbLinear(tone)+.05)/INK_STEP-.05));
-  }
-  return pills;
+  return boxes=>{
+    const pills:number[] = [];
+    for (const box of boxes) for (let v=box.top+1;v<box.bottom;v+=2) for (let u=box.left+1;u<box.right;u+=2) {
+      const x = (u-crop.x)*sx-left, y = (v-crop.y)*sy-top;
+      if (x<0 || y<0 || x>=w || y>=h) continue;
+      const field = mean(x,y,INK_FIELD), soft = mean(x,y,INK_SOFT);
+      const art = INK_BLUR*field+(1-INK_BLUR)*(soft+INK_EVEN*(Math.min(soft,field)-soft)), over = Math.max(0,art-.5);
+      const tone = Math.min(1,32/255+.875*art-.402*over*over);
+      pills.push(Math.max(0,(srgbLinear(tone)+.05)/INK_STEP-.05));
+    }
+    return pills;
+  };
 }
 
 // The raised lens may stand past the bar's end by up to LENS_END_ROOM css px toward the screen edge and
@@ -950,36 +956,55 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   let root:HTMLElement|null = null;
   let source:HTMLCanvasElement|null = null;
   let releaseFrame:(()=>void)|undefined;
-  // LOOK-10: the crop the backdrop canvas holds and its paint count, and the paint and tab last inked (inkSelection).
-  let paintedCrop:Crop|null = null, paints = 0, inkedPaint = -1, inkedTab:Element|null = null;
+  // LOOK-10: the crop the backdrop canvas holds and its paint count. LOOK-11: the paint and the tabs last inked (requestInk).
+  let paintedCrop:Crop|null = null, paints = 0, inkedPaint = -1, inkedTabs:HTMLElement[] = [], inkVersion = 0;
   let inkTimer:ReturnType<typeof setTimeout>|undefined;
-  // LOOK-11: the backdrop read in flight for the ink (inkSelection); the next ink or disposal cancels it.
-  let inkRead:{cancel:()=>void; poll:()=>Uint8Array|null}|undefined;
-  const selectedTab = ()=>bar.querySelector<HTMLElement>('.ui-tab:is([aria-current=page],[aria-pressed=true])');
+  // LOOK-11: the backdrop read in flight for the ink, and when it began; disposal cancels it.
+  let inkRead:{cancel:()=>void; poll:()=>Uint8Array|null}|undefined, inkStarted = -Infinity;
+  const tabsOf = ()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
   const inkable = ()=>!disposed && !lost && scheme.matches && bar.dataset.sectionLens==='webgl';
-  function inkWith(tab:HTMLElement, accent:string) {
-    for (const other of bar.querySelectorAll<HTMLElement>('.ui-tab')) if (other!==tab) other.style.removeProperty('--section-pill-adaptive-accent');
-    if (accent) tab.style.setProperty('--section-pill-adaptive-accent',accent);
-    else tab.style.removeProperty('--section-pill-adaptive-accent');
-    inkedTab = tab;
-    inkedPaint = paints;
+  // LOOK-11 (review I-1 on 691f4616): the ink landed 120 ms and a read after the bar came to rest, so a tab switch settled
+  // in #0099ff (about 1.4:1 over a mid pill) and then eased to its blue with no settle repaint after it. Now every tab
+  // carries its own ink, worked out from each backdrop paint as soon as the glyphs are at their rest size, so the tab a
+  // tap or a drag selects already has its blue and eases to it inside the pill's release spring. While a paint is not yet
+  // inked the bar holds data-ink-pending, which keeps tabbar.ts's settle repaint waiting for it, and an ink that changes
+  // bumps data-ink, which re-arms that repaint after the colour ease (a scroll that stops, or art that arrives late).
+  const INK_SPACING = 100;
+  function inkPending(on:boolean) {
+    if (bar.hasAttribute('data-ink-pending')!==on) bar.toggleAttribute('data-ink-pending',on);
   }
-  function inkSelection() {
-    inkTimer = undefined;
-    inkRead?.cancel();
-    inkRead = undefined;
-    const tab = selectedTab(), renderer = gpu, crop = paintedCrop, paint = paints;
-    if (!tab || !renderer || !crop || !inkable()) return;
-    const boxes = [tab.querySelector(':scope > span'),tab.querySelector(':scope > .ui-icon')]
-      .flatMap(element=>element?[element.getBoundingClientRect()]:[]).filter(box=>box.width && box.height);
+  function inkStale() {
+    const tabs = tabsOf();
+    return inkedPaint!==paints || tabs.length!==inkedTabs.length || tabs.some((tab,i)=>tab!==inkedTabs[i]);
+  }
+  // The glyphs at their rest size: no press or drag, and no lens zoom left on a tab, so their boxes are the rest boxes.
+  const glyphsAtRest = ()=>!bar.matches('[data-pressing],[data-pill-dragging]') &&
+    tabsOf().every(tab=>{const zoom = tab.style.getPropertyValue('--section-lens-zoom'); return !zoom || Number(zoom)===1;});
+  function requestInk() {
+    if (!inkable() || !gpu || !paintedCrop || !inkStale()) return inkPending(!!inkRead && inkable());
+    inkPending(true);
+    if (inkRead || inkTimer) return;
+    // At most one read in flight, and while paints keep coming (a scroll) one every INK_SPACING; the last paint is always read.
+    const wait = Math.max(glyphsAtRest() ? 0 : 50, inkStarted+INK_SPACING-performance.now());
+    if (wait>0) {
+      inkTimer = setTimeout(()=>{inkTimer = undefined; requestInk();},wait);
+      return;
+    }
+    startInk(gpu,paintedCrop);
+  }
+  function startInk(renderer:NonNullable<typeof gpu>, crop:Crop) {
+    const paint = paints, tabs = tabsOf();
+    const tabBoxes = tabs.map(tab=>[tab.querySelector(':scope > span'),tab.querySelector(':scope > .ui-icon')]
+      .flatMap(element=>element?[element.getBoundingClientRect()]:[]).filter(box=>box.width && box.height));
     // LOOK-11: the backdrop's bytes come from the texture the lens uploaded for paintedCrop (renderer.read), read without
     // a wait, never from the 2D canvas: one getImageData there made Chrome stop accelerating that canvas (+.4 ms a scroll
     // frame in swiftshader, and a 250-330 ms stall at the read that switched it).
     const [width,height] = renderer.size();
-    const region = inkRegion(width,height,crop,boxes);
-    if (!region) return inkWith(tab,'');
-    const read = renderer.read(region.left,region.top,region.w,region.h), started = performance.now();
+    const region = inkRegion(width,height,crop,tabBoxes.flat());
+    if (!region) return inkWith(paint,tabs,tabs.map(()=>''));
+    const read = renderer.read(region.left,region.top,region.w,region.h);
     inkRead = read;
+    inkStarted = performance.now();
     const poll = ()=>{
       inkTimer = undefined;
       if (inkRead!==read) return;
@@ -988,27 +1013,41 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
         data = read.poll();
       } catch {
         inkRead = undefined;
-        return read.cancel();
+        read.cancel();
+        return requestInk();
       }
-      if (!data) {
-        if (performance.now()-started<2000) inkTimer = setTimeout(poll,16);
-        else {
-          inkRead = undefined;
-          read.cancel();
-        }
+      if (!data && performance.now()-inkStarted<2000) {
+        inkTimer = setTimeout(poll,16);
         return;
       }
       inkRead = undefined;
-      // A repaint or another tab since the read began: its rest frame inks again.
-      if (paints!==paint || selectedTab()!==tab || !inkable()) return;
-      inkWith(tab,selectionAccent(pillUnder(data,region,crop,boxes)));
+      read.cancel();
+      if (data && inkable()) {
+        const pills = pillTables(data,region,crop);
+        inkWith(paint,tabs,tabBoxes.map(boxes=>selectionAccent(pills(boxes))));
+      }
+      // A newer paint since the read began is read in turn.
+      requestInk();
     };
     inkTimer = setTimeout(poll,16);
+  }
+  function inkWith(paint:number, tabs:HTMLElement[], accents:string[]) {
+    let changed = false;
+    tabs.forEach((tab,i)=>{
+      if (tab.style.getPropertyValue('--section-pill-adaptive-accent')===accents[i]) return;
+      changed = true;
+      if (accents[i]) tab.style.setProperty('--section-pill-adaptive-accent',accents[i]);
+      else tab.style.removeProperty('--section-pill-adaptive-accent');
+    });
+    inkedPaint = paint;
+    inkedTabs = tabs;
+    if (changed) bar.dataset.ink = String(++inkVersion);
   }
 
   function fallback() {
     drawnLenses.delete(bar);
     bar.removeAttribute('data-section-lens');
+    inkPending(false);
     rendered = '';
   }
   function listenToSource(next:HTMLCanvasElement|null) {
@@ -1105,13 +1144,6 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
         if (canvas.parentElement!==bar) bar.prepend(canvas);
         bar.dataset.sectionLens = 'webgl';
         rendered = nextRender;
-        // LOOK-10: once the dark rest pill holds still on a repainted backdrop or a new tab, ink the selected tab against it
-        // (also after a light spell, whose scrolls repainted the backdrop with no dark rest frame to ink it).
-        if (geometry.smoke && geometry.opacity>0 && !geometry.motion && !geometry.press && !geometry.lift && !geometry.projection &&
-            (inkedPaint!==paints || inkedTab!==selectedTab())) {
-          clearTimeout(inkTimer);
-          inkTimer = setTimeout(inkSelection,120);
-        }
       }
     } catch (error) {
       fallback();
@@ -1122,6 +1154,8 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
       // readable scene into view. Other setup or GPU errors leave CSS in charge.
       unavailable = !(error instanceof DOMException && error.name==='SecurityError') && !gl?.isContextLost();
     }
+    // LOOK-11: ink each new paint, a new tab set, or the first dark frame after a light spell (requestInk).
+    requestInk();
     if (animations.length) schedule();
   };
 
@@ -1208,6 +1242,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     clearTimeout(inkTimer);
     inkRead?.cancel();
     inkRead = undefined;
+    bar.removeAttribute('data-ink-pending');
     for (const tab of bar.querySelectorAll<HTMLElement>('.ui-tab')) tab.style.removeProperty('--section-pill-adaptive-accent');
     events.abort();
     changes.disconnect();

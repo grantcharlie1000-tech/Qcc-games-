@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import {expect,originalTheme,test} from '../fixtures';
+import type {Page} from '@playwright/test';
 
 test.beforeEach(async({context,page})=>{
   await originalTheme(context);
@@ -279,6 +280,111 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       expect(greyStep).toBeGreaterThanOrEqual(1.05);
       expect(greyStep).toBeLessThanOrEqual(1.35);
     }
+  }
+});
+
+// LOOK-11 (review I-1 on 691f4616): the dark selected ink landed 120 ms and a backdrop read after the lens's still frame, so a
+// tab switch over mid or bright art reached rest in #0099ff (about 1.4:1 against the lighter pill) or still easing to its
+// blue, and art that changed under a resting bar re-inked it with no settle repaint after. Two checks, over a #777 and a
+// #ddd patch (the click is caught, so the route stays, as the release spec does):
+// - a tap moves the selection; from the frame the pill's spring ends (no ::after animation runs again), the selected
+//   label's colour never changes, and it holds 2:1 against the pill under the label and the glyph;
+// - the art under the resting bar changes; once the selected ink has changed, tabbar.ts's settle repaint runs after it.
+async function inkPage(page:Page){
+  await page.emulateMedia({colorScheme:'dark'});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await page.evaluate(()=>document.addEventListener('click',event=>{
+    const link=event.target instanceof Element?event.target.closest('.app-tabbar a.ui-tab'):null;
+    if(!link)return;
+    event.preventDefault();event.stopPropagation();
+    document.querySelector('.app-tabbar [aria-current="page"]')?.removeAttribute('aria-current');
+    link.setAttribute('aria-current','page');
+  },true));
+  const canvas=bar.locator('canvas.section-lens');
+  const centre=()=>canvas.evaluate(element=>{const surface=element as HTMLCanvasElement;return surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data[1];});
+  const patch=async(art:string)=>{
+    const before=await centre();
+    await page.locator('.game-grid').evaluate((grid,art)=>{
+      let patch=document.getElementById('ink-patch');
+      if(!patch){patch=document.createElement('div');patch.id='ink-patch';grid.append(patch);}
+      patch.style.cssText=`position:fixed;inset:auto 0 0;height:100px;z-index:1;background:${art};pointer-events:none`;
+    },art);
+    await expect.poll(async()=>Math.abs(await centre()-before)).toBeGreaterThan(20);
+  };
+  // The selected label's colour, the running animations and the glyph repaints (tabbar.ts settle), every frame for ms.
+  const trace=(ms:number)=>page.evaluate(ms=>new Promise<{t:number;tab:string;color:string;pill:boolean;running:boolean;repaints:number}[]>(resolve=>{
+    const bar=document.querySelector<HTMLElement>('.app-tabbar')!,samples:{t:number;tab:string;color:string;pill:boolean;running:boolean;repaints:number}[]=[];
+    let repaints=0;
+    // The repaint sets display:none !important on each glyph and restores it at once: count the restores.
+    const watch=new MutationObserver(records=>{for(const record of records)if(/display:\s*none/.test(record.oldValue??''))repaints++;});
+    for(const icon of bar.querySelectorAll('.ui-tab>.ui-icon'))watch.observe(icon,{attributes:true,attributeFilter:['style'],attributeOldValue:true});
+    const end=performance.now()+ms;
+    const sample=()=>{
+      const tab=bar.querySelector<HTMLElement>('.ui-tab[aria-current=page]'),label=tab?.querySelector(':scope > span');
+      const animations=bar.getAnimations({subtree:true}).filter(a=>a.playState==='running'&&a.effect?.getComputedTiming().iterations!==Infinity);
+      samples.push({t:performance.now(),tab:tab?.textContent?.trim()??'',color:label?getComputedStyle(label).color:'',
+        pill:animations.some(a=>(a.effect as KeyframeEffect|null)?.pseudoElement==='::after'),running:animations.length>0,repaints});
+      if(performance.now()<end)requestAnimationFrame(sample);else{watch.disconnect();resolve(samples);}
+    };
+    requestAnimationFrame(sample);
+  }),ms);
+  const ratio=(ink:string)=>canvas.evaluate((element,ink)=>{
+    const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect(),sx=surface.width/rect.width,sy=surface.height/rect.height;
+    const tab=surface.closest('.app-tabbar')!.querySelector('[aria-current="page"]')!;
+    const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+    const inkLum=lum(ink.match(/[\d.]+/g)!.slice(0,3).map(Number)),values:number[]=[];
+    for (const box of [tab.querySelector(':scope > span')!.getBoundingClientRect(),tab.querySelector('.ui-icon')!.getBoundingClientRect()]) {
+      const x=Math.round((box.left-rect.left)*sx),y=Math.round((box.top-rect.top)*sy),w=Math.max(1,Math.round(box.width*sx)),h=Math.max(1,Math.round(box.height*sy));
+      const data=surface.getContext('2d')!.getImageData(x,y,w,h).data;
+      for (let i=0;i<data.length;i+=4) {const bg=lum([data[i],data[i+1],data[i+2]]);values.push((Math.max(inkLum,bg)+.05)/(Math.min(inkLum,bg)+.05));}
+    }
+    values.sort((a,b)=>a-b);
+    return Math.round(100*values[values.length>>1])/100;
+  },ink);
+  return {bar,patch,trace,ratio};
+}
+test('dark: a tab switch\'s selected ink is its 2:1 blue by the time the pill lands, and never changes after',async({page})=>{
+  const {bar,patch,trace,ratio}=await inkPage(page);
+  let target='Movies';
+  for (const art of ['#777','#ddd']) {
+    await patch(art);
+    await page.waitForTimeout(1200);
+    const tracing=trace(2000);
+    await page.waitForTimeout(100);
+    await bar.getByRole('link',{name:target,exact:true}).click();
+    const samples=await tracing;
+    const first=samples.findIndex(sample=>sample.tab===target);
+    expect(first,art).toBeGreaterThan(-1);
+    const landed=samples.findIndex((sample,i)=>i>first&&samples.slice(i).every(s=>!s.pill&&s.tab===target));
+    expect(landed,`${art}: the pill lands within the trace`).toBeGreaterThan(-1);
+    const ink=samples[landed].color;
+    const later=samples.slice(landed).filter(sample=>sample.color!==ink);
+    expect(later.map(sample=>`${Math.round(sample.t-samples[landed].t)} ms ${sample.color}`),`${art}: ${target}'s ink as the pill lands, ${ink}`).toEqual([]);
+    const contrast=await ratio(ink);
+    console.log(`dark tab switch over ${art}: ${target}'s ink as the pill lands ${ink}, ${contrast}:1`);
+    expect(contrast,`${art}: ${ink} as the pill lands`).toBeGreaterThanOrEqual(2);
+    target=target==='Movies'?'Games':'Movies';
+  }
+});
+test('dark: when the art under the resting bar changes, the settle repaint follows the selected ink\'s change',async({page})=>{
+  const {patch,trace,ratio}=await inkPage(page);
+  await patch('#222');
+  await page.waitForTimeout(1200);
+  for (const art of ['#777','#ddd']) {
+    const tracing=trace(1800);
+    await page.waitForTimeout(100);
+    await patch(art);
+    const samples=await tracing;
+    const changes=samples.map((sample,i)=>i&&sample.color!==samples[i-1].color?i:-1).filter(i=>i>0);
+    expect(changes.length,`${art}: the selected ink adapts to the new art`).toBeGreaterThan(0);
+    const last=changes.at(-1)!;
+    const repaint=samples.findIndex((sample,i)=>i>=last&&sample.repaints>samples[last-1].repaints);
+    expect(repaint,`${art}: a settle repaint after the ink's last change at ${Math.round(samples[last].t-samples[0].t)} ms`).toBeGreaterThan(-1);
+    const ink=samples.at(-1)!.color,contrast=await ratio(ink);
+    console.log(`dark art change to ${art}: ink ${ink} (${contrast}:1), last change ${Math.round(samples[last].t-samples[0].t)} ms, repaint ${Math.round(samples[repaint].t-samples[0].t)} ms`);
+    expect(contrast,`${art}: ${ink}`).toBeGreaterThanOrEqual(2);
   }
 });
 

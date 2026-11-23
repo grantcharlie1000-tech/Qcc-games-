@@ -61,12 +61,19 @@ for(const fallback of [false,true])test(`navigation icons and labels stay white 
   await expect.poll(()=>page.locator('.app-tabbar .ui-tab:not([aria-current=page],[aria-pressed=true])>span').first().evaluate(e=>getComputedStyle(e).color)).toBe(labelColor);
   // The bare #fff body is bright art: glass-ink flags it with the halo. The #000 body is normal art: no flag.
   const bright=fallback&&background==='#fff',ink=bright?'rgb(255, 255, 255)':accent;
-  await expect.poll(()=>page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color)).toBe(ink);
+  // LOOK-11: the WebGL bar inks its selected tab from the art as soon as it is painted (section-lens.ts requestInk), so over
+  // the bare #fff body the native accent is the deeper blue that keeps 2:1 against its lighter pill (an adaptive blue, as
+  // clear-glass.spec pins it), where this one-off read used to land before the ink did. The label and the glyph share it.
+  const blue=(color:string)=>{const [r,g,b]=(color.match(/\d+/g)??[]).map(Number);return b>=200&&b>Math.max(r,g);};
+  if(fallback)await expect.poll(()=>page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color)).toBe(ink);
+  else await expect.poll(async()=>blue(await page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color))).toBe(true);
   if(fallback)expect(await page.locator(`${selected}>span`).evaluate(e=>({halo:e.hasAttribute('data-glass-halo'),rim:getComputedStyle(e).textShadow})))
    .toEqual({halo:bright,rim:'rgba(0, 0, 0, 0.85) 0px 0px 1px, rgba(0, 0, 0, 0.85) 0px 0px 1px'});
   await expect.poll(()=>icons.evaluateAll((es,selected)=>es.map(e=>e.closest(selected)?'accent':getComputedStyle(e).color),selected)).toEqual(Array(await icons.count()).fill('rgb(255, 255, 255)').map((white,index)=>index===0?'accent':white));
   await inkSettled();
-  expect(await page.locator(`${selected}>svg.ui-icon`).evaluate(e=>getComputedStyle(e).color)).toBe(ink);
+  const label=await page.locator(`${selected}>span`).evaluate(e=>getComputedStyle(e).color);
+  expect(await page.locator(`${selected}>svg.ui-icon`).evaluate(e=>getComputedStyle(e).color)).toBe(fallback?ink:label);
+  if(!fallback)expect(blue(label),label).toBe(true);
   expect(await icons.evaluateAll(es=>es.every(e=>!(e as HTMLElement).style.getPropertyValue('--glass-adaptive-ink')))).toBe(true);
  }
  // The collapsed dock copies the selected icon and must keep the same colour.
