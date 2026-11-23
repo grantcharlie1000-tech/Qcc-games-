@@ -174,11 +174,12 @@ const float DARK_HUE = 1.;
 // kept, rolling off past DARK_GLASS.z by DARK_GLASS.w of the square, so white still reads 230.
 const vec2 DARK_TONE = vec2(1.18 * .44 * .36 - SMOKE_DARK_DROP, 1.18 * .64);
 const vec4 DARK_GLASS = vec4(32. / 255., .875, .5, .402);
-// Apple's dark selected tab is a smoked capsule a little darker than the bar: about 10/255 over a black page, 22
-// under the bar, and about 30 under it over mid art (the video's floor at 32.5 s). The dark rest pill keeps
-// PILL_DARK.y of the bar's tone less PILL_DARK.x. Over bright art it is held at PILL_DARK_CEIL, so the blue accent
-// keeps its 2.5:1 there (section-lens.spec).
-const vec2 PILL_DARK = vec2(19. / 255., .9);
+// Apple's dark selected tab is a smoked capsule a step darker than the bar. The dark rest pill keeps PILL_DARK.y of the
+// bar's tone less PILL_DARK.x. Over bright art it is held at PILL_DARK_CEIL, so the blue accent keeps its 2.5:1 there
+// (section-lens.spec). LOOK-6: over a black page Apple's pill reads 11 under its bar's 32 in the dark still and 13
+// under 29 in the video's rest frame (38.75 s), a pill-to-bar luminance contrast of 1.21 and 1.15; .9 x 32 - 19 left
+// ours at about 9 (1.22), the darkest of the three. PILL_DARK.x 15 puts it at about 14 (1.19, between the two).
+const vec2 PILL_DARK = vec2(15. / 255., .9);
 const float PILL_DARK_CEIL = .31, PILL_DARK_RIM = .15;
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
