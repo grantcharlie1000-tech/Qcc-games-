@@ -230,7 +230,9 @@ for(const fallback of [false,true])test(`frosted navigation retains backdrop col
   },png);
   // A clear material must leave dark content dark and colourful content colourful.
   expect(Math.max(...patches.colors[0])).toBeLessThan(85);
-  expect(patches.colors[1][0]-patches.colors[1][2]).toBeGreaterThan(40);
+  // LOOK-12: beside the WebGL bar (data-glass=backdrop) the dark smoke's knee (section-navigation.css) rolls bright art
+  // off as the bar does, so #f5ddb0's red-blue gap reads 39.5 under it by the filter maths (40.5 under the cap).
+  expect(patches.colors[1][0]-patches.colors[1][2]).toBeGreaterThan(37);
   // Real diffusion, not merely a computed blur declaration. 10–90% edge
   // spread is about 2.56 sigma for a Gaussian, with pixel rounding tolerance.
   if(browserName==='webkit'&&patches.spread===0){
@@ -271,7 +273,7 @@ test('navigation and its companion share frost while game controls retain their 
     await expect(page.locator(scope)).toBeVisible();
     const materials=await page.locator(`${scope} .arcade-glass`).evaluateAll(elements=>elements.map(e=>{
       const s=getComputedStyle(e),v=getComputedStyle(e,'::before');
-      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
+      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),knee:v.backdropFilter,shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
     }));
     expect(materials.length).toBeGreaterThanOrEqual(2);
     const group=route.startsWith('game/')?'game':'navigation';
@@ -288,7 +290,10 @@ test('navigation and its companion share frost while game controls retain their 
   expect(references.navigation.veil).toBe('rgba(255, 255, 255, 0.125)');
   expect(references.game.veil).toBe('rgba(8, 12, 18, 0.2)');
   // LOOK-9: the dark smoke caps the art at 226 (each brightness step clamps), white reading 229.6 as under the WebGL bar.
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(.92) brightness(1.1283) brightness(.8863)']);
+  // LOOK-11: beside the WebGL bar (data-glass=backdrop) a knee on the tint's own layer rolls it off as the bar does
+  // (section-navigation.css), in place of the cap; a frost on the glass itself (data-glass=frost) keeps the cap.
+  expect([references.navigation.blur,references.navigation.tone,references.navigation.knee]).toEqual(references.navigation.mode==='backdrop'?
+    ['blur(12px)','saturate(.92)','brightness(1.5773) brightness(0.634) opacity(0.291)']:['blur(12px)','saturate(.92) brightness(1.1283) brightness(.8863)','none']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 

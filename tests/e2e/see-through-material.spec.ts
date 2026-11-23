@@ -324,7 +324,9 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   if(!filtered)test.info().annotations.push({type:'renderer limitation',description:'This browser build paints no backdrop filters; only the fill transfer is measured.'});
   // LOOK-9: the dark navigation's smoke also caps the art at .8863 (brightness(1.1283) then brightness(.8863), each step
   // clamped), so white reads 229.6 under it, as under the WebGL bar's roll-off.
-  const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?.92:1.08,brightness:1,contrast:1,cap:navigation?.8863:1}:{saturate:1,brightness:1,contrast:1,cap:1};
+  // LOOK-11: beside the WebGL bar (the menu here, data-glass=backdrop) that roll-off is a knee on the tint's own layer
+  // instead (section-navigation.css): .291 of the art capped at .634 over .709 of it. The fallback bar keeps the cap.
+  const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?.92:1.08,brightness:1,contrast:1,cap:surface==='bar'?.8863:1,knee:surface==='menu'?[.634,.291]:[1,0]}:{saturate:1,brightness:1,contrast:1,cap:1,knee:[1,0]};
   const fill=surface==='sheet'?{rgb:[12,16,22],alpha:.58}:navigation?{rgb:NAV_RGB,alpha:NAV_ALPHA}:{rgb:FILL_RGB,alpha:FILL_ALPHA};
   expect(measured.retention,'Dark and light source artwork must have measurable contrast').not.toBeNull();
   const expected=expectedRetention(['#152431','#f8e6c0'],tone,fill,surface==='dock'?measured.region:undefined);
@@ -351,16 +353,17 @@ function expectedLift(colors:string[],fill:{rgb:number[];alpha:number}){
   return lifts.reduce((s,v)=>s+v,0)/lifts.length;
 }
 
-function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number;cap:number},fill:{rgb:number[];alpha:number},dockRegion?:{w:number;h:number;x0:number;x1:number;y0:number;y1:number}){
+function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number;cap:number;knee:number[]},fill:{rgb:number[];alpha:number},dockRegion?:{w:number;h:number;x0:number;x1:number;y0:number;y1:number}){
   const lightness=(rgb:number[])=>{
     const y=rgb.reduce((sum,v,c)=>{const s=v/255;return sum+[.2126,.7152,.0722][c]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);},0);
     return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
   };
   const source=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
-  // Filter Effects: saturate matrix, then the cap (a clamped brightness pair), then brightness, then contrast, then the fill.
+  // Filter Effects: saturate matrix, then the cap (a clamped brightness pair) or the knee layer's mix, then brightness, then
+  // contrast, then the fill.
   const s=tone.saturate,matrix=[[.213+.787*s,.715-.715*s,.072-.072*s],[.213-.213*s,.715+.285*s,.072-.072*s],[.213-.213*s,.715-.715*s,.072+.928*s]];
   const clamp=(v:number)=>Math.min(1,Math.max(0,v));
-  const filtered=(rgb:number[])=>matrix.map(row=>Math.min(tone.cap,clamp(row.reduce((sum,k,j)=>sum+k*rgb[j]/255,0)))).map(v=>255*clamp((v*tone.brightness-.5)*tone.contrast+.5));
+  const filtered=(rgb:number[])=>matrix.map(row=>Math.min(tone.cap,clamp(row.reduce((sum,k,j)=>sum+k*rgb[j]/255,0)))).map(v=>tone.knee[1]*Math.min(v,tone.knee[0])+(1-tone.knee[1])*v).map(v=>255*clamp((v*tone.brightness-.5)*tone.contrast+.5));
   // The 135deg white gradient paints over the tinted backdrop. Evaluate its
   // literal .10 / .025 at 45% / .065 stops at every sampled pixel centre,
   // rather than assuming uniform alpha across a wide HUD or fitting the shot.

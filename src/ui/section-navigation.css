@@ -54,11 +54,25 @@
    straight line read 255 under the circle beside it. Each filter step clamps to 0..1, so brightness(1.1283) then
    brightness(.8863) caps the art at 226 and leaves everything under it as it was: white reads .875 x 226 + 32 = 229.6
    under the circle, as under the bar, and black and mid art keep the line (32, #777 136). Between 128 and 226 the
-   bar's own roll-off sits up to about 15 under this cap. */
+   bar's own roll-off sits up to about 15 under this cap.
+   LOOK-11: so the circle read up to 16 over the bar beside it (226 art: 230 against 214). CSS filter steps compose to
+   one slope, but a layer over the smoke whose backdrop filter caps it and then keeps only part of that, opacity(.291),
+   mixes the capped and the plain smoke: the line bends at 160 art (KNEE, brightness(1.5773) then (.634), .634 of the
+   art) to .709 of its slope, a two-segment fit of the bar's square roll-off within about 2 levels from black to white
+   (32, #777 136, 226 213 against the bar's 214, white 231 against 229), so the cap above goes. The tint's own layer
+   carries it, so the knee sits between the frosted art and the tint. That needs the frost on the lens layer under it
+   (data-glass=backdrop, beside the WebGL bar): a frost on the glass itself (data-glass=frost, the CSS fallback, where
+   the circle sits beside the CSS bar) makes it the tint's backdrop root, so there both keep the cap. The compact circle
+   is the bar itself drawn small (its button only holds the glyph), so it already reads as the bar. */
 @media (prefers-color-scheme:dark){
   .section-navigation>.arcade-glass:not([data-glass=off]),
   .section-navigation>.section-tabbar:not([data-glass=off])~.arcade-glass-mini{
     --glass-tint:rgb(255 255 255 / .125);--glass-tone:saturate(.92) brightness(1.1283) brightness(.8863);
+  }
+  .section-navigation>.arcade-glass[data-glass=backdrop]{--glass-tone:saturate(.92)}
+  .section-navigation>.arcade-glass[data-glass=backdrop]::before{
+    -webkit-backdrop-filter:brightness(1.5773) brightness(.634) opacity(.291);
+    backdrop-filter:brightness(1.5773) brightness(.634) opacity(.291);
   }
 }
 /* Apple Music's side margins: about 16 css px at 390, not 12, with an 8 px gap to the menu circle. */
