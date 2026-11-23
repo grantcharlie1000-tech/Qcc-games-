@@ -14,8 +14,12 @@ uniform vec4 region;
 // still shows it. LOOK-10: the council on aa6359ee read that bar as too clear (titles and the green and red stripes
 // sharp through it) beside Apple's calmer smoke, which softens what lies behind it into one surface, so the ring widens
 // to 1.6: letters still read through the bar, softly (the old near-black slab stays rejected).
+// LOOK-12: with LOOK-10's deeper smoke (DARK_EVEN) that read as a smudge. Title strokes alone (glyph boxes masked, edges
+// under 190 at their bright end) rise over 2.40 css px in Apple's still (88 levels); ours rose over 2.77 (44 levels), and
+// over 2.21 (66 levels) at aa6359ee's settings, the council's "sharp". At .9 the ring gives Apple's 2.40 and the strokes
+// stay calm (48 levels): soft letters, not a smudge. Its reach is .9 plus 2 css px of mip 1, inside the crop's floor.
 float softFrostMix = 0.;
-const float DARK_RING = 1.6;
+const float DARK_RING = .9;
 vec3 softFrost(vec2 pos) {
   vec2 uv = region.xy + pos * region.zw;
   float density = float(textureSize(scene, 0).x) * region.z;
@@ -776,7 +780,7 @@ function smoothstep(value:number) {
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
 // (section-lens.spec reads the median); its margin over 2:1 covers the model. section-navigation.css draws it at rest; press and drag keep their own accents.
 const ACCENT = [0,153,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
-const INK_STEP = 1.18, INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = 1.6, INK_REACH = 12, INK_SHARE = .85;
+const INK_STEP = 1.18, INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
 const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
 /** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for #0099ff. */
