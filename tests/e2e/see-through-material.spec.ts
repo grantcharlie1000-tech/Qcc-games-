@@ -7,8 +7,11 @@ test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasT
 
 // #92 separates frosted navigation/sheets from the unchanged clear HUD fill.
 const CLEAR_FILL='rgba(8, 12, 18, 0.2)',FILL_RGB=[8,12,18],FILL_ALPHA=.2;
-const NAV_FILL='rgba(8, 12, 18, 0.36)',FROST_FILL='rgba(12, 16, 22, 0.58)',ARCADE_SHEET_FILL='rgba(12, 16, 22, 0.9)';
+// LOOK-6: the dark theme's navigation is Apple's see-through smoke, .125 of white (Charlie's 23:10Z feedback and Apple's
+// dark still supersede #92's dark .36 veil there); these checks run in the dark theme.
+const NAV_FILL='rgba(255, 255, 255, 0.125)',NAV_RGB=[255,255,255],NAV_ALPHA=.125,FROST_FILL='rgba(12, 16, 22, 0.58)',ARCADE_SHEET_FILL='rgba(12, 16, 22, 0.9)';
 test('navigation, clear controls and frosted sheets retain their intended fills over the live backdrop',async({page})=>{
+  await page.emulateMedia({colorScheme:'dark'});
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
@@ -255,7 +258,9 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
   // 0f3d109), and the uniform art layer then covers it; Games shows the shell.
   // The sheet is the home sheet: over a live game, the WebGL lens samples the
   // canvas itself rather than an injected DOM art layer.
-  await page.goto(surface==='dock'?'/#/game/snake':'/#/collection');
+  await page.emulateMedia({colorScheme:'dark'});
+  // The WebGL section lens hides the bar's CSS layers (they are its fallback), so the bar's CSS recipe is measured there.
+  await page.goto(surface==='dock'?'/#/game/snake':surface==='bar'?'/?glass=fallback#/collection':'/#/collection');
   if(surface==='sheet')await page.locator('.app-navigation .section-menu').click();
   const selector={bar:'.app-tabbar',menu:'.app-menu',dock:'.game-hud',sheet:'#menu'}[surface];
   const panel=page.locator(selector);await expect(panel).toBeVisible();
@@ -307,17 +312,18 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} tra
     return {lift:mean(added),retention:sd(original)>1?sd(levels)/sd(original):null,samples:levels.length,region};
   },{pairs,surface});
   expect(measured.samples).toBeGreaterThan(20);
-  expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(2);
+  // The dark navigation's smoke adds its own .125 of white by design (LOOK-6); no surface adds more than its recipe.
+  const navigation=surface==='bar'||surface==='menu';
+  expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(2+(navigation?expectedLift(['#152431','#f8e6c0'],{rgb:NAV_RGB,alpha:NAV_ALPHA}):0));
   // Model the literal recipes independently: dock .20/saturate(1.08) beneath
-  // its directional sheen, navigation .36/saturate(1.4)/brightness(.94),
+  // its directional sheen, navigation .125 white/saturate(.92) (dark theme),
   // sheets .58/saturate(1.5). Keep the sheen, glow and rim in the actual shot.
   // Some Linux WebKit builds paint no backdrop filters at all (see clear-glass);
   // there only the fill applies. That is checked on an independent CSS page.
   const filtered=await backdropFiltersRender(page);
   if(!filtered)test.info().annotations.push({type:'renderer limitation',description:'This browser build paints no backdrop filters; only the fill transfer is measured.'});
-  const navigation=surface==='bar'||surface==='menu';
-  const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?1.4:1.08,brightness:navigation?.94:1,contrast:1}:{saturate:1,brightness:1,contrast:1};
-  const fill=surface==='sheet'?{rgb:[12,16,22],alpha:.58}:{rgb:FILL_RGB,alpha:navigation?.36:FILL_ALPHA};
+  const tone=filtered?{saturate:surface==='sheet'?1.5:navigation?.92:1.08,brightness:1,contrast:1}:{saturate:1,brightness:1,contrast:1};
+  const fill=surface==='sheet'?{rgb:[12,16,22],alpha:.58}:navigation?{rgb:NAV_RGB,alpha:NAV_ALPHA}:{rgb:FILL_RGB,alpha:FILL_ALPHA};
   expect(measured.retention,'Dark and light source artwork must have measurable contrast').not.toBeNull();
   const expected=expectedRetention(['#152431','#f8e6c0'],tone,fill,surface==='dock'?measured.region:undefined);
   expect(Math.abs(measured.retention!-expected),JSON.stringify({...measured,expected})).toBeLessThanOrEqual(.03);
@@ -330,6 +336,17 @@ async function backdropFiltersRender(page:Page){
     const png=(await reference.screenshot({clip:{x:10,y:10,width:4,height:4}})).toString('base64');
     return await reference.evaluate(async png=>{const i=new Image();i.src='data:image/png;base64,'+png;await i.decode();const c=document.createElement('canvas');c.width=i.width;c.height=i.height;const x=c.getContext('2d')!;x.drawImage(i,0,0);return x.getImageData(1,1,1,1).data[0]<200;},png);
   }finally{await reference.close();}
+}
+
+// The CIE lightness a uniform fill adds over each source colour, averaged (the smoke's own lift).
+function expectedLift(colors:string[],fill:{rgb:number[];alpha:number}){
+  const lightness=(rgb:number[])=>{
+    const y=rgb.reduce((sum,v,c)=>{const s=v/255;return sum+[.2126,.7152,.0722][c]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);},0);
+    return y>216/24389?116*Math.cbrt(y)-16:24389/27*y;
+  };
+  const source=colors.map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
+  const lifts=source.map(rgb=>Math.max(0,lightness(rgb.map((v,c)=>v*(1-fill.alpha)+fill.rgb[c]*fill.alpha))-lightness(rgb)));
+  return lifts.reduce((s,v)=>s+v,0)/lifts.length;
 }
 
 function expectedRetention(colors:string[],tone:{saturate:number;brightness:number;contrast:number},fill:{rgb:number[];alpha:number},dockRegion?:{w:number;h:number;x0:number;x1:number;y0:number;y1:number}){

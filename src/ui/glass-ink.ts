@@ -23,14 +23,21 @@ export function milkInk(samples:readonly RGB[]):{color:string;halo:string}{
   const contrast=Math.min(...colors.map(rgb=>(luminance(mix(rgb,MILK,MILK_VEIL))+.05)/(ink+.05)));
   return {color:MILK_INK,halo:contrast>=4.5?'transparent':'rgb(255 255 255 / .8)'};
 }
-// The dark theme's WebGL bar (section-lens.ts DARK_SMOKE) is a lighter smoke than the CSS frost's .36 dark tint: about
-// .2 of a 160 grey over the art (black about 32, white about 236). Section labels keep the dark halo wherever either
-// surface would leave white ink under the 7:1 bar for 10px labels.
+// The dark theme's WebGL bar (section-lens.ts DARK_GLASS) is a smoke over the art of about .2 of a 160 grey (black about
+// 32, white about 236). Section labels keep the dark halo wherever it, or #92's darker .36 frost (NAV_VEIL), would leave
+// white ink under the 7:1 bar for 10px labels. LOOK-6 made the dark CSS glass the same smoke, .125 of white (MENU_SMOKE,
+// section-navigation.css): within about 6 levels of NAV_SMOKE up to mid art, so the labels' model is kept.
 const NAV_SMOKE:RGB=[160,160,160],NAV_SMOKE_VEIL=.2;
+const MENU_SMOKE=.125,WHITE:RGB=[255,255,255];
 export function navInk(samples:readonly RGB[],selection:boolean):{color:string;halo:string}{
   const frost=glassInk(samples,'light',selection,false,NAV_VEIL,7);
   const smoke=glassInk(samples.map(rgb=>mix(rgb,NAV_SMOKE,NAV_SMOKE_VEIL)),'light',selection,false,0,7);
   return frost.halo==='transparent'&&smoke.halo==='transparent'?frost:{color:'#fff',halo:HALO_DARK};
+}
+/** The dark menu circle is CSS glass only, that smoke: its white glyph keeps 4.5:1 over it, or takes the dark halo.
+ * Icon colour belongs to CSS, so only the halo is set (no --glass-adaptive-ink). */
+export function menuInk(samples:readonly RGB[]):{color:string;halo:string}{
+  return {color:'',halo:glassInk(samples.map(rgb=>mix(rgb,WHITE,MENU_SMOKE)),'light',false,false,0,4.5).halo};
 }
 /** Keep the glyph itself white. Sample only to decide whether a soft dark
  * shadow is needed over bright or busy artwork; never invert labels or scores.
@@ -214,8 +221,10 @@ function update(){
       const nav=!!bar.closest('.section-navigation');
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
       const milky=nav&&!matchMedia('(prefers-color-scheme: dark)').matches;
+      // LOOK-6: the dark menu circle's lighter smoke can leave its white glyph under 4.5:1 over bright art (menuInk).
+      const circle=nav&&!milky&&target.matches('.section-menu');
       for(const group of groups.values()){
-        const labels=group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
+        const labels=circle?group:group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
         if(!labels.length)continue;
         let ink:ReturnType<typeof glassInk>|null=null;
         // Frosted sheets carry a dark tint under a deep blur: plain white ink, no halo.
@@ -225,6 +234,7 @@ function update(){
           // The section bar's deep frost blurs fine texture away, so C30 showed plain labels over art.
           // There only low contrast (bright art, unreadable media) keeps the halo, at a 7:1 bar for 10px text.
           ink=milky?milkInk(known.length?known:UNKNOWN)
+            :circle?menuInk(known.length?known:UNKNOWN)
             :nav?navInk(known.length?known:UNKNOWN,selection)
             :glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),CLEAR_VEIL);
         }

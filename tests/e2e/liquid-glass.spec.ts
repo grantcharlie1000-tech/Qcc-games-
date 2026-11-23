@@ -857,7 +857,8 @@ test('the Movies island uses the same white ink and bold selection as Games',asy
 });
 
 test('the fallback navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
-  // The dark theme's fallback keeps #92's smoked frost. The light theme's is Apple Music's pale see-through frost, as the
+  // The dark theme's fallback is Apple's dark see-through smoke (LOOK-6, Charlie's 23:10Z feedback and Apple's dark still:
+  // .125 of white over the art, the WebGL bar's 32 + .875 a; it was #92's .36 dark frost). The light theme's is Apple Music's pale see-through frost, as the
   // WebGL lens and the menu circle: a .8 light grey tint (glass-ink.ts models it for the 4.5:1 labels), a deeper 20px
   // blur and a grey pill a step darker than the bar over bright art, held near 199 over the black page (accent 2.1:1).
   await page.setViewportSize({width:390,height:844});
@@ -869,14 +870,15 @@ test('the fallback navigation glass keeps its frosted backdrop, dark tint and cl
   await page.emulateMedia({colorScheme:'dark'});await page.goto('/?glass=fallback');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  // #92 frosts navigation at .36. Without the WebGL lens the selection pill is the C30 smoke, a clear step darker than the bar.
-  expect(tint).toBeCloseTo(.36,2);
+  // The dark smoke is .125 of white. Without the WebGL lens the selection pill is the C30 smoke, a clear step darker than the bar.
+  expect(tint).toBeCloseTo(.125,3);
+  expect(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
   const pill=await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
   expect(alphaOf(pill)).toBeGreaterThanOrEqual(.25);
   expect(pill).toMatch(/^rgba\(0, 0, 0,/);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
-  expect(frost).toBe('blur(12px) saturate(1.4) brightness(0.94)');
+  expect(frost).toBe('blur(12px) saturate(0.92)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   // Clean glyphs: no stroke or blurred glow; over busy art the adaptive ink may

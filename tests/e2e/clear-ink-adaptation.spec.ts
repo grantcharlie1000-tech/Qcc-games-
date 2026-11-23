@@ -85,6 +85,46 @@ test('icon palette still respects high contrast and forced colours',async({page}
  await expect(icon).toHaveCSS('color','rgb(255, 255, 255)');
 });
 
+// LOOK-6 (Charlie's 23:10Z feedback, Apple's dark still): the dark menu circle is the bar's see-through smoke, .125 of
+// white over the art, no longer #92's near-black .36 veil. Its white glyph must keep 4.5:1 over that glass, or carry the
+// dark halo where the art behind it is bright; glass off stays opaque.
+test('the dark menu circle\'s smoked glass keeps its white glyph at 4.5:1 or halos it',async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
+ await page.goto('/#/collection');
+ const menu=page.locator('.app-navigation .section-menu'),icon=menu.locator('svg.ui-icon');
+ await expect(icon).toHaveCSS('color','rgb(255, 255, 255)');
+ await expect.poll(()=>menu.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
+ // White ink's contrast over the lightest glass pixel under the glyph, the glyph itself hidden.
+ const glass=async()=>{
+  const hide=await page.addStyleTag({content:'.app-navigation .section-menu svg{visibility:hidden!important}'});
+  const box=(await icon.boundingBox())!,png=(await page.screenshot({clip:box,scale:'css'})).toString('base64');
+  await hide.evaluate(e=>(e as Element).remove());
+  return page.evaluate(async png=>{
+   const i=new Image();i.src='data:image/png;base64,'+png;await i.decode();const c=document.createElement('canvas');c.width=i.width;c.height=i.height;
+   const x=c.getContext('2d')!;x.drawImage(i,0,0);const d=x.getImageData(0,0,c.width,c.height).data;
+   const lum=(r:number,g:number,b:number)=>[r,g,b].reduce((l,v,k)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][k];},0);
+   let top=0;for(let k=0;k<d.length;k+=4)top=Math.max(top,lum(d[k],d[k+1],d[k+2]));
+   return 1.05/(top+.05);
+  },png);
+ };
+ const halo=()=>icon.evaluate(e=>e.hasAttribute('data-glass-halo'));
+ // Our dark page: the smoke over it keeps the plain white glyph far above 4.5:1.
+ const page0=await glass();
+ expect(page0).toBeGreaterThanOrEqual(4.5);
+ for(const [color,bright] of [['#000',false],['#777',true],['#fff',true]] as const){
+  await page.evaluate(color=>{document.getElementById('menu-ink-patch')?.remove();const p=document.createElement('div');p.id='menu-ink-patch';
+   p.style.cssText=`position:fixed;inset:auto 0 0;height:160px;z-index:1;pointer-events:none;background:${color}`;document.body.append(p);},color);
+  await expect.poll(halo,color).toBe(bright);
+  const contrast=await glass();
+  // Over black the smoke reads about 32 (16:1); over mid grey and white it drops under 4.5:1, so the halo carries it.
+  if(!bright)expect(contrast,color).toBeGreaterThanOrEqual(4.5);
+  else expect(contrast,color).toBeLessThan(4.5);
+ }
+ await page.emulateMedia({reducedMotion:'reduce',contrast:'more'});
+ await expect(menu).toHaveAttribute('data-glass','off');
+ expect(await menu.evaluate(e=>getComputedStyle(e).backgroundColor)).toMatch(/^rgb\(\d+, \d+, \d+\)$/);
+});
+
 // Apple Music's light bar is pale, see-through frost: unselected glyphs are mid-grey and labels a dark grey (about 45 in
 // Apple's light still, #333336 here), which must still read at 4.5:1 over the lens's frost where it is darkest, over black art.
 test('the light theme\'s milky navigation keeps Apple\'s grey ink legible at 4.5:1',async({page})=>{

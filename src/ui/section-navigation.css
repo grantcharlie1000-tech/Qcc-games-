@@ -44,6 +44,18 @@
   }
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off])>.ui-glass-glow{opacity:.55}
 }
+/* LOOK-6 (Charlie, 23:10Z: the dark look read very badly beside Apple's): in the dark theme the section navigation's CSS
+   glass is the WebGL bar's own dark see-through smoke (section-lens.ts DARK_GLASS, Apple's dark still and video: black
+   32, the art at 32 + .875 of itself, about four fifths of its colour). .125 of white over the art is exactly that line,
+   and saturate(.92) keeps .875 x .92 = .8 of the colour. So the menu circle, the compact circle and the CSS fallback bar
+   are one glass family with the lens's bar; #92's dark .36 veil left the circle about 3 over black beside the bar's 32.
+   Glass off and reduced transparency stay opaque (theme.css), and a glass-off bar's compact circle keeps the .36 veil. */
+@media (prefers-color-scheme:dark){
+  .section-navigation>.arcade-glass:not([data-glass=off]),
+  .section-navigation>.section-tabbar:not([data-glass=off])~.arcade-glass-mini{
+    --glass-tint:rgb(255 255 255 / .125);--glass-tone:saturate(.92);
+  }
+}
 /* Apple Music's side margins: about 16 css px at 390, not 12, with an 8 px gap to the menu circle. */
 @media (min-width:360px){.section-navigation.section-navigation{--home-inset:16px;--home-gap:8px}}
 .section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){

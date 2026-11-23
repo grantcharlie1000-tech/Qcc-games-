@@ -145,12 +145,15 @@ test('Games and Movies sheet closes use the same clear material and release it o
 // The clear-variant acceptance supersedes the earlier regular-HIG alpha fit.
 // Rendered dark/chroma checks still reject hidden luminance compression.
 for(const fallback of [false,true])test(`frosted navigation retains backdrop colour and diffuses its boundary (${fallback?'fallback':'native'})`,async({page,browserName})=>{
+  await page.emulateMedia({colorScheme:'dark'});
   await page.setViewportSize({width:390,height:844});
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  // #92's navigation frost uses a dark 36% veil, never a white one.
-  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.36)');
+  // #92's navigation frost used a dark 36% veil, never a white one. Charlie's 23:10Z feedback (the dark look beside
+  // Apple's dark still and video) supersedes that for the dark theme: its navigation is Apple's see-through smoke, .125
+  // of white over the art (black 32, as the WebGL bar). Dark content still reads dark and colour stays colour, below.
+  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
   const patches=await page.evaluate(async png=>{
@@ -189,7 +192,9 @@ for(const fallback of [false,true])test(`frosted navigation retains backdrop col
 });
 
 test('navigation and its companion share frost while game controls retain their clear optical recipe',async({page})=>{
-  // #92 gives navigation its own frost/tint; game controls remain clear.
+  // #92 gives navigation its own frost/tint; game controls remain clear. In the dark theme that frost is Apple's smoke
+  // (LOOK-6, Charlie's 23:10Z feedback with Apple's dark still), shared by the bar and its menu circle.
+  await page.emulateMedia({colorScheme:'dark'});
   const references:Record<string,Record<string,string>>={};
   for(const route of ['collection','study','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
@@ -214,12 +219,12 @@ test('navigation and its companion share frost while game controls retain their 
       expect(material,route).toEqual(references[`${group}|${material.mode}`]);
       references[group]??=material;
     }
-    expect(materials[0].veil,route).toBe(group==='navigation'?'rgba(8, 12, 18, 0.36)':'rgba(8, 12, 18, 0.2)');
+    expect(materials[0].veil,route).toBe(group==='navigation'?'rgba(255, 255, 255, 0.125)':'rgba(8, 12, 18, 0.2)');
   }
   for(const reference of Object.values(references))expect(reference.pill).toEqual(references.navigation.pill);
-  expect(references.navigation.veil).toBe('rgba(8, 12, 18, 0.36)');
+  expect(references.navigation.veil).toBe('rgba(255, 255, 255, 0.125)');
   expect(references.game.veil).toBe('rgba(8, 12, 18, 0.2)');
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(1.4) brightness(.94)']);
+  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(.92)']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
