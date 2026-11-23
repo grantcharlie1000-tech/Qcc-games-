@@ -124,7 +124,7 @@ test('a touch-focused tab still adapts the visible mini after scrolling',async({
   const mask=await glyphFillMask(page,mini,'.app-navigation .ui-tabbar-mini svg',true);
   const hide=await page.addStyleTag({content:'.app-navigation .ui-tabbar-mini svg{visibility:hidden!important}'});
   const frost=(await mini.screenshot({animations:'disabled'})).toString('base64');
-  await hide.evaluate(e=>e.remove());
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
   const ratios=await glyphContrast(page,frost,mask,boxes,bounds);
   expect(Math.min(...ratios),JSON.stringify({ratios,boxes})).toBeGreaterThanOrEqual(2);
 });
