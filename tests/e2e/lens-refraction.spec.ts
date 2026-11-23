@@ -28,9 +28,13 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.dataset.t28='stripes';
     image.alt='';
     image.src=src;
-    // #92's larger companion leaves a 290px bar. Shift the vertical source
-    // boundary inside both rounded ends so each rim still has detail to bend.
-    image.style.cssText=`position:fixed;left:${orientation==='v'?4:0}px;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none`;
+    // A vertical stripe boundary sits the same few px inside each rounded end, so each rim has detail to bend: the bar's
+    // width past whole 16 px stripes is split between its ends. MOTION-14: the fixed 4 px shift was set for the 64 px bar;
+    // the 60 px bar (99b1fff9) is 290 px wide at 16, which left the right end's boundaries at 292 and 308, outside its 12 px
+    // band, so that rim read only a flat stripe (11.3 against 15 at every commit since, with the map unchanged).
+    const box=document.querySelector('.app-tabbar')!.getBoundingClientRect(),spare=box.width%16,inset=spare<8?(spare+16)/2:spare/2;
+    const left=orientation==='v'?(box.left+inset)%32-32:0;
+    image.style.cssText=`position:fixed;left:${left}px;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none`;
     document.body.append(image);
   },{src:stripes(orientation),orientation});
   // Isolate the bend with the same 3px optical fixture used before #92.
@@ -44,7 +48,7 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
 // displacement is set to zero for the flat one, so the frost is the same in both. Both shots are PNGs that the page decodes to pixels, so
 // the comparison is the same in every engine. Only pixels inside the capsule count: the corners outside it never change and would dilute
 // the mean. The rim is the band at each end: 12 px for vertical stripes (left and right) and 20 px for horizontal ones (top and bottom),
-// which is where the bend of this 64 px bar falls off. The centre is the median over the band that the bend does not reach. A third shot
+// which is where the bend of the bar falls off. The centre is the median over the band that the bend does not reach. A third shot
 // of the same state must match the bent one, so a bar that is still moving between shots cannot pass as a bend.
 async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
