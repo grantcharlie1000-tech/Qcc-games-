@@ -152,6 +152,8 @@ function bindSettleRepaint(bar:HTMLElement):()=>void{
     animation.playState==='running'&&animation.effect?.getComputedTiming().iterations!==Infinity);
   const repaint=()=>{
     for(const icon of bar.querySelectorAll<SVGElement>('.ui-tab>.ui-icon')){
+      // At SETTLE_LIMIT the bar may still be moving: a glyph still easing is left alone, never cut short.
+      if(typeof icon.getAnimations==='function'&&icon.getAnimations().some(animation=>animation.playState==='running'))continue;
       const value=icon.style.getPropertyValue('display'),priority=icon.style.getPropertyPriority('display');
       icon.style.setProperty('display','none','important');
       void icon.getBoundingClientRect();
