@@ -104,8 +104,15 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 
   const selected=bar.getByRole('link',{name:'Games',exact:true});
   await expect(selected).toHaveAttribute('aria-current','page');
-  await expect(selected.locator('.ui-icon')).toHaveCSS('color','rgb(0, 153, 255)');
-  await expect(selected.locator(':scope > span')).toHaveCSS('color','rgb(0, 153, 255)');
+  // LOOK-10: over bright art the dark pill now sits a little darker than the bar, so the accent keeps 2:1 by its ink, a
+  // blue the lens picks against that pill (section-lens.ts selectionAccent): over this patch a deeper one than #0099ff.
+  let accent='';
+  await expect.poll(async()=>{
+    const [label,icon]=await Promise.all([selected.locator(':scope > span'),selected.locator('.ui-icon')].map(part=>part.evaluate(e=>getComputedStyle(e).color)));
+    const same=label===icon&&label===accent;accent=label;return same;
+  },{intervals:[250]}).toBe(true);
+  const [red,green,blue]=accent.match(/\d+/g)!.map(Number);
+  expect(blue,accent).toBeGreaterThan(Math.max(red,green));
   await expect(selected.locator('.ui-icon')).toHaveCSS('filter',/drop-shadow\(.*0\.85/);
   await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
@@ -170,8 +177,12 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // well above the accent at about 2.3:1 (the smoked light pill gave 1.25:1): pin that side instead.
 // Since the light frost lets the art through (133d37f2), black art is the light pill's worst case: the pill followed it
 // down to about 166/255 and the #ff375f accent read 1.45:1. The same floors hold over a black patch.
+// LOOK-10 (council on aa6359ee): the dark pill was held at .091 so #0099ff kept 2.5:1, which sat it 79 under a 136 bar over
+// mid-grey art. It now sits a little darker than the bar over every art (a bar-to-pill luminance contrast of about 1.18,
+// Apple's 1.15-1.21), and the selected icon and label keep the 2:1 selected floor by their ink (section-lens.ts
+// selectionAccent): checked over white, black and, dark only, a #777 patch, where #0099ff alone would read about 1.4:1.
 test('the selected accent keeps its contrast against the WebGL pill over white art and over black art',async({page})=>{
-  const floor={dark:{ratio:2.5,pill:.091},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
+  const floor={dark:{ratio:2,pill:1},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
   for (const scheme of ['dark','light'] as const) {
     await page.emulateMedia({colorScheme:scheme});
     await page.goto('/#/collection');
@@ -209,6 +220,12 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       pill.sort((a,b)=>a-b);
       return `${Math.round(100*values[values.length>>1])/100} ${Math.round(1000*pill[pill.length>>1])/1000}`;
     });
+    // LOOK-10: the bar body at the canvas centre (no glyph is drawn into the canvas) against the dark pill's luminance.
+    const barToPill=(pillLuminance:number)=>canvas.evaluate((element,pillLuminance)=>{
+      const surface=element as HTMLCanvasElement,data=surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data;
+      const lum=[...data].slice(0,3).reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+      return (lum+.05)/(pillLuminance+.05);
+    },pillLuminance);
     // Wait for the white patch to reach the lens and for two equal reads.
     await expect.poll(()=>canvas.evaluate(element=>{
       const surface=element as HTMLCanvasElement;
@@ -223,6 +240,12 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     expect(ratio).toBeGreaterThanOrEqual(floor[scheme].ratio);
     expect(pill).toBeLessThanOrEqual(floor[scheme].pill);
     expect(pill).toBeGreaterThanOrEqual(milky[scheme]);
+    if (scheme==='dark') {
+      const step=await barToPill(pill);
+      console.log(`dark bar to pill over white art: ${step.toFixed(2)}`);
+      expect(step).toBeGreaterThanOrEqual(1.05);
+      expect(step).toBeLessThanOrEqual(1.35);
+    }
     // Black art: wait for the bar to darken under it (light frost about 188, dark smoke about 32), then two equal reads.
     await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#000';});
     await expect.poll(()=>canvas.evaluate(element=>{
@@ -236,6 +259,26 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     expect(blackRatio).toBeGreaterThanOrEqual(floor[scheme].ratio);
     expect(blackPill).toBeLessThanOrEqual(floor[scheme].pill);
     expect(blackPill).toBeGreaterThanOrEqual(milky[scheme]);
+    if (scheme==='dark') {
+      const blackStep=await barToPill(blackPill);
+      console.log(`dark bar to pill over black art: ${blackStep.toFixed(2)}`);
+      expect(blackStep).toBeGreaterThanOrEqual(1.05);
+      expect(blackStep).toBeLessThanOrEqual(1.35);
+      // Mid-grey art, where #0099ff alone would read about 1.4:1 against the lighter pill: its ink keeps the floor.
+      await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#777';});
+      await expect.poll(()=>canvas.evaluate(element=>{
+        const surface=element as HTMLCanvasElement;
+        return surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data[1];
+      })).toBeGreaterThan(110);
+      previous='';
+      await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
+      const [greyRatio,greyPill]=previous.split(' ').map(Number);
+      const greyStep=await barToPill(greyPill);
+      console.log(`selected accent over #777 art, dark: ${greyRatio}:1, pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)}`);
+      expect(greyRatio).toBeGreaterThanOrEqual(floor.dark.ratio);
+      expect(greyStep).toBeGreaterThanOrEqual(1.05);
+      expect(greyStep).toBeLessThanOrEqual(1.35);
+    }
   }
 });
 

@@ -161,7 +161,7 @@ const float MIRROR_SPREAD = .35;
 // in it, and its rim reads brighter (RIM_LIGHT.x). The resting pill is the bar's own frost PILL_MILK_DROP darker, as
 // Apple's grey selected tab (209 under its 234 bar); a press lifts it to the frost, and the raised lens clears it.
 // Over black art that frost reads about 188 and the pill followed it to about 166, where the #ff375f accent read 1.45:1.
-// The pill is held at PILL_LIGHT_FLOOR luma or lighter (the light side of PILL_DARK_CEIL), eased toward white, so the
+// The pill is held at PILL_LIGHT_FLOOR luma or lighter, eased toward white, so the
 // accent keeps about 2.1:1 over any art (section-lens.spec's black patch); over bright art it stays the step darker.
 const float MILK_LIFT = .683, MILK_GAIN = .483, MILK_MIRROR = 1., PILL_MILK_DROP = 22. / 255., PILL_LIGHT_FLOOR = 200. / 255.;
 // Apple Music's dark bar is a light smoke over the art (Charlie's still and video): black under it reads about 32/255,
@@ -181,13 +181,15 @@ const float DARK_HUE = .5;
 // kept, rolling off past DARK_GLASS.z by DARK_GLASS.w of the square, so white still reads 230.
 const vec2 DARK_TONE = vec2(1.18 * .44 * .36 - SMOKE_DARK_DROP, 1.18 * .64);
 const vec4 DARK_GLASS = vec4(32. / 255., .875, .5, .402);
-// Apple's dark selected tab is a smoked capsule a step darker than the bar. The dark rest pill keeps PILL_DARK.y of the
-// bar's tone less PILL_DARK.x. Over bright art it is held at PILL_DARK_CEIL, so the blue accent keeps its 2.5:1 there
-// (section-lens.spec). LOOK-6: over a black page Apple's pill reads 11 under its bar's 32 in the dark still and 13
-// under 29 in the video's rest frame (38.75 s), a pill-to-bar luminance contrast of 1.21 and 1.15; .9 x 32 - 19 left
-// ours at about 9 (1.22), the darkest of the three. PILL_DARK.x 15 puts it at about 14 (1.19, between the two).
-const vec2 PILL_DARK = vec2(15. / 255., .9);
-const float PILL_DARK_CEIL = .31, PILL_DARK_RIM = .15;
+// Apple's dark selected tab is a smoked capsule a step darker than the bar. LOOK-6: over a black page Apple's pill reads 11
+// under its bar's 32 in the dark still and 13 under 29 in the video's rest frame (38.75 s), a pill-to-bar luminance
+// contrast of 1.21 and 1.15. LOOK-10 (council on aa6359ee: our pill sat well below the bar, 79 under 136 over mid-grey
+// art, held there so the blue accent kept 2.5:1): the dark rest pill sits PILL_STEP under the bar's own smoke in
+// luminance contrast over every art, black 32 -> 15, #777's 136 -> 124, white's 229 -> 212, as Apple's capsule only a
+// little darker than its bar. The selected icon and label keep 2:1 against it by their ink (glass-ink.ts pillAccent).
+const float PILL_STEP = 1.18, PILL_DARK_RIM = .15;
+float srgbLinear(float c) { return c <= .04045 ? c / 12.92 : pow((c + .055) / 1.055, 2.4); }
+float linearSrgb(float c) { return c <= .0031308 ? 12.92 * c : 1.055 * pow(c, 1. / 2.4) - .055; }
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
 // across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
@@ -582,12 +584,12 @@ void main() {
         deepen *= 1. - bright * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       }
       vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone, deepen);
-      // The dark theme's resting pill is Apple's smoked capsule (PILL_DARK): the bar's own smoke at this pixel, a little
-      // darker, so the art still shows through it, and held at PILL_DARK_CEIL over bright art. A press and the raised
-      // lens take it back to their milky and clear pieces. LOOK-10: it takes only the smoke's tone, so it reads as a neutral
-      // smoked capsule with the blue in the icon and label alone (the council read the darkened art's colour as a blue one).
-      vec3 darkPill = vec3(max(dot(darkSmoke(selectionColor), vec3(.2126, .7152, .0722)) * PILL_DARK.y - PILL_DARK.x, 0.));
-      darkPill *= min(1., PILL_DARK_CEIL / max(dot(darkPill, vec3(.2126, .7152, .0722)), .001));
+      // The dark theme's resting pill is Apple's smoked capsule (PILL_STEP): the bar's own smoke at this pixel, a little
+      // darker, so the art still shows through it. A press and the raised lens take it back to their milky and clear
+      // pieces. LOOK-10: it takes only the smoke's tone, so it reads as a neutral smoked capsule with the blue in the icon
+      // and label alone (the council read the darkened art's colour as a blue one).
+      float barLinear = srgbLinear(clamp(dot(darkSmoke(selectionColor), vec3(.2126, .7152, .0722)), 0., 1.));
+      vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / PILL_STEP - .05, 0.)));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
       // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
       // over the bar rim's dark depth (RIM_REST.zw).
@@ -681,6 +683,75 @@ function createRenderer(gl:WebGL2RenderingContext) {
 function smoothstep(value:number) {
   const t = Math.min(1,Math.max(0,value));
   return t * t * (3 - 2 * t);
+}
+
+// LOOK-10 (council on aa6359ee): the dark resting pill sits PILL_STEP under the bar's smoke over every art, so the selected
+// icon and label keep 2:1 against it by their ink, not by a darker pill. Once a rest frame holds still, pillUnder reads the
+// backdrop the lens uploaded under the selected tab's icon and label, blurred as the dark bar blurs it (INK_BLUR, DARK_BLUR,
+// of a box about the wide field's reach, the rest about the soft frost's with its bright detail sunk INK_EVEN of the way
+// to the field, as smoked() sinks it), and takes the pill's luminance there (DARK_GLASS, then PILL_STEP). selectionAccent gives the least step of the #0099ff accent toward white (over a mid pill) or toward a
+// deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
+// (section-lens.spec reads the median); its margin over 2:1 covers the model. section-navigation.css draws it at rest; press and drag keep their own accents.
+const ACCENT = [0,153,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
+const INK_STEP = 1.18, INK_BLUR = .55, INK_EVEN = .5, INK_FIELD = 10, INK_SOFT = 1.6, INK_REACH = 12, INK_SHARE = .85;
+const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
+const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
+/** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for #0099ff. */
+export function selectionAccent(pills:number[]):string {
+  // The contrast held at INK_SHARE of the points: thin bright strokes the pill blurs away do not move the ink alone.
+  const floor = (rgb:number[])=>{
+    const ink = inkLuminance(rgb);
+    const ratios = pills.map(pill=>(Math.max(ink,pill)+.05)/(Math.min(ink,pill)+.05)).sort((x,y)=>x-y);
+    return ratios[Math.floor((1-INK_SHARE)*(ratios.length-1))];
+  };
+  if (!pills.length || floor(ACCENT)>=ACCENT_FLOOR) return '';
+  let best = ACCENT, most = floor(ACCENT);
+  for (let step=1;step<=16;step++) for (const end of [[255,255,255],ACCENT_DEEP]) {
+    const ink = ACCENT.map((value,i)=>Math.round(value+(end[i]-value)*step/16)), reached = floor(ink);
+    if (reached>=ACCENT_FLOOR) return `rgb(${ink.join(' ')})`;
+    if (reached>most) {
+      best = ink;
+      most = reached;
+    }
+  }
+  return `rgb(${best.join(' ')})`;
+}
+/** The dark rest pill's luminance every 2 css px over each box (viewport css px), from the backdrop painted for crop. */
+export function pillUnder(source:HTMLCanvasElement, crop:Crop, boxes:DOMRect[]):number[] {
+  if (!boxes.length || !source.width || !source.height) return [];
+  const sx = source.width/crop.width, sy = source.height/crop.height;
+  const left = Math.max(0,Math.floor((Math.min(...boxes.map(box=>box.left))-INK_REACH-crop.x)*sx));
+  const top = Math.max(0,Math.floor((Math.min(...boxes.map(box=>box.top))-INK_REACH-crop.y)*sy));
+  const right = Math.min(source.width,Math.ceil((Math.max(...boxes.map(box=>box.right))+INK_REACH-crop.x)*sx));
+  const bottom = Math.min(source.height,Math.ceil((Math.max(...boxes.map(box=>box.bottom))+INK_REACH-crop.y)*sy));
+  const w = right-left, h = bottom-top, context = source.getContext('2d');
+  if (w<=0 || h<=0 || !context) return [];
+  const data = context.getImageData(left,top,w,h).data;
+  // A summed-area table of the art's tone gives each box mean in four reads.
+  const sum = new Float64Array((w+1)*(h+1));
+  for (let y=0;y<h;y++) {
+    let row = 0;
+    for (let x=0;x<w;x++) {
+      const i = 4*(y*w+x);
+      row += (.2126*data[i]+.7152*data[i+1]+.0722*data[i+2])/255;
+      sum[(y+1)*(w+1)+x+1] = sum[y*(w+1)+x+1]+row;
+    }
+  }
+  const mean = (x:number,y:number,reach:number)=>{
+    const x0 = Math.max(0,Math.round(x-reach*sx)), x1 = Math.min(w,Math.round(x+reach*sx)+1);
+    const y0 = Math.max(0,Math.round(y-reach*sy)), y1 = Math.min(h,Math.round(y+reach*sy)+1);
+    return (sum[y1*(w+1)+x1]-sum[y0*(w+1)+x1]-sum[y1*(w+1)+x0]+sum[y0*(w+1)+x0])/Math.max(1,(x1-x0)*(y1-y0));
+  };
+  const pills:number[] = [];
+  for (const box of boxes) for (let v=box.top+1;v<box.bottom;v+=2) for (let u=box.left+1;u<box.right;u+=2) {
+    const x = (u-crop.x)*sx-left, y = (v-crop.y)*sy-top;
+    if (x<0 || y<0 || x>=w || y>=h) continue;
+    const field = mean(x,y,INK_FIELD), soft = mean(x,y,INK_SOFT);
+    const art = INK_BLUR*field+(1-INK_BLUR)*(soft+INK_EVEN*(Math.min(soft,field)-soft)), over = Math.max(0,art-.5);
+    const tone = Math.min(1,32/255+.875*art-.402*over*over);
+    pills.push(Math.max(0,(srgbLinear(tone)+.05)/INK_STEP-.05));
+  }
+  return pills;
 }
 
 // The raised lens may stand past the bar's end by up to LENS_END_ROOM css px toward the screen edge and
@@ -820,6 +891,26 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   let root:HTMLElement|null = null;
   let source:HTMLCanvasElement|null = null;
   let releaseFrame:(()=>void)|undefined;
+  // LOOK-10: the crop the backdrop canvas holds, and the selected tab last inked against its pill (inkSelection).
+  let paintedCrop:Crop|null = null, inkedTab:Element|null = null, inkTimer:ReturnType<typeof setTimeout>|undefined;
+  const selectedTab = ()=>bar.querySelector<HTMLElement>('.ui-tab:is([aria-current=page],[aria-pressed=true])');
+  function inkSelection() {
+    inkTimer = undefined;
+    const tab = selectedTab(), source = backdrop?.canvas;
+    if (disposed || !tab || !source || !paintedCrop || !scheme.matches || bar.dataset.sectionLens!=='webgl') return;
+    let accent = '';
+    try {
+      const boxes = [tab.querySelector(':scope > span'),tab.querySelector(':scope > .ui-icon')]
+        .flatMap(element=>element?[element.getBoundingClientRect()]:[]).filter(box=>box.width && box.height);
+      accent = selectionAccent(pillUnder(source,paintedCrop,boxes));
+    } catch {
+      return;
+    }
+    for (const other of bar.querySelectorAll<HTMLElement>('.ui-tab')) if (other!==tab) other.style.removeProperty('--section-pill-adaptive-accent');
+    if (accent) tab.style.setProperty('--section-pill-adaptive-accent',accent);
+    else tab.style.removeProperty('--section-pill-adaptive-accent');
+    inkedTab = tab;
+  }
 
   function fallback() {
     drawnLenses.delete(bar);
@@ -883,6 +974,7 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
         if (!live) listenToSource(null);
         texture = nextTexture;
         textureReady = result;
+        if (result) paintedCrop = crop;
         if (result) {
           if (!gpu) {
             gl = renderCanvas.getContext('webgl2',{antialias:false,depth:false,stencil:false,premultipliedAlpha:true});
@@ -916,6 +1008,12 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
         if (canvas.parentElement!==bar) bar.prepend(canvas);
         bar.dataset.sectionLens = 'webgl';
         rendered = nextRender;
+        // LOOK-10: once the dark rest pill holds still on a new backdrop or a new tab, ink the selected tab against it.
+        if (geometry.smoke && geometry.opacity>0 && !geometry.motion && !geometry.press && !geometry.lift && !geometry.projection &&
+            (changed || inkedTab!==selectedTab())) {
+          clearTimeout(inkTimer);
+          inkTimer = setTimeout(inkSelection,120);
+        }
       }
     } catch (error) {
       fallback();
@@ -1009,6 +1107,8 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   return ()=>{
     disposed = true;
     cancelAnimationFrame(frame);
+    clearTimeout(inkTimer);
+    for (const tab of bar.querySelectorAll<HTMLElement>('.ui-tab')) tab.style.removeProperty('--section-pill-adaptive-accent');
     events.abort();
     changes.disconnect();
     sceneChanges.disconnect();

@@ -30,6 +30,9 @@ const NAV_INK={
   // Where glass-ink.ts finds bright art under the selected label, the CSS fallback draws that tab white with a dark rim.
   dark:{label:['rgb(255, 255, 255)'],icon:['rgb(255, 255, 255)'],selected:['rgb(0, 153, 255)','rgb(255, 255, 255)']},
 };
+// LOOK-10: on the dark WebGL bar the selected tab takes the blue the lens picks to keep 2:1 against its pill, which now sits
+// a little darker than the bar over any art (section-lens.ts selectionAccent): #0099ff, or a lighter or deeper blue.
+const adaptiveBlue=(color:string)=>{const [r,g,b]=(color.match(/\d+/g)??[]).map(Number);return b>=200&&b>Math.max(r,g);};
 // Each unselected label's ink against the darkest pixel behind it, the labels hidden: WCAG 1.4.3's 4.5:1 for that grey ink.
 async function labelContrast(page:Page,scope:string):Promise<number[]>{
   const labels=`${scope} .ui-tab:not([aria-current=page],[aria-pressed=true])>span:not(.ui-glass-lens,.ui-glass-glow)`;
@@ -61,7 +64,7 @@ async function expectNavInk(page:Page,scope:string,scheme:'light'|'dark'='light'
     color:getComputedStyle(e).color,stroke:getComputedStyle(e).webkitTextStrokeWidth||'0px'})));
   await expect.poll(async()=>{
     const found=await visible();
-    return found.length>0&&found.every(g=>ink[g.role].includes(g.color)&&g.stroke==='0px')?'':JSON.stringify(found);
+    return found.length>0&&found.every(g=>(ink[g.role].includes(g.color)||scheme==='dark'&&g.role==='selected'&&adaptiveBlue(g.color))&&g.stroke==='0px')?'':JSON.stringify(found);
   }).toBe('');
   await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
   if(scheme==='light'){const ratios=await labelContrast(page,scope);expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);}
