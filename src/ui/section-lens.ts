@@ -249,7 +249,17 @@ const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // the rim widens to LENS_RIM_DRAG along the top and bottom (weighted by how far the edge faces up or down, as the band;
 // the ends keep the held rim) and its rainbow, spread over the wider rim, eases to LENS_FRINGE_DRAG; both ease back to the
 // held rim's as the press holds the lens still.
-const float LENS_RIM = 2.2, LENS_FRINGE = .24, LENS_RIM_DRAG = 3.4, LENS_FRINGE_DRAG = .19;
+// MOTION-13 (#24): the video's held rim is a rainbow more colourful than the art on both sides of it (12.75 s: rim band
+// p90 chroma 19 over 3 above and 3 inside along the top, 74 over 70 and 69 along the bottom; two-sided fringe 10). At .24
+// ours carried less colour than the navy card art beside it (two-sided 1.0): over 2.2 css px the spectrum's .8 turn
+// averages out within each css px, where the drag's 3.4 px rim keeps it. The held rainbow is LENS_FRINGE .4 (.36 read
+// 7.5, top 9 and bottom 6).
+const float LENS_RIM = 2.2, LENS_FRINGE = .4, LENS_RIM_DRAG = 3.4, LENS_FRINGE_DRAG = .19;
+// MOTION-14 (#24): mixed toward the spectrum at .4, the white rim lost up to a third of its light where the rainbow runs
+// through magenta and blue, and over bright art (the pink poster) the held rim read 1.5 css px at half height, not the
+// video's 2. The rainbow keeps its colour at LENS_FRINGE but darkens the rim only as much as the .24 rainbow did
+// (LENS_FRINGE_SHADE); the drag's .19 is unchanged.
+const float LENS_FRINGE_SHADE = .24;
 // MOTION-11 (#24 council on aa6359ee): the video's rim is a thick, darker refracting band along the top and bottom,
 // about 5 css px deep just inside the bright line, tapering round the ends (12.75 s and 13.5 s). The face darkens by up
 // to LENS_BAND_DARK across depths LENS_BAND (in, full, full, out), weighted by how far the edge faces up or down: the
@@ -408,7 +418,9 @@ vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u, float lig
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
   float lit = .5 + .38 * max(0., facing) + .12 * max(0., outward.y);
   vec3 spectrum = .5 + .5 * cos(6.2832 * (.8 * t + vec3(0., .33, .67)));
-  return mix(face, mix(vec3(1.), spectrum, mix(LENS_FRINGE_DRAG, LENS_FRINGE, pillPress)), lit * line);
+  float fringe = mix(LENS_FRINGE_DRAG, LENS_FRINGE, pillPress), tone = dot(spectrum, vec3(.2126, .7152, .0722));
+  vec3 rimLight = 1. - min(fringe, LENS_FRINGE_SHADE) * (1. - tone) + fringe * (spectrum - tone);
+  return mix(face, rimLight, lit * line);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone, float deepen) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
