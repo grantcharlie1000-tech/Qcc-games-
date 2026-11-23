@@ -60,7 +60,7 @@ export function createSectionBackdrop(invalidate:()=>void) {
   if (!ctx) return null;
   const pictures = new Map<string,Picture>();
   let disposed = false;
-  let snapshot: {root:HTMLElement; x:number; y:number; band:Crop; layer:Layer|null; background:string}|undefined;
+  let snapshot: {root:HTMLElement; x:number; y:number; band:Crop; layer:Layer|null; bare:boolean; background:string}|undefined;
 
   function cleanImage(image:HTMLImageElement):HTMLImageElement|null {
     const url = new URL(image.currentSrc||image.src,document.baseURI);
@@ -196,7 +196,11 @@ export function createSectionBackdrop(invalidate:()=>void) {
         const band = {x:-128,y:crop.y-128,width:innerWidth+256,height:crop.height+256};
         const background = getComputedStyle(backgroundRoot);
         if (background.backgroundImage!=='none') return false;
-        snapshot = {root,x:rootX,y:rootY,band,layer:collect(root,band),background:background.backgroundColor};
+        const layer = collect(root,band), shown = getComputedStyle(root);
+        // MOTION-7: a shown root with nothing of it near the bar (a short loading page, main.ts tabHandover) leaves the
+        // backdrop the page background, which the fill below paints, rather than no backdrop at all.
+        const bare = !layer && root.getClientRects().length>0 && shown.display!=='none' && shown.visibility==='visible' && Number(shown.opacity)>0;
+        snapshot = {root,x:rootX,y:rootY,band,layer,bare,background:background.backgroundColor};
         sceneCrop = crop;
       }
       const width = Math.ceil(crop.width*density), height = Math.ceil(crop.height*density);
@@ -209,7 +213,7 @@ export function createSectionBackdrop(invalidate:()=>void) {
       ctx.fillRect(0,0,width,height);
       const sx = width/crop.width, sy = height/crop.height;
       ctx.setTransform(sx,0,0,sy,-sceneCrop.x*sx,-sceneCrop.y*sy);
-      return snapshot.layer?.paint(ctx,sceneCrop,live)??false;
+      return snapshot.layer?.paint(ctx,sceneCrop,live)??snapshot.bare;
     },
     invalidate() {snapshot=undefined;},
   };

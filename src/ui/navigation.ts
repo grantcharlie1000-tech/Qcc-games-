@@ -23,7 +23,9 @@ export function bindSectionNavigationLens(bar:HTMLElement,scroller:Window|HTMLEl
   if (new URLSearchParams(location.search).get('glass')==='fallback') return ()=>{};
   if (bar.classList.contains('app-tabbar')) {
     const host = document.querySelector<HTMLElement>('#content');
-    if (host) return bindSectionLens(bar,host,()=>host.querySelector(':scope > .game-grid')?host:null);
+    // MOTION-7: the Games bar stays up through a route's loading page (main.ts tabHandover), so its lens paints that page too,
+    // and its raised bubble keeps falling on the release spring instead of dropping to the CSS pill.
+    if (host) return bindSectionLens(bar,host,()=>host.querySelector(':scope > :is(.game-grid,.loading)')?host:null);
   }
   if (bar.classList.contains('movies-mobile-nav') && scroller instanceof HTMLElement) {
     // The nested Movies scroller has visible alignment evidence in Chromium.

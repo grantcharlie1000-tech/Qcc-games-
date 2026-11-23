@@ -136,6 +136,52 @@ function bindLensZoom(bar:HTMLElement):()=>void{
   watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing']});
   return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;clear();};
 }
+// MOTION-8: Apple's tab bar never leaves the screen when one of its tabs turns the page (Charlie's video, 15.183 s: the bar
+// stays and its pill springs to Library while the page goes). A route that hides this bar's navigation behind a loading page
+// (main.ts setChromeInert while Movies loads, which left no bar on screen for about 30-370 ms) keeps the bar up instead when
+// the route is the tab this bar was just sent to: inert, as the navigation is, with its pill sprung to that tab. It gives
+// way when the loading page goes (the routed view's own bar arrives in that frame) or the navigation comes back, and gives
+// the pill back to the tab it left.
+const HANDOVER_WINDOW=1000;
+function bindRouteHandover(bar:HTMLElement):()=>void{
+  const chrome=bar.closest<HTMLElement>('.app-navigation'),host=document.querySelector<HTMLElement>('#content');
+  if(!chrome||!host)return ()=>{};
+  let sent:{tab:HTMLElement;at:number}|null=null;
+  let held:{tab:HTMLElement;previous:HTMLElement[]}|null=null;
+  const loading=()=>!!host.querySelector(':scope > .loading');
+  const end=()=>{
+    if(!held)return;
+    const {tab,previous}=held;
+    held=null;
+    chrome.removeAttribute('data-route-handover');
+    if(tab.getAttribute('aria-current')!=='page'||!previous.length)return;
+    tab.removeAttribute('aria-current');
+    for(const other of previous)if(other.isConnected)other.setAttribute('aria-current','page');
+  };
+  // A tap or a drag released over a tab (glass.ts clicks it) sends the bar there, if the bar is on screen.
+  const clicked=(event:Event)=>{
+    const tab=(event.target as Element|null)?.closest<HTMLElement>('a.ui-tab');
+    sent=tab&&bar.contains(tab)&&bar.getClientRects().length&&!chrome.hasAttribute('data-view-hidden')?{tab,at:performance.now()}:null;
+  };
+  // Mutation records arrive before the next frame is painted, so the bar is never off screen in between.
+  const watch=new MutationObserver(records=>{
+    if(held){if(!chrome.hasAttribute('data-view-hidden')||!loading())end();return;}
+    const hide=records.find(record=>record.target===chrome&&record.attributeName==='data-view-hidden');
+    const route=sent;
+    if(!hide||hide.oldValue!==null||!route||!chrome.hasAttribute('data-view-hidden')||!loading())return;
+    sent=null;
+    if(performance.now()-route.at>HANDOVER_WINDOW||route.tab.getAttribute('href')!==location.hash||!bar.contains(route.tab))return;
+    const previous=[...bar.querySelectorAll<HTMLElement>('.ui-tab[aria-current=page]')].filter(tab=>tab!==route.tab);
+    for(const tab of previous)tab.removeAttribute('aria-current');
+    route.tab.setAttribute('aria-current','page');
+    chrome.setAttribute('data-route-handover','');
+    held={tab:route.tab,previous};
+  });
+  watch.observe(chrome,{attributes:true,attributeFilter:['data-view-hidden'],attributeOldValue:true});
+  watch.observe(host,{childList:true});
+  bar.addEventListener('click',clicked);
+  return ()=>{watch.disconnect();bar.removeEventListener('click',clicked);end();};
+}
 
 function position(scroller:Window|HTMLElement):{y:number;max:number}{
   if(scroller instanceof HTMLElement)return {y:scroller.scrollTop,max:scroller.scrollHeight-scroller.clientHeight};
@@ -166,6 +212,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   const glass=bindGlass(bar);
   const disposeLens=bindSectionNavigationLens(bar,scroller);
   const disposeZoom=bounded?bindLensZoom(bar):()=>{};
+  const disposeHandover=bounded?bindRouteHandover(bar):()=>{};
   // Writes the attribute only when the state changes.
   const apply=(minimized:boolean)=>{
     if(bar.hasAttribute('data-minimized')===minimized)return;
@@ -259,6 +306,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       parentWatch.disconnect();
       if(frame)cancelAnimationFrame(frame);
       frame=0;
+      disposeHandover();
       disposeZoom();
       disposeLens();
       glass.dispose();

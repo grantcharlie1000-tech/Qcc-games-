@@ -83,15 +83,23 @@ test('a drag release that changes the route lets the lens fall without a pop and
   const before=trace.filter(sample=>sample.t<released), after=trace.filter(sample=>sample.t>=released);
   expect(before.at(-1)?.bars.find(entry=>entry.origin)?.lift,'held lift').toBe(1);
   expect(after.length).toBeGreaterThan(8);
+  // MOTION-7: Apple's tab bar never leaves the screen when a tab turns the page (Charlie's video, 15.183 s). The Games bar
+  // stays up, inert, while Movies loads (main.ts tabHandover; it used to be gone for about 30-370 ms), and gives way only
+  // in the frame the Movies bar arrives: every frame after the lift shows a section bar, and the Games bar is on screen
+  // until a Movies bar is.
+  const blank=after.filter(sample=>sample.bars.length===0).map(sample=>Math.round(sample.t-released));
+  expect(blank,'frames with no tab bar, ms after the lift').toEqual([]);
+  const handed=after.findIndex(sample=>sample.bars.some(entry=>!entry.origin));
+  expect(handed,'the Movies bar arrives').toBeGreaterThan(-1);
+  expect(after.slice(0,handed).every(sample=>sample.bars.some(entry=>entry.origin)),'the Games bar holds until then').toBe(true);
   // The Games bar's bubble, while that bar is still on screen, falls on the release spring: no step of more than a third.
   const origin=after.map(sample=>sample.bars.find(entry=>entry.origin)?.lift).filter((lift):lift is number=>lift!==undefined);
   expect(origin[0]??0,JSON.stringify(origin)).toBeGreaterThan(.6);
   expect(Math.max(0,...origin.slice(1).map((lift,i)=>origin[i]-lift)),JSON.stringify(origin)).toBeLessThanOrEqual(.3);
   // MOTION-6: and so does the bubble the WebGL lens draws. While the Games bar is on screen and its pill still swells, its lens
   // stays the WebGL lens, shown and raised (a torn-down lens falls back to the CSS pill, which hides the canvas), and the
-  // lens's own lift and projection never drop by more than a third in a frame. (In Chromium the new route hides the Games
-  // navigation, main.ts setChromeInert, within a frame or two of the lift, so the bubble is seen for about one frame: there it
-  // must still be the raised WebGL lens.)
+  // lens's own lift and projection never drop by more than a third in a frame. (MOTION-7: the Games bar now stays on screen
+  // through the Movies load, its lens painting the loading page, so the bubble is seen falling for the whole load.)
   const lenses=after.map(sample=>sample.bars.find(entry=>entry.origin)).filter((entry):entry is NonNullable<typeof entry>=>!!entry);
   expect(lenses[0]?.lensLift??0,JSON.stringify(lenses.slice(0,4))).toBeGreaterThan(.6);
   const torn=lenses.filter(entry=>entry.lift>.05&&!(entry.shown&&entry.pad!==''));
