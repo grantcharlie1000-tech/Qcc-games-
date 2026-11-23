@@ -41,6 +41,7 @@ function harness(native=true){
     open(trigger=menu){trigger.focus();panel.visible=true;if(panel instanceof Dialog){panel.open=true;close.focus();}sync();},
     closePanel(active=body){panel.visible=false;if(panel instanceof Dialog)panel.open=false;doc.activeElement=active;sync();},
     flush(){for(const callback of frames.splice(0))callback(0);},
+    sync,frames:()=>frames.length,
   };
 }
 afterEach(()=>vi.unstubAllGlobals());
@@ -83,4 +84,24 @@ it('preserves game focus claimed before close synchronization after moving focus
 it('restores the trigger when focus still belongs to the closing panel',()=>{
   const h=harness();h.open();h.closePanel(h.close);h.flush();
   expect(h.doc.activeElement===h.menu).toBe(true);
+});
+
+// MOTION-16 (#24): Escape on the menu over a busy page let the dialog's exit end without a transition event reaching the
+// controller, and the tab bar stayed hidden and inert (sheet-navigation :38, glass-menus :335). The exit is looked at again
+// each frame until the closed dialog has gone.
+it('restores the navigation when a closed dialog finishes its exit without a transition event',()=>{
+  const h=harness();h.open();
+  // Closed, still painting its exit: the controller keeps the navigation hidden.
+  h.panel.visible=true;(h.panel as unknown as {open:boolean}).open=false;h.doc.activeElement=h.body;h.sync();
+  expect(h.chrome.inert).toBe(true);
+  // The exit ends with no event and no mutation; the next frame finds no sheet.
+  h.panel.visible=false;h.flush();
+  expect(h.chrome.inert).toBe(false);expect(h.chrome.hasAttribute('data-sheet-hidden')).toBe(false);
+  h.flush();expect(h.doc.activeElement).toBe(h.menu);
+});
+
+it('stops looking again once a closing dialog has had its frames',()=>{
+  const h=harness();h.open();h.panel.visible=true;(h.panel as unknown as {open:boolean}).open=false;h.sync();
+  for(let i=0;i<200;i++)h.flush();
+  expect(h.chrome.inert).toBe(true);expect(h.frames()).toBe(0);
 });
