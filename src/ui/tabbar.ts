@@ -136,6 +136,48 @@ function bindLensZoom(bar:HTMLElement):()=>void{
   watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing']});
   return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;clear();};
 }
+// MOTION-10: the release eases every tab glyph back from the press (its scale, opacity and colour), and in Chromium a
+// stroked glyph's outermost anti-aliased column can keep a raster from those moving frames: the light theme's TV foot, the
+// one stroke in its filled twins, settled 2-3 levels darker at a round cap (x 155 or 166, rows 806-808 at 390 px) than
+// at rest, with every computed style back at rest, until something repainted the glyph (MOTION-9). So once a press or
+// drag has ended and nothing in the bar has moved for SETTLE_FRAMES frames, each tab glyph is laid out again once. Its
+// styles are unchanged, so the frame draws exactly the resting glyph, rastered afresh.
+const SETTLE_FRAMES=2;
+// A bar that never comes to rest (an endless animation in it) is repainted after this many frames instead.
+const SETTLE_LIMIT=120;
+function bindSettleRepaint(bar:HTMLElement):()=>void{
+  let frame=0,quiet=0,frames=0,size='';
+  const held=()=>bar.matches('[data-pressing],[data-pill-dragging]');
+  const moving=()=>typeof bar.getAnimations==='function'&&bar.getAnimations({subtree:true}).some(animation=>
+    animation.playState==='running'&&animation.effect?.getComputedTiming().iterations!==Infinity);
+  const repaint=()=>{
+    for(const icon of bar.querySelectorAll<SVGElement>('.ui-tab>.ui-icon')){
+      const value=icon.style.getPropertyValue('display'),priority=icon.style.getPropertyPriority('display');
+      icon.style.setProperty('display','none','important');
+      void icon.getBoundingClientRect();
+      if(value)icon.style.setProperty('display',value,priority);else icon.style.removeProperty('display');
+    }
+  };
+  const tick=()=>{
+    frame=0;
+    // A new press starts over: its own release brings the next repaint.
+    if(held())return;
+    // The section lens resizes its canvas as the raised bubble comes down, so a frame that changed it counts as moving.
+    const canvas=bar.querySelector<HTMLCanvasElement>(':scope>canvas.section-lens');
+    const now=canvas?`${canvas.width}x${canvas.height}`:'';
+    quiet=moving()||now!==size?0:quiet+1;
+    size=now;
+    if(quiet<SETTLE_FRAMES&&++frames<SETTLE_LIMIT){frame=requestAnimationFrame(tick);return;}
+    repaint();
+  };
+  const watch=new MutationObserver(()=>{
+    if(held()||frame)return;
+    quiet=frames=0;size='';
+    frame=requestAnimationFrame(tick);
+  });
+  watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing']});
+  return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;};
+}
 // MOTION-8: Apple's tab bar never leaves the screen when one of its tabs turns the page (Charlie's video, 15.183 s: the bar
 // stays and its pill springs to Library while the page goes). A route that hides this bar's navigation behind a loading page
 // (main.ts setChromeInert while Movies loads, which left no bar on screen for about 30-370 ms) keeps the bar up instead when
@@ -212,6 +254,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   const glass=bindGlass(bar);
   const disposeLens=bindSectionNavigationLens(bar,scroller);
   const disposeZoom=bounded?bindLensZoom(bar):()=>{};
+  const disposeSettle=bounded?bindSettleRepaint(bar):()=>{};
   const disposeHandover=bounded?bindRouteHandover(bar):()=>{};
   // Writes the attribute only when the state changes.
   const apply=(minimized:boolean)=>{
@@ -307,6 +350,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       if(frame)cancelAnimationFrame(frame);
       frame=0;
       disposeHandover();
+      disposeSettle();
       disposeZoom();
       disposeLens();
       glass.dispose();
