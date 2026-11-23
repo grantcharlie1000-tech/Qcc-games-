@@ -392,8 +392,8 @@ vec3 lensFace(vec3 sceneColor, vec2 outward, float pillDepth, float u, float lig
   vec3 face = light + (1. - light) * min(sceneColor * mix(LENS_BRIGHT.x, LENS_BRIGHT.y, pillSmoke), vec3(1.));
   float band = smoothstep(LENS_BAND.x, LENS_BAND.y, pillDepth) * (1. - smoothstep(LENS_BAND.z, LENS_BAND.w, pillDepth));
   face *= (1. - .22 * shade - .1 * (1. - normal.z)) * (1. - mix(LENS_BAND_DARK.x, LENS_BAND_DARK.y, pillSmoke) * band * outward.y * outward.y);
-  float facing2 = outward.y * outward.y, facing4 = facing2 * facing2;
-  float rimDepth = mix(LENS_RIM, mix(LENS_RIM_DRAG, LENS_RIM, pillPress), facing4 * facing4);
+  float facing2 = outward.y * outward.y, facing4 = facing2 * facing2, facing8 = facing4 * facing4;
+  float rimDepth = mix(LENS_RIM, mix(LENS_RIM_DRAG, LENS_RIM, pillPress), facing8 * facing8);
   float t = clamp(pillDepth / rimDepth, 0., 1.);
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
   float lit = .5 + .38 * max(0., facing) + .12 * max(0., outward.y);
