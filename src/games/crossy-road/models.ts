@@ -43,11 +43,15 @@ const BOTTOM_SHADE = 0.86;
 /** Merges boxes into one indexed geometry with `position`, `normal` and `color` (linear RGB). The
  * bottom vertices of every side face are multiplied by `bottomShade`. */
 export function voxel(parts: readonly Part[], bottomShade = BOTTOM_SHADE): THREE.BufferGeometry {
-  const n = parts.length;
+  return buildVoxel(parts, bottomShade);
+}
+
+function buildVoxel(parts: readonly Part[], bottomShade: number, positiveFacesOnly = false): THREE.BufferGeometry {
+  const n = parts.length, faceCount = positiveFacesOnly ? 3 : 6;
   // Build bounds once, not once for every face/occluder pair at scene startup.
   const bounds = parts.map(([x, y, z, w, h, d]) => [x-w/2, y, z-d/2, x+w/2, y+h, z+d/2]);
-  const position = new Float32Array(n * 72), normal = new Float32Array(n * 72), color = new Float32Array(n * 72);
-  const index = new Uint16Array(n * 36);
+  const position = new Float32Array(n * faceCount * 12), normal = new Float32Array(position.length), color = new Float32Array(position.length);
+  const index = new Uint16Array(n * faceCount * 6);
   let v = 0, ii = 0;
   for (let p = 0; p < n; p++) {
     const [px, py, pz, w, h, d, tint, rotZ = 0, rotX = 0, side = tint] = parts[p];
@@ -55,7 +59,8 @@ export function voxel(parts: readonly Part[], bottomShade = BOTTOM_SHADE): THREE
     if (typeof tint === 'number') { scratch.set(tint); r = scratch.r; g = scratch.g; b = scratch.b; } else { r = tint[0]; g = tint[1]; b = tint[2]; }
     if (typeof side === 'number') { scratch.set(side); sr = scratch.r; sg = scratch.g; sb = scratch.b; } else { sr = side[0]; sg = side[1]; sb = side[2]; }
     const hx = w / 2, hy = h / 2, hz = d / 2, cy = py + hy, cs = Math.cos(rotZ), sn = Math.sin(rotZ), cx = Math.cos(rotX), sx = Math.sin(rotX);
-    for (let f = 0; f < 6; f++) {
+    // The axis-aligned ground-only box uses +X, +Y and +Z.
+    for (let f = 0; f < 6; f += positiveFacesOnly ? 2 : 1) {
       // Reject only whole, axis-aligned faces covered by another solid. Keep
       // partial faces, rotated boxes and coincident outer paint layers intact.
       const face = FACES[f];
@@ -147,6 +152,11 @@ export function solids(parts: readonly Part[], rounds: readonly Frustum[], botto
  * blob shadows and splash cubes are all this box scaled per instance. */
 export function unitBoxGeometry(): THREE.BufferGeometry {
   return voxel([[0, 0, 0, 1, 1, 1, WHITE]], 0.9);
+}
+
+/** Half of the unit box, for opaque axis-aligned ground seen only from +X/+Y/+Z. */
+export function groundBoxGeometry(): THREE.BufferGeometry {
+  return buildVoxel([[0, 0, 0, 1, 1, 1, WHITE]], 0.9, true);
 }
 
 /** A white voxel bird, facing −z, dressed for Christmas. The 0.68-tile footprint includes the small wings;
