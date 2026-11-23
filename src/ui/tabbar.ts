@@ -134,6 +134,16 @@ function warpMap(width:number,height:number,bevel:number):WarpMap|null{
   if(!warpBuilding)warpBuild();
   return null;
 }
+// The decoded map nearest a size, for a bar whose first bend comes before its own size is ready ('' if none is).
+function warpNearest(width:number,height:number):string{
+  let url='',best=Infinity;
+  for(const [key,map] of warpMaps){
+    if(!map.ready||!map.url)continue;
+    const [w,h]=key.split('x').map(Number),gap=Math.abs(w-width)+Math.abs(h-height);
+    if(gap<best){best=gap;url=map.url;}
+  }
+  return url;
+}
 function warpCanvas(width:number,height:number,bevel:number):HTMLCanvasElement|null{
   const w=Math.ceil(width*WARP_DENSITY),h=Math.ceil(height*WARP_DENSITY);
   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
@@ -167,6 +177,12 @@ function bindLensWarp(bar:HTMLElement){
   const filters=new Map<HTMLElement,{id:string;image:SVGFEImageElement;filter:SVGFilterElement;displace:SVGFEDisplacementMapElement}>();
   // The last decoded map the tabs were given.
   let shown='';
+  // A map at the raised bubble's usual size (about 1.58 x 1.11 bar heights held, section-lens.ts) is built once the bar is
+  // laid out, so the first press bends from its first frame, not from when its own size is ready.
+  const warm=requestAnimationFrame(()=>{
+    const height=bar.offsetHeight;
+    if(height>0){const w=Math.round(1.58*height/2)*2,h=Math.round(1.11*height/2)*2;warpMap(w,h,raisedBevel(w,h));}
+  });
   const make=(tab:HTMLElement)=>{
     let entry=filters.get(tab);
     if(entry)return entry;
@@ -186,8 +202,10 @@ function bindLensWarp(bar:HTMLElement){
     // Once per frame: the map for the bubble in the bar's layout px (width, height, bevel), drawn at its size to the
     // nearest 2 css px, or the last decoded one until that is ready.
     map(lens:readonly [number,number,number,number,number]){
-      const ready=warpMap(Math.round(lens[2]/2)*2,Math.round(lens[3]/2)*2,lens[4]);
+      const width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,ready=warpMap(width,height,lens[4]);
       if(ready)shown=ready.url;
+      // The bar's first bend takes the nearest decoded size, stretched to the bubble, until its own is ready.
+      else if(!shown)shown=warpNearest(width,height);
       return shown;
     },
     // The bubble (centre x, centre y, width, height, bevel), its lift and map, and the tab's layout box [left, top, width,
@@ -205,7 +223,7 @@ function bindLensWarp(bar:HTMLElement){
       if(tab.style.filter!==`url("#${id}")`)tab.style.setProperty('filter',`url("#${id}")`);
     },
     clear(tabs:readonly HTMLElement[]){for(const tab of tabs)tab.style.removeProperty('filter');},
-    dispose(){filters.clear();defs.remove();},
+    dispose(){cancelAnimationFrame(warm);filters.clear();defs.remove();},
   };
 }
 function bindLensZoom(bar:HTMLElement):()=>void{
