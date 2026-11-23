@@ -83,12 +83,80 @@ export function tabCover(center:number,halfWidth:number,bevel:number,boxes:reado
   for(const [left,right,size] of boxes){area+=size;covered+=size*lensCover(center,halfWidth,bevel,left,right);}
   return area>0?covered/area:0;
 }
+// MOTION-11 (#24 council on aa6359ee: Movies and My list crossed the raised lens's rim whole and unbent, where the video's
+// rim warps the glyphs into it): a tab the rim crosses bends as the art under the rim does (section-lens.ts
+// LENS_EDGE_REACH): across the bubble's bevel each point shows what lies WARP_REACH * u^3 further out, so a glyph's outer
+// part is squeezed into the rim. An SVG displacement map of the bubble, drawn once per size, sits under each such tab.
+// The bend stays in the outer WARP_BAND css px, as the video's does (a glyph in the face is not squeezed).
+const WARP_REACH=18,WARP_BAND=9,WARP_SPAN=2.2*WARP_REACH,WARP_DENSITY=2;
+const SVG_NS='http://www.w3.org/2000/svg';
+let warpIds=0;
+function warpMap(width:number,height:number,bevel:number):string{
+  const w=Math.ceil(width*WARP_DENSITY),h=Math.ceil(height*WARP_DENSITY);
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  if(!ctx||!w||!h)return '';
+  const image=ctx.createImageData(w,h),radius=Math.min(width,height)/2,line=Math.max(0,(width-height)/2);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const px=(x+.5)/WARP_DENSITY-width/2,py=(y+.5)/WARP_DENSITY-height/2;
+    const ax=px-Math.max(-line,Math.min(line,px)),length=Math.hypot(ax,py),depth=radius-length;
+    const u=depth>0&&length>0?Math.max(0,1-depth/Math.min(bevel,WARP_BAND)):0,pull=WARP_REACH*u*u*u/Math.max(length,1e-3);
+    const i=(y*w+x)*4;
+    // Channel .5 is no displacement; at full lift feDisplacementMap's scale WARP_SPAN spans the whole pull either way.
+    image.data[i]=Math.round(255*(.5+ax*pull/WARP_SPAN));
+    image.data[i+1]=Math.round(255*(.5+py*pull/WARP_SPAN));
+    image.data[i+2]=128;image.data[i+3]=255;
+  }
+  ctx.putImageData(image,0,0);
+  return canvas.toDataURL();
+}
+function bindLensWarp(bar:HTMLElement){
+  const defs=document.createElementNS(SVG_NS,'svg');
+  defs.setAttribute('aria-hidden','true');
+  defs.style.cssText='position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
+  const filters=new Map<HTMLElement,{id:string;image:SVGFEImageElement;filter:SVGFilterElement;displace:SVGFEDisplacementMapElement}>();
+  let size='',map='';
+  const make=(tab:HTMLElement)=>{
+    let entry=filters.get(tab);
+    if(entry)return entry;
+    if(!defs.isConnected)document.body.append(defs);
+    const id=`section-lens-warp-${++warpIds}`,filter=document.createElementNS(SVG_NS,'filter');
+    filter.id=id;
+    for(const [name,value] of [['filterUnits','userSpaceOnUse'],['color-interpolation-filters','sRGB']])filter.setAttribute(name,value);
+    filter.innerHTML='<feFlood flood-color="rgb(128,128,128)" result="flat"/><feImage preserveAspectRatio="none" result="bubble"/>'+
+      '<feMerge result="map"><feMergeNode in="flat"/><feMergeNode in="bubble"/></feMerge>'+
+      '<feDisplacementMap in="SourceGraphic" in2="map" scale="0" xChannelSelector="R" yChannelSelector="G"/>';
+    defs.append(filter);
+    entry={id,image:filter.querySelector('feImage') as SVGFEImageElement,filter,displace:filter.querySelector('feDisplacementMap') as SVGFEDisplacementMapElement};
+    filters.set(tab,entry);
+    return entry;
+  };
+  return {
+    // The bubble in the bar's layout px (centre x, centre y, width, height, bevel) and its lift. Each tab it crosses bends.
+    set(tab:HTMLElement,lens:readonly [number,number,number,number,number]|null,lift=1){
+      if(!lens){if(tab.style.filter)tab.style.removeProperty('filter');return;}
+      const [cx,cy,width,height,bevel]=lens,next=`${Math.round(width/2)*2}x${Math.round(height/2)*2}x${Math.round(bevel)}`;
+      if(next!==size){size=next;map=warpMap(Math.round(width/2)*2,Math.round(height/2)*2,bevel);for(const {image} of filters.values())image.setAttribute('href',map);}
+      const {id,image,filter,displace}=make(tab);
+      if(image.getAttribute('href')!==map)image.setAttribute('href',map);
+      const attributes:[SVGElement,string,number][]=[[displace,'scale',WARP_SPAN*lift],[filter,'x',-24],[filter,'y',-24],[filter,'width',tab.offsetWidth+48],
+        [filter,'height',tab.offsetHeight+48],[image,'x',cx-width/2-tab.offsetLeft],[image,'y',cy-height/2-tab.offsetTop],
+        [image,'width',Math.round(width/2)*2],[image,'height',Math.round(height/2)*2]];
+      for(const [element,name,value] of attributes)if(element.getAttribute(name)!==value.toFixed(2))element.setAttribute(name,value.toFixed(2));
+      if(tab.style.filter!==`url("#${id}")`)tab.style.setProperty('filter',`url("#${id}")`);
+    },
+    clear(tabs:readonly HTMLElement[]){for(const tab of tabs)tab.style.removeProperty('filter');},
+    dispose(){filters.clear();defs.remove();},
+  };
+}
 function bindLensZoom(bar:HTMLElement):()=>void{
   let frame=0;
   // When the current press began (glyphRise), or null outside a press.
   let pressedAt:number|null=null;
+  const warp=bindLensWarp(bar);
   const tabs=()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
-  const clear=()=>{pressedAt=null;for(const tab of tabs()){tab.style.removeProperty('--section-lens-zoom');tab.removeAttribute('data-lens-target');tab.removeAttribute('data-lens-under');}};
+  const unzoom=()=>{pressedAt=null;for(const tab of tabs()){tab.style.removeProperty('--section-lens-zoom');tab.removeAttribute('data-lens-target');tab.removeAttribute('data-lens-under');}};
+  const clear=()=>{unzoom();warp.clear(tabs());};
   // The icon and label boxes of a tab in the bar's coordinates, from layout, which the zoom's own scale never moves.
   // The label reports its offset box. The icon is an SVG, with no offset box, so it takes its used size, centred in the tab
   // as the column flex places it.
@@ -100,9 +168,13 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const used=getComputedStyle(part),width=parseFloat(used.width)||0,left=tab.offsetLeft+(tab.offsetWidth-width)/2;
     return [left,left+width,width*(parseFloat(used.height)||0)] as const;
   });
+  // The rim bends the tabs it crosses (bindLensWarp) while the WebGL bubble is raised, through the release spring too.
+  const bend=(drawn:{pill:number[];sx:number;sy:number}|undefined,lift:number,covers:readonly (readonly [HTMLElement,number])[])=>{
+    const lens=drawn&&lift>0?[drawn.pill[0]/drawn.sx,drawn.pill[1]/drawn.sy,drawn.pill[2]/drawn.sx,drawn.pill[3]/drawn.sy] as const:null;
+    for(const [tab,cover] of covers)warp.set(tab,lens&&cover>0&&cover<.999?[...lens,raisedBevel(lens[2],lens[3])]:null,lift);
+  };
   const tick=()=>{
     frame=0;
-    if(!bar.hasAttribute('data-pill-dragging')&&!bar.hasAttribute('data-pressing')){clear();return;}
     const style=getComputedStyle(bar,'::after');
     const width=parseFloat(style.width)||0,height=parseFloat(style.height)||0;
     const [scaleX,scaleY=scaleX]=style.scale==='none'?[1]:style.scale.split(' ').map(Number);
@@ -112,6 +184,15 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const center=drawn?drawn.pill[0]/drawn.sx:(parseFloat(style.left)||0)+(parseFloat(style.translate)||0)+width/2;
     const lensWidth=drawn?drawn.pill[2]/drawn.sx:width*scaleX,lensHeight=drawn?drawn.pill[3]/drawn.sy:height*scaleY;
     const half=lensWidth/2,bevel=drawn?raisedBevel(lensWidth,lensHeight):lensBevel(lensWidth,lensHeight);
+    // The bubble's lift, as section-lens.ts reads it from the pill's press area.
+    const lift=smooth((scaleX*scaleY-1.07)/.18);
+    if(!bar.hasAttribute('data-pill-dragging')&&!bar.hasAttribute('data-pressing')){
+      // The release: the glyphs ease back (CSS) while the bend follows the falling bubble down.
+      if(pressedAt!==null)unzoom();
+      if(drawn&&lift>0){bend(drawn,lift,tabs().map(tab=>[tab,tabCover(center,half,bevel,content(tab))] as const));frame=requestAnimationFrame(tick);}
+      else clear();
+      return;
+    }
     const now=performance.now();
     pressedAt??=now;
     const rise=glyphRise(now-pressedAt);
@@ -129,12 +210,13 @@ function bindLensZoom(bar:HTMLElement):()=>void{
       if(tab.hasAttribute('data-lens-target')!==(tab===target))tab.toggleAttribute('data-lens-target',tab===target);
       if(tab.hasAttribute('data-lens-under')!==(cover>=.5))tab.toggleAttribute('data-lens-under',cover>=.5);
     }
+    bend(drawn,lift,zooms.map(([tab,,cover])=>[tab,cover] as const));
     // The pill's scale eases for 100ms after each move, so keep following it while the press lasts.
     frame=requestAnimationFrame(tick);
   };
   const watch=new MutationObserver(()=>{if(!frame)frame=requestAnimationFrame(tick);});
   watch.observe(bar,{attributes:true,attributeFilter:['data-pill-dragging','data-pressing']});
-  return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;clear();};
+  return ()=>{watch.disconnect();cancelAnimationFrame(frame);frame=0;clear();warp.dispose();};
 }
 // MOTION-10: the release eases every tab glyph back from the press (its scale, opacity and colour), and in Chromium a
 // stroked glyph's outermost anti-aliased column can keep a raster from those moving frames: the light theme's TV foot, the
