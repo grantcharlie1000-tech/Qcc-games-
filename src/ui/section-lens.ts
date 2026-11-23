@@ -196,11 +196,15 @@ const float PILL_STEP = 1.18, PILL_DARK_RIM = .15;
 float srgbLinear(float c) { return c <= .04045 ? c / 12.92 : pow((c + .055) / 1.055, 2.4); }
 float linearSrgb(float c) { return c <= .0031308 ? 12.92 * c : 1.055 * pow(c, 1. / 2.4) - .055; }
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
-// across the face, which magnifies evenly by LENS_ZOOM, then rolling off as 1 - u^3 across a
+// across the face, which shows the art evenly at LENS_ZOOM, then rolling off as 1 - u^3 across a
 // soft bevel LENS_BEVEL css px wide (u runs 0 at the face to 1 at the edge). The canvas is
 // drawn at device density, so the bevel spans LENS_BEVEL * DPR device px. Its slope, and so
 // its normal, grows as u^2: the face meets the bevel without a seam.
-const float LENS_ZOOM = 1.36, LENS_BEVEL = 14., LENS_SLOPE = 2.4;
+// MOTION-12 (#24): was 1.36. Charlie's video shows the art under the held and dragged lens at its own size: with the
+// glyphs and labels masked, the 12.75 s and 13.5 s lens faces match the same art at 10.5 s at x0.98 and x0.96 (gradient
+// NCC .98 and .96 over the face's central rows; x1.18 and x1.16 with the glyph left in, which is the glyph's own growth,
+// tabbar.ts LENS_ZOOM). So the face is 1:1 and only the bevel bends the art; the glyphs alone grow.
+const float LENS_ZOOM = 1., LENS_BEVEL = 14., LENS_SLOPE = 2.4;
 // Like thick glass, the bevel bends each ray along its normal. MOTION-5 (#24 council): Apple's raised lens visibly bends
 // the art at its edge (Charlie's video, 12.75-13.5 s and 24.85 s: glyphs and titles under the rim squeeze and curve
 // along it), where the old inward pull only swelled the rim a little. So across the bevel the sample now reaches
@@ -509,8 +513,8 @@ void main() {
       float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       vec3 clearGlass = vec3(0.), plainGlass = vec3(0.);
       if (pillMotion > 0.) {
-        // Magnify evenly like native: one scale across the whole face, centred on
-        // the active sample. Only a narrow band at the edge refracts, drawing in
+        // One scale across the whole face, centred on the active sample: the raised lens's own LENS_ZOOM, so the art
+        // keeps its size as the lens rises and falls. Only a narrow band at the edge refracts, drawing in
         // what lies just past the lens, the same all round so the ends never curl.
         vec2 outward = pillAxis / max(length(pillAxis), .001);
         // A narrow bevel: a quarter-circle profile, so the content in the last few pixels
@@ -523,10 +527,10 @@ void main() {
         // pixel, so the mapping never folds and the edge is never sampled.
         float reach = bevel * 2.6 * (1. - sqrt(1. - .985 * .985));
         vec2 lo = -region.xy / region.zw + RIM_SLACK, hi = (1. - region.xy) / region.zw - RIM_SLACK;
-        vec2 core = pill.zw * .5 / 1.36;
+        vec2 core = pill.zw * .5 / LENS_ZOOM;
         vec2 room = min(samplePill.xy - core - lo, hi - samplePill.xy - core);
         vec2 fit = clamp(room / max(reach, .001), 0., 1.);
-        vec2 pressWarp = samplePill.xy + pp / 1.36 + outward * fit * reach * (1. - sqrt(1. - edge * edge)) / (1. - sqrt(1. - .985 * .985));
+        vec2 pressWarp = samplePill.xy + pp / LENS_ZOOM + outward * fit * reach * (1. - sqrt(1. - edge * edge)) / (1. - sqrt(1. - .985 * .985));
         // The raised lens bends through its bevel instead (LENS_EDGE_REACH): outward, so the art just past its face
         // squeezes into the rim. Its furthest sample is LENS_EDGE_REACH past the face's own edge, pill.zw / 2 /
         // LENS_ZOOM from the active sample; where the crop would run out first (an end tab near the screen edge),
@@ -792,8 +796,8 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   const bar = element.getBoundingClientRect();
   if (!bar.width || !bar.height || bar.top>=innerHeight || bar.bottom<=0) return null;
   // The margin holds the furthest sample any pose reaches: the press warp's rim pull, which shows
-  // only while the press raises the lens (up to about 26 px past the lens face at 1/1.36, so about
-  // 20 px past the bar top and 27 px past an outer tab's end), plus the frost taps. The bar's own
+  // only while the press raises the lens (up to about 26 px past the lens face at its LENS_ZOOM, cut to the room
+  // the crop has), plus the frost taps. The bar's own
   // rim band reaches 12 px plus its taps. The raised lens's bevel reaches LENS_EDGE_REACH outward,
   // a couple of px past its own edge, and the shader cuts that reach, as the thumb's pull, where
   // the viewport clips this margin.
