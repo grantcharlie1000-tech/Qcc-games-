@@ -12,7 +12,7 @@ Download games once, then play them with no internet, including from the iPhone 
 - Offline, the library shows a small **Offline** pill, and games that are not downloaded fade and say **Needs internet**.
 - The installed app (Home Screen) opens straight to the games. Study is still one tab away.
 
-All 29 games play offline in their local modes. Online rooms (Pool, Minecraft, Drift Club, Breachline, Chess), leaderboards, accounts, Movies & TV, Social and Chat need internet. Account saves and scores made offline sync when the connection returns, through the existing [sync protocol](SYNC.md), which never creates duplicate records.
+All 29 games play offline in their local modes. Movies & TV can also play individual, previously downloaded rights-reviewed local MP4/WebM films and TV episodes; external streaming players and online catalog searches still need internet. Online rooms (Pool, Minecraft, Drift Club, Breachline, Chess), leaderboards, accounts, Social and Chat need internet. Account saves and scores made offline sync when the connection returns, through the existing [sync protocol](SYNC.md), which never creates duplicate records.
 
 iOS can remove a web app's stored data when the device runs low on space, and Safari may clear it for sites not opened for a long time. The app asks the browser to keep its data (`navigator.storage.persist()`), but this is not guaranteed.
 
@@ -33,6 +33,7 @@ Caches:
 - `pocket-arcade-v3:shell:<version>`: the page, entry script, styles, fonts, icons and covers of one version. Online, the page comes from the network (the deployed version); offline, or after 3 seconds without an answer, from here, so it matches the downloaded games. Stored copies keep the site's security headers.
 - `pocket-arcade-v3:files`: downloaded game files, shared by every game that uses them (Three.js is stored once) and kept across versions.
 - `pocket-arcade-v3:meta`: one record per download (`partial`, `ready` or `stale`) listing its files. Cleanup keeps any file a record lists, so a download in progress is never cleaned up under itself.
+- `qcc:movies:downloads-files:v1` and `qcc:movies:downloads-meta:v1`: separate, manually requested movie/episode files and their validated licence records. The worker serves these files, including video byte ranges on iPhone, without changing the games' caches.
 
 Every stored file carries its SHA-256 in an `x-qcc-sha256` header, so checking "already have it" needs no body read. Online, a stored game file is only served if its hash matches the running version; an older copy is used only when the network fails.
 

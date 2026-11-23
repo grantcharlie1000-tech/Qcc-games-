@@ -19,6 +19,7 @@
 const VERSION = '__OFFLINE_VERSION__';
 const SCOPE = self.registration.scope;
 const SHELL = 'pocket-arcade-v3:shell:' + VERSION, FILES = 'pocket-arcade-v3:files', META = 'pocket-arcade-v3:meta';
+const MOVIE_FILES = 'qcc:movies:downloads-files:v1', MOVIE_META = 'qcc:movies:downloads-meta:v1';
 const OWNED = /^pocket-arcade(?::|-v2:|-v3:shell:)/;
 const BASE = new URL(SCOPE).pathname;
 // Accounts, sync, leaderboards, Movies and live data always go to the network.
@@ -133,6 +134,28 @@ function expectedHashes() {
   return expected;
 }
 const answer = (request, hit) => request.method === 'HEAD' ? new Response(null, {headers: hit.headers}) : request.headers.has('range') ? partial(request, hit) : hit;
+
+// Only separately reviewed, same-origin local MP4/WebM files can be served from the movie cache.
+// Third-party streams and catalogue API responses are never put here.
+async function downloadedMovie(request, path) {
+  const meta = await caches.open(MOVIE_META);
+  let approved = false;
+  for (const request of await meta.keys()) {
+    let record;
+    try { record = await (await meta.match(request)).json(); } catch { continue; }
+    if (record?.path === path && record?.source?.path === path &&
+      record?.source?.reviewed === true && record?.source?.territory === 'Worldwide' &&
+      typeof record?.source?.expires === 'string' &&
+      Date.parse(record.source.expires + 'T23:59:59Z') >= Date.now()) {
+      approved = true; break;
+    }
+  }
+  if (approved) {
+    const hit = await (await caches.open(MOVIE_FILES)).match(at(path));
+    if (hit) return answer(request, hit);
+  }
+  return fetch(request);
+}
 async function cached(request) {
   const key = request.url.split('#')[0];
   const shellHit = await (await caches.open(SHELL)).match(key, {ignoreMethod: true});
@@ -165,6 +188,15 @@ self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
   if ((request.method !== 'GET' && request.method !== 'HEAD') || url.origin !== self.location.origin || !url.pathname.startsWith(BASE)) return;
   const path = url.pathname.slice(BASE.length);
+  if (path.startsWith('movies/media/')) {
+    event.respondWith(downloadedMovie(request, path));
+    return;
+  }
+  if (path === 'movies/catalog.json' || path === 'movies/licenses.json') {
+    // These two small, versioned static files are also in the shell for offline browsing.
+    event.respondWith(fetch(request).then(response => response.ok ? response : cached(request), () => cached(request)));
+    return;
+  }
   if (NETWORK_ONLY.test(path)) return;
   // The page asks for the file list of its own version, which online is the deployed one.
   if (path === 'offline/packs.json') {
