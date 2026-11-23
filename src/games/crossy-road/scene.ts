@@ -23,7 +23,7 @@ import {
   CAR_COLORS, CONTAINER_COLORS, LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
-import {bushGeometry, crystalGeometry, festiveTreeGeometry, giftsGeometry, lampPostGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
+import {bushGeometry, crystalGeometry, decoratedTreeGeometry, giftsGeometry, lampPostGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
 import {
   CAR_MODELS, FIRE, LOCOS, PLOUGH, PROP, TRUCK_MODELS, WAGONS,
   carLength, carModel, lilyLook, mix, propAt, trainKind, truckModel, wagonAt,
@@ -347,7 +347,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const waterFx = pool(box, lit, 640);
   // Scenery in PROP order: bare trees, the stump, boulders, then the zone models.
   const props = [
-    ...[0, 1, 2, 3].map(treeGeometry), ...[0, 1, 2].map(rockGeometry), pineGeometry(false), pineGeometry(true), festiveTreeGeometry(),
+    ...[0, 1, 2, 3].map(treeGeometry), ...[0, 1, 2].map(rockGeometry), pineGeometry(false), pineGeometry(true), decoratedTreeGeometry(),
     snowmanGeometry(), lampPostGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(), crystalGeometry(),
   ].map((g, i) => pool(geo(g), lit, i < PROP.stump || i === PROP.pineSmall || i === PROP.pineTall ? 320 : 160, true));
   const carBody = CAR_MODELS.map(model => pool(merged(carGeometry(model)), painted, 80, true));

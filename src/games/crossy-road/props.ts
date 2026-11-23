@@ -27,7 +27,7 @@ export function pineGeometry(tall: boolean): THREE.BufferGeometry {
 }
 
 /** A decorated Christmas tree: a pine with baubles on the faces the camera sees and a gold star. */
-export function festiveTreeGeometry(): THREE.BufferGeometry {
+export function decoratedTreeGeometry(): THREE.BufferGeometry {
   const parts: Part[] = [], widths = [0.82, 0.6, 0.38], tip = tiers(parts, widths), baubles = [RED, GOLD, 0x3a86ff, 0xff8fc0];
   widths.forEach((w, t) => {
     const y = 0.33 + t * 0.29, n = 3 - t;

@@ -14,12 +14,12 @@ export function mix(a: number, b: number, c = 0): number {
 // Scenery ---------------------------------------------------------------------
 
 /** Obstacle models. `bare` and `rock` are the first of three variants. */
-export const PROP = {bare: 0, stump: 3, rock: 4, pineSmall: 7, pineTall: 8, festive: 9, snowman: 10, lamp: 11, bush: 12, logPile: 13, gifts: 14, crystal: 15} as const;
+export const PROP = {bare: 0, stump: 3, rock: 4, pineSmall: 7, pineTall: 8, decorated: 9, snowman: 10, lamp: 11, bush: 12, logPile: 13, gifts: 14, crystal: 15} as const;
 
 const B = PROP.bare, R = PROP.rock;
 /** What a tree cell and a rock cell can be. Repeats set the odds: the same mix everywhere, so nothing gathers in one place. */
 const TREES: readonly number[] = [B, B, B, B, B, B, B, PROP.pineTall, PROP.pineTall, PROP.pineTall, PROP.pineTall, PROP.pineSmall, PROP.pineSmall, PROP.pineSmall,
-  PROP.bush, PROP.bush, PROP.festive, PROP.snowman, PROP.lamp, PROP.crystal];
+  PROP.bush, PROP.bush, PROP.decorated, PROP.snowman, PROP.lamp, PROP.crystal];
 const ROCKS: readonly number[] = [R, R, R, R, R, PROP.logPile, PROP.logPile, PROP.gifts, PROP.bush, PROP.crystal];
 
 /** The model for an obstacle. `variant` is the lane's own 0..2 (or 3 for a stump, which stays a stump). */

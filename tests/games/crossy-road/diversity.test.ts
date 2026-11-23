@@ -7,7 +7,7 @@ import {
   CAR_MODELS, FIRE, PLOUGH, PROP, TRUCK_MODELS, carLength, carModel, mix, propAt, trainKind, truckModel, wagonAt,
 } from '../../../src/games/crossy-road/variety';
 import {carGeometry, trainGeometry, truckGeometry} from '../../../src/games/crossy-road/models';
-import {bushGeometry, crystalGeometry, festiveTreeGeometry, giftsGeometry, lampPostGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from '../../../src/games/crossy-road/props';
+import {bushGeometry, crystalGeometry, decoratedTreeGeometry, giftsGeometry, lampPostGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from '../../../src/games/crossy-road/props';
 import {ROW_DEPTH, TRAIN_SCALE, VEHICLE_SCALE, roadGapMin, type GrassLane, type RailLane, type RoadLane} from '../../../src/games/crossy-road/config';
 
 const bounds = (g: BufferGeometry) => { g.computeBoundingBox(); return g.boundingBox!; };
@@ -104,7 +104,7 @@ describe('larger models still fit their row', () => {
     for (const piece of Object.values(trainGeometry())) for (const g of [piece.body, piece.detail]) expect(bounds(g).max.x - bounds(g).min.x).toBeLessThanOrEqual(2.03);
   });
   it('scenery stands on the ground inside one tile', () => {
-    for (const g of [pineGeometry(false), pineGeometry(true), festiveTreeGeometry(), snowmanGeometry(), lampPostGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(), crystalGeometry()]) {
+    for (const g of [pineGeometry(false), pineGeometry(true), decoratedTreeGeometry(), snowmanGeometry(), lampPostGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(), crystalGeometry()]) {
       const b = bounds(g);
       expect(b.min.y).toBeCloseTo(0, 5);
       expect(b.max.x - b.min.x).toBeLessThanOrEqual(1);
