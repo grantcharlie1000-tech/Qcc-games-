@@ -170,7 +170,7 @@ const vec2 PILL_RIM = vec2(.35, 1.15);
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
 // about half again, so the flipped title reads mid-grey as in Apple's dark still.
 const float MIRROR_BAND = 8., MIRROR_K = 2.;
-const vec2 MIRROR_MIX = vec2(.29, .6);
+const vec2 MIRROR_MIX = vec2(.29, .45);
 // In that still the flipped "New Releases for You" reads as crisp letters, so the dark theme's mirrored zone frosts at
 // MIRROR_SPREAD (about a third of the band's), where its strokes were smeared into streaks.
 const float MIRROR_SPREAD = .35;
@@ -184,6 +184,10 @@ const float MIRROR_SPREAD = .35;
 // (FOOT_MIRROR.x - d) inside the bar, so that poster ends 3.3 css px from the foot. Both mirrors sample inside the bar,
 // so neither reaches toward the crop's edge, and the taps are the band's own.
 const vec2 DARK_MIRROR = vec2(6., 3.), FOOT_MIRROR = vec2(8., 1.5);
+// LOOK-14: the flipped title still read much fainter than Apple's (band13: peak stroke lift 51 over the band's body against
+// the still's 91): smoked() sank its bright strokes DARK_EVEN (.8) of the way to the wide field, undoing most of
+// MIRROR_MIX. The dark mirrored zone now takes none of that sink (darkEven), and keeps MIRROR_MIX.y .45 of its contrast:
+// the flipped title's strokes lift +87 over the body (Apple +91, before +51), lit to 4.7 css px (Apple 4.0).
 // Apple Music's light bar is pale frost the art shows through, not milk: its mini player passes about .3 of the album
 // art under a 228 grey, and its tab bar reads 234 over the white page. The light theme lifts the bar's frost to
 // MILK_LIFT + MILK_GAIN of it, so black art reads about 188 under it and white about 240, and the art's colour and
@@ -332,6 +336,8 @@ out vec4 color;
 // C30's smoked frost: a neutral grey that keeps only part of the art's colour, so card
 // colours behind the bar stay quiet. Its tone still follows the scene, so a bright backdrop
 // lifts the bar as before. Motion clears it toward the lens.
+// The share of DARK_EVEN's sink a smoked() call takes: 1 everywhere but the dark band's mirrored zone (LOOK-14).
+float darkEven = 1.;
 vec3 smoked(vec3 frosted, float motion, vec3 field) {
   float luma = dot(frosted, vec3(.2126, .7152, .0722));
   vec3 chroma = frosted - luma;
@@ -342,7 +348,7 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   // black still reads about 30 under its grey veil; bright blobs sink
   // further toward their field so the steeper slope adds no detail.
   float slope = mix(SMOKE_SLOPE, 1.18, pillSmoke), drop = mix(SMOKE_DROP, SMOKE_DARK_DROP, pillSmoke);
-  float even = mix(SMOKE_EVEN, DARK_EVEN, pillSmoke);
+  float even = mix(SMOKE_EVEN, DARK_EVEN * darkEven, pillSmoke);
   float tone = mix(slope * mix(luma, min(luma, fieldLuma), even) - drop, luma, motion);
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
   // saturated mark keeps most of its hue.
@@ -549,9 +555,12 @@ void main() {
   float bandSpread = mix(mix(BODY_SPREAD, 1., band), MIRROR_SPREAD, mirrorZone * pillSmoke);
   // Below the mirrored zone the dark band frosts as the dark body does, so a title does not streak where the band begins.
   softFrostMix = pillSmoke * (1. - step(.001, mirrorZone));
+  // The dark mirrored zone keeps its strokes: smoked() does not sink them toward the field there (darkEven).
+  darkEven = 1. - mirrorZone;
   vec3 surface = band > 0. ? mix(smoked(mix(field, glassColor(bent, bandSpread), 1. - (1. - mix(MIRROR_MIX.x, MIRROR_MIX.y, pillSmoke)) * mirrorZone), 0., field), blurColor, bodyBlur * (1. - band) * (1. - mirrorZone)) : bodyColor;
   // The moving selection and the rest pill's clear glass keep the frost.
   softFrostMix = 0.;
+  darkEven = 1.;
   // The dark theme's bar is Apple's dark smoke (DARK_SMOKE), the same at every motion: only the selection moves.
   surface = mix(surface, darkSmoke(surface), pillSmoke);
   // The light theme's pale frost (MILK_LIFT, MILK_GAIN). The mirrored band keeps MILK_MIRROR of its strokes over it.
