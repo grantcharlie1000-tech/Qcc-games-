@@ -120,6 +120,13 @@ test('the dark menu circle\'s smoked glass keeps its white glyph at 4.5:1 or hal
   if(!bright)expect(contrast,color).toBeGreaterThanOrEqual(4.5);
   else expect(contrast,color).toBeLessThan(4.5);
  }
+ // LOOK-7 (#24 review of LOOK-6, I1): a live switch to light with the bright art still under the circle must leave the light
+ // circle's grey glyph exactly as a fresh light load draws it (the approved light look): no dark halo, no adaptive ink.
+ const glyph=()=>icon.evaluate(e=>({ink:e.classList.contains('glass-ink'),halo:e.hasAttribute('data-glass-halo'),filter:getComputedStyle(e).filter,color:getComputedStyle(e).color}));
+ await page.emulateMedia({colorScheme:'light'});
+ await expect.poll(glyph).toEqual({ink:false,halo:false,filter:'none',color:'rgb(110, 110, 115)'});
+ await page.emulateMedia({colorScheme:'dark'});
+ await expect.poll(halo).toBe(true);
  await page.emulateMedia({reducedMotion:'reduce',contrast:'more'});
  await expect(menu).toHaveAttribute('data-glass','off');
  expect(await menu.evaluate(e=>getComputedStyle(e).backgroundColor)).toMatch(/^rgb\(\d+, \d+, \d+\)$/);

@@ -193,7 +193,7 @@ function update(){
   // their existing SVGs without changing any control or dialog lifecycle.
   for(const sheet of document.querySelectorAll<HTMLElement>('.mp-card,.movies-resume-pill,.movies-fullscreen'))syncSheetIconInk(sheet);
   const {style,rect,sample}=sampler();
-  const changes:{glyph:HTMLElement;ink:ReturnType<typeof glassInk>|null}[]=[];
+  const changes:{glyph:HTMLElement;ink:ReturnType<typeof glassInk>|null}[]=[],released:HTMLElement[]=[];
   for(const bar of bindings){
     const box=rect(bar);if(!box.width||!box.height||style(bar).visibility==='hidden')continue;
     const mini=bar.parentElement?.querySelector<HTMLElement>('.ui-tabbar-mini');
@@ -225,6 +225,10 @@ function update(){
       const circle=nav&&!milky&&target.matches('.section-menu');
       for(const group of groups.values()){
         const labels=circle?group:group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
+        // LOOK-7 (#24 review of LOOK-6, I1): only the dark menu circle inks its svg. After a live switch to light that svg is
+        // no longer a label, so what the dark circle set is cleared back to a fresh light load's glyph; its dark halo would
+        // otherwise stay round the light circle's grey glyph until the bar is rebuilt.
+        if(!circle&&target.matches('.section-menu'))released.push(...group.filter(glyph=>glyph.matches('svg.glass-ink')));
         if(!labels.length)continue;
         let ink:ReturnType<typeof glassInk>|null=null;
         // Frosted sheets carry a dark tint under a deep blur: plain white ink, no halo.
@@ -251,6 +255,10 @@ function update(){
     const halo=ink.halo!=='transparent';
     if(glyph.hasAttribute('data-glass-halo')!==halo)glyph.toggleAttribute('data-glass-halo',halo);
     glyph.querySelector(':scope > .glass-vector-halo')?.remove();
+  }
+  for(const glyph of released){
+    glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.removeAttribute('data-glass-halo');
+    glyph.querySelector(':scope > .glass-vector-halo')?.remove();glyph.classList.remove('glass-ink');
   }
   clearTimeout(liveTimer);
   if(bindings.size&&!document.hidden&&document.querySelector('#game-stage canvas:not(.ui-glass-gl>canvas)'))liveTimer=setTimeout(schedule,140);
