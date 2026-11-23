@@ -424,9 +424,13 @@ test('the island clears the last game card when the library is scrolled to the e
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(844);
  const island=(await bar.boundingBox())!;
  const lastCard=(await page.locator('.game-card').last().boundingBox())!;
- // The 88 px bottom padding of #content keeps the last card clear of the bar.
+ // The bottom padding of #content keeps the last card clear of the bar.
  expect(island.y).toBeGreaterThanOrEqual(lastCard.y+lastCard.height);
- expect(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollPaddingBottom)).toBe('88px');
+ // MOTION-15 (#24): was '88px', the 64 px bar and a 12 px gap either side. 99b1fff9 sized the bar as Apple Music's, 60 css
+ // px, so the padding is the bar's own height and its two gaps: 84 px.
+ const gap=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabbar-gap')));
+ expect(Math.round(island.height)).toBe(60);
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollPaddingBottom)).toBe(`${Math.round(island.height)+2*gap}px`);
 });
 
 for(const width of [320,390]) test(`home fits ${width}px phones`,async({page})=>{
