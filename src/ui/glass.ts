@@ -243,8 +243,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let press:{
     tab:HTMLElement;
     pointerId:number;
-    // A drag's pill: its box when the drag began, and the span its centre may travel (in the bar's layout px).
-    drag:{x:number;y:number;active:boolean;center:number;pill:{left:number;width:number};range:[number,number]}|null;
+    // A drag's pill: its box when the drag began, and the span its centre may travel (in the bar's layout px); the finger's
+    // last x, and the pill centre's screen x when the drag began, which the pill keeps 1:1 with the finger from.
+    drag:{x:number;y:number;active:boolean;center:number;pill:{left:number;width:number};range:[number,number];finger:number;screen:number}|null;
     // The bar's growth when the press began (section-navigation.css grows a pressed section bar about its centre).
     growth:[number,number];
   }|null=null;
@@ -321,7 +322,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0,pill:{left:0,width:0},range:[0,0] as [number,number]}:null;
+    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0,pill:{left:0,width:0},range:[0,0] as [number,number],finger:event.clientX,screen:0}:null;
     press={tab,pointerId:event.pointerId,drag,growth:growthOf()};
     bar.setAttribute('data-pressing','');
     if(drag)document.addEventListener('pointermove',move,{passive:true});
@@ -340,6 +341,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(!drag.active&&(Math.abs(dx)<6||Math.abs(dx)<=Math.abs(event.clientY-drag.y)))return;
     const width=tab.offsetWidth;
     if(!width||!bar.clientWidth)return;
+    drag.finger=event.clientX;
     const begins=!drag.active;
     if(begins){
       // The capsule leaves from where it sat and its centre travels between the end tabs' capsules (capsulePill), so a
@@ -348,22 +350,43 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       const centre=(box:{left:number;width:number})=>box.left+box.width/2;
       drag.pill=pillBox(tab);
       drag.range=[centre(pillBox(tabs[0]??tab)),centre(pillBox(tabs[tabs.length-1]??tab))];
+      const box=bar.getBoundingClientRect();
+      drag.screen=box.left+centre(drag.pill)*(box.width/(bar.offsetWidth||1)||1);
     }
-    // The bar grows while it is pressed (section-navigation.css), so a px of finger travel is 1/scale of a layout px:
-    // the pill moves that much, and stays 1:1 with the finger on screen.
-    const travel=dx/(bar.getBoundingClientRect().width/bar.offsetWidth||1);
-    const deformation=Math.min(1,Math.abs(travel)/width);
-    const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
-    const center=Math.max(drag.range[0],Math.min(drag.range[1],drag.pill.left+drag.pill.width/2+travel));
-    drag.center=center;
-    bar.style.setProperty('--ui-pill-drag-x',`${round(center-drag.pill.width/2)}px`);
-    bar.style.setProperty('--ui-pill-drag-scale',`${scaleX} ${scaleY}`);
+    follow();
     if(begins){
       // The gesture takes over from any in-flight selection stretch.
       stretch?.cancel();
       drag.active=true;
       bar.setAttribute('data-pill-dragging','');
+      followFrame=requestAnimationFrame(keepFollowing);
     }
+  };
+  // The bar grows about its centre while it is pressed (section-navigation.css), on a spring that is still settling for
+  // about 300 ms (Charlie's video), so a layout px is a changing number of screen px. The pill's centre is placed from
+  // the finger in screen px: where it sat on screen when the drag began, plus the finger's travel since, taken back into
+  // the bar's layout px at its current scale. So it stays 1:1 with the finger on screen, and it is placed again on every
+  // frame of the drag, so the settling bar never carries it off the finger (MOTION-7: it drifted by up to 1.1 px).
+  let followFrame=0;
+  const follow=()=>{
+    const drag=press?.drag;
+    if(!drag)return;
+    const box=bar.getBoundingClientRect(),scale=box.width/(bar.offsetWidth||1)||1;
+    const want=(drag.screen+drag.finger-drag.x-box.left)/scale;
+    const center=Math.max(drag.range[0],Math.min(drag.range[1],want));
+    const travel=want-(drag.pill.left+drag.pill.width/2);
+    const deformation=Math.min(1,Math.abs(travel)/(press!.tab.offsetWidth||1));
+    const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
+    drag.center=center;
+    const x=`${round(center-drag.pill.width/2)}px`,stretchScale=`${scaleX} ${scaleY}`;
+    if(bar.style.getPropertyValue('--ui-pill-drag-x')!==x)bar.style.setProperty('--ui-pill-drag-x',x);
+    if(bar.style.getPropertyValue('--ui-pill-drag-scale')!==stretchScale)bar.style.setProperty('--ui-pill-drag-scale',stretchScale);
+  };
+  const keepFollowing=()=>{
+    followFrame=0;
+    if(!press?.drag?.active)return;
+    follow();
+    followFrame=requestAnimationFrame(keepFollowing);
   };
   // A native link drag would stop pointermove on the tabs that use anchors.
   const nativeDrag=(event:DragEvent)=>{
@@ -382,6 +405,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     bar.addEventListener('click',suppressScrubClick,true);
   }
   const clearDrag=()=>{
+    cancelAnimationFrame(followFrame);followFrame=0;
     bar.removeAttribute('data-pill-dragging');
     bar.style.removeProperty('--ui-pill-drag-x');
     bar.style.removeProperty('--ui-pill-drag-scale');
