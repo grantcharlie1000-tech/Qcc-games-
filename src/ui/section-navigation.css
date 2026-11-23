@@ -49,11 +49,16 @@
    32, the art at 32 + .875 of itself, about four fifths of its colour). .125 of white over the art is exactly that line,
    and saturate(.92) keeps .875 x .92 = .8 of the colour. So the menu circle, the compact circle and the CSS fallback bar
    are one glass family with the lens's bar; #92's dark .36 veil left the circle about 3 over black beside the bar's 32.
-   Glass off and reduced transparency stay opaque (theme.css), and a glass-off bar's compact circle keeps the .36 veil. */
+   Glass off and reduced transparency stay opaque (theme.css), and a glass-off bar's compact circle keeps the .36 veil.
+   LOOK-9: the lens's smoke rolls its highlights off (DARK_GLASS.zw), so white art reads 229 under the bar, where this
+   straight line read 255 under the circle beside it. Each filter step clamps to 0..1, so brightness(1.1283) then
+   brightness(.8863) caps the art at 226 and leaves everything under it as it was: white reads .875 x 226 + 32 = 229.6
+   under the circle, as under the bar, and black and mid art keep the line (32, #777 136). Between 128 and 226 the
+   bar's own roll-off sits up to about 15 under this cap. */
 @media (prefers-color-scheme:dark){
   .section-navigation>.arcade-glass:not([data-glass=off]),
   .section-navigation>.section-tabbar:not([data-glass=off])~.arcade-glass-mini{
-    --glass-tint:rgb(255 255 255 / .125);--glass-tone:saturate(.92);
+    --glass-tint:rgb(255 255 255 / .125);--glass-tone:saturate(.92) brightness(1.1283) brightness(.8863);
   }
 }
 /* Apple Music's side margins: about 16 css px at 390, not 12, with an 8 px gap to the menu circle. */

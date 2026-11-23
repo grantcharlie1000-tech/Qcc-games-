@@ -284,7 +284,8 @@ test('navigation and its companion share frost while game controls retain their 
   for(const reference of Object.values(references))expect(reference.pill).toEqual(references.navigation.pill);
   expect(references.navigation.veil).toBe('rgba(255, 255, 255, 0.125)');
   expect(references.game.veil).toBe('rgba(8, 12, 18, 0.2)');
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(.92)']);
+  // LOOK-9: the dark smoke caps the art at 226 (each brightness step clamps), white reading 229.6 as under the WebGL bar.
+  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(.92) brightness(1.1283) brightness(.8863)']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 

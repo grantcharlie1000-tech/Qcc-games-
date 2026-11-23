@@ -79,13 +79,15 @@ for(const mode of ['flag','WebKit brands'])test(`${mode} selects one fallback su
  // Charlie's 23:10Z order to rebuild dark to Apple's dark) that smoke is Apple's see-through dark glass, .125 of white with
  // saturate(.92) under the same 12px blur, not #92's saturate(1.4) brightness(.94): the bar and its menu circle each carry
  // exactly one such frost (an SVG lens url only on the Safari path), one glass family, as clear-material-rules pins it.
+ // LOOK-9: that frost caps the art at 226 (brightness(1.1283) then brightness(.8863), each step clamped), so white reads
+ // 229.6 under the circle, as the WebGL bar's roll-off reads it, not 255.
  await page.emulateMedia({colorScheme:'dark'});
  await page.goto(`/${mode==='flag'?'?glass=fallback':''}#/collection`);
  const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu');
  await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
  await expect(page.locator('.app-navigation .ui-scroll-edge')).toHaveCount(0);await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
  for(const object of [bar,menu]){
-  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toMatch(/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(0\.92\)$/);
+  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toMatch(/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(0\.92\) brightness\(1\.1283\) brightness\(0\.8863\)$/);
   await expect.poll(()=>object.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
   expect(await object.locator('.ui-glass-glow').evaluate(e=>getComputedStyle(e).maskComposite.split(',').every(value=>value.trim()==='exclude'))).toBe(true);
  }

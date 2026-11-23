@@ -879,7 +879,8 @@ test('the fallback navigation glass keeps its frosted backdrop, dark tint and cl
   expect(pill).toMatch(/^rgba\(0, 0, 0,/);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
-  expect(frost).toBe('blur(12px) saturate(0.92)');
+  // LOOK-9: the smoke caps the art at 226, so white reads 229.6 under it, as under the WebGL bar's roll-off.
+  expect(frost).toBe('blur(12px) saturate(0.92) brightness(1.1283) brightness(0.8863)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   // Clean glyphs: no stroke or blurred glow; over busy art the adaptive ink may

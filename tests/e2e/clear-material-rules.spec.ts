@@ -24,7 +24,7 @@ for(const route of ['collection','game/snake','game/neon-coil'])test(`${route} u
   // A live WebGL canvas behind a game control is refracted by the shared WebGL
   // lens, whose shader replaces the CSS blur (src/ui/webgl-glass.css).
   if(material.webgl){expect(material.glVisible).toBe(true);expect(material.blur).toBe('none');}
-  else expect(material.blur).toMatch(route.startsWith('game')?/^blur\(1\.5px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.08\)$/:/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(0\.92\)$/);
+  else expect(material.blur).toMatch(route.startsWith('game')?/^blur\(1\.5px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.08\)$/:/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(0\.92\) brightness\(1\.1283\) brightness\(0\.8863\)$/);
   expect(material.strokes.every(s=>s==='0px')).toBe(true);expect(material.halos).toBe(0);
   if(route.startsWith('game/'))await openGameMenu(page);
   else if(route==='collection')await page.locator('.app-navigation .section-menu').click();
