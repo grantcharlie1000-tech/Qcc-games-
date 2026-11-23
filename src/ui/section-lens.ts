@@ -665,7 +665,43 @@ function createRenderer(gl:WebGL2RenderingContext) {
   const opacity = uniform('pillOpacity'), lift = uniform('pillLift'), press = uniform('pillPress'), smoke = uniform('pillSmoke');
   const motion = uniform('pillMotion'), drawPad = uniform('drawPad'), projection = uniform('pillProjection');
   let width = 0, height = 0;
+  let reader:WebGLFramebuffer|null = null;
   return {
+    /** The size of the backdrop last uploaded, in texels. */
+    size:()=>[width,height] as const,
+    /** LOOK-11: starts reading the uploaded backdrop's bytes over a texel box into a pack buffer, top row first as
+     * getImageData gives them (the texture's first row is the canvas's top). poll() gives them once the GPU has written
+     * them (null until then), so neither thread waits: the 2D backdrop is never read back, which made the browser stop
+     * accelerating it, and a plain readPixels stalled 56 ms on the busy GPU thread in swiftshader (inkSelection). */
+    read(left:number, top:number, w:number, h:number) {
+      const pack = gl.createBuffer();
+      reader ??= gl.createFramebuffer();
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER,reader);
+      gl.framebufferTexture2D(gl.READ_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texture,0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER,pack);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER,4*w*h,gl.STREAM_READ);
+      gl.readPixels(left,top,w,h,gl.RGBA,gl.UNSIGNED_BYTE,0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null);
+      let fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
+      gl.flush();
+      const cancel = ()=>{
+        if (!fence) return;
+        gl.deleteSync(fence);
+        fence = null;
+        gl.deleteBuffer(pack);
+      };
+      return {cancel, poll():Uint8Array|null {
+        if (!fence || gl.isContextLost()) throw new Error('Section lens readback lost');
+        if (gl.getSyncParameter(fence,gl.SYNC_STATUS)!==gl.SIGNALED) return null;
+        const data = new Uint8Array(4*w*h);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER,pack);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,data);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+        cancel();
+        return data;
+      }};
+    },
     upload(canvas:HTMLCanvasElement) {
       if (width===canvas.width && height===canvas.height) {
         gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,canvas);
@@ -734,17 +770,22 @@ export function selectionAccent(pills:number[]):string {
   }
   return `rgb(${best.join(' ')})`;
 }
-/** The dark rest pill's luminance every 2 css px over each box (viewport css px), from the backdrop painted for crop. */
-export function pillUnder(source:HTMLCanvasElement, crop:Crop, boxes:DOMRect[]):number[] {
-  if (!boxes.length || !source.width || !source.height) return [];
-  const sx = source.width/crop.width, sy = source.height/crop.height;
+/** The texel box of a width x height backdrop painted for crop that the ink reads round boxes (viewport css px). */
+export type InkRegion = {left:number; top:number; w:number; h:number; sx:number; sy:number};
+export function inkRegion(width:number, height:number, crop:Crop, boxes:DOMRect[]):InkRegion|null {
+  if (!boxes.length || !width || !height) return null;
+  const sx = width/crop.width, sy = height/crop.height;
   const left = Math.max(0,Math.floor((Math.min(...boxes.map(box=>box.left))-INK_REACH-crop.x)*sx));
   const top = Math.max(0,Math.floor((Math.min(...boxes.map(box=>box.top))-INK_REACH-crop.y)*sy));
-  const right = Math.min(source.width,Math.ceil((Math.max(...boxes.map(box=>box.right))+INK_REACH-crop.x)*sx));
-  const bottom = Math.min(source.height,Math.ceil((Math.max(...boxes.map(box=>box.bottom))+INK_REACH-crop.y)*sy));
-  const w = right-left, h = bottom-top, context = source.getContext('2d');
-  if (w<=0 || h<=0 || !context) return [];
-  const data = context.getImageData(left,top,w,h).data;
+  const right = Math.min(width,Math.ceil((Math.max(...boxes.map(box=>box.right))+INK_REACH-crop.x)*sx));
+  const bottom = Math.min(height,Math.ceil((Math.max(...boxes.map(box=>box.bottom))+INK_REACH-crop.y)*sy));
+  const w = right-left, h = bottom-top;
+  return w>0 && h>0 ? {left,top,w,h,sx,sy} : null;
+}
+/** The dark rest pill's luminance every 2 css px over each box (viewport css px), from the backdrop's RGBA bytes over its
+ * ink region, top row first. */
+export function pillUnder(data:ArrayLike<number>, region:InkRegion, crop:Crop, boxes:DOMRect[]):number[] {
+  const {left,top,w,h,sx,sy} = region;
   // A summed-area table of the art's tone gives each box mean in four reads.
   const sum = new Float64Array((w+1)*(h+1));
   for (let y=0;y<h;y++) {
@@ -912,24 +953,57 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
   // LOOK-10: the crop the backdrop canvas holds and its paint count, and the paint and tab last inked (inkSelection).
   let paintedCrop:Crop|null = null, paints = 0, inkedPaint = -1, inkedTab:Element|null = null;
   let inkTimer:ReturnType<typeof setTimeout>|undefined;
+  // LOOK-11: the backdrop read in flight for the ink (inkSelection); the next ink or disposal cancels it.
+  let inkRead:{cancel:()=>void; poll:()=>Uint8Array|null}|undefined;
   const selectedTab = ()=>bar.querySelector<HTMLElement>('.ui-tab:is([aria-current=page],[aria-pressed=true])');
-  function inkSelection() {
-    inkTimer = undefined;
-    const tab = selectedTab(), source = backdrop?.canvas;
-    if (disposed || !tab || !source || !paintedCrop || !scheme.matches || bar.dataset.sectionLens!=='webgl') return;
-    let accent = '';
-    try {
-      const boxes = [tab.querySelector(':scope > span'),tab.querySelector(':scope > .ui-icon')]
-        .flatMap(element=>element?[element.getBoundingClientRect()]:[]).filter(box=>box.width && box.height);
-      accent = selectionAccent(pillUnder(source,paintedCrop,boxes));
-    } catch {
-      return;
-    }
+  const inkable = ()=>!disposed && !lost && scheme.matches && bar.dataset.sectionLens==='webgl';
+  function inkWith(tab:HTMLElement, accent:string) {
     for (const other of bar.querySelectorAll<HTMLElement>('.ui-tab')) if (other!==tab) other.style.removeProperty('--section-pill-adaptive-accent');
     if (accent) tab.style.setProperty('--section-pill-adaptive-accent',accent);
     else tab.style.removeProperty('--section-pill-adaptive-accent');
     inkedTab = tab;
     inkedPaint = paints;
+  }
+  function inkSelection() {
+    inkTimer = undefined;
+    inkRead?.cancel();
+    inkRead = undefined;
+    const tab = selectedTab(), renderer = gpu, crop = paintedCrop, paint = paints;
+    if (!tab || !renderer || !crop || !inkable()) return;
+    const boxes = [tab.querySelector(':scope > span'),tab.querySelector(':scope > .ui-icon')]
+      .flatMap(element=>element?[element.getBoundingClientRect()]:[]).filter(box=>box.width && box.height);
+    // LOOK-11: the backdrop's bytes come from the texture the lens uploaded for paintedCrop (renderer.read), read without
+    // a wait, never from the 2D canvas: one getImageData there made Chrome stop accelerating that canvas (+.4 ms a scroll
+    // frame in swiftshader, and a 250-330 ms stall at the read that switched it).
+    const [width,height] = renderer.size();
+    const region = inkRegion(width,height,crop,boxes);
+    if (!region) return inkWith(tab,'');
+    const read = renderer.read(region.left,region.top,region.w,region.h), started = performance.now();
+    inkRead = read;
+    const poll = ()=>{
+      inkTimer = undefined;
+      if (inkRead!==read) return;
+      let data:Uint8Array|null = null;
+      try {
+        data = read.poll();
+      } catch {
+        inkRead = undefined;
+        return read.cancel();
+      }
+      if (!data) {
+        if (performance.now()-started<2000) inkTimer = setTimeout(poll,16);
+        else {
+          inkRead = undefined;
+          read.cancel();
+        }
+        return;
+      }
+      inkRead = undefined;
+      // A repaint or another tab since the read began: its rest frame inks again.
+      if (paints!==paint || selectedTab()!==tab || !inkable()) return;
+      inkWith(tab,selectionAccent(pillUnder(data,region,crop,boxes)));
+    };
+    inkTimer = setTimeout(poll,16);
   }
 
   function fallback() {
@@ -1132,6 +1206,8 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     disposed = true;
     cancelAnimationFrame(frame);
     clearTimeout(inkTimer);
+    inkRead?.cancel();
+    inkRead = undefined;
     for (const tab of bar.querySelectorAll<HTMLElement>('.ui-tab')) tab.style.removeProperty('--section-pill-adaptive-accent');
     events.abort();
     changes.disconnect();
