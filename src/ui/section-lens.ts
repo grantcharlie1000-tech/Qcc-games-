@@ -217,15 +217,16 @@ const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
 // transmission back to about one, and LENS_LIFT no longer lifts dark content toward milk.
 const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // Its edge is a thin crisp rim about LENS_RIM css px deep, falling off over half a px either side of its inner edge
-// (MOTION-5: the video's hold and drag rims read about 2 px at half height, ours read 4.5 and 3 at LENS_RIM 3), lit
+// (MOTION-5: the video's hold and drag rims read about 2 px at half height, ours read 4.5 and 3 at LENS_RIM 3; MOTION-11:
+// 1 and 2 at 1.5, against the video's 2 and 3.5, so it is 2.2), lit
 // all round and brightest along the top, whose light splits into a thin rainbow (LENS_FRINGE), red at the outside
 // running to blue inside, as Apple's does.
-const float LENS_RIM = 1.5, LENS_FRINGE = .35;
+const float LENS_RIM = 2.2, LENS_FRINGE = .24;
 // MOTION-11 (#24 council on aa6359ee): the video's rim is a thick, darker refracting band along the top and bottom,
 // about 5 css px deep just inside the bright line, tapering round the ends (12.75 s and 13.5 s). The face darkens by up
 // to LENS_BAND_DARK across depths LENS_BAND (in, full, full, out), weighted by how far the edge faces up or down: the
 // light theme's band is lighter (.x), so on its pale bar the bubble reads as glass and not a dark hole.
-const vec4 LENS_BAND = vec4(1.2, 2.6, 5., 8.);
+const vec4 LENS_BAND = vec4(2., 3.4, 5.8, 8.8);
 const vec2 LENS_BAND_DARK = vec2(.25, .45);
 // The raised lens is Apple's clear, bright bubble (Charlie's video, 12.75-13.5 s; MOTION-5 council): held or dragged,
 // the art under it shows unfrosted, magnified and in its own colour and contrast, lifted a little toward white:
