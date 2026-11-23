@@ -2,7 +2,7 @@
 
 ## Project skills
 
-Read the relevant skill before work in its area. Canonical skill files live in `.agents/skills/`; Claude Code has matching copies in `.claude/skills/`.
+Check for and use any and all relevant skills before and during a task. This includes the repo skills in `.agents/skills/` (and the matching Claude copies in `.claude/skills/`) and any skills available in your own environment. Read the relevant skill before work in its area.
 
 At the beginning of a project work session, load `using-superpowers` and use its relevant workflow skills as the task develops.
 
