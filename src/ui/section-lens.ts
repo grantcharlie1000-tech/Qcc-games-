@@ -128,9 +128,11 @@ const float BODY_BLUR = .9;
 // Apple's dark bar blurs less: titles and posters behind it still show their shapes (Charlie's still and video, 32.5 s),
 // so the dark theme takes DARK_BLUR of the wide field instead. LOOK-5: was .25, which still hazed the posters and blurred
 // a title under the bar into blobs; Apple's video at 32.5 s keeps an arm and the Hamilton star sharp through its bar.
-// LOOK-10 (council on aa6359ee, see DARK_RING): .1 left small bright marks crisp, so the bar takes .55 of the wide field,
-// which calms and dims them toward their surroundings. Broad art keeps its tone: the blur only mixes the same art.
-const float DARK_BLUR = .55;
+// LOOK-10 (council on aa6359ee, see DARK_RING): .1 left small bright marks crisp. .55 of the wide field calmed them but
+// lifted the dark page beside bright art (apple_match's bar over the plain page 36 -> 51, Apple 32), so the dark bar takes
+// .2 and calms bright marks by sinking them DARK_EVEN of the way to their darker field (smoked()), which never lifts the
+// dark: titles and bright stripes dim into the smoke while black stays 32. Uniform art keeps its tone either way.
+const float DARK_BLUR = .2, DARK_EVEN = .8;
 // The C30 face bend stretched a title behind the dark bar 1.2-1.5x vertically into tall streaks; the dark theme keeps
 // DARK_BEND of it, and its body frosts soft (softFrost).
 const float DARK_BEND = .3;
@@ -146,9 +148,10 @@ const float RIM_TINT = 3.;
 // Apple's dark rim is about +70 over the bar at its outer device px, +47 and +33 at the next two, then gone.
 // LOOK-10: at css px Apple's dark rim spans two px in its still (+87 and +50 over the bar, black page) and in the video's
 // rest frame (+21 and +28, compression softening it), where ours read one bright px (+54, then +2). The dark line now
-// holds full light to .9 css px and is gone by 2.2 (RIM_LIGHT.y .38 of white at the top): about +58 and +32 over a black
-// page, two px as both, its brightness between the still's and the video's. The dark pill's faint edge keeps PILL_RIM.
-const vec4 RIM_REST = vec4(.9, 1.6, .9, 2.2);
+// holds full light to .8 css px and is gone by 1.9 (RIM_LIGHT.y .38 of white at the top): a bright outer px and a
+// softer second over a black page, its peak between the still's and the video's; the second px stays under half the
+// first, as Apple's half-maximum width (apple_match) is one px. The dark pill's faint edge keeps PILL_RIM.
+const vec4 RIM_REST = vec4(.9, 1.6, .8, 1.9);
 const vec2 PILL_RIM = vec2(.35, 1.15);
 // Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
@@ -291,7 +294,7 @@ vec3 smoked(vec3 frosted, float motion, vec3 field) {
   // black still reads about 30 under its grey veil; bright blobs sink
   // further toward their field so the steeper slope adds no detail.
   float slope = mix(SMOKE_SLOPE, 1.18, pillSmoke), drop = mix(SMOKE_DROP, SMOKE_DARK_DROP, pillSmoke);
-  float even = mix(SMOKE_EVEN, .5, pillSmoke);
+  float even = mix(SMOKE_EVEN, DARK_EVEN, pillSmoke);
   float tone = mix(slope * mix(luma, min(luma, fieldLuma), even) - drop, luma, motion);
   // Core the colour: broad, dull fields (teal, mustard card art) fade toward grey, while a
   // saturated mark keeps most of its hue.
@@ -702,7 +705,7 @@ function smoothstep(value:number) {
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
 // (section-lens.spec reads the median); its margin over 2:1 covers the model. section-navigation.css draws it at rest; press and drag keep their own accents.
 const ACCENT = [0,153,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
-const INK_STEP = 1.18, INK_BLUR = .55, INK_EVEN = .5, INK_FIELD = 10, INK_SOFT = 1.6, INK_REACH = 12, INK_SHARE = .85;
+const INK_STEP = 1.18, INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = 1.6, INK_REACH = 12, INK_SHARE = .85;
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
 const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
 /** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for #0099ff. */
