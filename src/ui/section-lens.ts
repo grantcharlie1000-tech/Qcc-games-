@@ -142,7 +142,7 @@ const float DARK_BEND = .3;
 const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(1., .5);
+const vec2 RIM_LIGHT = vec2(1., .44);
 const float RIM_TINT = 3.;
 // Apple's resting rim, light then dark: full light to RIM_REST.x css px deep, gone by .y (light), .z and .w (dark).
 // Apple's dark rim is about +70 over the bar at its outer device px, +47 and +33 at the next two, then gone.
@@ -155,8 +155,12 @@ const float RIM_TINT = 3.;
 // still lifts its rim over a black page +34, +38, +26 and then a glow of +17, +11, +9 into the bar (about 3 css px), where
 // ours was one bright css px and gone (+52, +52, +53, +41, +19, +5). The dark line now holds full light to .6 css px and
 // fades by 2.2 (RIM_LIGHT.y .5, its ends lit at .22 of the top's light, was .10): +81, +80, +77, +63, +36, +17 over black
-// at device px (+79 and +39 at css px, was +52 and +22), a lit edge with Apple's soft inner glow.
+// at device px (+79 and +39 at css px, was +52 and +22), a lit edge with Apple's soft inner glow. That also lit the foot
+// (apple_match's rim peak, top and bottom averaged, 31.5 -> 57.5 against Apple's 35.7), where the council asked for a
+// specular top edge: the dark foot takes RIM_FOOT of the bottom's light (.25, the light theme keeps .5) and the line
+// RIM_LIGHT.y .44, so the top stays the bright lit edge and the foot a fainter line, as in Apple's still.
 const vec4 RIM_REST = vec4(.9, 1.6, .6, 2.2);
+const vec2 RIM_FOOT = vec2(.5, .25);
 const vec2 PILL_RIM = vec2(.35, 1.15);
 // Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
@@ -396,7 +400,7 @@ vec3 rim(vec3 rgb, vec2 normal, float depth) {
   // the colour of the art under it: the light it mixes toward keeps RIM_TINT times the art's
   // chroma, so over orange art the rim reads light orange and over grey it stays white.
   vec3 light = clamp(vec3(1.) + RIM_TINT * (rgb - dot(rgb, vec3(.2126, .7152, .0722))), 0., 1.);
-  return mix(rgb, light, min(1., mix(.6, .22, pillSmoke) + .62 * top + .5 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
+  return mix(rgb, light, min(1., mix(.6, .22, pillSmoke) + .62 * top + mix(RIM_FOOT.x, RIM_FOOT.y, pillSmoke) * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
 }
 float lensBevel(float radius) {
   return min(LENS_BEVEL, .6 * radius);

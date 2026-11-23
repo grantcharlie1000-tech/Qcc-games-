@@ -39,10 +39,10 @@
    deep, about +70 over the glass at its outer device px and gone within the next two, where the default rim and the
    edge glow read +83, +82 and +61.
    LOOK-12 (council on ea5b395c: no bright, thin lit rim): it follows the bar's brighter lit edge (RIM_REST, RIM_LIGHT),
-   its top line .38 of white, its foot .28 and a faint .08 ring lighting its sides, as the bar's ends now are. */
+   its top line .34 of white, its foot .2 (RIM_FOOT) and a faint .08 ring lighting its sides, as the bar's ends now are. */
 @media (prefers-color-scheme:dark){
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off]){
-    --glass-rim-edge:inset 0 .75px 0 rgb(255 255 255 / .38),inset 0 -.75px 0 rgb(255 255 255 / .28),inset 0 0 0 .75px rgb(255 255 255 / .08),0 0 0 .5px rgb(0 0 0 / .144);
+    --glass-rim-edge:inset 0 .75px 0 rgb(255 255 255 / .34),inset 0 -.75px 0 rgb(255 255 255 / .2),inset 0 0 0 .75px rgb(255 255 255 / .08),0 0 0 .5px rgb(0 0 0 / .144);
   }
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off])>.ui-glass-glow{opacity:.55}
 }
