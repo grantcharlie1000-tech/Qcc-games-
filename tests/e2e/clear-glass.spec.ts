@@ -20,12 +20,60 @@ async function expectWhiteGlyphs(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-
   return (await visible()).length;
 }
 
-test('plain label cores stay white beside real mixed game art',async({page})=>{
+// LOOK-7 (#24): the tab bar checks below pinned #92's white glyphs and ran in Playwright's default light scheme. 133d37f2 gave
+// the light navigation Apple's ink from its light still (dark grey labels, about 45 there, #333336 here; mid-grey glyphs,
+// #6e6e73; the selected tab's accent), the light look Charlie approved at 23:10Z, so they went red with nothing broken (#24
+// review of LOOK-6, question 5). In light they now pin that ink, still one fixed ink with no stroke or vector halo, and
+// measure the labels at 4.5:1 or better. The dark theme keeps #92's white glyphs, checked on uniform and mixed content below.
+const NAV_INK={
+  light:{label:['rgb(51, 51, 54)'],icon:['rgb(110, 110, 115)'],selected:['rgb(255, 55, 95)']},
+  // Where glass-ink.ts finds bright art under the selected label, the CSS fallback draws that tab white with a dark rim.
+  dark:{label:['rgb(255, 255, 255)'],icon:['rgb(255, 255, 255)'],selected:['rgb(0, 153, 255)','rgb(255, 255, 255)']},
+};
+// Each unselected label's ink against the darkest pixel behind it, the labels hidden: WCAG 1.4.3's 4.5:1 for that grey ink.
+async function labelContrast(page:Page,scope:string):Promise<number[]>{
+  const labels=`${scope} .ui-tab:not([aria-current=page],[aria-pressed=true])>span:not(.ui-glass-lens,.ui-glass-glow)`;
+  const boxes=await page.locator(labels).evaluateAll(elements=>elements.map(e=>{
+    const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height,color:getComputedStyle(e).color};
+  }).filter(b=>b.w>0&&b.h>0));
+  expect(boxes.length).toBeGreaterThan(0);
+  const hide=await page.addStyleTag({content:`${labels}{visibility:hidden!important}`});
+  const png=(await page.screenshot({scale:'css'})).toString('base64');
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
+  return page.evaluate(async({png,boxes})=>{
+    const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
+    const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+    const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);
+    const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+    return boxes.map(b=>{
+      const ink=lum(b.color.match(/[\d.]+/g)!.slice(0,3).map(Number));
+      const data=ctx.getImageData(Math.round(b.x),Math.round(b.y),Math.max(1,Math.round(b.w)),Math.max(1,Math.round(b.h))).data;
+      let darkest=1;for(let i=0;i<data.length;i+=4)darkest=Math.min(darkest,lum([data[i],data[i+1],data[i+2]]));
+      return (darkest+.05)/(ink+.05);
+    });
+  },{png,boxes});
+}
+async function expectNavInk(page:Page,scope:string,scheme:'light'|'dark'='light',glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'):Promise<number>{
+  const nav=page.locator(scope),ink:Record<string,string[]>=NAV_INK[scheme];
+  const visible=()=>nav.locator(glyphs).evaluateAll(elements=>elements.filter(e=>{
+    const box=e.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(e).clip==='auto';
+  }).map(e=>({role:e.closest('.ui-tab:is([aria-current=page],[aria-pressed=true])')?'selected':e.matches('svg')?'icon':'label',
+    color:getComputedStyle(e).color,stroke:getComputedStyle(e).webkitTextStrokeWidth||'0px'})));
+  await expect.poll(async()=>{
+    const found=await visible();
+    return found.length>0&&found.every(g=>ink[g.role].includes(g.color)&&g.stroke==='0px')?'':JSON.stringify(found);
+  }).toBe('');
+  await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
+  if(scheme==='light'){const ratios=await labelContrast(page,scope);expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);}
+  return (await visible()).length;
+}
+
+test('plain label cores keep one fixed ink beside real mixed game art',async({page})=>{
   await page.goto('/#/collection');
   await page.locator('.app-tabbar .ui-tab').first().focus();
   await page.evaluate(()=>scrollTo(0,180));
   await page.waitForTimeout(200);
-  expect(await expectWhiteGlyphs(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')).toBe(5);
+  expect(await expectNavInk(page,'.app-navigation','light','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')).toBe(5);
 });
 
 async function headerPalette(page:Page,width:number){
@@ -59,14 +107,14 @@ test.describe('desktop header at DPR1',()=>{
   for(const width of [1024,1366])test(`visible header glyphs retain fixed-white ink at ${width}px`,async({page})=>headerPalette(page,width));
 });
 
-for(const fallback of [false,true])test(`glyphs stay white while real game artwork scrolls behind them (${fallback?'fallback':'native'})`,async({page})=>{
+for(const fallback of [false,true])test(`glyphs keep one fixed ink while real game artwork scrolls behind them (${fallback?'fallback':'native'})`,async({page})=>{
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const first=page.locator('.app-tabbar .ui-tab').first();
   await first.focus(); // Keep the expanded dock visible during each sample.
   for(const y of [0,70,140,210,350,560]){
     await page.evaluate(y=>scrollTo(0,y),y);
     await page.waitForTimeout(180);
-    expect(await expectWhiteGlyphs(page,'.app-navigation')).toBeGreaterThanOrEqual(11);
+    expect(await expectNavInk(page,'.app-navigation')).toBeGreaterThanOrEqual(11);
   }
 });
 
@@ -93,7 +141,7 @@ test('captions adapt to dark canvas media without a stroke or vector halo',async
     canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
   });
   await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
-  await expectWhiteGlyphs(page,'.movies-navigation');
+  await expectNavInk(page,'.movies-navigation');
 });
 
 test('an unavailable displacement map keeps the transparent CSS fallback',async({page,browserName})=>{
@@ -240,7 +288,9 @@ test('navigation and its companion share frost while game controls retain their 
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
-for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: glyphs stay white on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+// The dark theme keeps #92's white glyphs; since 60108a24 its CSS fallback bar is white smoke that reads 255 over white art.
+for(const scheme of ['light','dark'] as const)for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: glyphs keep the ${scheme} ink on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+  await page.emulateMedia({colorScheme:scheme});
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
   const scope=route==='collection'?'.app-navigation':'.movies-navigation';
@@ -249,7 +299,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
   for(const background of ['#fff','#000','#606060','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
     const backdrop=await page.addStyleTag({content:`html,body{background:${background}!important}`});
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
-    expect(await expectWhiteGlyphs(page,scope)).toBeGreaterThanOrEqual(11);
+    expect(await expectNavInk(page,scope,scheme)).toBeGreaterThanOrEqual(11);
     await backdrop.evaluate(e=>(e as Element).remove());
   }
 });
