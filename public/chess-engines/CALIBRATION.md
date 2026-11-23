@@ -6,6 +6,9 @@ calibration, which does not establish equivalence for QCC's short move budgets.
 Maia's Elo input describes the human move distribution learned during training,
 not an independently measured engine rating.
 
+The [ladder follow-up](../../tests/chess-ai/providers/benchmarks/ladder-calibration/README.md)
+records the Pebble adjustment and the newer human-cohort and full-game measurements.
+
 ## Reproduce
 
 Run from the repository root after `npm ci`:

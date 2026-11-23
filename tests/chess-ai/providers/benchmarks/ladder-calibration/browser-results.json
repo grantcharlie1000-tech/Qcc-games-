@@ -1,0 +1,228 @@
+[
+  {
+    "width": 1440,
+    "choices": [
+      {
+        "id": "elo-300",
+        "available": true,
+        "badge": "300",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-500",
+        "available": true,
+        "badge": "500",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-700",
+        "available": true,
+        "badge": "700",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-900",
+        "available": true,
+        "badge": "900",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-1100",
+        "available": true,
+        "badge": "1100",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-1300",
+        "available": true,
+        "badge": "1300",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-1600",
+        "available": true,
+        "badge": "1600",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-1900",
+        "available": true,
+        "badge": "1900",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-2200",
+        "available": true,
+        "badge": "2200",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "elo-2600",
+        "available": true,
+        "badge": "2600",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "elo-3000",
+        "available": true,
+        "badge": "3000",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "max",
+        "available": true,
+        "badge": "Max",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "leela-expert",
+        "available": false,
+        "badge": "Max",
+        "provider": "Not installed"
+      }
+    ],
+    "turns": [
+      {
+        "san": "Nf6",
+        "ms": 1245.4853000000003
+      },
+      {
+        "san": "Nc6",
+        "ms": 678.9674000000014
+      },
+      {
+        "san": "h5",
+        "ms": 847.5313999999998
+      },
+      {
+        "san": "bxa6",
+        "ms": 799.357799999998
+      },
+      {
+        "san": "Bxa6",
+        "ms": 1364.0104999999967
+      },
+      {
+        "san": "Bxe2",
+        "ms": 669.4006999999983
+      }
+    ],
+    "workers": [
+      "http://127.0.0.1:4825/src/chess-ai/providers/beginner/engine.worker.ts?worker_file&type=module"
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "choices": [
+      {
+        "id": "elo-300",
+        "available": true,
+        "badge": "300",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-500",
+        "available": true,
+        "badge": "500",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-700",
+        "available": true,
+        "badge": "700",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-900",
+        "available": true,
+        "badge": "900",
+        "provider": "QCC Beginner"
+      },
+      {
+        "id": "elo-1100",
+        "available": true,
+        "badge": "1100",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-1300",
+        "available": true,
+        "badge": "1300",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-1600",
+        "available": true,
+        "badge": "1600",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-1900",
+        "available": true,
+        "badge": "1900",
+        "provider": "Maia3 (official ONNX export)"
+      },
+      {
+        "id": "elo-2200",
+        "available": true,
+        "badge": "2200",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "elo-2600",
+        "available": true,
+        "badge": "2600",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "elo-3000",
+        "available": true,
+        "badge": "3000",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "max",
+        "available": true,
+        "badge": "Max",
+        "provider": "Stockfish 19 Lite"
+      },
+      {
+        "id": "leela-expert",
+        "available": false,
+        "badge": "Max",
+        "provider": "Not installed"
+      }
+    ],
+    "turns": [
+      {
+        "san": "b5",
+        "ms": 866.4343999999983
+      },
+      {
+        "san": "bxa4",
+        "ms": 698.7511000000086
+      },
+      {
+        "san": "Nc6",
+        "ms": 755.6496000000043
+      },
+      {
+        "san": "Nxa7",
+        "ms": 616.3273999999947
+      },
+      {
+        "san": "Ba6",
+        "ms": 886.0877000000037
+      },
+      {
+        "san": "Bxe2",
+        "ms": 881.6071999999986
+      }
+    ],
+    "workers": [
+      "http://127.0.0.1:4825/src/chess-ai/providers/beginner/engine.worker.ts?worker_file&type=module"
+    ],
+    "errors": []
+  }
+]
