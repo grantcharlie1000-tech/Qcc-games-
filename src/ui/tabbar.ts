@@ -91,31 +91,82 @@ export function tabCover(center:number,halfWidth:number,bevel:number,boxes:reado
 const WARP_REACH=18,WARP_BAND=9,WARP_SPAN=2.2*WARP_REACH,WARP_DENSITY=2;
 const SVG_NS='http://www.w3.org/2000/svg';
 let warpIds=0;
-function warpMap(width:number,height:number,bevel:number):string{
+// MOTION-13 (#24 review of aa6359ee..691f4616, I-2): the map was drawn and PNG-encoded (toDataURL) inside the rAF tick at
+// every 2 css px size step of the rising, falling or stretching bubble, and every feImage then loaded the new image. Each
+// size's map is now built once and kept (the WARP_CACHE most recent): its pixels in a task after the frame, its PNG by
+// toBlob, and it is decoded before any feImage takes it. One map is built at a time, for the latest size asked for, so a
+// rise or a fall builds a few maps, not one per step. Until the bubble's own size is ready, the tabs keep the last decoded
+// map, stretched to the bubble's box, so no frame swaps a glyph's bend to an image that is not there yet.
+const WARP_CACHE=24;
+type WarpMap={url:string;ready:boolean};
+const warpMaps=new Map<string,WarpMap>();
+let warpWanted:{key:string;width:number;height:number;bevel:number}|null=null,warpBuilding=false;
+function warpBuild(){
+  const next=warpWanted;
+  warpWanted=null;
+  if(!next||warpMaps.has(next.key))return;
+  const entry:WarpMap={url:'',ready:false};
+  warpMaps.set(next.key,entry);
+  for(const key of warpMaps.keys()){if(warpMaps.size<=WARP_CACHE)break;if(key!==next.key)warpMaps.delete(key);}
+  warpBuilding=true;
+  const done=(url='')=>{entry.url=url;entry.ready=true;warpBuilding=false;warpBuild();};
+  setTimeout(()=>{
+    const canvas=warpCanvas(next.width,next.height,next.bevel);
+    if(!canvas||typeof canvas.toBlob!=='function'||typeof FileReader!=='function'){done();return;}
+    canvas.toBlob(blob=>{
+      if(!blob){done();return;}
+      const reader=new FileReader();
+      reader.onerror=()=>done();
+      reader.onload=()=>{
+        const url=typeof reader.result==='string'?reader.result:'',image=new Image();
+        image.src=url;
+        image.decode().then(()=>done(url),()=>done());
+      };
+      reader.readAsDataURL(blob);
+    },'image/png');
+  },0);
+}
+// The decoded map for a bubble size, or null while it is being built (a size not yet asked for starts building).
+function warpMap(width:number,height:number,bevel:number):WarpMap|null{
+  const key=`${width}x${height}x${Math.round(bevel)}`,hit=warpMaps.get(key);
+  if(hit){warpMaps.delete(key);warpMaps.set(key,hit);return hit.ready?hit:null;}
+  warpWanted={key,width,height,bevel};
+  if(!warpBuilding)warpBuild();
+  return null;
+}
+function warpCanvas(width:number,height:number,bevel:number):HTMLCanvasElement|null{
   const w=Math.ceil(width*WARP_DENSITY),h=Math.ceil(height*WARP_DENSITY);
   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
   const ctx=canvas.getContext('2d');
-  if(!ctx||!w||!h)return '';
-  const image=ctx.createImageData(w,h),radius=Math.min(width,height)/2,line=Math.max(0,(width-height)/2);
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const px=(x+.5)/WARP_DENSITY-width/2,py=(y+.5)/WARP_DENSITY-height/2;
-    const ax=px-Math.max(-line,Math.min(line,px)),length=Math.hypot(ax,py),depth=radius-length;
-    const u=depth>0&&length>0?Math.max(0,1-depth/Math.min(bevel,WARP_BAND)):0,pull=WARP_REACH*u*u*u/Math.max(length,1e-3);
-    const i=(y*w+x)*4;
-    // Channel .5 is no displacement; at full lift feDisplacementMap's scale WARP_SPAN spans the whole pull either way.
-    image.data[i]=Math.round(255*(.5+ax*pull/WARP_SPAN));
-    image.data[i+1]=Math.round(255*(.5+py*pull/WARP_SPAN));
-    image.data[i+2]=128;image.data[i+3]=255;
+  if(!ctx||!w||!h)return null;
+  const image=ctx.createImageData(w,h),radius=Math.min(width,height)/2,line=Math.max(0,(width-height)/2),band=Math.min(bevel,WARP_BAND);
+  // Channel .5 (128) is no displacement; at full lift feDisplacementMap's scale WARP_SPAN spans the whole pull either way.
+  // Only the bubble's outer band moves, so the map starts flat and only pixels within a px of that band are worked out.
+  image.data.fill(128);
+  for(let i=3;i<image.data.length;i+=4)image.data[i]=255;
+  const near=Math.max(0,radius-band-1)**2,far=(radius+1)**2;
+  for(let y=0;y<h;y++){
+    const py=(y+.5)/WARP_DENSITY-height/2;
+    for(let x=0;x<w;x++){
+      const px=(x+.5)/WARP_DENSITY-width/2,ax=px-Math.max(-line,Math.min(line,px)),reach=ax*ax+py*py;
+      if(reach<near||reach>far)continue;
+      const length=Math.hypot(ax,py),depth=radius-length;
+      const u=depth>0&&length>0?Math.max(0,1-depth/band):0,pull=WARP_REACH*u*u*u/Math.max(length,1e-3);
+      const i=(y*w+x)*4;
+      image.data[i]=Math.round(255*(.5+ax*pull/WARP_SPAN));
+      image.data[i+1]=Math.round(255*(.5+py*pull/WARP_SPAN));
+    }
   }
   ctx.putImageData(image,0,0);
-  return canvas.toDataURL();
+  return canvas;
 }
 function bindLensWarp(bar:HTMLElement){
   const defs=document.createElementNS(SVG_NS,'svg');
   defs.setAttribute('aria-hidden','true');
   defs.style.cssText='position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
   const filters=new Map<HTMLElement,{id:string;image:SVGFEImageElement;filter:SVGFilterElement;displace:SVGFEDisplacementMapElement}>();
-  let size='',map='';
+  // The last decoded map the tabs were given.
+  let shown='';
   const make=(tab:HTMLElement)=>{
     let entry=filters.get(tab);
     if(entry)return entry;
@@ -132,16 +183,23 @@ function bindLensWarp(bar:HTMLElement){
     return entry;
   };
   return {
-    // The bubble in the bar's layout px (centre x, centre y, width, height, bevel) and its lift. Each tab it crosses bends.
-    set(tab:HTMLElement,lens:readonly [number,number,number,number,number]|null,lift=1){
-      if(!lens){if(tab.style.filter)tab.style.removeProperty('filter');return;}
-      // The map is drawn at the bubble's size to the nearest 2 css px, and centred on the bubble.
-      const [cx,cy,,,bevel]=lens,width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,next=`${width}x${height}x${Math.round(bevel)}`;
-      if(next!==size){size=next;map=warpMap(width,height,bevel);for(const {image} of filters.values())image.setAttribute('href',map);}
+    // Once per frame: the map for the bubble in the bar's layout px (width, height, bevel), drawn at its size to the
+    // nearest 2 css px, or the last decoded one until that is ready.
+    map(lens:readonly [number,number,number,number,number]){
+      const ready=warpMap(Math.round(lens[2]/2)*2,Math.round(lens[3]/2)*2,lens[4]);
+      if(ready)shown=ready.url;
+      return shown;
+    },
+    // The bubble (centre x, centre y, width, height, bevel), its lift and map, and the tab's layout box [left, top, width,
+    // height], read before the frame's writes. Each tab it crosses bends.
+    set(tab:HTMLElement,lens:readonly [number,number,number,number,number]|null,lift:number,map:string,box:readonly [number,number,number,number]){
+      if(!lens||!map){if(tab.style.filter)tab.style.removeProperty('filter');return;}
+      // The map is centred on the bubble and stretched to its box.
+      const [cx,cy]=lens,width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,[left,top,tabWidth,tabHeight]=box;
       const {id,image,filter,displace}=make(tab);
       if(image.getAttribute('href')!==map)image.setAttribute('href',map);
-      const attributes:[SVGElement,string,number][]=[[displace,'scale',WARP_SPAN*lift],[filter,'x',-24],[filter,'y',-24],[filter,'width',tab.offsetWidth+48],
-        [filter,'height',tab.offsetHeight+48],[image,'x',cx-width/2-tab.offsetLeft],[image,'y',cy-height/2-tab.offsetTop],
+      const attributes:[SVGElement,string,number][]=[[displace,'scale',WARP_SPAN*lift],[filter,'x',-24],[filter,'y',-24],[filter,'width',tabWidth+48],
+        [filter,'height',tabHeight+48],[image,'x',cx-width/2-left],[image,'y',cy-height/2-top],
         [image,'width',width],[image,'height',height]];
       for(const [element,name,value] of attributes)if(element.getAttribute(name)!==value.toFixed(2))element.setAttribute(name,value.toFixed(2));
       if(tab.style.filter!==`url("#${id}")`)tab.style.setProperty('filter',`url("#${id}")`);
@@ -169,10 +227,15 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const used=getComputedStyle(part),width=parseFloat(used.width)||0,left=tab.offsetLeft+(tab.offsetWidth-width)/2;
     return [left,left+width,width*(parseFloat(used.height)||0)] as const;
   });
+  // A tab's layout box in the bar, [left, top, width, height], read with the frame's other reads.
+  const box=(tab:HTMLElement)=>[tab.offsetLeft,tab.offsetTop,tab.offsetWidth,tab.offsetHeight] as const;
   // The rim bends the tabs it crosses (bindLensWarp) while the WebGL bubble is raised, through the release spring too.
-  const bend=(drawn:{pill:number[];sx:number;sy:number}|undefined,lift:number,covers:readonly (readonly [HTMLElement,number])[])=>{
+  // Each tab comes with its cover and its box, both read before the frame's first write.
+  const bend=(drawn:{pill:number[];sx:number;sy:number}|undefined,lift:number,covers:readonly (readonly [HTMLElement,number,readonly [number,number,number,number]])[])=>{
     const lens=drawn&&lift>0?[drawn.pill[0]/drawn.sx,drawn.pill[1]/drawn.sy,drawn.pill[2]/drawn.sx,drawn.pill[3]/drawn.sy] as const:null;
-    for(const [tab,cover] of covers)warp.set(tab,lens&&cover>0&&cover<.999?[...lens,raisedBevel(lens[2],lens[3])]:null,lift);
+    const bubble=lens?[...lens,raisedBevel(lens[2],lens[3])] as const:null;
+    const map=bubble&&covers.some(([,cover])=>cover>0&&cover<.999)?warp.map(bubble):'';
+    for(const [tab,cover,place] of covers)warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place);
   };
   const tick=()=>{
     frame=0;
@@ -188,9 +251,11 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     // The bubble's lift, as section-lens.ts reads it from the pill's press area.
     const lift=smooth((scaleX*scaleY-1.07)/.18);
     if(!bar.hasAttribute('data-pill-dragging')&&!bar.hasAttribute('data-pressing')){
-      // The release: the glyphs ease back (CSS) while the bend follows the falling bubble down.
+      // The release: the glyphs ease back (CSS) while the bend follows the falling bubble down. The tabs are read before
+      // unzoom writes.
+      const covers=drawn&&lift>0?tabs().map(tab=>[tab,tabCover(center,half,bevel,content(tab)),box(tab)] as const):null;
       if(pressedAt!==null)unzoom();
-      if(drawn&&lift>0){bend(drawn,lift,tabs().map(tab=>[tab,tabCover(center,half,bevel,content(tab))] as const));frame=requestAnimationFrame(tick);}
+      if(covers){bend(drawn,lift,covers);frame=requestAnimationFrame(tick);}
       else clear();
       return;
     }
@@ -199,8 +264,8 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const rise=glyphRise(now-pressedAt);
     // Every layout read comes before the first write, so a drag frame forces at most one layout.
     const zooms=tabs().map(tab=>{
-      const cover=tabCover(center,half,bevel,content(tab));
-      return [tab,(1+(lensZoom(scaleX,cover,scaleY)-1)*rise).toFixed(3),cover,Math.abs(tab.offsetLeft+tab.offsetWidth/2-center)] as const;
+      const cover=tabCover(center,half,bevel,content(tab)),place=box(tab);
+      return [tab,(1+(lensZoom(scaleX,cover,scaleY)-1)*rise).toFixed(3),cover,Math.abs(place[0]+place[2]/2-center),place] as const;
     });
     // The tab nearest the bubble's centre takes the selection's accent while the press lasts, as the video's Radio
     // under the held lens turns blue while Library gives it up; the ink of every tab mostly under the clear bubble
@@ -211,7 +276,7 @@ function bindLensZoom(bar:HTMLElement):()=>void{
       if(tab.hasAttribute('data-lens-target')!==(tab===target))tab.toggleAttribute('data-lens-target',tab===target);
       if(tab.hasAttribute('data-lens-under')!==(cover>=.5))tab.toggleAttribute('data-lens-under',cover>=.5);
     }
-    bend(drawn,lift,zooms.map(([tab,,cover])=>[tab,cover] as const));
+    bend(drawn,lift,zooms.map(([tab,,cover,,place])=>[tab,cover,place] as const));
     // The pill's scale eases for 100ms after each move, so keep following it while the press lasts.
     frame=requestAnimationFrame(tick);
   };
