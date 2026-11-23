@@ -41,6 +41,7 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Take screenshots while you work, and paste them in the chat when your run finishes.
 - Liquid Glass is see-through and floats on top of the game. Never move, shrink or band off a game, scene or page to make room for glass controls (the game dock, tab bar, menu buttons). The scene runs underneath the glass. Only things the player must read or press keep clear of it, inside the game's own layout.
 - The notch, Dynamic Island and home indicator work the same way: backgrounds and scenes run to the screen edges, and only controls and essential text keep clear of them.
+- Icons: use RuneIcons (https://www.runeicons.com/icons) as the icon source or for inspiration. The GitHub repo is https://github.com/Runeicons/runeicons. Brand logos on that site are not covered by the icon licence. Follow each brand's own rules for those.
 
 ## Simple code
 
