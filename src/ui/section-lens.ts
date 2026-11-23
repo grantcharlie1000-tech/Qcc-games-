@@ -9,10 +9,13 @@ uniform vec4 region;
 // the frost's nine sparse taps smeared ours into streaks. While softFrostMix is set (the dark body and its band below
 // the mirrored zone), frost() reads softFrost instead: nine taps, a ring of eight DARK_RING css px round the sample, on
 // a mip level whose texels fill the .77 DARK_RING gaps between them, so a stroke spreads evenly instead of repeating at
-// each tap. Its reach, DARK_RING plus 1.5 texels of the next whole mip level (about 5.8 css px at 1.5x), stays inside
-// the crop's 12 px floor under the bar.
+// each tap. Its reach, DARK_RING plus 1.5 texels of the next whole mip level (about 1.6 css px at 1.5x), stays inside
+// the crop's 12 px floor under the bar. LOOK-6: Apple's dark bar barely softens a title behind it (10-90% edge rise 1.59
+// css px under the bar in its dark still and 1.58 in the video's rest frame, against 1.53 for its own text above the
+// bar). At DARK_RING 1.8 ours rose over 2.30 (our own text 1.14), at 1.3 over 2.08; the 1.5x backdrop itself leaves
+// about .55 css px of blur, so the ring comes down to .6, near that floor.
 float softFrostMix = 0.;
-const float DARK_RING = 1.8;
+const float DARK_RING = .6;
 vec3 softFrost(vec2 pos) {
   vec2 uv = region.xy + pos * region.zw;
   float density = float(textureSize(scene, 0).x) * region.z;
