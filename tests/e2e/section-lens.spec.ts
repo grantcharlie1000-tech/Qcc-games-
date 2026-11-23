@@ -179,8 +179,8 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // Since the light frost lets the art through (133d37f2), black art is the light pill's worst case: the pill followed it
 // down to about 166/255 and the #ff375f accent read 1.45:1. The same floors hold over a black patch.
 // LOOK-10 (council on aa6359ee): the dark pill was held at .091 so #0099ff kept 2.5:1, which sat it 79 under a 136 bar over
-// mid-grey art. It now sits a little darker than the bar over every art (a bar-to-pill luminance contrast of about 1.18,
-// Apple's 1.15-1.21), and the selected icon and label keep the 2:1 selected floor by their ink (section-lens.ts
+// mid-grey art. It now sits a little darker than the bar over every art (a bar-to-pill luminance contrast of 1.21 over black
+// art, Apple's 1.15-1.21, easing to 1.08 over mid and bright art since LOOK-16), and the selected icon and label keep the 2:1 selected floor by their ink (section-lens.ts
 // selectionAccent): checked over white, black and, dark only, a #777 patch, where #0099ff alone would read about 1.4:1.
 test('the selected accent keeps its contrast against the WebGL pill over white art and over black art',async({page})=>{
   const floor={dark:{ratio:2,pill:1},light:{ratio:2,pill:1}},milky={dark:0,light:.5};

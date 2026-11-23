@@ -222,7 +222,13 @@ const vec4 DARK_GLASS = vec4(32. / 255., .875, .5, .402);
 // art, held there so the blue accent kept 2.5:1): the dark rest pill sits PILL_STEP under the bar's own smoke in
 // luminance contrast over every art, black 32 -> 15, #777's 136 -> 124, white's 229 -> 212, as Apple's capsule only a
 // little darker than its bar. The selected icon and label keep 2:1 against it by their ink (glass-ink.ts pillAccent).
-const float PILL_STEP = 1.18, PILL_DARK_RIM = .15;
+// LOOK-16 (Charlie: dark pill to bar contrast like Apple's): the still's own step, 1.21, brings the pill over black to its
+// 10/255 (was 15), but taken over every art it also sank the pill over posters, where apple_match's movies-200 already read
+// it 34 under the bar against the still's 22. The step now follows the bar's smoke at the pixel, a lighter smoke over
+// brighter art: PILL_STEP.x over a black page (32 -> 11), easing to PILL_STEP.y as the bar's linear luminance runs from
+// PILL_STEP.z to PILL_STEP.w (about 38 to 108/255): #777's 136 -> 130, white's 229 -> 221, still a step under the bar.
+const vec4 PILL_STEP = vec4(1.21, 1.08, .02, .15);
+const float PILL_DARK_RIM = .15;
 // LOOK-12 (council on ea5b395c: Apple's dark selected pill reads as a convex dome, ours as a flat grey disc): the rest pill
 // takes PILL_DOME.x of white along its top, fading over PILL_DOME.z css px, and loses PILL_DOME.y of its tone along its
 // foot over PILL_DOME.w, each falling off with how far the edge faces up or down. Both stay in the capsule's outer few px,
@@ -671,7 +677,8 @@ void main() {
       // pieces. LOOK-10: it takes only the smoke's tone, so it reads as a neutral smoked capsule with the blue in the icon
       // and label alone (the council read the darkened art's colour as a blue one).
       float barLinear = srgbLinear(clamp(dot(darkSmoke(selectionColor), vec3(.2126, .7152, .0722)), 0., 1.));
-      vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / PILL_STEP - .05, 0.)));
+      float pillStep = mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, barLinear));
+      vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / pillStep - .05, 0.)));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
       // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
       // over the bar rim's old dark depth (PILL_RIM).
@@ -814,7 +821,7 @@ function smoothstep(value:number) {
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
 // (section-lens.spec reads the median); its margin over 2:1 covers the model. section-navigation.css draws it at rest; press and drag keep their own accents.
 const ACCENT = [0,153,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
-const INK_STEP = 1.18, INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
+const INK_STEP = [1.21,1.08,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
 const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
 /** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for #0099ff. */
@@ -879,8 +886,10 @@ export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):
       if (x<0 || y<0 || x>=w || y>=h) continue;
       const field = mean(x,y,INK_FIELD), soft = mean(x,y,INK_SOFT);
       const art = INK_BLUR*field+(1-INK_BLUR)*(soft+INK_EVEN*(Math.min(soft,field)-soft)), over = Math.max(0,art-.5);
-      const tone = Math.min(1,32/255+.875*art-.402*over*over);
-      pills.push(Math.max(0,(srgbLinear(tone)+.05)/INK_STEP-.05));
+      const tone = Math.min(1,32/255+.875*art-.402*over*over), bar = srgbLinear(tone);
+      // PILL_STEP's lighter smoke over brighter art (LOOK-16).
+      const step = INK_STEP[0]+(INK_STEP[1]-INK_STEP[0])*smoothstep((bar-INK_STEP[2])/(INK_STEP[3]-INK_STEP[2]));
+      pills.push(Math.max(0,(bar+.05)/step-.05));
     }
     return pills;
   };
