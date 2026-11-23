@@ -142,7 +142,7 @@ const float DARK_BEND = .3;
 const float BLUR_CHROMA = .86;
 // The frost taps reach about 1 css px past a sample; keep the rim's furthest one this far inside the crop.
 const float RIM_SLACK = 2.;
-const vec2 RIM_LIGHT = vec2(1., .38);
+const vec2 RIM_LIGHT = vec2(1., .5);
 const float RIM_TINT = 3.;
 // Apple's resting rim, light then dark: full light to RIM_REST.x css px deep, gone by .y (light), .z and .w (dark).
 // Apple's dark rim is about +70 over the bar at its outer device px, +47 and +33 at the next two, then gone.
@@ -151,7 +151,12 @@ const float RIM_TINT = 3.;
 // holds full light to .8 css px and is gone by 1.9 (RIM_LIGHT.y .38 of white at the top): a bright outer px and a
 // softer second over a black page, its peak between the still's and the video's; the second px stays under half the
 // first, as Apple's half-maximum width (apple_match) is one px. The dark pill's faint edge keeps PILL_RIM.
-const vec4 RIM_REST = vec4(.9, 1.6, .8, 1.9);
+// LOOK-12 (council on ea5b395c: Apple's dark bar has a bright, thin lit rim where ours read faint): at device px Apple's
+// still lifts its rim over a black page +34, +38, +26 and then a glow of +17, +11, +9 into the bar (about 3 css px), where
+// ours was one bright css px and gone (+52, +52, +53, +41, +19, +5). The dark line now holds full light to .6 css px and
+// fades by 2.2 (RIM_LIGHT.y .5, its ends lit at .22 of the top's light, was .10): +81, +80, +77, +63, +36, +17 over black
+// at device px (+79 and +39 at css px, was +52 and +22), a lit edge with Apple's soft inner glow.
+const vec4 RIM_REST = vec4(.9, 1.6, .6, 2.2);
 const vec2 PILL_RIM = vec2(.35, 1.15);
 // Apple Music's dark top band mirrors the title behind it plainly ("New Releases for You" flipped under the rim):
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
@@ -196,6 +201,11 @@ const vec4 DARK_GLASS = vec4(32. / 255., .875, .5, .402);
 // luminance contrast over every art, black 32 -> 15, #777's 136 -> 124, white's 229 -> 212, as Apple's capsule only a
 // little darker than its bar. The selected icon and label keep 2:1 against it by their ink (glass-ink.ts pillAccent).
 const float PILL_STEP = 1.18, PILL_DARK_RIM = .15;
+// LOOK-12 (council on ea5b395c: Apple's dark selected pill reads as a convex dome, ours as a flat grey disc): the rest pill
+// takes PILL_DOME.x of white along its top, fading over PILL_DOME.z css px, and loses PILL_DOME.y of its tone along its
+// foot over PILL_DOME.w, each falling off with how far the edge faces up or down. Both stay in the capsule's outer few px,
+// clear of the icon and label the ink reads, so its middle keeps PILL_STEP under the bar.
+const vec4 PILL_DOME = vec4(.14, .35, 5., 4.);
 float srgbLinear(float c) { return c <= .04045 ? c / 12.92 : pow((c + .055) / 1.055, 2.4); }
 float linearSrgb(float c) { return c <= .0031308 ? 12.92 * c : 1.055 * pow(c, 1. / 2.4) - .055; }
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -376,7 +386,7 @@ vec3 rim(vec3 rgb, vec2 normal, float depth) {
   // the colour of the art under it: the light it mixes toward keeps RIM_TINT times the art's
   // chroma, so over orange art the rim reads light orange and over grey it stays white.
   vec3 light = clamp(vec3(1.) + RIM_TINT * (rgb - dot(rgb, vec3(.2126, .7152, .0722))), 0., 1.);
-  return mix(rgb, light, min(1., mix(.6, .10, pillSmoke) + .62 * top + .5 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
+  return mix(rgb, light, min(1., mix(.6, .22, pillSmoke) + .62 * top + .5 * bottom) * mix(RIM_LIGHT.x, RIM_LIGHT.y, pillSmoke) * line);
 }
 float lensBevel(float radius) {
   return min(LENS_BEVEL, .6 * radius);
@@ -613,6 +623,9 @@ void main() {
       // over the bar rim's old dark depth (PILL_RIM).
       float pillRim = 1. - smoothstep(PILL_RIM.x, PILL_RIM.y, pillDepth);
       darkPill = mix(darkPill, vec3(1.), PILL_DARK_RIM * pillRim * (.55 + .45 * max(abs(pillNormal.x), max(0., pillNormal.y))));
+      float domeUp = max(0., -pillNormal.y), domeDown = max(0., pillNormal.y);
+      darkPill = mix(darkPill, vec3(1.), PILL_DOME.x * (1. - smoothstep(0., PILL_DOME.z, pillDepth)) * domeUp * domeUp);
+      darkPill *= 1. - PILL_DOME.y * (1. - smoothstep(0., PILL_DOME.w, pillDepth)) * domeDown * domeDown;
       selection = mix(selection, darkPill, pillSmoke * (1. - pillLift) * (1. - pillPress));
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
       // frost of its milky thumb, as the dark theme's press lifts its pill; the raised lens clears it smoothly.
