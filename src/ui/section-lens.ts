@@ -819,12 +819,13 @@ function smoothstep(value:number) {
 // of a box about the wide field's reach, the rest about the soft frost's with its bright detail sunk INK_EVEN of the way
 // to the field, as smoked() sinks it), and takes the pill's luminance there (DARK_GLASS, then PILL_STEP). selectionAccent gives the least step of the #0099ff accent toward white (over a mid pill) or toward a
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
-// (section-lens.spec reads the median); its margin over 2:1 covers the model. section-navigation.css draws it at rest; press and drag keep their own accents.
-const ACCENT = [0,153,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
+// (section-lens.spec reads the median); its margin over 2:1 covers the model. LOOK-17: ACCENT is Apple's dark system blue,
+// #0a84ff (hue 210, Apple's dark still 210.4; #0099ff read 204). section-navigation.css draws it at rest; press and drag keep their own accents.
+const ACCENT = [10,132,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
 const INK_STEP = [1.21,1.08,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
 const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
-/** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for #0099ff. */
+/** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for ACCENT (#0a84ff). */
 export function selectionAccent(pills:number[]):string {
   // The contrast held at INK_SHARE of the points: thin bright strokes the pill blurs away do not move the ink alone.
   const floor = (rgb:number[])=>{

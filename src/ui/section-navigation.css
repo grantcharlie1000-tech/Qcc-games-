@@ -203,7 +203,7 @@
      (section-lens.ts PILL_STEP), no longer held dark for the accent. Where #0099ff would fall under 2:1 against it,
      glass-ink.ts gives the selected tab the nearest lighter or deeper blue that keeps it; press and drag keep theirs. */
   .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
-    --section-pill-accent:var(--section-pill-adaptive-accent,#0099ff);
+    --section-pill-accent:var(--section-pill-adaptive-accent,#0a84ff);
   }
 }
 /* The light theme's accent sits on the pale grey pill, held lighter than the accent over any art: no dark rim. */
@@ -286,7 +286,9 @@
   }
 }
 .section-tabbar{--section-lens-accent:#ff375f}
-@media(prefers-color-scheme:dark){.section-tabbar{--section-lens-accent:#0099ff}}
+/* LOOK-17: the WebGL bar's dark accent is Apple's dark system blue (#0a84ff, hue 210; the still reads 210.4). The CSS
+   fallback, glass off and the mini control keep #0099ff. */
+@media(prefers-color-scheme:dark){.section-tabbar{--section-lens-accent:#0a84ff}}
 /* MOTION-7: Charlie's video (19.60-19.80 s): the glyph under the rising lens turns lighter and translucent, the art under
    the lens passing through it (its ink 154 -> 193 luma and its texture spread 11 -> 26 by 19.75 s), as it grows. So the
    tab under the raised bubble takes its accent a sixth of the way to white and lets .15 of the lens through, easing in
@@ -304,10 +306,10 @@
 }
 @media(prefers-reduced-motion:no-preference) and (prefers-color-scheme:dark){
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]{
-    --section-lens-accent:color-mix(in srgb,#0099ff 84%,#fff);
+    --section-lens-accent:color-mix(in srgb,#0a84ff 84%,#fff);
   }
   :root:not(.reduce-motion) .section-tabbar:not([data-glass=off])[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:is([aria-current=page],[aria-pressed=true]){
-    --section-pill-accent:color-mix(in srgb,#0099ff 84%,#fff);
+    --section-pill-accent:color-mix(in srgb,#0a84ff 84%,#fff);
   }
 }
 /* The light theme's clear drag bubble shows the art under it unfrosted (section-lens.ts LENS_LIGHT_DRAG), so the grey ink of
@@ -357,6 +359,9 @@
    transparency, forced colours) keeps the plain ink (theme.css). */
 .section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#e02a52;--section-mini-halo:rgb(0 0 0 / .6)}
 @media(prefers-color-scheme:dark){.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#0099ff;--section-mini-halo:rgb(0 0 0 / .85)}}
+/* LOOK-18: beside the WebGL bar the compact circle copies that bar's dark accent, Apple's #0a84ff (clear-ink-adaptation :38:
+   the copy keeps the selected icon's own colour); beside the CSS fallback it keeps #0099ff, as that bar does. */
+@media(prefers-color-scheme:dark){.section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#0a84ff}}
 .section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini .ui-icon{filter:drop-shadow(0 0 .75px var(--section-mini-halo)) drop-shadow(0 0 .75px var(--section-mini-halo))}
 /* As the selected tab on the CSS fallback: where glass-ink.ts flagged bright art under its label, white ink, full rim. */
 @media not (prefers-contrast:more){@media (forced-colors:none){
