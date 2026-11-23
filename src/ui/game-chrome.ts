@@ -21,6 +21,7 @@ const fields:Record<GameId,Field[]>={
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
   quadfall:[score,level], claimline:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}],
   'drift-club':[level], 'crossy-road':[score], 'quad-clash':[score,level], 'last-light':[], breachline:[level], chess:[level],
+  'gta-iv-web':[],
   'femboy-obby':[{label:'Stage',source:'.fo-stage'},{label:'Stars',source:'.fo-time',labelSource:'.fo-time-label'}]
 };
 

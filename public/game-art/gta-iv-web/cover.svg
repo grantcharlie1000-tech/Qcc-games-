@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-label="An original illustration of a city and car at night">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1">
+      <stop stop-color="#111b35"/>
+      <stop offset=".48" stop-color="#384b68"/>
+      <stop offset="1" stop-color="#b65e53"/>
+    </linearGradient>
+    <linearGradient id="road" x2="0" y2="1">
+      <stop stop-color="#30435a"/>
+      <stop offset="1" stop-color="#111524"/>
+    </linearGradient>
+    <linearGradient id="car" x2="0" y2="1">
+      <stop stop-color="#ffe79c"/>
+      <stop offset=".65" stop-color="#d78d39"/>
+      <stop offset="1" stop-color="#9d572a"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h320v410H0z"/>
+  <circle cx="254" cy="148" r="35" fill="#f2cdb8" opacity=".66"/>
+  <path d="M0 236h28V173h22v22h20v-79h29v43h23v48h14V96h33v85h18V136h28v52h27v-72h27v83h25v-44h21v80h15V98h31v137h29v-44h20v45" fill="#19283a"/>
+  <path d="M0 242h320v168H0z" fill="#18263a"/>
+  <g fill="#fbd6a3" opacity=".6">
+    <path d="M35 187h6v8h-6zm0 17h6v8h-6zm46-74h7v8h-7zm0 23h7v8h-7zm80-40h7v9h-7zm0 27h7v9h-7zm1 26h7v8h-7zm83-36h7v9h-7zm0 23h7v9h-7zm47-41h6v8h-6zm0 27h6v9h-6z"/>
+  </g>
+  <path d="M0 267l105-35h110l105 35v143H0z" fill="url(#road)"/>
+  <path d="M152 258h16l16 152h-48z" fill="#e2b26e" opacity=".18"/>
+  <path d="M118 298l6-16h72l8 16 19 9 13 47v29H84v-29l13-47z" fill="url(#car)" stroke="#452a28" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M124 289l6-34h59l10 34z" fill="#122b3b" stroke="#faecc8" stroke-width="4"/>
+  <path d="M121 288h82l14 24H105z" fill="#e9aa56" opacity=".6"/>
+  <path d="M99 325h39v21H92zM183 325h39l7 21h-46z" fill="#faf2cf"/>
+  <path d="M142 337h34v9h-34z" fill="#302c33"/>
+  <path d="M92 363h24v27H92zm111 0h24v27h-24z" fill="#10151e"/>
+  <path d="M90 367h137" stroke="#8d452c" stroke-width="5"/>
+  <path d="M0 379h81m157 0h82" stroke="#ffe3a6" stroke-width="6" opacity=".3"/>
+</svg>
