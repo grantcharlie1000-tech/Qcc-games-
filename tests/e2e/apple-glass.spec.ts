@@ -7,16 +7,76 @@ test.beforeEach(async({page})=>{
   });
 });
 
-for(const scroll of [150,170])test(`pressed home lenses keep fixed-white glyphs over a card-row gap at ${scroll}px`,async({page})=>{
+// MOTION-15 (#24): was "every tab glyph rgb(255, 255, 255) while pressed". LOOK-3's 133d37f2 gave the light bar Apple's ink
+// from its light still (labels #333336, glyphs #6e6e73, the selection #ff375f; the tab under the raised bubble takes that
+// accent a sixth of the way to white, MOTION-7), the light look Charlie approved, so white can never be met in Playwright's
+// default light scheme (the test failed at b0847649 too). Its intent is kept: while a home lens is pressed over a card-row
+// gap, every glyph holds one fixed ink of that set for its role, with no halo or stroke, and reads against the glass behind
+// it (the glyphs hidden, the median over each glyph's box): the grey labels at the 4.5:1 of clear-glass and
+// clear-ink-adaptation, and the pressed control's own glyphs a plainly different colour from the glass under them (CIE76
+// delta E). The pressed tab's accent is lighter and translucent by design (MOTION-7, from the video), so it reads by its hue:
+// about 1.5-2.3:1 by luminance alone at 6cecf6a3 (logged, not pinned).
+const PRESSED_INK={label:[[51,51,54]],icon:[[110,110,115]],selected:[[255,55,95],[51,51,54]],target:[[255,87,121]]} as const;
+const PRESSED_FLOOR={label:4.5,pressedDeltaE:20} as const;
+for(const scroll of [150,170])test(`pressed home lenses keep their fixed light ink, legible against the glass, over a card-row gap at ${scroll}px`,async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const nav=page.locator('.app-navigation'),bar=page.locator('.app-tabbar');
   await page.evaluate(y=>scrollTo(0,y),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
   await page.locator('.ui-tabbar-mini').click();await expect(bar).not.toHaveAttribute('data-minimized');
+  const glyphs=nav.locator('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)');
+  // Each visible glyph's role, painted ink (0-255, colour-mix results included), opacity, halo, stroke and box.
+  const read=()=>glyphs.evaluateAll(elements=>elements.flatMap(e=>{
+    const box=e.getBoundingClientRect(),style=getComputedStyle(e),tab=e.closest('.ui-tab')!;
+    if(!box.width||!box.height||style.visibility==='hidden')return [];
+    const parts=style.color.match(/[\d.]+/g)!.map(Number),srgb=style.color.startsWith('color(srgb');
+    return [{role:tab.hasAttribute('data-lens-target')?'target':tab.matches('[aria-current=page],[aria-pressed=true]')?'selected':e.matches('span')?'label':'icon',
+      control:tab.getAttribute('aria-label')||tab.querySelector(':scope>span')?.textContent?.trim(),text:e.matches('span'),ink:parts.slice(0,3).map(v=>srgb?v*255:v),opacity:Number(style.opacity),halo:e.hasAttribute('data-glass-halo'),
+      stroke:style.webkitTextStrokeWidth||'0px',box:[box.x,box.y,box.width,box.height]}];
+  }));
+  const allowed=(g:Awaited<ReturnType<typeof read>>[number])=>(PRESSED_INK[g.role as keyof typeof PRESSED_INK] as readonly (readonly number[])[])
+    .some(ink=>ink.every((v,i)=>Math.abs(v-g.ink[i])<=1))&&!g.halo&&g.stroke==='0px';
   for(const name of ['Study','Open menu']){
     const button=nav.getByRole('button',{name,exact:true});await button.hover();await page.mouse.down();
-    const glyphs=nav.locator('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)');
     expect(await glyphs.count()).toBeGreaterThan(0);
-    await expect.poll(()=>glyphs.evaluateAll(elements=>elements.every(e=>getComputedStyle(e).color==='rgb(255, 255, 255)'))).toBe(true);
+    // The inks ease (200 ms): poll until every glyph holds its role's ink, then read twice more to see it held. The held
+    // reads compare the ink only: the pressed bar is still settling on its spring, so the boxes drift by hundredths of a px.
+    await expect.poll(async()=>{const found=await read();return found.length>0&&found.every(allowed)?'':JSON.stringify(found);}).toBe('');
+    const inks=(list:Awaited<ReturnType<typeof read>>)=>JSON.stringify(list.map(({box:_box,...ink})=>ink));
+    const found=await read();
+    for(let i=0;i<2;i++){await page.waitForTimeout(120);expect(inks(await read()),`${name}: one fixed ink while pressed`).toBe(inks(found));}
+    // The glass behind each glyph, the glyphs hidden: the median contrast of the glyph as painted (its opacity over each pixel).
+    const hide=await page.addStyleTag({content:'.app-navigation .ui-tab>:is(.ui-icon,span:not(.ui-glass-lens,.ui-glass-glow)){visibility:hidden!important}'});
+    const png=(await page.screenshot({scale:'css'})).toString('base64');
+    await hide.evaluate(e=>(e as Element).remove());
+    const ratios=await page.evaluate(async({png,found})=>{
+      const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
+      const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+      const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);
+      const linear=(v:number)=>{const s=v/255;return s<=.04045?s/12.92:((s+.055)/1.055)**2.4;};
+      const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>l+linear(v)*[.2126,.7152,.0722][i],0);
+      // sRGB to CIELAB (D65).
+      const lab=(rgb:number[])=>{
+        const [r,g,b]=rgb.map(linear),f=(t:number)=>t>216/24389?Math.cbrt(t):(24389/27*t+16)/116;
+        const x=f((.4124*r+.3576*g+.1805*b)/.95047),y=f(.2126*r+.7152*g+.0722*b),z=f((.0193*r+.1192*g+.9505*b)/1.08883);
+        return [116*y-16,500*(x-y),200*(y-z)];
+      };
+      const median=(values:number[])=>{values.sort((a,b)=>a-b);return Math.round(100*values[values.length>>1])/100;};
+      return found.map(g=>{
+        const [x,y,w,h]=g.box,data=ctx.getImageData(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h))).data,ratios:number[]=[],deltas:number[]=[];
+        for(let i=0;i<data.length;i+=4){
+          const bg=[data[i],data[i+1],data[i+2]],painted=g.ink.map((v,k)=>g.opacity*v+(1-g.opacity)*bg[k]),ink=lum(painted),under=lum(bg);
+          ratios.push((Math.max(ink,under)+.05)/(Math.min(ink,under)+.05));
+          const a=lab(painted),b=lab(bg);deltas.push(Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]));
+        }
+        return {role:g.role,control:g.control,text:g.text,ratio:median(ratios),deltaE:median(deltas)};
+      });
+    },{png,found});
+    console.log(`pressed ${name} at ${scroll}px: ${JSON.stringify(ratios)}`);
+    expect(ratios.some(r=>r.control===name),`${name}: the pressed control's glyphs are read`).toBe(true);
+    for(const r of ratios){
+      if(r.role==='label')expect(r.ratio,`${name}: ${JSON.stringify(r)}`).toBeGreaterThanOrEqual(PRESSED_FLOOR.label);
+      if(r.control===name)expect(r.deltaE,`${name}: ${JSON.stringify(r)}`).toBeGreaterThanOrEqual(PRESSED_FLOOR.pressedDeltaE);
+    }
     await page.mouse.move(0,0);await page.mouse.up();
   }
 });
