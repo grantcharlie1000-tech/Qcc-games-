@@ -170,10 +170,20 @@ const vec2 PILL_RIM = vec2(.35, 1.15);
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
 // about half again, so the flipped title reads mid-grey as in Apple's dark still.
 const float MIRROR_BAND = 8., MIRROR_K = 2.;
-const vec2 MIRROR_MIX = vec2(.29, .35);
+const vec2 MIRROR_MIX = vec2(.29, .6);
 // In that still the flipped "New Releases for You" reads as crisp letters, so the dark theme's mirrored zone frosts at
 // MIRROR_SPREAD (about a third of the band's), where its strokes were smeared into streaks.
 const float MIRROR_SPREAD = .35;
+// LOOK-13 (council on ea5b395c: Apple's dark bar bends the art in its edge band at rest; ours passed it under flat).
+// At device px Apple's dark still draws its flipped title into the band's outer 4 css px (p95 106-139 over a 31 body),
+// where ours spread a fainter one over 2-7 css px. The dark top band mirrors from DARK_MIRROR (band 6, squeeze 3: a
+// title 13-24 css px deep lands in its outer 4.3 css px) and keeps MIRROR_MIX.y .6 of its contrast (was .35).
+// Apple's dark foot band mirrors too: in its still a poster whose top lies about 15 css px above the bar's foot shows
+// through to 3.3 css px from the edge, then the foot reads as the bar over black (36-44) to the rim, where ours pulled
+// the art from past the edge and ran it on flat to the rim. The dark foot draws from FOOT_MIRROR.x + FOOT_MIRROR.y *
+// (FOOT_MIRROR.x - d) inside the bar, so that poster ends 3.3 css px from the foot. Both mirrors sample inside the bar,
+// so neither reaches toward the crop's edge, and the taps are the band's own.
+const vec2 DARK_MIRROR = vec2(6., 3.), FOOT_MIRROR = vec2(8., 1.5);
 // Apple Music's light bar is pale frost the art shows through, not milk: its mini player passes about .3 of the album
 // art under a 228 grey, and its tab bar reads 234 over the white page. The light theme lifts the bar's frost to
 // MILK_LIFT + MILK_GAIN of it, so black art reads about 188 under it and white about 240, and the art's colour and
@@ -523,13 +533,16 @@ void main() {
   bodyColor = mix(bodyColor, blurColor, bodyBlur);
   // Like Apple Music's bar at rest, the top band mirrors the content just under it: at depth d
   // inside MIRROR_BAND it draws from depth MIRROR_BAND + MIRROR_K * (MIRROR_BAND - d), so a title
-  // behind the bar shows flipped and squeezed in the top edge. Sides and bottom bend outward.
+  // behind the bar shows flipped and squeezed in the top edge (the dark theme's tighter, DARK_MIRROR).
+  // Sides and bottom bend outward; the dark foot mirrors too (FOOT_MIRROR), drawing from deeper inside.
   float topFacing = smoothstep(.25, .75, -normal.y);
-  float mirror = topFacing * (1. + MIRROR_K) * max(0., MIRROR_BAND - depth);
-  vec2 bent = body + normal * (12. * band * band * (1. - topFacing) - mirror);
+  float footFacing = pillSmoke * smoothstep(.25, .75, normal.y);
+  float mirrorBand = mix(MIRROR_BAND, DARK_MIRROR.x, pillSmoke), mirrorK = mix(MIRROR_K, DARK_MIRROR.y, pillSmoke);
+  float mirror = topFacing * (1. + mirrorK) * max(0., mirrorBand - depth) + footFacing * (1. + FOOT_MIRROR.y) * max(0., FOOT_MIRROR.x - depth);
+  vec2 bent = body + normal * (12. * band * band * (1. - topFacing - footFacing) - mirror);
   // The mirrored title stays crisp but reads at Apple's low strength: it keeps MIRROR_MIX of
   // its contrast against the wide field colour.
-  float mirrorZone = topFacing * (1. - smoothstep(MIRROR_BAND - 2., MIRROR_BAND, depth));
+  float mirrorZone = topFacing * (1. - smoothstep(mirrorBand - 2., mirrorBand, depth));
   // The band's frost eases into the centre's wider blur, so no contour shows where it ends.
   // The heavy blur stays out of the mirrored top band, so it reads crisp, as Apple's top edge.
   // The dark theme's mirrored zone frosts at MIRROR_SPREAD, so the flipped title stays crisp.
