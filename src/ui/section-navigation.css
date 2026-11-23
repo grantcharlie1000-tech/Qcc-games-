@@ -41,12 +41,18 @@
    LOOK-12 (council on ea5b395c: no bright, thin lit rim): it follows the bar's brighter lit edge (RIM_REST, RIM_LIGHT),
    its top line .31 of white, its foot .15 (RIM_FOOT) and a faint .08 ring lighting its sides, as the bar's ends now are:
    over black (LOOK-12's device-px profile) its top lifts +71 and its foot +47 at the outer css px (the bar +70 and +40;
-   at .34 and .2, +76 and +54). */
+   at .34 and .2, +76 and +54).
+   LOOK-19 (the circle's rim reads as one line with the bar's, as Apple's): at device px over black the circle's lines
+   were harder and brighter than the bar's own, a 2 px line peaking +93 at its top and +64 at its foot where the bar's end
+   rises over 3 px to +62 and +39 and fades over 3 more, and its sides +52 against the bar's ends +22. The top and foot
+   lines now fall 1.25 css px in with a 1.25 px blur (.25 and .10 of white), the side ring is off and the edge glow .45:
+   top +66 against the bar's +62 with the same light in its first 8 device px (264 against 261), foot +38 against +39,
+   sides +41 (tools-look19/radial19.py, RMS from the bar's profile 21.3 -> 10.2 levels). */
 @media (prefers-color-scheme:dark){
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off]){
-    --glass-rim-edge:inset 0 .75px 0 rgb(255 255 255 / .31),inset 0 -.75px 0 rgb(255 255 255 / .15),inset 0 0 0 .75px rgb(255 255 255 / .08),0 0 0 .5px rgb(0 0 0 / .144);
+    --glass-rim-edge:inset 0 1.25px 1.25px rgb(255 255 255 / .25),inset 0 -1.25px 1.25px rgb(255 255 255 / .10),inset 0 0 0 .75px rgb(255 255 255 / 0),0 0 0 .5px rgb(0 0 0 / .144);
   }
-  .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off])>.ui-glass-glow{opacity:.55}
+  .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off])>.ui-glass-glow{opacity:.45}
 }
 /* LOOK-6 (Charlie, 23:10Z: the dark look read very badly beside Apple's): in the dark theme the section navigation's CSS
    glass is the WebGL bar's own dark see-through smoke (section-lens.ts DARK_GLASS, Apple's dark still and video: black
