@@ -10,7 +10,7 @@
  * Side faces get a slightly darker bottom edge (a cheap ambient occlusion)
  * that tints along with the instance colour. */
 import * as THREE from 'three';
-import type {CarStyle} from './config';
+import {carLength, type CarModel, type Loco, type TruckModel, type Wagon} from './variety';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /** A linear RGB triple; components may exceed 1 (used to keep a fixed colour under an instance tint). */
@@ -21,9 +21,11 @@ export type Rgb = readonly [r: number, g: number, b: number];
 export type Part = readonly [x: number, y: number, z: number, w: number, h: number, d: number, color: number | Rgb, rotZ?: number, rotX?: number, side?: number | Rgb];
 
 /** Palettes shared with the renderer so instance tints and baked colours agree. */
-export const VEHICLE_COLORS: readonly number[] = [0xe43135, 0x23c6ed, 0xf4d33e, 0x9a4adb, 0x85bd42, 0x3f75bc, 0xf18a32];
-export const TRUCK_COLORS: readonly number[] = [0xbd163c, 0x13bfdc, 0xbd163c, 0x8a3e92, 0x477db3, 0x18bdd8, 0xe67c2c];
-export const TRAIN_COLORS: readonly number[] = [0xe94f64, 0x3a86ff, 0x2bb673, 0xf4a259];
+/** Car paints. Taxi yellow is not among them: only taxis wear it. */
+export const CAR_COLORS: readonly number[] = [0xe43135, 0x23c6ed, 0x9a4adb, 0x85bd42, 0x3f75bc, 0xf18a32, 0xff7fb0, 0x2ea59a, 0xf2f3f8, 0x3b3f4c, 0xaeb5c6, 0x9a6242, 0x1f3f8f];
+export const TRUCK_COLORS: readonly number[] = [0xbd163c, 0x13bfdc, 0x8a3e92, 0x477db3, 0xe67c2c, 0x3f9d4f, 0xf2c230, 0x2c8f8a, 0xe9ecf4, 0x4a5063];
+export const TRAIN_COLORS: readonly number[] = [0xe94f64, 0x3a86ff, 0x2bb673, 0xf4a259, 0x8a4fd8, 0x1fa7a0, 0x8f2d3a, 0x2f4a7d];
+export const CONTAINER_COLORS: readonly number[] = [0xd8452f, 0x2f7fd0, 0x3f9d4f, 0xf2b530, 0xe07a2c, 0x7b8496];
 export const LOG_COLORS: readonly number[] = [0x7d4a3c, 0x71423a, 0x885443];
 
 const WHITE = 0xffffff;
@@ -208,145 +210,384 @@ function laneVehicle(parts: VehicleParts, height: number, depth: number): Vehicl
 /** Paint shades baked into tinted bodies (multiplied by the lane colour): darker sides and bumpers give the
  * two-tone voxel look, so one instance tint still reads as a lit top, shaded flank and dark trim. */
 const PAINT_SIDE: Rgb = [0.84, 0.84, 0.84], PAINT_TRIM: Rgb = [0.6, 0.6, 0.6];
+const CAB = 0xf6f7ff, CAB_SIDE = 0xdfe3f3, GLASS = 0x262b3d, WHEEL = 0x1b1d26, HUB = 0xd9dceb, UNDER = 0x2b2e3b;
+const PINE = 0x2f8a55, PINE_SIDE = 0x1f6b40, TIMBER = 0x8a5a3c, TIMBER_SIDE = 0x6a4230, GRAIN = 0xdcae7c;
+/** Top of a car's painted body. */
+const CAR_TOP = 0.36;
+
+/** A cab on a car body: a box (white, or painted when `shell` is the body list), a windscreen, a rear window and
+ * side panes separated by pillars. */
+function cabin(detail: Part[], shell: Part[], cx: number, len: number, h: number, panes: number): void {
+  const d = 0.58, painted = shell !== detail;
+  shell.push([cx, CAR_TOP, 0, len, h, d, painted ? WHITE : CAB, 0, 0, painted ? PAINT_SIDE : CAB_SIDE]);
+  for (const s of [-1, 1]) detail.push([cx + s * (len / 2 + 0.006), CAR_TOP + 0.06, 0, 0.012, h - 0.11, d - 0.1, GLASS]);
+  // Wing mirrors, and a door seam with a handle on each side.
+  for (const z of [-1, 1]) detail.push([cx + len / 2 - 0.05, CAR_TOP + 0.02, z * (d / 2 + 0.05), 0.06, 0.06, 0.07, UNDER],
+    [cx - 0.02, 0.18, z * 0.362, 0.012, 0.18, 0.008, UNDER], [cx - 0.12, 0.3, z * 0.364, 0.08, 0.022, 0.012, HUB]);
+  const span = len - 0.12, paneLen = (span - (panes - 1) * 0.05) / panes;
+  for (let i = 0; i < panes; i++) {
+    const x = cx - span / 2 + paneLen / 2 + i * (paneLen + 0.05);
+    for (const z of [-1, 1]) detail.push([x, CAR_TOP + 0.07, z * (d / 2 + 0.006), paneLen, h - 0.13, 0.012, GLASS]);
+  }
+}
 
 /** Lane-specific bodies are authored at their collision length. Wheels and windows keep their physical
  * dimensions; compact cars are not stretched wagons.
  *
  * Every car is a low, wide painted body with a darker sill and bumpers, a dark undercarriage, chunky wheels
- * with pale hubs, and a raised white cab set behind the bonnet with a dark window band split into panes.
- * The compact has a short cab and stubby bonnet; the wagon (`sedan`) a long cab with three panes; the taxi
- * the wagon's body with a roof sign and a chequered stripe along each flank. */
-export function carGeometry(style: CarStyle): VehicleParts {
-  const compact = style === 'compact', len = compact ? 1.2 : 1.8, e = len / 2;
-  const cabLen = compact ? 0.62 : style === 'taxi' ? 0.86 : 1.0;
-  const cx = compact ? -0.07 : style === 'taxi' ? -0.1 : -0.16, cy = 0.36, h = 0.27, cabD = 0.58;
-  const cab = 0xf6f7ff, cabSide = 0xdfe3f3, glass = 0x262b3d, wheel = 0x1b1d26, hub = 0xd9dceb, under = 0x2b2e3b;
-  const parts: Part[] = [
-    // Undercarriage, then the white cab.
-    [0, 0.04, 0, len - 0.16, 0.07, 0.6, under],
-    [cx, cy, 0, cabLen, h, cabD, cab, 0, 0, cabSide],
-    // Windscreen and rear window.
-    [cx + cabLen / 2 + 0.006, cy + 0.06, 0, 0.012, h - 0.11, cabD - 0.1, glass],
-    [cx - cabLen / 2 - 0.006, cy + 0.06, 0, 0.012, h - 0.11, cabD - 0.1, glass],
+ * with pale hubs and lights at both ends. On top of that:
+ * compact: a short white cab and a stubby bonnet. mini: a painted cab with a white roof and a present on it.
+ * sedan: a long white cab with three panes. taxi: a roof sign and a chequered stripe. police: a sedan with a
+ * light bar and a blue band. pickup: a short cab and an open bed that carries a Christmas tree.
+ * van: a tall painted box with a white stripe. sports: a low glass canopy, a long striped bonnet and a spoiler. */
+export function carGeometry(model: CarModel): VehicleParts {
+  const len = carLength(model), e = len / 2, wx = len < 1.5 ? e - 0.27 : e - 0.33;
+  const detail: Part[] = [
+    [0, 0.04, 0, len - 0.16, 0.07, 0.6, UNDER],
     // Lights and grille, inside the collision length.
     [e - 0.01, 0.2, 0.24, 0.02, 0.07, 0.11, 0xfff1c4], [e - 0.01, 0.2, -0.24, 0.02, 0.07, 0.11, 0xfff1c4],
     [e - 0.01, 0.13, 0, 0.02, 0.06, 0.3, 0x3a3e4e],
     [-e + 0.01, 0.2, 0.25, 0.02, 0.07, 0.1, 0xd8343c], [-e + 0.01, 0.2, -0.25, 0.02, 0.07, 0.1, 0xd8343c],
   ];
-  // Side window panes separated by white pillars.
-  const panes = compact ? 2 : style === 'taxi' ? 2 : 3, span = cabLen - 0.12, paneLen = (span - (panes - 1) * 0.05) / panes;
-  for (let i = 0; i < panes; i++) {
-    const x = cx - span / 2 + paneLen / 2 + i * (paneLen + 0.05);
-    for (const z of [-1, 1]) parts.push([x, cy + 0.07, z * (cabD / 2 + 0.006), paneLen, h - 0.13, 0.012, glass]);
-  }
-  const wx = compact ? e - 0.27 : e - 0.33;
   for (const x of [-wx, wx]) for (const z of [-0.33, 0.33]) {
-    parts.push([x, 0, z, 0.26, 0.26, 0.13, wheel], [x, 0.08, z + Math.sign(z) * 0.07, 0.1, 0.1, 0.012, hub]);
+    detail.push([x, 0, z, 0.26, 0.26, 0.13, WHEEL], [x, 0.08, z + Math.sign(z) * 0.07, 0.1, 0.1, 0.012, HUB]);
   }
-  if (style === 'taxi') {
-    parts.push([cx, cy + h, 0, 0.16, 0.08, 0.3, 0xffd84a, 0, 0, 0xe0b52c], [cx, cy + h + 0.08, 0, 0.12, 0.012, 0.22, 0xfff6c8]);
-    // A chequered stripe along each flank.
-    for (let x = -e + 0.2, i = 0; x < e - 0.2; x += 0.1, i++) if (i % 2 === 0) for (const z of [-1, 1]) parts.push([x, 0.26, z * 0.366, 0.1, 0.05, 0.012, 0x262b3d]);
-  }
-  const bonnet = compact ? 0.24 : 0.4;
-  return laneVehicle({body: voxel([
+  const body: Part[] = [
     [0, 0.1, 0, len, 0.26, 0.72, WHITE, 0, 0, PAINT_SIDE],
-    // A darker sill and bumpers, and a raised bonnet in front of the cab.
+    // A darker sill and bumpers.
     [0, 0.1, 0, len - 0.24, 0.07, 0.74, PAINT_TRIM],
     [e - 0.04, 0.1, 0, 0.08, 0.13, 0.74, PAINT_TRIM], [-e + 0.04, 0.1, 0, 0.08, 0.13, 0.74, PAINT_TRIM],
-    [e - bonnet / 2 - 0.02, cy, 0, bonnet, 0.04, 0.66, WHITE, 0, 0, PAINT_SIDE],
-    [-e + 0.13, cy, 0, 0.2, 0.025, 0.66, WHITE, 0, 0, PAINT_SIDE],
-  ]), detail: voxel(parts)}, 1, 0.88);
+  ];
+  /** A raised bonnet in front of the cab and a low boot lid behind it. */
+  const bonnet = (length: number, boot = true): void => {
+    body.push([e - length / 2 - 0.02, CAR_TOP, 0, length, 0.04, 0.66, WHITE, 0, 0, PAINT_SIDE]);
+    if (boot) body.push([-e + 0.13, CAR_TOP, 0, 0.2, 0.025, 0.66, WHITE, 0, 0, PAINT_SIDE]);
+  };
+  switch (model) {
+    case 'compact': cabin(detail, detail, -0.07, 0.62, 0.27, 2); bonnet(0.24); break;
+    case 'mini': {
+      cabin(detail, body, -0.04, 0.74, 0.28, 2); bonnet(0.2, false);
+      detail.push([-0.04, 0.64, 0, 0.66, 0.03, 0.5, CAB, 0, 0, CAB_SIDE]);
+      // A present strapped to the roof.
+      detail.push([-0.06, 0.67, 0, 0.26, 0.13, 0.26, 0xd8263a, 0, 0, 0xa81b2d],
+        [-0.06, 0.67, 0, 0.27, 0.135, 0.07, 0xffd84a], [-0.06, 0.67, 0, 0.07, 0.135, 0.27, 0xffd84a]);
+      break;
+    }
+    case 'sedan': cabin(detail, detail, -0.16, 1.0, 0.27, 3); bonnet(0.4); break;
+    case 'taxi': {
+      cabin(detail, detail, -0.1, 0.86, 0.27, 2); bonnet(0.4);
+      detail.push([-0.1, 0.63, 0, 0.16, 0.08, 0.3, 0xffd84a, 0, 0, 0xe0b52c], [-0.1, 0.71, 0, 0.12, 0.012, 0.22, 0xfff6c8]);
+      // A chequered stripe along each flank.
+      for (let x = -e + 0.2, i = 0; x < e - 0.2; x += 0.1, i++) if (i % 2 === 0) for (const z of [-1, 1]) detail.push([x, 0.26, z * 0.366, 0.1, 0.05, 0.012, GLASS]);
+      break;
+    }
+    case 'police': {
+      cabin(detail, detail, -0.16, 1.0, 0.27, 3); bonnet(0.4);
+      detail.push([-0.16, 0.63, 0.12, 0.14, 0.07, 0.2, 0xe43135], [-0.16, 0.63, -0.12, 0.14, 0.07, 0.2, 0x2f6fe8], [-0.16, 0.63, 0, 0.14, 0.05, 0.04, 0x2b2e3b]);
+      for (const z of [-1, 1]) detail.push([0, 0.21, z * 0.366, len - 0.4, 0.09, 0.012, 0x2a5bd7]);
+      break;
+    }
+    case 'pickup': {
+      cabin(detail, detail, 0.14, 0.52, 0.27, 1); bonnet(0.34, false);
+      // The bed: two side rails and a tailgate.
+      for (const z of [-1, 1]) body.push([-0.44, CAR_TOP, z * 0.33, 0.84, 0.1, 0.06, WHITE, 0, 0, PAINT_SIDE]);
+      body.push([-e + 0.05, CAR_TOP, 0, 0.06, 0.1, 0.6, WHITE, 0, 0, PAINT_SIDE]);
+      detail.push([-0.46, CAR_TOP, 0, 0.74, 0.012, 0.58, 0x3a3e4e]);
+      // A Christmas tree on its side, the trunk toward the cab.
+      detail.push([-0.2, 0.39, 0, 0.14, 0.07, 0.07, 0x6a4636],
+        [-0.42, 0.372, 0, 0.3, 0.22, 0.46, PINE, 0, 0, PINE_SIDE], [-0.62, 0.372, 0, 0.16, 0.17, 0.34, PINE, 0, 0, PINE_SIDE],
+        [-0.75, 0.372, 0, 0.12, 0.12, 0.2, PINE, 0, 0, PINE_SIDE], [-0.44, 0.592, 0.03, 0.18, 0.02, 0.2, 0xf6faff]);
+      break;
+    }
+    case 'van': {
+      body.push([-0.14, CAR_TOP, 0, 1.44, 0.34, 0.7, WHITE, 0, 0, PAINT_SIDE]);
+      bonnet(0.28, false);
+      detail.push([0.586, 0.42, 0, 0.012, 0.24, 0.6, GLASS], [-0.866, 0.44, 0, 0.012, 0.2, 0.5, GLASS],
+        [-0.14, 0.7, 0, 1.36, 0.03, 0.6, CAB, 0, 0, CAB_SIDE]);
+      for (const z of [-1, 1]) detail.push([0.4, 0.46, z * 0.356, 0.28, 0.2, 0.012, GLASS], [-0.34, 0.45, z * 0.356, 0.96, 0.07, 0.012, CAB]);
+      break;
+    }
+    case 'sports': {
+      bonnet(0.56);
+      // A low glass canopy under a painted roof, two bonnet stripes and a rear wing on posts.
+      detail.push([-0.14, CAR_TOP, 0, 0.6, 0.15, 0.56, GLASS]);
+      body.push([-0.14, 0.51, 0, 0.5, 0.03, 0.5, WHITE, 0, 0, PAINT_SIDE], [-e + 0.1, 0.45, 0, 0.14, 0.03, 0.7, WHITE, 0, 0, PAINT_SIDE]);
+      for (const z of [-1, 1]) detail.push([e - 0.3, 0.4, z * 0.08, 0.56, 0.006, 0.07, CAB], [-e + 0.1, CAR_TOP, z * 0.26, 0.05, 0.09, 0.05, UNDER]);
+      break;
+    }
+  }
+  return laneVehicle({body: voxel(body), detail: voxel(detail)}, 1, 0.88);
 }
 
-/** A delivery lorry of 2 or 3 tiles (x), 0.84 wide: a tall tinted cab with a white roof cap, wide windscreen,
- * grille, bumper and mirrors at the front (+x), then a gap and an oversized white / blue-grey box trailer with
- * ribbed panels and rear doors on a dark chassis. The cab is 0.86 tall and the trailer 0.96. */
-export function truckGeometry(len: 2 | 3): VehicleParts {
+/** Logs stacked along x on a deck at height y: two below, one above, pale end grain and snow on the top log. */
+function timber(out: Part[], x: number, y: number, len: number): void {
+  for (const [ly, z] of [[y, -0.19], [y, 0.19], [y + 0.26, 0]] as const) {
+    out.push([x, ly, z, len, 0.26, 0.34, TIMBER, 0, 0, TIMBER_SIDE]);
+    for (const s of [-1, 1]) out.push([x + s * (len / 2 + 0.004), ly + 0.04, z, 0.008, 0.18, 0.24, GRAIN]);
+  }
+  out.push([x, y + 0.52, 0, len * 0.8, 0.03, 0.26, 0xf6faff, 0, 0, 0xdbe5f3]);
+}
+
+/** A lorry of 2 or 3 tiles (x), 0.84 wide. Every model but the bus has a tall tinted cab with a white roof cap, a
+ * wide windscreen, grille, bumper and mirrors at the front (+x), then a load on a dark chassis:
+ * box: an oversized white / blue-grey trailer with ribbed panels. tanker: a silver tank with dark bands, hatches
+ * and a red stripe. logs: a stake bed with three logs. fire: a tinted body with a ladder, lockers and a blue
+ * light bar. plough: a grit hopper, an amber beacon and a blade across the front.
+ * The bus is one long tinted body with a row of windows, a door and a white roof. Nothing is taller than 0.96. */
+export function truckGeometry(len: 2 | 3, model: TruckModel = 'box'): VehicleParts {
   const e = len / 2, cab = 0.74, cargoLen = len - cab - 0.1, cargoX = -e + cargoLen / 2;
-  const glass = 0x2b3040, wheel = 0x1d2029, hub = 0xc9cddd, chassis = 0x343945, cargo = 0xeef2fb;
-  // Baked side lift keeps the cargo blue-grey under the weak side-facing hemisphere light.
-  const cargoSide: Rgb = [1.36, 1.51, 2.23], rib: Rgb = [1.08, 1.2, 1.85];
-  const parts: Part[] = [
-    [0, 0.08, 0, len, 0.14, 0.7, chassis],
-    [cargoX, 0.22, 0, cargoLen, 0.74, 0.84, cargo, 0, 0, cargoSide],
-    // windscreen, side windows and the white roof cap
-    [e - 0.2, 0.52, 0, 0.05, 0.24, 0.66, glass],
-    [e - 0.48, 0.52, 0.405, 0.3, 0.22, 0.03, glass], [e - 0.48, 0.52, -0.405, 0.3, 0.22, 0.03, glass],
-    [e - cab / 2 - 0.1, 0.86, 0, cab - 0.2, 0.05, 0.8, 0xf4f6fc, 0, 0, 0xd7dbea],
-    // grille, lights, bumper and mirrors
-    [e - 0.005, 0.2, 0, 0.01, 0.16, 0.4, 0x4a4f5e],
-    [e - 0.01, 0.22, 0.29, 0.02, 0.08, 0.12, 0xffe08a], [e - 0.01, 0.22, -0.29, 0.02, 0.08, 0.12, 0xffe08a],
-    [e - 0.02, 0.08, 0, 0.04, 0.08, 0.82, chassis],
-    [e - 0.26, 0.56, 0.43, 0.04, 0.14, 0.04, chassis], [e - 0.26, 0.56, -0.43, 0.04, 0.14, 0.04, chassis],
-    // rear doors and tail lights
-    [-e + 0.005, 0.26, 0, 0.01, 0.66, 0.02, 0x9aa3c0],
-    [-e + 0.01, 0.16, 0.3, 0.02, 0.06, 0.12, 0xff5a5a], [-e + 0.01, 0.16, -0.3, 0.02, 0.06, 0.12, 0xff5a5a],
-  ];
-  // Vertical ribs along both trailer flanks.
-  for (let x = cargoX - cargoLen / 2 + 0.2; x < cargoX + cargoLen / 2 - 0.1; x += 0.36) for (const z of [-1, 1]) parts.push([x, 0.26, z * 0.425, 0.04, 0.66, 0.012, rib]);
+  const glass = 0x2b3040, wheel = 0x1d2029, hub = 0xc9cddd, chassis = 0x343945;
+  const parts: Part[] = [[0, 0.08, 0, len, 0.14, 0.7, chassis]], body: Part[] = [];
   const axle = (x: number): void => {
     for (const z of [-1, 1]) parts.push([x, 0, z * 0.375, 0.28, 0.28, 0.12, wheel], [x, 0.09, z * 0.44, 0.1, 0.1, 0.012, hub]);
   };
   axle(e - 0.34);
   axle(-e + 0.36);
   if (len === 3) axle(-e + 0.72);
-  return laneVehicle({
-    body: voxel([
-      // Coloured cab and short nose; the trailer stays white / blue-grey.
-      [e - cab / 2 - 0.1, 0.16, 0, cab - 0.2, 0.7, 0.8, WHITE, 0, 0, PAINT_SIDE],
-      [e - 0.1, 0.16, 0, 0.2, 0.36, 0.78, WHITE, 0, 0, PAINT_SIDE],
-      [e - 0.1, 0.16, 0, 0.2, 0.05, 0.8, PAINT_TRIM],
-    ]),
-    detail: voxel(parts),
-  }, 0.79, 0.66);
+  // Head lights, bumper and tail lights.
+  parts.push([e - 0.01, 0.22, 0.29, 0.02, 0.08, 0.12, 0xffe08a], [e - 0.01, 0.22, -0.29, 0.02, 0.08, 0.12, 0xffe08a],
+    [e - 0.02, 0.08, 0, 0.04, 0.08, 0.82, chassis],
+    [-e + 0.01, 0.16, 0.3, 0.02, 0.06, 0.12, 0xff5a5a], [-e + 0.01, 0.16, -0.3, 0.02, 0.06, 0.12, 0xff5a5a]);
+  if (model === 'bus') {
+    body.push([0, 0.16, 0, len - 0.04, 0.66, 0.8, WHITE, 0, 0, PAINT_SIDE], [0, 0.16, 0, len - 0.02, 0.07, 0.82, PAINT_TRIM]);
+    parts.push([0, 0.82, 0, len - 0.14, 0.05, 0.74, 0xf4f6fc, 0, 0, 0xd7dbea],
+      [e - 0.014, 0.4, 0, 0.012, 0.34, 0.68, glass], [e - 0.014, 0.75, 0, 0.012, 0.06, 0.4, 0xffb53c],
+      [-e + 0.014, 0.5, 0, 0.012, 0.22, 0.6, glass],
+      // Roof hatches and a cooling unit, mirrors, and a white stripe under the windows.
+      [-0.3, 0.87, 0, 0.6, 0.06, 0.42, 0xc9cddd, 0, 0, 0xaab1c2], [e - 0.5, 0.87, 0, 0.2, 0.03, 0.2, 0x8a929c], [-e + 0.3, 0.87, 0, 0.2, 0.03, 0.2, 0x8a929c],
+      [e - 0.1, 0.56, 0.43, 0.04, 0.14, 0.04, chassis], [e - 0.1, 0.56, -0.43, 0.04, 0.14, 0.04, chassis],
+      [0, 0.38, 0.406, len - 0.3, 0.05, 0.012, 0xf4f6fc], [0, 0.38, -0.406, len - 0.3, 0.05, 0.012, 0xf4f6fc]);
+    // A window row on both sides, with the door in place of the first pane on the near side.
+    for (let x = -e + 0.3, i = 0; x < e - 0.2; x += 0.38, i++) for (const z of [-1, 1]) {
+      if (z > 0 && x + 0.38 >= e - 0.2) parts.push([x, 0.24, z * 0.406, 0.26, 0.5, 0.012, glass]);
+      else parts.push([x, 0.5, z * 0.406, 0.3, 0.22, 0.012, glass]);
+    }
+    return laneVehicle({body: voxel(body), detail: voxel(parts)}, 0.79, 0.66);
+  }
+  parts.push(
+    // windscreen, side windows and the white roof cap
+    [e - 0.2, 0.52, 0, 0.05, 0.24, 0.66, glass],
+    [e - 0.48, 0.52, 0.405, 0.3, 0.22, 0.03, glass], [e - 0.48, 0.52, -0.405, 0.3, 0.22, 0.03, glass],
+    [e - cab / 2 - 0.1, 0.86, 0, cab - 0.2, 0.05, 0.8, 0xf4f6fc, 0, 0, 0xd7dbea],
+    // an exhaust stack behind the cab and three marker lights on the roof
+    [e - 0.79, 0.22, 0.3, 0.06, 0.7, 0.06, 0x8a929c], [e - 0.79, 0.92, 0.3, 0.08, 0.03, 0.08, chassis],
+    [e - 0.2, 0.91, 0.2, 0.04, 0.025, 0.07, 0xffb53c], [e - 0.2, 0.91, 0, 0.04, 0.025, 0.07, 0xffb53c], [e - 0.2, 0.91, -0.2, 0.04, 0.025, 0.07, 0xffb53c],
+    // grille with bright bars, and mirrors
+    [e - 0.008, 0.2, 0, 0.01, 0.16, 0.4, 0x4a4f5e],
+    [e - 0.004, 0.225, 0, 0.008, 0.014, 0.38, 0xaab1c2], [e - 0.004, 0.27, 0, 0.008, 0.014, 0.38, 0xaab1c2], [e - 0.004, 0.315, 0, 0.008, 0.014, 0.38, 0xaab1c2],
+    // a sun visor, two wipers and a pair of air horns
+    [e - 0.165, 0.77, 0, 0.07, 0.03, 0.7, chassis], [e - 0.172, 0.53, 0.16, 0.008, 0.1, 0.02, chassis], [e - 0.172, 0.53, -0.16, 0.008, 0.1, 0.02, chassis],
+    [e - 0.5, 0.91, 0.12, 0.22, 0.035, 0.05, hub], [e - 0.5, 0.91, -0.12, 0.22, 0.035, 0.05, hub],
+    // an underrun bar at the back
+    [-e + 0.03, 0.03, 0, 0.04, 0.05, 0.8, chassis],
+    [e - 0.26, 0.56, 0.43, 0.04, 0.14, 0.04, chassis], [e - 0.26, 0.56, -0.43, 0.04, 0.14, 0.04, chassis]);
+  for (const z of [-1, 1]) parts.push(
+    // a door seam, a handle and a step on each side of the cab
+    [e - 0.66, 0.2, z * 0.403, 0.012, 0.6, 0.008, chassis], [e - 0.6, 0.44, z * 0.405, 0.07, 0.025, 0.012, hub], [e - 0.47, 0.09, z * 0.42, 0.3, 0.04, 0.06, 0x8a929c],
+    // a fuel tank between the axles and a mud flap behind the last wheel
+    [e - 1.0, 0.04, z * 0.37, 0.34, 0.15, 0.12, hub, 0, 0, 0x9aa1b3], [e - 1.08, 0.03, z * 0.375, 0.03, 0.17, 0.13, chassis], [e - 0.92, 0.03, z * 0.375, 0.03, 0.17, 0.13, chassis],
+    [-e + 0.15, 0.02, z * 0.38, 0.02, 0.2, 0.14, 0x23252c]);
+  // Coloured cab and short nose.
+  body.push([e - cab / 2 - 0.1, 0.16, 0, cab - 0.2, 0.7, 0.8, WHITE, 0, 0, PAINT_SIDE],
+    [e - 0.1, 0.16, 0, 0.2, 0.36, 0.78, WHITE, 0, 0, PAINT_SIDE],
+    [e - 0.1, 0.16, 0, 0.2, 0.05, 0.8, PAINT_TRIM]);
+  const lo = cargoX - cargoLen / 2, hi = cargoX + cargoLen / 2;
+  switch (model) {
+    case 'box': {
+      // Baked side lift keeps the cargo blue-grey under the weak side-facing hemisphere light.
+      const cargoSide: Rgb = [1.36, 1.51, 2.23], rib: Rgb = [1.08, 1.2, 1.85];
+      parts.push([cargoX, 0.22, 0, cargoLen, 0.74, 0.84, 0xeef2fb, 0, 0, cargoSide], [-e + 0.005, 0.26, 0, 0.01, 0.66, 0.02, 0x9aa3c0]);
+      // Rear door lock bars with handles, a band in the cab's colour and amber marker lights along each side.
+      for (const z of [-0.2, 0.2]) parts.push([-e + 0.004, 0.28, z, 0.008, 0.62, 0.025, 0x7d86a3], [-e + 0.004, 0.5, z, 0.008, 0.03, 0.1, 0x4a4f5e]);
+      for (const z of [-1, 1]) body.push([cargoX, 0.66, z * 0.4215, cargoLen - 0.06, 0.16, 0.012, WHITE, 0, 0, PAINT_SIDE]);
+      for (let x = lo + 0.2; x < hi - 0.1; x += 0.36) for (const z of [-1, 1]) parts.push([x, 0.26, z * 0.425, 0.04, 0.4, 0.012, rib], [x + 0.18, 0.225, z * 0.424, 0.06, 0.03, 0.012, 0xffb53c]);
+      break;
+    }
+    case 'tanker': {
+      const tank = 0xdfe4ee, tankSide: Rgb = [1.0, 1.1, 1.36];
+      parts.push([cargoX, 0.26, 0, cargoLen - 0.08, 0.54, 0.7, tank, 0, 0, tankSide], [cargoX, 0.8, 0, cargoLen - 0.24, 0.08, 0.44, tank, 0, 0, tankSide]);
+      for (let x = lo + 0.2; x < hi - 0.1; x += 0.42) {
+        parts.push([x, 0.25, 0, 0.06, 0.56, 0.72, 0x5d6475], [x + 0.2, 0.88, 0, 0.16, 0.05, 0.16, 0x5d6475]);
+      }
+      for (const z of [-1, 1]) parts.push([cargoX, 0.48, z * 0.356, cargoLen - 0.2, 0.09, 0.012, 0xd8343c],
+        // a pipe along the underside and a hazard plate at the back
+        [cargoX, 0.2, z * 0.3, cargoLen - 0.3, 0.05, 0.05, 0x8a929c], [lo + 0.035, 0.34, z * 0.2, 0.008, 0.14, 0.14, 0xff9a1f]);
+      // A walkway along the top and a ladder up the near side.
+      parts.push([cargoX, 0.88, 0.14, cargoLen - 0.3, 0.012, 0.1, 0x8a929c]);
+      for (let i = 0; i < 6; i++) parts.push([lo + 0.14, 0.28 + i * 0.09, 0.362, 0.12, 0.016, 0.02, 0x8a929c]);
+      break;
+    }
+    case 'logs': {
+      parts.push([cargoX, 0.22, 0, cargoLen, 0.06, 0.82, 0x4a4f5e]);
+      for (const x of [lo + 0.08, hi - 0.08]) for (const z of [-1, 1]) parts.push([x, 0.28, z * 0.39, 0.05, 0.5, 0.05, 0x5d6475]);
+      timber(parts, cargoX, 0.28, cargoLen - 0.3);
+      // Two straps over the load and a red flag on the end of it.
+      for (const x of [cargoX - cargoLen / 4, cargoX + cargoLen / 4]) parts.push([x, 0.8, 0, 0.035, 0.035, 0.38, 0x2b2e3b], [x, 0.54, 0.365, 0.035, 0.28, 0.012, 0x2b2e3b], [x, 0.54, -0.365, 0.035, 0.28, 0.012, 0x2b2e3b]);
+      parts.push([lo + 0.12, 0.6, 0, 0.012, 0.12, 0.14, 0xd8343c]);
+      break;
+    }
+    case 'fire': {
+      body.push([cargoX, 0.22, 0, cargoLen, 0.5, 0.84, WHITE, 0, 0, PAINT_SIDE]);
+      // Silver lockers and a white stripe on each side, a ladder on top and a blue light bar on the cab.
+      for (const z of [-1, 1]) {
+        parts.push([cargoX, 0.52, z * 0.426, cargoLen, 0.07, 0.012, 0xf4f6fc]);
+        for (let x = lo + 0.24; x < hi - 0.1; x += 0.4) parts.push([x, 0.26, z * 0.426, 0.3, 0.2, 0.012, 0xbfc6d6]);
+        parts.push([cargoX, 0.78, z * 0.14, cargoLen - 0.1, 0.05, 0.04, 0xc9cddd]);
+      }
+      parts.push([cargoX, 0.72, 0, cargoLen - 0.2, 0.06, 0.4, 0x5d6475]);
+      for (let x = lo + 0.14; x < hi - 0.1; x += 0.16) parts.push([x, 0.785, 0, 0.04, 0.03, 0.28, 0xc9cddd]);
+      parts.push([e - cab / 2 - 0.1, 0.91, 0, 0.12, 0.05, 0.5, 0x2f6fe8]);
+      break;
+    }
+    case 'plough': {
+      // A dark hopper that widens upward, heaped with grit, and a blade across the front.
+      parts.push([cargoX, 0.22, 0, cargoLen - 0.2, 0.24, 0.6, 0x4a4f5e, 0, 0, 0x3a3e4e], [cargoX, 0.46, 0, cargoLen - 0.06, 0.24, 0.8, 0x5d6475, 0, 0, 0x4a4f5e],
+        [cargoX, 0.7, 0, cargoLen - 0.2, 0.07, 0.64, 0xe9dccb, 0, 0, 0xcbbda8], [cargoX - 0.06, 0.77, 0.04, cargoLen - 0.5, 0.05, 0.36, 0xf3e9da, 0, 0, 0xcbbda8],
+        [e - 0.035, 0.0, 0, 0.07, 0.3, 0.84, 0xffc93c, 0, 0, 0xe0a51c], [e - 0.075, 0.02, 0, 0.012, 0.05, 0.84, 0x2b2e3b],
+        [e - cab / 2 - 0.1, 0.91, 0, 0.1, 0.05, 0.1, 0xff9a1f]);
+      break;
+    }
+  }
+  return laneVehicle({body: voxel(body), detail: voxel(parts)}, 0.79, 0.66);
 }
 
-/** Train pieces, each 2.0 long (x, front at +x), 0.8 wide, drawn 0.1 above the rails: a locomotive
- * `nose` (sloped front, tall cab, headlight, dark roof) and a `carriage` (stripe, window row, roof,
- * bogies). The body is tinted per train and carries the colour; the stripe, windows and roof stay
- * fixed so every train reads as long, striped and windowed, never like a car. */
-export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } {
-  const stripe = 0xfff4dc, glass = 0x2b3040, roof = 0x4b5262, dark = 0x2c2f38;
+/** Train pieces, each 2.0 long (x, front at +x), 0.8 wide, drawn 0.1 above the rails. The tinted body carries the
+ * train's colour; stripes, windows, roofs and loads stay fixed.
+ * Locomotives: `nose` (a sloped passenger front with a tall cab), `diesel` (a long hood with grilles and exhausts,
+ * hazard stripes on the nose and a cab at the back) and `steam` (a black boiler with a chimney, a brass dome, red
+ * wheels and a tinted cab).
+ * Wagons: `carriage` (stripe and window row), `container` (a tinted ribbed box), `tank`, `hopper` (heaped with
+ * coal), `flat` (three logs) and `tender` (coal behind a steam locomotive). */
+export function trainGeometry(): Record<Loco | Wagon, VehicleParts> {
+  const stripe = 0xfff4dc, glass = 0x2b3040, roof = 0x4b5262, dark = 0x2c2f38, coal = 0x23252c, steel = 0x8a929c;
   const windows: Part[] = [];
   for (const x of [-0.72, -0.24, 0.24, 0.72]) windows.push([x, 0.5, 0.405, 0.34, 0.2, 0.02, glass], [x, 0.5, -0.405, 0.34, 0.2, 0.02, glass]);
-  const bogies: Part[] = [
-    [-0.62, 0.0, 0, 0.7, 0.14, 0.56, dark], [0.62, 0.0, 0, 0.7, 0.14, 0.56, dark],
-    [-0.62, 0.0, 0.3, 0.5, 0.1, 0.06, 0x8a929c], [-0.62, 0.0, -0.3, 0.5, 0.1, 0.06, 0x8a929c],
-    [0.62, 0.0, 0.3, 0.5, 0.1, 0.06, 0x8a929c], [0.62, 0.0, -0.3, 0.5, 0.1, 0.06, 0x8a929c],
+  const bogies: Part[] = [];
+  // Each bogie: a dark frame, a steel side beam with two springs, and four wheels with bright rims.
+  for (const bx of [-0.62, 0.62]) {
+    bogies.push([bx, 0.0, 0, 0.7, 0.14, 0.56, dark]);
+    for (const z of [-1, 1]) {
+      bogies.push([bx, 0.06, z * 0.3, 0.56, 0.05, 0.06, steel], [bx - 0.08, 0.11, z * 0.3, 0.05, 0.04, 0.07, 0xc9cddd], [bx + 0.08, 0.11, z * 0.3, 0.05, 0.04, 0.07, 0xc9cddd]);
+      for (const wx of [-0.2, 0.2]) bogies.push([bx + wx, 0, z * 0.33, 0.2, 0.2, 0.03, 0x3a3e4e], [bx + wx, 0.06, z * 0.348, 0.08, 0.08, 0.008, steel]);
+    }
+  }
+  /** Equipment boxes hung under the floor between the bogies. */
+  const underfloor: Part[] = [[-0.08, 0.02, 0.24, 0.3, 0.11, 0.18, 0x3a3e4e], [0.14, 0.03, -0.24, 0.24, 0.1, 0.18, 0x3a3e4e], [0.1, 0.04, 0.26, 0.1, 0.07, 0.14, steel]];
+  const couplers: Part[] = [[0.97, 0.2, 0, 0.08, 0.06, 0.2, dark], [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark]];
+  /** A heap of coal with a dusting of snow, on top of a wagon at height y. */
+  const heap = (y: number, len: number): Part[] => [
+    [0, y, 0, len, 0.06, 0.62, coal], [-0.2, y + 0.06, 0.03, len * 0.6, 0.06, 0.42, coal], [0.3, y + 0.06, -0.1, len * 0.25, 0.04, 0.3, coal],
+    [-0.25, y + 0.12, 0.03, len * 0.3, 0.02, 0.24, 0xf6faff],
   ];
+  const piece = (body: Part[], detail: Part[]): VehicleParts => laneVehicle({body: voxel(body), detail: voxel(detail)}, 0.755, 0.65);
+  const hood: Part[] = [];
+  for (let x = -0.2; x < 0.75; x += 0.19) for (const z of [-1, 1]) hood.push([x, 0.34, z * 0.356, 0.1, 0.2, 0.012, dark]);
+  const flat: Part[] = [...bogies, ...couplers];
+  for (const x of [-0.86, 0.86]) for (const z of [-1, 1]) flat.push([x, 0.2, z * 0.37, 0.05, 0.56, 0.05, 0x5d6475]);
+  timber(flat, 0, 0.2, 1.6);
+  for (const x of [-0.4, 0.4]) flat.push([x, 0.72, 0, 0.035, 0.035, 0.38, dark], [x, 0.46, 0.365, 0.035, 0.28, 0.012, dark], [x, 0.46, -0.365, 0.035, 0.28, 0.012, dark]);
+  const ribs: Part[] = [];
+  for (let x = -0.8; x < 0.85; x += 0.2) for (const z of [-1, 1]) ribs.push([x, 0.24, z * 0.386, 0.06, 0.56, 0.012, PAINT_TRIM]);
+  const wheels: Part[] = [];
+  for (const x of [-0.5, -0.1, 0.3]) for (const z of [-1, 1]) wheels.push([x, 0, z * 0.33, 0.34, 0.34, 0.08, 0xb3262f], [x, 0.12, z * 0.375, 0.1, 0.1, 0.012, 0xffd9a8]);
+  for (const z of [-1, 1]) wheels.push([-0.1, 0.13, z * 0.385, 0.9, 0.05, 0.012, steel], [0.72, 0, z * 0.33, 0.2, 0.2, 0.08, 0xb3262f]);
   return {
-    carriage: laneVehicle({
-      body: voxel([[0, 0.12, 0, 2.0, 0.64, 0.8, WHITE]]),
-      detail: voxel([
-        [0, 0.76, 0, 1.96, 0.08, 0.68, roof],
-        [0, 0.3, 0.405, 2.0, 0.12, 0.02, stripe], [0, 0.3, -0.405, 2.0, 0.12, 0.02, stripe],
-        ...windows, ...bogies,
-        [0.97, 0.2, 0, 0.08, 0.06, 0.2, dark], [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
-      ]),
-    }, 0.755, 0.65),
-    nose: laneVehicle({
-      body: voxel([
-        [-0.275, 0.12, 0, 1.45, 0.72, 0.8, WHITE],
-        [0.58, 0.12, 0, 0.26, 0.5, 0.8, WHITE],
-        [0.79, 0.12, 0, 0.16, 0.36, 0.78, WHITE],
-        [0.935, 0.12, 0, 0.13, 0.24, 0.74, WHITE],
-      ]),
-      detail: voxel([
-        [-0.275, 0.84, 0, 1.4, 0.07, 0.72, roof],
-        [-0.55, 0.91, 0, 0.3, 0.1, 0.3, dark],
-        [0.455, 0.62, 0, 0.04, 0.17, 0.62, glass],
-        [-0.12, 0.52, 0.405, 0.5, 0.22, 0.02, glass], [-0.12, 0.52, -0.405, 0.5, 0.22, 0.02, glass],
-        [-0.55, 0.52, 0.405, 0.22, 0.22, 0.02, glass], [-0.55, 0.52, -0.405, 0.22, 0.22, 0.02, glass],
-        [-0.275, 0.3, 0.405, 1.45, 0.12, 0.02, stripe], [-0.275, 0.3, -0.405, 1.45, 0.12, 0.02, stripe],
-        [0.58, 0.3, 0.405, 0.26, 0.12, 0.02, stripe], [0.58, 0.3, -0.405, 0.26, 0.12, 0.02, stripe],
-        [0.79, 0.3, 0.395, 0.16, 0.12, 0.02, stripe], [0.79, 0.3, -0.395, 0.16, 0.12, 0.02, stripe],
-        [0.995, 0.2, 0, 0.03, 0.1, 0.34, 0xfff3b0],
-        [0.98, 0.1, 0, 0.05, 0.06, 0.8, dark],
-        ...bogies,
-        [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
-      ]),
-    }, 0.755, 0.65),
+    carriage: piece([[0, 0.12, 0, 2.0, 0.64, 0.8, WHITE]], [
+      [0, 0.76, 0, 1.96, 0.08, 0.68, roof],
+      [0, 0.3, 0.405, 2.0, 0.12, 0.02, stripe], [0, 0.3, -0.405, 2.0, 0.12, 0.02, stripe],
+      ...windows, ...bogies, ...couplers, ...underfloor,
+      // Roof units and vents, a gutter and a dark skirt along each side, and the gangway at each end.
+      [-0.5, 0.84, 0, 0.5, 0.05, 0.4, 0x5d6475, 0, 0, 0x454b5a], [0.5, 0.84, 0, 0.5, 0.05, 0.4, 0x5d6475, 0, 0, 0x454b5a], [0, 0.84, 0, 0.14, 0.03, 0.2, steel],
+      [0, 0.73, 0.405, 2.0, 0.02, 0.02, 0x3a3e4e], [0, 0.73, -0.405, 2.0, 0.02, 0.02, 0x3a3e4e],
+      [0, 0.13, 0.405, 2.0, 0.05, 0.02, dark], [0, 0.13, -0.405, 2.0, 0.05, 0.02, dark],
+      [0.99, 0.2, 0, 0.02, 0.5, 0.4, dark], [-0.99, 0.2, 0, 0.02, 0.5, 0.4, dark],
+    ]),
+    nose: piece([
+      [-0.275, 0.12, 0, 1.45, 0.72, 0.8, WHITE],
+      [0.58, 0.12, 0, 0.26, 0.5, 0.8, WHITE],
+      [0.79, 0.12, 0, 0.16, 0.36, 0.78, WHITE],
+      [0.935, 0.12, 0, 0.13, 0.24, 0.74, WHITE],
+    ], [
+      [-0.275, 0.84, 0, 1.4, 0.07, 0.72, roof],
+      [-0.55, 0.91, 0, 0.3, 0.1, 0.3, dark],
+      [0.455, 0.62, 0, 0.04, 0.17, 0.62, glass],
+      [-0.12, 0.52, 0.405, 0.5, 0.22, 0.02, glass], [-0.12, 0.52, -0.405, 0.5, 0.22, 0.02, glass],
+      [-0.55, 0.52, 0.405, 0.22, 0.22, 0.02, glass], [-0.55, 0.52, -0.405, 0.22, 0.22, 0.02, glass],
+      [-0.275, 0.3, 0.405, 1.45, 0.12, 0.02, stripe], [-0.275, 0.3, -0.405, 1.45, 0.12, 0.02, stripe],
+      [0.58, 0.3, 0.405, 0.26, 0.12, 0.02, stripe], [0.58, 0.3, -0.405, 0.26, 0.12, 0.02, stripe],
+      [0.79, 0.3, 0.395, 0.16, 0.12, 0.02, stripe], [0.79, 0.3, -0.395, 0.16, 0.12, 0.02, stripe],
+      [0.995, 0.2, 0, 0.03, 0.1, 0.34, 0xfff3b0],
+      [0.98, 0.1, 0, 0.05, 0.06, 0.8, dark],
+      ...bogies, ...underfloor,
+      [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
+      // A pantograph folded up from the roof: a base, two arms and the contact bar.
+      [-0.05, 0.91, 0, 0.36, 0.03, 0.3, dark], [-0.05, 0.99, 0, 0.36, 0.025, 0.04, steel, -0.44], [-0.08, 1.14, 0, 0.3, 0.025, 0.04, steel, 0.5],
+      [0.06, 1.22, 0, 0.05, 0.02, 0.5, steel], [0.06, 1.24, 0.2, 0.05, 0.03, 0.06, dark], [0.06, 1.24, -0.2, 0.05, 0.03, 0.06, dark],
+      // Wipers, a destination board, a gutter and a dark skirt.
+      [0.478, 0.63, 0.14, 0.008, 0.1, 0.02, dark], [0.478, 0.63, -0.14, 0.008, 0.1, 0.02, dark], [0.455, 0.8, 0, 0.04, 0.035, 0.3, 0xffb53c],
+      [-0.275, 0.81, 0.405, 1.45, 0.02, 0.02, 0x3a3e4e], [-0.275, 0.81, -0.405, 1.45, 0.02, 0.02, 0x3a3e4e],
+      [-0.275, 0.13, 0.405, 1.45, 0.05, 0.02, dark], [-0.275, 0.13, -0.405, 1.45, 0.05, 0.02, dark],
+    ]),
+    diesel: piece([
+      [0.2, 0.12, 0, 1.46, 0.5, 0.7, WHITE, 0, 0, PAINT_SIDE],
+      [-0.66, 0.12, 0, 0.6, 0.76, 0.8, WHITE, 0, 0, PAINT_SIDE],
+      [0, 0.12, 0, 1.96, 0.1, 0.8, PAINT_TRIM],
+    ], [
+      ...bogies, ...hood, [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
+      [-0.66, 0.88, 0, 0.64, 0.06, 0.74, roof],
+      [-0.354, 0.6, 0, 0.012, 0.2, 0.62, glass], [-0.66, 0.6, 0.405, 0.36, 0.2, 0.012, glass], [-0.66, 0.6, -0.405, 0.36, 0.2, 0.012, glass],
+      [0.1, 0.62, 0, 0.16, 0.1, 0.16, dark], [0.5, 0.62, 0, 0.16, 0.1, 0.16, dark], [0.3, 0.62, 0, 1.2, 0.02, 0.3, roof],
+      // Hazard stripes and lamps on the nose.
+      [0.936, 0.24, 0, 0.012, 0.3, 0.68, 0xffc93c], [0.94, 0.3, 0.17, 0.012, 0.1, 0.1, dark], [0.94, 0.3, -0.17, 0.012, 0.1, 0.1, dark],
+      [0.944, 0.46, 0, 0.012, 0.08, 0.2, 0xfff3b0], [0.97, 0.1, 0, 0.06, 0.08, 0.8, dark],
+      // White handrails on posts along the hood, two roof fans, a fuel tank, a horn and cab steps.
+      ...[-1, 1].flatMap((z): Part[] => [[0.2, 0.7, z * 0.37, 1.4, 0.016, 0.016, 0xf4f6fc],
+        ...[-0.45, 0, 0.45, 0.88].map((x): Part => [x, 0.62, z * 0.37, 0.016, 0.08, 0.016, 0xf4f6fc]),
+        [-0.9, 0.02, z * 0.38, 0.12, 0.04, 0.08, steel], [-0.9, 0.1, z * 0.38, 0.12, 0.04, 0.08, steel]]),
+      [-0.15, 0.62, 0, 0.2, 0.035, 0.2, 0x3a3e4e], [0.75, 0.62, 0, 0.2, 0.035, 0.2, 0x3a3e4e],
+      [0, 0.0, 0, 0.5, 0.13, 0.5, 0x5d6475, 0, 0, 0x454b5a], [-0.6, 0.94, 0.16, 0.22, 0.03, 0.04, steel],
+    ]),
+    steam: piece([
+      [-0.66, 0.12, 0, 0.6, 0.76, 0.8, WHITE, 0, 0, PAINT_SIDE],
+      [0.14, 0.14, 0, 1.6, 0.07, 0.76, WHITE, 0, 0, PAINT_SIDE],
+    ], [
+      ...wheels, [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
+      [0.22, 0.21, 0, 1.2, 0.46, 0.54, 0x343844, 0, 0, 0x262932], [0.86, 0.21, 0, 0.12, 0.48, 0.58, 0x23252c],
+      [0.7, 0.67, 0, 0.18, 0.26, 0.18, 0x23252c], [0.7, 0.93, 0, 0.24, 0.05, 0.24, 0x343844],
+      [0.22, 0.67, 0, 0.2, 0.12, 0.2, 0xe0b040, 0, 0, 0xb98a25], [-0.14, 0.67, 0, 0.12, 0.08, 0.12, 0xe0b040, 0, 0, 0xb98a25],
+      [0.93, 0.5, 0, 0.03, 0.12, 0.14, 0xfff3b0], [0.96, 0.02, 0, 0.07, 0.16, 0.72, 0xb3262f],
+      [-0.66, 0.88, 0, 0.68, 0.06, 0.84, roof],
+      [-0.66, 0.58, 0.405, 0.3, 0.22, 0.012, glass], [-0.66, 0.58, -0.405, 0.3, 0.22, 0.012, glass], [-0.354, 0.62, 0, 0.012, 0.16, 0.5, glass],
+      // Brass boiler bands, a whistle, cylinders at the front, handrails, a number plate and three puffs of smoke.
+      [-0.1, 0.205, 0, 0.035, 0.47, 0.552, 0xe0b040], [0.48, 0.205, 0, 0.035, 0.47, 0.552, 0xe0b040], [-0.3, 0.67, 0, 0.05, 0.11, 0.05, 0xe0b040],
+      ...[-1, 1].flatMap((z): Part[] => [[0.8, 0.06, z * 0.33, 0.24, 0.16, 0.1, 0x343844, 0, 0, 0x262932], [0.2, 0.52, z * 0.285, 1.1, 0.016, 0.016, steel],
+        [-0.66, 0.36, z * 0.405, 0.22, 0.09, 0.012, 0xe0b040]]),
+      [0.66, 1.02, 0, 0.16, 0.12, 0.16, 0xf2f4f8, 0, 0, 0xd4d9e4], [0.54, 1.17, 0.03, 0.21, 0.15, 0.21, 0xf2f4f8, 0, 0, 0xd4d9e4], [0.38, 1.35, -0.02, 0.26, 0.18, 0.26, 0xf2f4f8, 0, 0, 0xd4d9e4],
+    ]),
+    tender: piece([[0, 0.12, 0, 1.9, 0.5, 0.78, WHITE, 0, 0, PAINT_SIDE], [0, 0.12, 0, 1.92, 0.1, 0.8, PAINT_TRIM]],
+      [...bogies, ...couplers, ...heap(0.62, 1.7), [0, 0.42, 0.396, 1.5, 0.06, 0.012, stripe], [0, 0.42, -0.396, 1.5, 0.06, 0.012, stripe],
+        // A ladder up the back and a water hatch.
+        ...[0, 1, 2, 3].map((i): Part => [-0.954, 0.2 + i * 0.1, 0.2, 0.008, 0.016, 0.14, steel]), [-0.7, 0.62, -0.2, 0.2, 0.03, 0.2, 0x5d6475]]),
+    container: piece([[0, 0.22, 0, 1.84, 0.6, 0.76, WHITE, 0, 0, PAINT_SIDE], ...ribs],
+      [...bogies, ...couplers, [0, 0.12, 0, 1.96, 0.1, 0.72, dark], [-0.924, 0.26, 0, 0.012, 0.52, 0.03, dark], [-0.924, 0.46, 0.14, 0.014, 0.12, 0.04, steel],
+        // Door lock bars, corner castings and a white shipping label on each side.
+        [-0.924, 0.26, 0.2, 0.012, 0.52, 0.02, steel], [-0.924, 0.26, -0.2, 0.012, 0.52, 0.02, steel], [-0.924, 0.46, -0.14, 0.014, 0.12, 0.04, steel],
+        ...[-1, 1].flatMap((z): Part[] => [[0.5, 0.5, z * 0.392, 0.36, 0.16, 0.012, 0xf4f6fc], [0.5, 0.54, z * 0.396, 0.24, 0.03, 0.012, dark],
+          ...[-0.9, 0.9].flatMap((x): Part[] => [[x, 0.22, z * 0.375, 0.06, 0.06, 0.03, steel], [x, 0.76, z * 0.375, 0.06, 0.06, 0.03, steel]])])]),
+    tank: piece([[0, 0.26, 0, 1.7, 0.46, 0.64, WHITE, 0, 0, PAINT_SIDE], [0, 0.72, 0, 1.5, 0.08, 0.4, WHITE, 0, 0, PAINT_SIDE]],
+      [...bogies, ...couplers, [0, 0.12, 0, 1.96, 0.14, 0.6, dark],
+        [-0.5, 0.25, 0, 0.06, 0.48, 0.66, dark], [0.5, 0.25, 0, 0.06, 0.48, 0.66, dark], [0, 0.8, 0, 0.2, 0.06, 0.2, dark],
+        [0, 0.44, 0.326, 0.7, 0.1, 0.012, stripe], [0, 0.44, -0.326, 0.7, 0.1, 0.012, stripe],
+        // A walkway and a red valve on top, a ladder on the near side and a hazard plate on each side.
+        [0.3, 0.8, 0.12, 1.0, 0.012, 0.1, steel], [-0.3, 0.8, 0, 0.1, 0.08, 0.1, 0xd8343c],
+        ...[0, 1, 2, 3, 4].map((i): Part => [0.7, 0.28 + i * 0.09, 0.332, 0.12, 0.016, 0.02, steel]),
+        [-0.7, 0.4, 0.326, 0.14, 0.14, 0.012, 0xff9a1f], [-0.7, 0.4, -0.326, 0.14, 0.14, 0.012, 0xff9a1f]]),
+    hopper: piece([[0, 0.22, 0, 1.9, 0.46, 0.78, WHITE, 0, 0, PAINT_SIDE], [0, 0.64, 0, 1.94, 0.05, 0.8, PAINT_TRIM], ...ribs.map((r): Part => [r[0], 0.24, r[2], 0.06, 0.4, 0.012, PAINT_TRIM])],
+      [...bogies, ...couplers, [0, 0.12, 0, 1.96, 0.1, 0.72, dark], ...heap(0.66, 1.7),
+        // Two discharge chutes underneath and a ladder on the end.
+        [-0.2, 0.02, 0, 0.3, 0.1, 0.5, 0x3a3e4e], [0.2, 0.02, 0, 0.3, 0.1, 0.5, 0x3a3e4e],
+        ...[0, 1, 2, 3].map((i): Part => [-0.954, 0.26 + i * 0.1, -0.2, 0.008, 0.016, 0.14, steel])]),
+    flat: piece([[0, 0.12, 0, 1.96, 0.08, 0.78, PAINT_TRIM]], flat),
   };
 }
 
@@ -389,13 +630,19 @@ export function logGeometry(len: 2 | 3 | 4): THREE.BufferGeometry {
   return merged;
 }
 
-/** Thin stepped pads, with one shallow notch. The whole cell remains safe support. */
-export function lilyGeometry(): THREE.BufferGeometry {
-  return voxel([
-    [0, 0, 0, 0.49, 0.035, 0.34, 0x43b958], [0, 0, 0, 0.34, 0.035, 0.49, 0x43b958],
+/** Thin stepped pads, with one shallow notch. The whole cell remains safe support.
+ * Variant 1 carries a pink flower at its edge; variant 2 is a wider pad with a white bud and a small second pad. */
+export function lilyGeometry(variant = 0): THREE.BufferGeometry {
+  const pad = 0x43b958, parts: Part[] = [
+    [0, 0, 0, 0.49, 0.035, 0.34, pad], [0, 0, 0, 0.34, 0.035, 0.49, pad],
     [-0.018, 0.035, -0.018, 0.33, 0.018, 0.33, 0x51c65f],
     [0.19, 0.035, 0.035, 0.12, 0.005, 0.05, 0x3d9e50],
-  ], 0.93);
+  ];
+  if (variant === 1) parts.push([-0.15, 0.053, -0.15, 0.15, 0.03, 0.15, 0xff8fc0, 0, 0, 0xe0669c], [-0.15, 0.083, -0.15, 0.09, 0.03, 0.09, 0xffd0e4], [-0.15, 0.113, -0.15, 0.04, 0.015, 0.04, 0xffd84a]);
+  if (variant === 2) parts.push([0, 0, 0, 0.58, 0.03, 0.2, pad], [0, 0, 0, 0.2, 0.03, 0.58, pad],
+    [0.3, 0, 0.3, 0.2, 0.03, 0.14, 0x3fae52], [0.3, 0, 0.3, 0.14, 0.03, 0.2, 0x3fae52],
+    [0.16, 0.053, -0.16, 0.07, 0.07, 0.07, 0xffffff, 0, 0, 0xdfe6ee], [0.16, 0.123, -0.16, 0.035, 0.02, 0.035, 0xffe9a0]);
+  return voxel(parts, 0.93);
 }
 
 const BARK = 0x6a4636, BARK_SIDE = 0x523629, SNOW = 0xf6faff, SNOW_SIDE = 0xd9e3f1;
