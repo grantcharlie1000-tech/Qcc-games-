@@ -9,13 +9,13 @@ uniform vec4 region;
 // the frost's nine sparse taps smeared ours into streaks. While softFrostMix is set (the dark body and its band below
 // the mirrored zone), frost() reads softFrost instead: nine taps, a ring of eight DARK_RING css px round the sample, on
 // a mip level whose texels fill the .77 DARK_RING gaps between them, so a stroke spreads evenly instead of repeating at
-// each tap. Its reach, DARK_RING plus 1.5 texels of the next whole mip level (about 1.6 css px at 1.5x), stays inside
-// the crop's 12 px floor under the bar. LOOK-6: Apple's dark bar barely softens a title behind it (10-90% edge rise 1.59
-// css px under the bar in its dark still and 1.58 in the video's rest frame, against 1.53 for its own text above the
-// bar). At DARK_RING 1.8 ours rose over 2.30 (our own text 1.14), at 1.3 over 2.08; the 1.5x backdrop itself leaves
-// about .55 css px of blur, so the ring comes down to .6, near that floor.
+// each tap. Its reach, DARK_RING plus 1.5 texels of the next whole mip level (about 3.6 css px at 1.5x), stays inside
+// the crop's 12 px floor under the bar. LOOK-6 brought the ring down to .6 so a title stayed nearly as sharp as Apple's
+// still shows it. LOOK-10: the council on aa6359ee read that bar as too clear (titles and the green and red stripes
+// sharp through it) beside Apple's calmer smoke, which softens what lies behind it into one surface, so the ring widens
+// to 1.6: letters still read through the bar, softly (the old near-black slab stays rejected).
 float softFrostMix = 0.;
-const float DARK_RING = .6;
+const float DARK_RING = 1.6;
 vec3 softFrost(vec2 pos) {
   vec2 uv = region.xy + pos * region.zw;
   float density = float(textureSize(scene, 0).x) * region.z;
@@ -128,7 +128,9 @@ const float BODY_BLUR = .9;
 // Apple's dark bar blurs less: titles and posters behind it still show their shapes (Charlie's still and video, 32.5 s),
 // so the dark theme takes DARK_BLUR of the wide field instead. LOOK-5: was .25, which still hazed the posters and blurred
 // a title under the bar into blobs; Apple's video at 32.5 s keeps an arm and the Hamilton star sharp through its bar.
-const float DARK_BLUR = .1;
+// LOOK-10 (council on aa6359ee, see DARK_RING): .1 left small bright marks crisp, so the bar takes .55 of the wide field,
+// which calms and dims them toward their surroundings. Broad art keeps its tone: the blur only mixes the same art.
+const float DARK_BLUR = .55;
 // The C30 face bend stretched a title behind the dark bar 1.2-1.5x vertically into tall streaks; the dark theme keeps
 // DARK_BEND of it, and its body frosts soft (softFrost).
 const float DARK_BEND = .3;
@@ -166,9 +168,11 @@ const float MILK_LIFT = .683, MILK_GAIN = .483, MILK_MIRROR = 1., PILL_MILK_DROP
 // and the art shows through nearly at its own tone, a little lifted (a floor under the video's man at 32.5 s reads
 // about 76 raw and 98 through the bar, the gold Hamilton poster about 117 and 132), its colour a little greyed. At rest
 // the dark theme takes the frost's tone as DARK_SMOKE.x + DARK_SMOKE.y of it, which undoes the frost's grey veil (black
-// about 32, white about 230), and DARK_HUE of that gain of its colour, about four fifths of the art's own.
+// about 32, white about 230), and DARK_HUE of that gain of its colour. LOOK-10: at DARK_HUE 1 (about four fifths of the
+// art's own colour) bluish posters tinted our bar blue-grey (council on aa6359ee), where Apple's dark bar is a neutral
+// smoke; at .5 the art's colour still shows through, at about two fifths of its own chroma.
 const vec2 DARK_SMOKE = vec2(-.047, 1.55);
-const float DARK_HUE = 1.;
+const float DARK_HUE = .5;
 // LOOK-5 (owner: our dark bar read as a near-black slab beside Apple's see-through smoke): that gain on the veiled frost
 // lifted dark art at a slope of 1.15 (the floor's 76 read 118, mid grey 160) and sank white to 230, so posters read hazy
 // and flat. The smoke now undoes the frost's veil and roll-off and the dark smoked() slope first (uniform art a tones to
@@ -562,8 +566,9 @@ void main() {
       vec3 selection = pillSurface(faceColor, pillNormal, pillDepth, depth, liftEdge, pp.y / pillRadius, milkTone, deepen);
       // The dark theme's resting pill is Apple's smoked capsule (PILL_DARK): the bar's own smoke at this pixel, a little
       // darker, so the art still shows through it, and held at PILL_DARK_CEIL over bright art. A press and the raised
-      // lens take it back to their milky and clear pieces.
-      vec3 darkPill = max(darkSmoke(selectionColor) * PILL_DARK.y - PILL_DARK.x, 0.);
+      // lens take it back to their milky and clear pieces. LOOK-10: it takes only the smoke's tone, so it reads as a neutral
+      // smoked capsule with the blue in the icon and label alone (the council read the darkened art's colour as a blue one).
+      vec3 darkPill = vec3(max(dot(darkSmoke(selectionColor), vec3(.2126, .7152, .0722)) * PILL_DARK.y - PILL_DARK.x, 0.));
       darkPill *= min(1., PILL_DARK_CEIL / max(dot(darkPill, vec3(.2126, .7152, .0722)), .001));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
       // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
