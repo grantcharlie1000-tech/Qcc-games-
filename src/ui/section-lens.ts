@@ -323,7 +323,11 @@ const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // the ends keep the held rim), easing back to the held rim as the press holds the lens still.
 // MOTION-13 (#24): the video's held rim is more colourful than the art on both sides of it (12.75 s: rim band p90 chroma
 // 19 over 3 above and 3 inside along the top, 74 over 70 and 69 along the bottom; two-sided fringe 10).
-const float LENS_RIM = 2.2, LENS_RIM_DRAG = 3.4;
+// MOTION-19 (#24): that wider drag rim was the page, not the lens. With the same pixels at 10.5 s (no lens there, the
+// page unmoved) subtracted, the video's 13.5 s drag rim is 2 css px at half height along the top (rows 28-29) and 1
+// along the bottom, the same as the 12.75 s hold's (2 and 1); behaviour_match's 3.5 also counted the page's grey strip
+// above the lens and the poster under it. So the moving lens keeps the held rim.
+const float LENS_RIM = 2.2, LENS_RIM_DRAG = 2.2;
 // MOTION-23 (#24 council on 071faed9: Opus saw a thick bright grey ring, Grok a pale hairline; the video settles it). Over
 // the 10.5 s frame (no lens there, the page unmoved) the video's held rim (12.75 s, the middle 60% of each edge) is 2 css
 // px at half height along the top and the foot, as ours, but only +49 and +44 luma over the art under it, where ours
