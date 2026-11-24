@@ -187,6 +187,13 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // under its bar over black (video 38.75 s; the 16 Nov still 1.21), 1.68 over a bright green poster (19.5 s, bar 137/255)
 // and 2.05-2.08 over a bright photo (32.5-32.75 s). The guard is now Apple's with a little room: 1.10-1.30 over black,
 // 1.45-2.30 over white and #777 art (PILL_STEP 1.21 rising to 1.8, LOOK-19).
+// LOOK-20 (F20 review: two frames pooled, and the white bound a guess): five more of Apple's rest frames over bright art,
+// read the same way (fast/look/tools-look20/step20.py): 22.6 s (Library over the green poster again) 1.67, 23.1 s (Radio
+// over the light Radio page, its bar at luminance .39, the brightest in the video) 1.70, and 30.3, 31.1 and 32.8 s (Home
+// over the scrolling photo) 1.60, 1.77 and 1.67. With 19.5 s and 32.5 s every frame's median lies in 1.60-2.05 (pooled
+// 1.69 over 170 pairs), with no trend in the bar's luminance from .12 to .42 (band medians 1.65-1.73). #777 art (bar about
+// .25) lies inside that range. White art (bar about .78) lies past it, so its bound is that band carried along the flat
+// trend (a log fit gives 1.88 at .78). The guard is 1.55-2.15 over both, the frames' range with about .05 of room.
 test('the selected accent keeps its contrast against the WebGL pill over white art and over black art',async({page})=>{
   const floor={dark:{ratio:2,pill:1},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
   for (const scheme of ['dark','light'] as const) {
@@ -249,8 +256,8 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     if (scheme==='dark') {
       const step=await barToPill(pill);
       console.log(`dark bar to pill over white art: ${step.toFixed(2)}`);
-      expect(step).toBeGreaterThanOrEqual(1.45);
-      expect(step).toBeLessThanOrEqual(2.3);
+      expect(step).toBeGreaterThanOrEqual(1.55);
+      expect(step).toBeLessThanOrEqual(2.15);
     }
     // Black art: wait for the bar to darken under it (light frost about 188, dark smoke about 32), then two equal reads.
     await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#000';});
@@ -282,8 +289,8 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       const greyStep=await barToPill(greyPill);
       console.log(`selected accent over #777 art, dark: ${greyRatio}:1, pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)}`);
       expect(greyRatio).toBeGreaterThanOrEqual(floor.dark.ratio);
-      expect(greyStep).toBeGreaterThanOrEqual(1.45);
-      expect(greyStep).toBeLessThanOrEqual(2.3);
+      expect(greyStep).toBeGreaterThanOrEqual(1.55);
+      expect(greyStep).toBeLessThanOrEqual(2.15);
     }
   }
 });
