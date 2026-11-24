@@ -170,7 +170,7 @@ const vec2 PILL_RIM = vec2(.35, 1.15);
 // the mirror keeps MIRROR_MIX of its contrast, light then dark, and the dark smoke (DARK_SMOKE) then lifts it back by
 // about half again, so the flipped title reads mid-grey as in Apple's dark still.
 const float MIRROR_BAND = 8., MIRROR_K = 2.;
-const vec2 MIRROR_MIX = vec2(.29, .45);
+const vec2 MIRROR_MIX = vec2(.29, .38);
 // In that still the flipped "New Releases for You" reads as crisp letters, so the dark theme's mirrored zone frosts at
 // MIRROR_SPREAD (about a third of the band's), where its strokes were smeared into streaks.
 const float MIRROR_SPREAD = .35;
@@ -183,11 +183,19 @@ const float MIRROR_SPREAD = .35;
 // the art from past the edge and ran it on flat to the rim. The dark foot draws from FOOT_MIRROR.x + FOOT_MIRROR.y *
 // (FOOT_MIRROR.x - d) inside the bar, so that poster ends 3.3 css px from the foot. Both mirrors sample inside the bar,
 // so neither reaches toward the crop's edge, and the taps are the band's own.
-const vec2 DARK_MIRROR = vec2(6., 3.), FOOT_MIRROR = vec2(8., 1.5);
+const vec2 DARK_MIRROR = vec2(4., 5.), FOOT_MIRROR = vec2(8., 1.5);
 // LOOK-14: the flipped title still read much fainter than Apple's (band13: peak stroke lift 51 over the band's body against
 // the still's 91): smoked() sank its bright strokes DARK_EVEN (.8) of the way to the wide field, undoing most of
 // MIRROR_MIX. The dark mirrored zone now takes none of that sink (darkEven), and keeps MIRROR_MIX.y .45 of its contrast:
 // the flipped title's strokes lift +87 over the body (Apple +91, before +51), lit to 4.7 css px (Apple 4.0).
+// LOOK-20: over Apple's own content, its section title under the bar's top half on a black page (tooling item 43), Apple's
+// dark still holds the flipped title in the band's outer 3 css px, and the 5 css px under it are plain smoke (rows 3-7:
+// column means spread 3.0 about a 31 mean). Ours ran on to 5 css px, the band's bend drawing the mirror from about 1.2 css
+// px deeper (spread 7.8 about 44), and its strokes read brighter (p95 113 over the body at css px against Apple's 107).
+// DARK_MIRROR 4/5 keeps the deepest sample, (1 + 5) x 4 = (1 + 3) x 6 = 24 css px, and squeezes the flipped title into the
+// outer 3 css px; MIRROR_MIX.y .38 brings its strokes toward Apple's 107. Nothing is dimmed: under the zone the band takes its
+// own body sample, as the rows below it do, so uniform and bright art read as before (LOOK-15's absolute dim drew a dark
+// strip there).
 // Apple Music's light bar is pale frost the art shows through, not milk: its mini player passes about .3 of the album
 // art under a 228 grey, and its tab bar reads 234 over the white page. The light theme lifts the bar's frost to
 // MILK_LIFT + MILK_GAIN of it, so black art reads about 188 under it and white about 240, and the art's colour and
