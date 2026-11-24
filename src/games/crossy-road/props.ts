@@ -58,21 +58,6 @@ export function snowmanGeometry(): THREE.BufferGeometry {
   ], 0.92);
 }
 
-/** A street lamp: an iron post on a plinth, a warm lantern under a snowy cap, and a wreath with a red bow. */
-export function lampPostGeometry(): THREE.BufferGeometry {
-  const iron = 0x3a3f4c, ironSide = 0x2b2e38, light: Rgb = [2.0, 1.55, 0.7];
-  return voxel([
-    [0, 0, 0, 0.44, 0.06, 0.44, SNOW, 0, 0, SNOW_SIDE], [0, 0, 0, 0.3, 0.14, 0.3, iron, 0, 0, ironSide], [0, 0.14, 0, 0.18, 0.06, 0.18, iron, 0, 0, ironSide],
-    [0, 0.2, 0, 0.09, 0.92, 0.09, iron, 0, 0, ironSide], [0, 1.1, 0, 0.2, 0.04, 0.2, iron, 0, 0, ironSide],
-    [0, 1.14, 0, 0.22, 0.24, 0.22, light],
-    [0, 1.38, 0, 0.3, 0.05, 0.3, iron, 0, 0, ironSide], [0, 1.43, 0, 0.26, 0.05, 0.26, SNOW, 0, 0, SNOW_SIDE], [0, 1.48, 0, 0.08, 0.06, 0.08, iron],
-    // The wreath: a square of green round the post with a bow at the front.
-    [0, 0.62, 0, 0.3, 0.07, 0.16, HOLLY, 0, 0, HOLLY_SIDE], [0, 0.86, 0, 0.3, 0.07, 0.16, HOLLY, 0, 0, HOLLY_SIDE],
-    [-0.13, 0.69, 0, 0.07, 0.17, 0.16, HOLLY, 0, 0, HOLLY_SIDE], [0.13, 0.69, 0, 0.07, 0.17, 0.16, HOLLY, 0, 0, HOLLY_SIDE],
-    [0, 0.6, 0.085, 0.12, 0.08, 0.03, RED], [0, 0.54, 0.085, 0.05, 0.07, 0.03, RED],
-  ], 0.92);
-}
-
 /** A holly bush: stepped green blocks with snow on top and red berries. */
 export function bushGeometry(): THREE.BufferGeometry {
   const parts: Part[] = [
@@ -102,15 +87,4 @@ export function giftsGeometry(): THREE.BufferGeometry {
   gift(-0.12, 0.406, -0.06, 0.3, 0.22, 0x3a86ff, 0x2a63c4, GOLD);
   parts.push([-0.12, 0.632, -0.06, 0.16, 0.06, 0.07, GOLD], [0.24, 0.266, 0.22, 0.14, 0.05, 0.07, 0xffffff]);
   return voxel(parts, 0.9);
-}
-
-/** Ice crystals: leaning pale-blue shards on a frozen base. */
-export function crystalGeometry(): THREE.BufferGeometry {
-  const ice = 0xdaf3ff, side = 0x8fcbe6, deep = 0x6fb4d8;
-  return voxel([
-    [0, 0, 0, 0.6, 0.12, 0.54, 0xc4e8f8, 0, 0, side],
-    [-0.08, 0.08, -0.02, 0.24, 0.86, 0.24, ice, 0.1, 0, side], [0.17, 0.08, 0.08, 0.18, 0.56, 0.18, ice, -0.22, 0, deep],
-    [-0.24, 0.08, 0.12, 0.13, 0.36, 0.13, ice, 0.3, 0, side], [0.06, 0.08, -0.2, 0.14, 0.44, 0.14, ice, -0.08, 0.2, deep],
-    [-0.16, 0.92, -0.02, 0.14, 0.05, 0.14, SNOW, 0.1],
-  ], 0.9);
 }
