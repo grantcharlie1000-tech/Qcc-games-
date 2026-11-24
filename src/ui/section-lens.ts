@@ -401,7 +401,14 @@ const float LENS_RIM = 2.2, LENS_RIM_DRAG = 2.2, LENS_RIM_HELD_FOOT = 1.2;
 // +30,+23,+25 over navy (hue 345) and turned blue over the orange poster (hue 214-226); LENS_RIM_FOOT is now that warm
 // white, so the foot adds +45,+37,+16 over navy (hue 43) and stays near-neutral over bright art.
 const vec2 LENS_RIM_LIGHT = vec2(.2, .03);
-const vec3 LENS_RIM_TOP = vec3(.6, .96, 1.), LENS_RIM_FOOT = vec3(1., .85, .62);
+// MOTION-28 (#24 council on 874125ae, Opus and Grok: a plain grey ring, no colour): across its width the video's rim splits
+// as a prism does. Over the 10.5 s no-lens frame its top adds +46,+60,+42 on the outer row (hue 108) and +50,+37,+26 on
+// the inner (hue 27) at 13.5 s (+46,+48,+36 / +41,+30,+22 at 12.75 s); its foot +55,+50,+30 inside (hue 48) and +19,+24,+25
+// outside (hue 190) at 12.75 s. One tint per edge (LENS_RIM_TOP, LENS_RIM_FOOT) read as grey on a 2 px line. So the rim's
+// outer row mixes toward LENS_RIM_OUTER, a green white, and its inner row toward LENS_RIM_INNER, a warm white, at the same
+// light (LENS_RIM_LIGHT): over dark art they add about +35,+45,+26 (hue 92) and +45,+31,+20 (hue 26), the brighter row as
+// light as the old top's (+25,+43,+45).
+const vec3 LENS_RIM_OUTER = vec3(.8, 1., .62), LENS_RIM_INNER = vec3(1., .72, .5);
 // MOTION-11 (#24 council on aa6359ee) darkened the face in a band about 5 css px deep just inside the rim, along the top
 // and bottom, as the video's held and dragged lens is dark there. MOTION-23 (#24 council on 071faed9: a dark halo round a
 // bright ring, and over bright art a wide blotchy band): that dark band is the art the lens bends in, not a shade. Over
@@ -606,7 +613,7 @@ vec3 lensFace(vec3 sceneColor, vec3 darkArt, vec3 clearArt, vec2 outward, float 
   rimDepth = mix(rimDepth, LENS_RIM_HELD_FOOT, pillPress * smoothstep(.5, .9, outward.y));
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
   float lit = LENS_RIM_LIGHT.x - LENS_RIM_LIGHT.y * max(0., facing);
-  vec3 rimLight = mix(LENS_RIM_FOOT, LENS_RIM_TOP, smoothstep(-.5, .5, facing));
+  vec3 rimLight = mix(LENS_RIM_OUTER, LENS_RIM_INNER, smoothstep(.5, 1.5, pillDepth));
   return mix(face, rimLight, lit * line);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone, float deepen) {
