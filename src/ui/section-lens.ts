@@ -305,6 +305,16 @@ const float PILL_TINT = 1.;
 // brightens (linear tone PILL_FLOOR.y to .z, about 39 to 68/255 under the smoke), so over bright posters the pill keeps
 // its step (pill_step_bright 1.75, Apple 1.72), and only a title or marks over a dark page sink.
 const vec3 PILL_FLOOR = vec3(.25, .02, .06);
+// LOOK-27 (Grok on 874125ae: over bright posters the dark rest pill was a flat near-black disc, about 79, where Apple's at
+// 19.5 s and 32.5 s is a smoked convex lens with the poster inside it, its detail and colour smoked down, about 92 and 57).
+// PILL_CAP's roll-off acted on each pixel's own tone, so over bright art every pixel ran into the same ceiling and the
+// poster's detail went flat. The roll-off now acts on the local mean, the wide field's own pill tone, and each pixel keeps
+// its ratio to that mean, up to PILL_DETAIL.x times it: the poster shows inside at the capped level, smoked down. Over
+// uniform art the pixel is its mean, so the interior, the step, the pill over black and every uniform-art pin are as
+// before. Under the selected label's rows (from PILL_DETAIL.y css px below the pill's centre, eased over .z) the tone is
+// anchored to the darkest of the field's taps (fieldDark) at its own capped level, never brighter, so the label keeps its
+// ink's contrast (item 49) while the poster still shows darker detail there.
+const vec3 PILL_DETAIL = vec3(2., 7., 2.);
 float srgbLinear(float c) { return c <= .04045 ? c / 12.92 : pow((c + .055) / 1.055, 2.4); }
 float linearSrgb(float c) { return c <= .0031308 ? 12.92 * c : 1.055 * pow(c, 1. / 2.4) - .055; }
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -828,7 +838,17 @@ void main() {
       float pillStep = mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, barLinear));
       float pillTone = max((barLinear + .05) / pillStep - .05, 0.), pillOver = max(0., pillTone - PILL_CAP.x);
       vec2 capBand = mix(PILL_CAP.zw, PILL_CAP_RUN.xy, smoothstep(PILL_CAP_RUN.z, PILL_CAP_RUN.w, abs(pillNormal.y)));
-      pillTone = mix(pillTone, min(pillTone, PILL_CAP.x) + pillOver / (1. + pillOver / (PILL_CAP.y - PILL_CAP.x)), smoothstep(capBand.x, capBand.y, pillDepth));
+      float flatTone = min(pillTone, PILL_CAP.x) + pillOver / (1. + pillOver / (PILL_CAP.y - PILL_CAP.x));
+      // LOOK-27: the roll-off on the local mean (the wide field's pill tone); the pixel keeps its ratio to it (PILL_DETAIL).
+      float wideLinear = srgbLinear(clamp(dot(darkSmoke(blurColor), vec3(.2126, .7152, .0722)), 0., 1.));
+      float wideTone = max((wideLinear + .05) / mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, wideLinear)) - .05, 0.);
+      float wideOver = max(0., wideTone - PILL_CAP.x), wideCapped = min(wideTone, PILL_CAP.x) + wideOver / (1. + wideOver / (PILL_CAP.y - PILL_CAP.x));
+      float detailTone = mix(flatTone, wideCapped * min(PILL_DETAIL.x, pillTone / max(wideTone, 1e-4)), smoothstep(PILL_CAP.x, PILL_CAP.y, wideTone));
+      float darkLinear = srgbLinear(clamp(dot(darkSmoke(smokedBlur(glassTone(fieldDark, 0.), 0.)), vec3(.2126, .7152, .0722)), 0., 1.));
+      float darkTone = max((darkLinear + .05) / mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, darkLinear)) - .05, 0.);
+      float darkOver = max(0., darkTone - PILL_CAP.x), darkCapped = min(darkTone, PILL_CAP.x) + darkOver / (1. + darkOver / (PILL_CAP.y - PILL_CAP.x));
+      detailTone = mix(detailTone, min(detailTone, darkCapped), smoothstep(PILL_DETAIL.y, PILL_DETAIL.y + PILL_DETAIL.z, pp.y));
+      pillTone = mix(pillTone, detailTone, smoothstep(capBand.x, capBand.y, pillDepth));
       vec3 smokeColor = darkSmoke(pillArt);
       float smokeLuma = dot(smokeColor, vec3(.2126, .7152, .0722)), pillGrey = linearSrgb(pillTone);
       vec3 darkPill = max(vec3(pillGrey) + PILL_TINT * (smokeColor - smokeLuma) * pillGrey / max(smokeLuma, .02), 0.);
@@ -994,6 +1014,9 @@ const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 1
 const INK_LENS = 6, INK_FLOOR = [.3,.02,.06], INK_TEXEL = 16/3, INK_TAPS = [[9,3.9],[-9,-3.9],[-3.9,9],[3.9,-9]];
 // LOOK-23 (council on 6eaf6223): the interior's roll-off (PILL_CAP), by the point's depth in its tab's capsule.
 const INK_CAP = [.04,.085,3,8];
+// LOOK-27: the roll-off acts on the local mean and each point keeps its ratio to it (PILL_DETAIL), anchored under the label
+// rows to the darkest tap's capped tone.
+const INK_DETAIL = [2,7,2];
 // LOOK-26 (F22 review I-1): along the capsule's top and foot the roll-off runs INK_CAP_RUN[0] to [1] css px in (PILL_CAP_RUN),
 // easing in as the point's normal turns from INK_CAP_RUN[2] to [3] vertical.
 const INK_CAP_RUN = [1,3,.67,.83];
@@ -1092,10 +1115,15 @@ export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):
       // PILL_STEP's step, deeper under brighter art as Apple's capsule (LOOK-17).
       const step = INK_STEP[0]+(INK_STEP[1]-INK_STEP[0])*smoothstep((bar-INK_STEP[2])/(INK_STEP[3]-INK_STEP[2]));
       // PILL_CAP: past INK_CAP[2] css px in, the tone above INK_CAP[0] rolls off toward INK_CAP[1].
-      const tone = Math.max(0,(bar+.05)/step-.05), over = Math.max(0,tone-INK_CAP[0]);
+      const tone = Math.max(0,(bar+.05)/step-.05);
       const run = smoothstep((vertical-INK_CAP_RUN[2])/(INK_CAP_RUN[3]-INK_CAP_RUN[2]));
       const from = INK_CAP[2]+run*(INK_CAP_RUN[0]-INK_CAP[2]), to = INK_CAP[3]+run*(INK_CAP_RUN[1]-INK_CAP[3]);
-      pills.push(tone+smoothstep((depth-from)/(to-from))*(Math.min(tone,INK_CAP[0])+over/(1+over/(INK_CAP[1]-INK_CAP[0]))-tone));
+      const capped = (t:number)=>Math.min(t,INK_CAP[0])+Math.max(0,t-INK_CAP[0])/(1+Math.max(0,t-INK_CAP[0])/(INK_CAP[1]-INK_CAP[0]));
+      const toneOf = (b:number)=>Math.max(0,(b+.05)/(INK_STEP[0]+(INK_STEP[1]-INK_STEP[0])*smoothstep((b-INK_STEP[2])/(INK_STEP[3]-INK_STEP[2])))-.05);
+      const wideTone = toneOf(barOf(field)), wideCapped = capped(wideTone);
+      let detail = capped(tone)+smoothstep((wideTone-INK_CAP[0])/(INK_CAP[1]-INK_CAP[0]))*(wideCapped*Math.min(INK_DETAIL[0],tone/Math.max(wideTone,1e-4))-capped(tone));
+      if (pill) detail += smoothstep((v-pill.y-pill.h/2-INK_DETAIL[1])/INK_DETAIL[2])*(Math.min(detail,capped(toneOf(floorTone)))-detail);
+      pills.push(tone+smoothstep((depth-from)/(to-from))*(detail-tone));
     }
     return pills;
   };
