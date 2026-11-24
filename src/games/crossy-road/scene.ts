@@ -20,7 +20,7 @@ import {
 } from './config';
 import { forEachMover, forEachTrain, laneVelocity, moverCopy, platformAt, railWarning, trainCopy } from './lanes';
 import {
-  CAR_COLORS, CONTAINER_COLORS, LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, beamGeometry, chickenGeometry, carGeometry, groundBoxGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
+  CAR_COLORS, CONTAINER_COLORS, LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, beamGeometry, chickenGeometry, carGeometry, groundBoxGeometry, lampGeometry, lilyGeometry, logGeometry, mastGeometry, rockGeometry,
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
 import {bushGeometry, crystalGeometry, decoratedTreeGeometry, giftsGeometry, lampPostGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
@@ -81,7 +81,7 @@ const C_DIRT = reg(0x633642);
 /** Winter: snow lying on tracks and the grass, green tufts poking through it, and falling flakes. */
 const C_SNOW = reg(0xe6eef8),
   /** The track: a two-step gravel bed with speckles, tie plates, and polished rail heads. */
-  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
+  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_WIRE = reg(0x3d4250), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
 /** Small floor details: mushrooms, cones, pebbles, flowers, manhole covers and reeds. */
 const C_CAP = reg(0xd8343c), C_STEM = reg(0xf3ecdc), C_CONE = reg(0x7a4f38), C_PEBBLE = reg(0x8f8ba0, 0x77738a), C_PETAL = reg(0xffffff, 0x9a6fe0, 0xffd84a),
   C_COVER = reg(0x2c303b, 0x5b6070), C_REED = reg(0x9aa35c, 0x7a4b32);
@@ -105,7 +105,7 @@ const WATER_Y = -0.12, LOG_TOP = 0.04, PAD_TOP = -0.072, LOG_BASE = -0.22, PAD_B
 /** The drawn length of a locomotive and of a wagon. */
 const PIECE_LEN = 2 * TRAIN_SCALE;
 /** The track axis in its row: nearer the middle than road traffic, so the larger train stays inside the row. */
-const TRACK_Z = 0.2;
+const TRACK_Z = 0.1;
 /** Half the depth of a car and of a lorry at scale 1, wheels and mirrors included. */
 const CAR_HALF = 0.35, TRUCK_HALF = 0.3;
 /** How much larger than its model each obstacle stands (width, height), in PROP order: three bare trees, the stump,
@@ -116,7 +116,9 @@ const PROP_SCALE: readonly (readonly [number, number])[] = [
 ];
 /** Track layers (tiles): the gravel bed's two steps, sleeper thickness, rail centre lines from the track axis and the
  * rail-head top, which sits just above TRAIN_BASE_Y so bogies ride on the heads. */
-const BED_LOW = 0.016, BED_TOP = 0.034, SLEEPER_H = 0.045, RAIL_GAUGE = 0.27, RAIL_TOP = 0.14;
+const BED_LOW = 0.04, BED_TOP = 0.08, SLEEPER_H = 0.05, RAIL_GAUGE = 0.36, RAIL_TOP = 0.19;
+/** The overhead line: the contact wire sits just above a raised pantograph, the catenary wire on the mast arms. */
+const WIRE_Y = 1.76, CATENARY_Y = 1.95;
 /** The signal's two lamps: offset either side of the post and their height (see signalPostGeometry). */
 const SIGNAL_LAMP_X = 0.2, SIGNAL_LAMP_Y = 1.06;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
@@ -368,10 +370,14 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Additive halos make a lit lamp bloom against the scene.
   const haloMaterial = mat(new THREE.MeshBasicMaterial({vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending}));
   const halos = pool(geo(signalHaloGeometry()), haloMaterial, 48, false, false, 6);
+  // Overhead-line masts, and a warm glow at each locomotive's head lamps with its spill on the track ahead.
+  const masts = pool(geo(mastGeometry()), lit, 48, true);
+  const lampHalos = pool(geo(signalHaloGeometry(0xffe2a0)), haloMaterial, 16, false, false, 6);
+  const lampSpills = pool(geo(signalGlowGeometry(0xffdf9a)), haloMaterial, 16, false, false, 3);
   const fx = pool(box, unlit, 96);
   const flakes = pool(box, unlit, FLAKES_HIGH, false, false, 4);
 
-  for (const p of [ground, ...props, ...lilies, posts]) p.cached = true;
+  for (const p of [ground, ...props, ...lilies, posts, masts]) p.cached = true;
 
   // The bird and the UFO use the same pooled transforms and projected shadows.
   const playerPool = pool(geo(chickenGeometry().scale(0.78, 1, 0.78)), playerMaterial, 1, true);
@@ -687,6 +693,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const nose = front - (dir * PIECE_LEN) / 2;
     if (nose >= winLo - 2 && nose <= winHi + 2) {
       locoBody[kind].put(nose, TRAIN_Y, curZ + TRACK_Z, TRAIN_SCALE, TRAIN_SCALE, TRAIN_SCALE, yaw, tint, 1);
+      lampHalos.put(front, 0.55, curZ + TRACK_Z, 1.5, 1.5, 1.5, 0, C_WHITE, 1);
+      lampSpills.put(front + dir * 1.7, RAIL_TOP + 0.01, curZ + TRACK_Z, 2.2, 1, 0.5, 0, C_WHITE, 1);
     }
     const bodyLen = x1 - x0 - PIECE_LEN, n = Math.max(1, Math.round(bodyLen / PIECE_LEN)), each = bodyLen / n, sx = each / 2;
     for (let i = 0; i < n; i++) {
@@ -706,14 +714,18 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       band(C_SNOW, 0, 0.02, curZ + ROW_DEPTH / 2 - 0.1, 0.2);
       // A raised gravel bed in two steps, so its edges catch the light like a real ballast shoulder.
       const tz = curZ + TRACK_Z;
-      band(C_BED, 0, BED_LOW, tz, 0.98);
-      band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 0.86);
+      band(C_BED, 0, BED_LOW, tz, 1.12);
+      band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 1);
+      // The overhead line: a contact wire and a catenary wire, on a mast every eight tiles on the far side.
+      band(C_WIRE, WIRE_Y, 0.014, tz, 0.02);
+      band(C_WIRE, CATENARY_Y, 0.012, tz, 0.02);
+      for (let x = Math.ceil((winLo - 4.15) / 8) * 8 + 4.15; x <= winHi + 1; x += 8) masts.put(x, 0, tz - 0.7, 1, 1, 1, 0, C_WHITE, 1);
       for (let x = Math.ceil(winLo); x <= winHi; x++) {
         const h = hash(lane.row, x + 3000);
         // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
         for (const sx of [x - 0.25, x + 0.25]) {
-          ground.put(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.8, 0, C_SLEEPER, 1);
-          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, 0, C_PLATE, 1);
+          ground.put(sx, BED_TOP, tz, 0.2, SLEEPER_H, 0.94, 0, C_SLEEPER, 1);
+          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.22, 0.008, 0.14, 0, C_PLATE, 1);
         }
         // Gravel speckles between the sleepers.
         putGround(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, C_GRAVEL + ((h >>> 22) & 1));
@@ -725,9 +737,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
       const foot = BED_TOP + SLEEPER_H + 0.008;
       for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) {
-        band(C_STEEL, foot, 0.008, tz + rz, 0.1);
-        band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.03, tz + rz, 0.035);
-        band(C_RAIL_HEAD, RAIL_TOP - 0.022, 0.022, tz + rz, 0.075);
+        band(C_STEEL, foot, 0.008, tz + rz, 0.12);
+        band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.038, tz + rz, 0.04);
+        band(C_RAIL_HEAD, RAIL_TOP - 0.03, 0.03, tz + rz, 0.085);
       }
     } else {
       curRail=lane;

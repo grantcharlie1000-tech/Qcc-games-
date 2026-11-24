@@ -151,7 +151,7 @@ export const SAFE_ROWS = 5;
 export const ROW_DEPTH = 1.38;
 /** Near-side vehicle placement keeps their elevated silhouettes inside their own rendered row. */
 export const TRAFFIC_ROW_Z = 0.32;
-export const TRAIN_BASE_Y = 0.13;
+export const TRAIN_BASE_Y = 0.18;
 /** Revision seven draws road vehicles this many times larger, and makes their collision spans as much longer. */
 export const VEHICLE_SCALE = 1.45;
 /** Trains and scenery are drawn larger in every revision. The bird keeps its size. */
