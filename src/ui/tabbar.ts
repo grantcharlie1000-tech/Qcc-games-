@@ -88,7 +88,10 @@ export function tabCover(center:number,halfWidth:number,bevel:number,boxes:reado
 // LENS_EDGE_REACH): across the bubble's bevel each point shows what lies WARP_REACH * u^3 further out, so a glyph's outer
 // part is squeezed into the rim. An SVG displacement map of the bubble, drawn once per size, sits under each such tab.
 // The bend stays in the outer WARP_BAND css px, as the video's does (a glyph in the face is not squeezed).
-const WARP_REACH=18,WARP_BAND=9,WARP_SPAN=2.2*WARP_REACH,WARP_DENSITY=2;
+// MOTION-23 (#24 council on 071faed9: the glyph under the drag lens's edge tears): the rim pulled a glyph from 18 css px
+// out into its outer band, and a glyph just past the edge stays put, so the two halves split by up to 18 px there.
+// A 6 px pull still bends the glyph into the rim but no longer splits it.
+const WARP_REACH=6,WARP_BAND=9,WARP_SPAN=2.2*WARP_REACH,WARP_DENSITY=2;
 const SVG_NS='http://www.w3.org/2000/svg';
 let warpIds=0;
 // MOTION-13 (#24 review of aa6359ee..691f4616, I-2): the map was drawn and PNG-encoded (toDataURL) inside the rAF tick at

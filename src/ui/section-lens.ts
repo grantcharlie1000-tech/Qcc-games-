@@ -31,6 +31,10 @@ vec3 softFrost(vec2 pos) {
   }
   return rgb * .1;
 }
+// MOTION-23 (#24 council on 071faed9: a blocky, pixelated fisheye inside the held lens): the raised lens's bevel squeezes
+// the art it draws in up to about 5x toward the rim, and frost read it at mip 0, so it aliased into blocks. While the lens
+// is up, frostLod is the mip level that squeeze needs (log2 of it), so the bent art stays smooth; elsewhere it is 0.
+float frostLod = 0.;
 vec3 frost(vec2 pos, float spread) {
   if (softFrostMix > .5) return softFrost(pos);
   vec2 uv = region.xy + pos * region.zw;
@@ -40,11 +44,11 @@ vec3 frost(vec2 pos, float spread) {
   vec2 nearY = vec2(-.65, 1.50) * tapScale;
   vec2 farX = vec2(1.15, 3.05) * tapScale;
   vec2 farY = vec2(-3.05, 1.15) * tapScale;
-  vec3 nearSamples = textureLod(scene, uv + nearX, 0.).rgb + textureLod(scene, uv - nearX, 0.).rgb
-                   + textureLod(scene, uv + nearY, 0.).rgb + textureLod(scene, uv - nearY, 0.).rgb;
-  vec3 farSamples = textureLod(scene, uv + farX, 0.).rgb + textureLod(scene, uv - farX, 0.).rgb
-                  + textureLod(scene, uv + farY, 0.).rgb + textureLod(scene, uv - farY, 0.).rgb;
-  return .16 * textureLod(scene, uv, 0.).rgb + .105 * (nearSamples + farSamples);
+  vec3 nearSamples = textureLod(scene, uv + nearX, frostLod).rgb + textureLod(scene, uv - nearX, frostLod).rgb
+                   + textureLod(scene, uv + nearY, frostLod).rgb + textureLod(scene, uv - nearY, frostLod).rgb;
+  vec3 farSamples = textureLod(scene, uv + farX, frostLod).rgb + textureLod(scene, uv - farX, frostLod).rgb
+                  + textureLod(scene, uv + farY, frostLod).rgb + textureLod(scene, uv - farY, frostLod).rgb;
+  return .16 * textureLod(scene, uv, frostLod).rgb + .105 * (nearSamples + farSamples);
 }
 vec3 transmit(vec3 rgb, float transmission, float highlightCompression, float saturation) {
   float luma = dot(rgb, vec3(.2126, .7152, .0722));
@@ -669,7 +673,10 @@ void main() {
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
         // smoke and wider frost return as motion falls, so the last moving frame is the rest pill.
         // One frost sample serves the moving selection and the clear glass it fades from.
+        // The bevel's squeeze along its normal: d(sample)/d(screen) = 1 + 3 u^2 x reach / bevel (frostLod).
+        frostLod = pillLift * log2(1. + 3. * u * u * dot(edgeReach, abs(outward)) / lensBevel(pillRadius));
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
+        frostLod = 0.;
         clearArt = frosted;
         // MOTION-19: the held light lens's soft face (HOLD_SOFT). Zero at rest, in drag travel and in the dark theme.
         float holdSoft = HOLD_SOFT * pillPress * pillLift * (1. - pillSmoke) * (1. - smoothstep(HOLD_FACE.x, HOLD_FACE.y, u));
