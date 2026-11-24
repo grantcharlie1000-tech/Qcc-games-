@@ -106,7 +106,17 @@ const WARP_PULL=3.1,WARP_POWER=11,WARP_BAND=14,WARP_SPAN=4,WARP_DENSITY=2;
 // a tab's label is not drawn on the far side of the rim from most of the tab (inside the bubble for a tab mostly outside
 // it, outside for one mostly under it), so it ends at the rim instead of squeezing into it. The glyphs keep the squeeze.
 // Only a tab mostly outside the bubble splits: the tab under it keeps its accent whole, as the video's Radio does.
+// MOTION-30 (#24 council on 942de639, Opus: the drag cut the selected tab's own label, "V Shows" light and dark, where the
+// video cuts only the neighbour's, "rary", and keeps "Radio" whole): only a tab whose GLYPH is mostly outside the bubble
+// is cut and split; a tab whose glyph is mostly under it keeps its whole label.
 const FRINGE_BAND=6,FRINGE_SHIFT=1.25,FRINGE_TOP='rgb(64,214,255)',FRINGE_FOOT='rgb(255,64,200)';
+// MOTION-30 (#24, orchestrator item 3): in Charlie's video a tab's ink is the lens's cyan wherever it lies inside the raised
+// lens's outline and white outside it, whichever tab it belongs to: New's squares inside the 12.75 s lens read rgb(44,180,252)
+// (median) against white outside, and at 14.0 s Ra|dio and Libr|ary split at the outline the same way. Ours kept a tab the rim
+// crosses white at the rim, the mostly covered one too. So in the dark theme (the video's) the ink of each tab the rim crosses
+// takes LENS_INK inside the bubble, easing in with its lift, under the fringe's order as before (the fringe's copies stay
+// under the ink); the tab nearest the bubble's centre keeps the selection's accent whole, and the light theme is unchanged.
+const LENS_INK='rgb(44,180,252)';
 const SVG_NS='http://www.w3.org/2000/svg';
 let warpIds=0;
 // MOTION-13 (#24 review of aa6359ee..691f4616, I-2): the map was drawn and PNG-encoded (toDataURL) inside the rAF tick at
@@ -200,7 +210,7 @@ function bindLensWarp(bar:HTMLElement){
   defs.style.cssText='position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
   type Warp={id:string;image:SVGFEImageElement;filter:SVGFilterElement;displace:SVGFEDisplacementMapElement;
     band:SVGFEMorphologyElement;up:SVGFEOffsetElement;down:SVGFEOffsetElement;cyan:SVGFEFloodElement;magenta:SVGFEFloodElement;
-    cutIn:SVGFEFloodElement;cutOut:SVGFEFloodElement};
+    cutIn:SVGFEFloodElement;cutOut:SVGFEFloodElement;ink:SVGFECompositeElement;inked:SVGFEMergeNodeElement};
   const filters=new Map<HTMLElement,Warp>();
   // The last decoded map the tabs were given.
   let shown='';
@@ -219,11 +229,18 @@ function bindLensWarp(bar:HTMLElement){
     for(const [name,value] of [['filterUnits','userSpaceOnUse'],['color-interpolation-filters','sRGB']])filter.setAttribute(name,value);
     // MOTION-28: the map's B is the bubble's inside (0 past the map's box); the glyph's fringe sits in the inside's outer
     // FRINGE_BAND px (the inside less itself eroded), and the label's rows on the far side of the rim are cut (cutIn or
-    // cutOut, whichever is lit).
+    // cutOut, whichever is lit). MOTION-30: the bent glyph's part inside the bubble takes LENS_INK by the ink composite's k3
+    // (`inked`, the ink and the rest summed back to the glyph's own alpha), and the two sides of the cut are summed back
+    // the same way (F24 review m-1: source-over of the soft inside a and outside 1 - a lost up to a quarter of a stroke's
+    // alpha on the rim's one-px ramp, a faint seam through a glyph crossing it).
     filter.innerHTML='<feFlood flood-color="rgb(128,128,0)" result="flat"/><feImage preserveAspectRatio="none" result="bubble"/>'+
       '<feMerge result="map"><feMergeNode in="flat"/><feMergeNode in="bubble"/></feMerge>'+
       '<feDisplacementMap in="SourceGraphic" in2="map" scale="0" xChannelSelector="R" yChannelSelector="G" result="bent"/>'+
       '<feColorMatrix in="map" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0" result="inside"/>'+
+      '<feComposite in="bent" in2="inside" operator="in" result="bentIn"/><feComposite in="bent" in2="inside" operator="out" result="bentOut"/>'+
+      `<feFlood flood-color="${LENS_INK}"/><feComposite in2="bentIn" operator="in" result="inkIn"/>`+
+      '<feComposite in="bentIn" in2="inkIn" operator="arithmetic" k2="1" k3="0" result="tintIn"/>'+
+      '<feComposite in="bentOut" in2="tintIn" operator="arithmetic" k2="1" k3="1" result="inked"/>'+
       `<feMorphology in="inside" operator="erode" radius="${FRINGE_BAND}" result="deep"/>`+
       '<feComposite in="inside" in2="deep" operator="out" result="band"/>'+
       `<feOffset in="bent" dy="0" result="up"/><feFlood flood-color="${FRINGE_TOP}"/><feComposite in2="up" operator="in" result="cyan"/>`+
@@ -234,12 +251,13 @@ function bindLensWarp(bar:HTMLElement){
       '<feFlood flood-color="#000" flood-opacity="0" result="cutIn"/><feFlood flood-color="#000" flood-opacity="0" result="cutOut"/>'+
       '<feComposite in="lit" in2="inside" operator="in" result="inPart"/><feComposite in="lit" in2="inside" operator="out" result="outPart"/>'+
       '<feComposite in="inPart" in2="cutIn" operator="out" result="inKept"/><feComposite in="outPart" in2="cutOut" operator="out" result="outKept"/>'+
-      '<feMerge><feMergeNode in="outKept"/><feMergeNode in="inKept"/></feMerge>';
+      '<feComposite in="outKept" in2="inKept" operator="arithmetic" k2="1" k3="1"/>';
     defs.append(filter);
     const floods=filter.querySelectorAll('feFlood'),offsets=filter.querySelectorAll('feOffset');
     entry={id,image:filter.querySelector('feImage') as SVGFEImageElement,filter,displace:filter.querySelector('feDisplacementMap') as SVGFEDisplacementMapElement,
       band:filter.querySelector('feMorphology') as SVGFEMorphologyElement,up:offsets[0] as SVGFEOffsetElement,down:offsets[1] as SVGFEOffsetElement,
-      cyan:floods[1] as SVGFEFloodElement,magenta:floods[2] as SVGFEFloodElement,cutIn:floods[3] as SVGFEFloodElement,cutOut:floods[4] as SVGFEFloodElement};
+      cyan:floods[2] as SVGFEFloodElement,magenta:floods[3] as SVGFEFloodElement,cutIn:floods[4] as SVGFEFloodElement,cutOut:floods[5] as SVGFEFloodElement,
+      ink:filter.querySelector('feComposite[result=tintIn]') as SVGFECompositeElement,inked:filter.querySelector('feMerge[result=lit]>feMergeNode:last-child') as SVGFEMergeNodeElement};
     filters.set(tab,entry);
     return entry;
   };
@@ -255,20 +273,25 @@ function bindLensWarp(bar:HTMLElement){
     },
     // The bubble (centre x, centre y, width, height, bevel), its lift and map, and the tab's layout box [left, top, width,
     // height, label top, label height], read before the frame's writes. Each tab it crosses bends. MOTION-28: its cover
-    // picks the side of the rim its label is cut on.
-    set(tab:HTMLElement,lens:readonly [number,number,number,number,number]|null,lift:number,map:string,box:Box,cover=0){
+    // picks the side of the rim its label is cut on. MOTION-30: ink (0-1) is how far its ink inside the bubble is LENS_INK.
+    set(tab:HTMLElement,lens:readonly [number,number,number,number,number]|null,lift:number,map:string,box:Box,glyph=0,ink=0){
       if(!lens||!map){if(tab.style.filter)tab.style.removeProperty('filter');return;}
       // The map is centred on the bubble and stretched to its box.
       const [cx,cy]=lens,width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,[left,top,tabWidth,tabHeight,labelTop,labelHeight]=box;
-      const {id,image,filter,displace,up,down,cyan,magenta,cutIn,cutOut}=make(tab);
+      const {id,image,filter,displace,up,down,cyan,magenta,cutIn,cutOut,ink:inkMix,inked}=make(tab);
       if(image.getAttribute('href')!==map)image.setAttribute('href',map);
-      // Only a tab mostly outside the bubble splits at the rim; the one under it (the selection's accent) stays whole.
-      const cut=cover<.5?cutIn:cutOut,keep=cut===cutIn?cutOut:cutIn,fringe=cover<.5?FRINGE_SHIFT*lift:0;
+      // Only a tab whose glyph is mostly outside the bubble splits at the rim and loses its label's part inside it; the one
+      // under it keeps its label whole (MOTION-30) and the selection's accent whole.
+      const outside=glyph<.5,fringe=outside?FRINGE_SHIFT*lift:0;
       const attributes:[SVGElement,string,number][]=[[displace,'scale',WARP_SPAN*lift],[filter,'x',-24],[filter,'y',-24],[filter,'width',tabWidth+48],
         [filter,'height',tabHeight+48],[image,'x',cx-width/2-left],[image,'y',cy-height/2-top],
         [image,'width',width],[image,'height',height],[up,'dy',-fringe],[down,'dy',fringe],[cyan,'flood-opacity',fringe?1:0],[magenta,'flood-opacity',fringe?1:0],
-        [cut,'flood-opacity',1],[keep,'flood-opacity',0],[cut,'x',-24],[cut,'width',tabWidth+48],[cut,'y',labelTop-1],[cut,'height',labelHeight+2]];
+        [cutIn,'flood-opacity',outside?1:0],[cutOut,'flood-opacity',0],[cutIn,'x',-24],[cutIn,'width',tabWidth+48],[cutIn,'y',labelTop-1],[cutIn,'height',labelHeight+2],
+        [inkMix,'k2',1-ink],[inkMix,'k3',ink]];
       for(const [element,name,value] of attributes)if(element.getAttribute(name)!==value.toFixed(2))element.setAttribute(name,value.toFixed(2));
+      // With no lens ink the glyph is drawn as it was, without the inside/outside split.
+      const source=ink>0?'inked':'bent';
+      if(inked.getAttribute('in')!==source)inked.setAttribute('in',source);
       if(tab.style.filter!==`url("#${id}")`)tab.style.setProperty('filter',`url("#${id}")`);
     },
     clear(tabs:readonly HTMLElement[]){for(const tab of tabs)tab.style.removeProperty('filter');},
@@ -294,17 +317,30 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const used=getComputedStyle(part),width=parseFloat(used.width)||0,left=tab.offsetLeft+(tab.offsetWidth-width)/2;
     return [left,left+width,width*(parseFloat(used.height)||0)] as const;
   });
+  // MOTION-30: the share of a tab's glyph (its icon alone) under the bubble, which picks the side of the rim its label is cut on.
+  const glyphCover=(tab:HTMLElement,center:number,half:number,bevel:number)=>{
+    const icon=tab.querySelector<SVGSVGElement>(':scope>.ui-icon');
+    if(!icon)return 0;
+    const width=parseFloat(getComputedStyle(icon).width)||0,left=tab.offsetLeft+(tab.offsetWidth-width)/2;
+    return lensCover(center,half,bevel,left,left+width);
+  };
   // A tab's layout box in the bar, [left, top, width, height], read with the frame's other reads. MOTION-28: then its
   // label's rows in the tab [top, height], which the zoom's scale never moves.
   const box=(tab:HTMLElement):Box=>{const span=tab.querySelector<HTMLElement>(':scope>span');
     return [tab.offsetLeft,tab.offsetTop,tab.offsetWidth,tab.offsetHeight,span?.offsetTop??0,span?.offsetHeight??0];};
   // The rim bends the tabs it crosses (bindLensWarp) while the WebGL bubble is raised, through the release spring too.
-  // Each tab comes with its cover and its box, both read before the frame's first write.
-  const bend=(drawn:{pill:number[];sx:number;sy:number}|undefined,lift:number,covers:readonly (readonly [HTMLElement,number,Box])[])=>{
+  // Each tab comes with its cover and its box, both read before the frame's first write. MOTION-30: in the dark theme each
+  // tab but `keep` (the tab nearest the bubble's centre, which keeps the selection's accent) takes the lens's ink inside it.
+  const dark=typeof matchMedia==='function'?matchMedia('(prefers-color-scheme: dark)'):null;
+  type Cover=readonly [HTMLElement,number,Box,number];
+  const nearest=(covers:readonly Cover[],center:number)=>covers.reduce<Cover|undefined>((best,entry)=>
+    !best||Math.abs(entry[2][0]+entry[2][2]/2-center)<Math.abs(best[2][0]+best[2][2]/2-center)?entry:best,undefined)?.[0];
+  const bend=(drawn:{pill:number[];sx:number;sy:number}|undefined,lift:number,covers:readonly Cover[],keep?:HTMLElement)=>{
     const lens=drawn&&lift>0?[drawn.pill[0]/drawn.sx,drawn.pill[1]/drawn.sy,drawn.pill[2]/drawn.sx,drawn.pill[3]/drawn.sy] as const:null;
     const bubble=lens?[...lens,raisedBevel(lens[2],lens[3])] as const:null;
     const map=bubble&&covers.some(([,cover])=>cover>0&&cover<.999)?warp.map(bubble):'';
-    for(const [tab,cover,place] of covers)warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place,cover);
+    const ink=dark?.matches?lift:0;
+    for(const [tab,cover,place,glyph] of covers)warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place,glyph,tab===keep?0:ink);
   };
   const tick=()=>{
     frame=0;
@@ -322,9 +358,9 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     if(!bar.hasAttribute('data-pill-dragging')&&!bar.hasAttribute('data-pressing')){
       // The release: the glyphs ease back (CSS) while the bend follows the falling bubble down. The tabs are read before
       // unzoom writes.
-      const covers=drawn&&lift>0?tabs().map(tab=>[tab,tabCover(center,half,bevel,content(tab)),box(tab)] as const):null;
+      const covers=drawn&&lift>0?tabs().map(tab=>[tab,tabCover(center,half,bevel,content(tab)),box(tab),glyphCover(tab,center,half,bevel)] as const):null;
       if(pressedAt!==null)unzoom();
-      if(covers){bend(drawn,lift,covers);frame=requestAnimationFrame(tick);}
+      if(covers){bend(drawn,lift,covers,nearest(covers,center));frame=requestAnimationFrame(tick);}
       else clear();
       return;
     }
@@ -334,7 +370,7 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     // Every layout read comes before the first write, so a drag frame forces at most one layout.
     const zooms=tabs().map(tab=>{
       const cover=tabCover(center,half,bevel,content(tab)),place=box(tab);
-      return [tab,(1+(lensZoom(scaleX,cover,scaleY)-1)*rise).toFixed(3),cover,Math.abs(place[0]+place[2]/2-center),place] as const;
+      return [tab,(1+(lensZoom(scaleX,cover,scaleY)-1)*rise).toFixed(3),cover,Math.abs(place[0]+place[2]/2-center),place,glyphCover(tab,center,half,bevel)] as const;
     });
     // The tab nearest the bubble's centre takes the selection's accent while the press lasts, as the video's Radio
     // under the held lens turns blue while Library gives it up; the ink of every tab mostly under the clear bubble
@@ -345,7 +381,7 @@ function bindLensZoom(bar:HTMLElement):()=>void{
       if(tab.hasAttribute('data-lens-target')!==(tab===target))tab.toggleAttribute('data-lens-target',tab===target);
       if(tab.hasAttribute('data-lens-under')!==(cover>=.5))tab.toggleAttribute('data-lens-under',cover>=.5);
     }
-    bend(drawn,lift,zooms.map(([tab,,cover,,place])=>[tab,cover,place] as const));
+    bend(drawn,lift,zooms.map(([tab,,cover,,place,glyph])=>[tab,cover,place,glyph] as const),target);
     // The pill's scale eases for 100ms after each move, so keep following it while the press lasts.
     frame=requestAnimationFrame(tick);
   };
