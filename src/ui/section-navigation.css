@@ -47,10 +47,16 @@
    rises over 3 px to +62 and +39 and fades over 3 more, and its sides +52 against the bar's ends +22. The top and foot
    lines now fall 1.25 css px in with a 1.25 px blur (.25 and .10 of white), the side ring is off and the edge glow .45:
    top +66 against the bar's +62 with the same light in its first 8 device px (264 against 261), foot +38 against +39,
-   sides +41 (tools-look19/radial19.py, RMS from the bar's profile 21.3 -> 10.2 levels). */
+   sides +41 (tools-look19/radial19.py, RMS from the bar's profile 21.3 -> 10.2 levels).
+   LOOK-20 (the circle's sides glowed +41 against the bar's ends +22): a blurred inset line lights about half its alpha
+   along the whole edge, so at the sides the top and foot lines still gave about +30 and the edge glow's 1 px ring +10.
+   Each line now sits 2.25 px down (up) on a hole 1 px wider than the circle (spread -1px): its crescent at the top
+   (foot) stays 1.25 css px deep, and at the sides its blurred edge falls outside the circle, so the sides keep about
+   the glow ring's light, as the bar's ends (tools-look20/circ20.py, a model of these layers within 2 levels of the
+   captured circle). */
 @media (prefers-color-scheme:dark){
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off]){
-    --glass-rim-edge:inset 0 1.25px 1.25px rgb(255 255 255 / .25),inset 0 -1.25px 1.25px rgb(255 255 255 / .10),inset 0 0 0 .75px rgb(255 255 255 / 0),0 0 0 .5px rgb(0 0 0 / .144);
+    --glass-rim-edge:inset 0 2.25px 1.25px -1px rgb(255 255 255 / .25),inset 0 -2.25px 1.25px -1px rgb(255 255 255 / .10),inset 0 0 0 .75px rgb(255 255 255 / 0),0 0 0 .5px rgb(0 0 0 / .144);
   }
   .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off])>.ui-glass-glow{opacity:.45}
 }
