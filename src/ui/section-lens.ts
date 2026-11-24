@@ -208,6 +208,18 @@ const float MILK_LIFT = .683, MILK_GAIN = .483, MILK_MIRROR = 1., PILL_MILK_DROP
 // smoke; at .5 the art's colour still shows through, at about two fifths of its own chroma.
 const vec2 DARK_SMOKE = vec2(-.047, 1.55);
 const float DARK_HUE = .5;
+// LOOK-20 (council on 071faed9: the dark bar went milky over bright art, pale grey frosted plastic over The Grand Budapest
+// Hotel and The Martian, where Apple's bar shows the poster at nearly full colour under a light smoke). Read exactly on
+// Charlie's video, the bar at 32.5 s against the same art seen clean above the mini player at 33.3 s as the page scrolls
+// (aligned to 1 level rms): over bright art (luma 90 and up) Apple keeps .87 of the art's colour, its tone x.91 and .40 of
+// its detail at css px; over mid art all of its colour. Ours kept .25 and .38 of the colour: the frost's grey veil, the
+// smoke's coring and DARK_HUE leave about a third of a vivid colour. So where the wide field is bright (SEE_FIELD, in the
+// art's own luma) the dark bar takes SEE_CHROMA of the art's own colour (its soft frost and wide field, as the body blurs
+// it) in place of the smoked colour, keeping the smoke's tone, so the pill step, the pill over black and the ink are
+// unchanged. Dark pages and titles over them read as before, the mirrored zone keeps its strokes, and at the ends the
+// colour follows the band's bent sample, so the ends still bend the art.
+const float SEE_CHROMA = .92;
+const vec2 SEE_FIELD = vec2(.15, .4);
 // LOOK-5 (owner: our dark bar read as a near-black slab beside Apple's see-through smoke): that gain on the veiled frost
 // lifted dark art at a slope of 1.15 (the floor's 76 read 118, mid grey 160) and sank white to 230, so posters read hazy
 // and flat. The smoke now undoes the frost's veil and roll-off and the dark smoked() slope first (uniform art a tones to
@@ -583,6 +595,13 @@ void main() {
   darkEven = 1.;
   // The dark theme's bar is Apple's dark smoke (DARK_SMOKE), the same at every motion: only the selection moves.
   surface = mix(surface, darkSmoke(surface), pillSmoke);
+  // LOOK-20: over bright art the dark bar keeps the art's own colour (SEE_CHROMA, SEE_FIELD) under the smoke's tone.
+  if (pillSmoke > 0.) {
+    vec3 seeArt = mix(softFrost(band > 0. ? bent : body), wide, DARK_BLUR);
+    float seeL = dot(surface, vec3(.2126, .7152, .0722)), artL = dot(seeArt, vec3(.2126, .7152, .0722));
+    float see = pillSmoke * smoothstep(SEE_FIELD.x, SEE_FIELD.y, dot(wide, vec3(.2126, .7152, .0722))) * (1. - mirrorZone);
+    surface = vec3(seeL) + mix(surface - seeL, SEE_CHROMA * (seeArt - artL), see);
+  }
   // The light theme's pale frost (MILK_LIFT, MILK_GAIN). The mirrored band keeps MILK_MIRROR of its strokes over it.
   surface = mix(surface, MILK_LIFT + MILK_GAIN * surface + (1. - MILK_GAIN) * MILK_MIRROR * mirrorZone * (surface - blurColor),
                 1. - pillSmoke);
