@@ -313,7 +313,12 @@ const vec4 PILL_CAP = vec4(.04, .085, 3., 8.);
 // (about 42 degrees off the bar's axis, outside the +-40 degrees where Apple's step was read), it keeps PILL_CAP.zw, so
 // the step across the capsule's end is unchanged.
 const vec4 PILL_CAP_RUN = vec4(1., 3., .67, .83);
-const float PILL_TINT = 1.;
+// LOOK-29 (council 942de639, Opus and Grok: over bright art the dark rest pill read as a grey-brown disc, chroma 13 over the
+// hotel, where Apple's smoked lens carries the poster's colour, 23.9-56.7). Like for like on Apple's own art
+// (tools-look29/pill29.py: Charlie's video at 32.5 and 32.9 s, the Home pill, the art clean at 33.3333/34.15 s) Apple's pill
+// keeps about all of the art's chroma (23.8 over art at 23.7; 8.6 over 10.6) where ours kept a third (8.2; 4.0). At 3 it
+// reads 23.9 and 12.0 there, with its luminance held below.
+const float PILL_TINT = 3.;
 // LOOK-23 (#24: the dark rest pill over a title read the title's strokes nearly as plainly as the bar beside it). Read in
 // the band 5 css px inside the capsule with the glyph column left out, Apple's pill at 38.75 s over "New Releases for You"
 // reads median 16-18, p90 47, p99 52 (css px 16, 47, 51.5): its strokes sink to a third of the bar's lift, into a dark
@@ -899,6 +904,13 @@ void main() {
       }
       float smokeLuma = dot(smokeColor, vec3(.2126, .7152, .0722)), pillGrey = linearSrgb(pillTone);
       vec3 darkPill = max(vec3(pillGrey) + PILL_TINT * (smokeColor - smokeLuma) * pillGrey / max(smokeLuma, .02), 0.);
+      // LOOK-29 (F24 review m-2 on 639c0c73): the colour raised the pill's linear luminance over saturated art (11-28%), which
+      // the grey ink model does not see (label contrast over uniform pink 2.53 -> 2.23, red 2.74 -> 2.44). The pill is now
+      // scaled in linear light to pillTone's luminance, so only its colour moves and the ink model is exact again; over
+      // grey art the scale is 1, and it is never above 1 (srgbLinear is convex), so no channel overflows.
+      vec3 pillLin = vec3(srgbLinear(darkPill.r), srgbLinear(darkPill.g), srgbLinear(darkPill.b));
+      pillLin *= pillTone / max(dot(pillLin, vec3(.2126, .7152, .0722)), 1e-5);
+      darkPill = vec3(linearSrgb(pillLin.r), linearSrgb(pillLin.g), linearSrgb(pillLin.b));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
       // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
       // over the bar rim's old dark depth (PILL_RIM).

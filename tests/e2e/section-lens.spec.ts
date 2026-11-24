@@ -407,8 +407,11 @@ async function inkPage(page:Page){
 // foot) over white, #ccc, #777 and bright posters, the resting dark pill's per-pixel ratio against the selected ink must hold
 // 2:1 at the 5th percentile under the label and glyph boxes, and under the label's lowest 3 css px rows on their own. On
 // c7f78314 the interior held 2.6-2.8:1 while the label's baseline row read about 1.9:1 and its descender about 1.1:1.
+// LOOK-29 (F24 review m-2 on 639c0c73): and over saturated art, where the pill's colour raised its linear luminance past
+// what the grey ink model sees (the model's label contrast over uniform pink (255,80,200) 2.53 -> 2.23, over red
+// (230,30,40) 2.74 -> 2.44). These ratios are read from the canvas's own RGB, so pink and red are checked as they draw.
 test('dark: the selected label keeps 2:1 down to its descenders over bright art, with My list and Study selected',async({page})=>{
-  test.setTimeout(120_000);
+  test.setTimeout(160_000);
   const {bar,patch}=await inkPage(page);
   // Study is the bar's action button (it opens Study Mode), so the selection moves as inkPage's caught click moves it: the
   // current tab's aria-current goes to the target, and the pill springs there.
@@ -469,7 +472,7 @@ test('dark: the selected label keeps 2:1 down to its descenders over bright art,
     await expect.poll(async()=>{const current=await reads();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
     return previous;
   };
-  for (const art of ['#fff','#ccc','#777','facade','photo']) {
+  for (const art of ['#fff','#ccc','#777','#ff50c8','#e61e28','facade','photo']) {
     if (art==='facade') await patch('#000');
     if (art==='facade'||art==='photo') await poster(art); else await patch(art);
     for (const target of ['My list','Study']) {
