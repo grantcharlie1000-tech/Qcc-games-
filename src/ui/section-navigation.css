@@ -217,6 +217,12 @@
   .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
     --section-pill-accent:var(--section-pill-adaptive-accent,#0a84ff);
   }
+  /* LOOK-23 (council on 6eaf6223): over bright art the dark rest pill's .85 black rim read as a dark outline round navy
+     ink. Apple's selected ink has none (Charlie's video, 19.5 and 32.5 s): the lens keeps its interior dark (section-lens.ts
+     PILL_CAP), so the WebGL rest pill's accent stands on it without a rim. Press and drag keep theirs. */
+  .section-tabbar[data-section-lens=webgl]:not([data-glass=off]):not([data-pressing],[data-pill-dragging]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-ink-halo:transparent;
+  }
 }
 /* The light theme's accent sits on the pale grey pill, held lighter than the accent over any art: no dark rim. */
 @media not (prefers-color-scheme:dark){

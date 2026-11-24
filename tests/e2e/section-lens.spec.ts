@@ -85,7 +85,7 @@ test('section lens ignores game mutations and resumes live sampling at the resto
   await expect.poll(async()=>{const [r,g]=await colour();return g-r;}).toBeGreaterThan(80);
 });
 
-test('the selected ink has a thin outline over bright live glass',async({page})=>{
+test('the selected ink is a bright blue with no dark rim over bright live glass',async({page})=>{
   await page.emulateMedia({colorScheme:'dark'});
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
@@ -106,7 +106,9 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   const selected=bar.getByRole('link',{name:'Games',exact:true});
   await expect(selected).toHaveAttribute('aria-current','page');
   // LOOK-10: over bright art the dark pill now sits a little darker than the bar, so the accent keeps 2:1 by its ink, a
-  // blue the lens picks against that pill (section-lens.ts selectionAccent): over this patch a deeper one than #0099ff.
+  // blue the lens picks against that pill (section-lens.ts selectionAccent). LOOK-23 (council on 6eaf6223, FAST LOOP
+  // re-pin): Apple's ink turns a lighter blue over bright art, never navy, and its pill keeps no dark rim; the pill's
+  // interior stays dark (PILL_CAP), so the accent is #0a84ff or a lighter blue, with no black rim at rest.
   let accent='';
   await expect.poll(async()=>{
     const [label,icon]=await Promise.all([selected.locator(':scope > span'),selected.locator('.ui-icon')].map(part=>part.evaluate(e=>getComputedStyle(e).color)));
@@ -114,8 +116,9 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
   },{intervals:[250]}).toBe(true);
   const [red,green,blue]=accent.match(/\d+/g)!.map(Number);
   expect(blue,accent).toBeGreaterThan(Math.max(red,green));
-  await expect(selected.locator('.ui-icon')).toHaveCSS('filter',/drop-shadow\(.*0\.85/);
-  await expect(selected.locator(':scope > span')).toHaveCSS('text-shadow',/rgba\(0, 0, 0, 0\.85\)/);
+  expect(red,accent).toBeLessThanOrEqual(200);
+  await expect(selected.locator('.ui-icon')).not.toHaveCSS('filter',/0\.85/);
+  await expect(selected.locator(':scope > span')).not.toHaveCSS('text-shadow',/0\.85/);
   await expect(selected.locator(':scope > span')).toHaveCSS('font-weight','600');
 
   // C30 shows every tab's 24px glyph in both themes, drawn at 32.4px (ink about .39 of the 60px bar, as Apple Music's),
@@ -239,6 +242,32 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       const lum=[...data].slice(0,3).reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
       return (lum+.05)/(pillLuminance+.05);
     },pillLuminance);
+    // LOOK-24 (council on 6eaf6223, FAST LOOP re-pin): Apple's step was read in pairs across its pill's end caps
+    // (tools-look17/apple_step.py; apple_match pill_step_bright): the bar 2-4.6 css px outside the capsule, the pill
+    // 2-4.6 css px inside it, along the cap's normals. The same read here, at the selected capsule's trailing end, where
+    // the bar's body lies beside it (Games is the leading end tab). The interior under the glyph is pinned on its own.
+    const endStep=()=>canvas.evaluate(element=>{
+      const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+      const sx=surface.width/rect.width,sy=surface.height/rect.height;
+      const bar=surface.closest('.app-tabbar') as HTMLElement,after=getComputedStyle(bar,'::after'),box=bar.getBoundingClientRect();
+      const left=box.left+bar.clientLeft+parseFloat(after.translate),top=box.top+bar.clientTop+parseFloat(after.top);
+      const radius=parseFloat(after.height)/2,cx=left+parseFloat(after.width)-radius,cy=top+radius;
+      const data=surface.getContext('2d')!.getImageData(0,0,surface.width,surface.height).data;
+      const lum=(x:number,y:number)=>{
+        const i=4*(Math.round((y-rect.top)*sy)*surface.width+Math.round((x-rect.left)*sx));
+        return [data[i],data[i+1],data[i+2]].reduce((l,v,c)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][c];},0);
+      };
+      const steps:number[]=[];
+      for (let angle=-40;angle<=40;angle+=5) for (let t=2;t<=4.61;t+=.2) {
+        const ux=Math.cos(angle*Math.PI/180),uy=Math.sin(angle*Math.PI/180);
+        steps.push((lum(cx+(radius+t)*ux,cy+(radius+t)*uy)+.05)/(lum(cx+(radius-t)*ux,cy+(radius-t)*uy)+.05));
+      }
+      steps.sort((a,b)=>a-b);
+      return steps[steps.length>>1];
+    });
+    // Apple's pill interior over bright art, read inside its capsule with the ink masked (WCAG luminance; tools-look23/
+    // miss23.py): .107 under Library at 19.5 s, .041 under Home at 32.5 s; with about .01 of room.
+    const appleInterior=[.03,.12];
     // Wait for the white patch to reach the lens and for two equal reads.
     await expect.poll(()=>canvas.evaluate(element=>{
       const surface=element as HTMLCanvasElement;
@@ -254,10 +283,16 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     expect(pill).toBeLessThanOrEqual(floor[scheme].pill);
     expect(pill).toBeGreaterThanOrEqual(milky[scheme]);
     if (scheme==='dark') {
-      const step=await barToPill(pill);
-      console.log(`dark bar to pill over white art: ${step.toFixed(2)}`);
+      const step=await barToPill(pill),ends=await endStep();
+      console.log(`dark bar to pill over white art: ${step.toFixed(2)} under the glyph, ${ends.toFixed(2)} across the pill's end`);
       expect(step).toBeGreaterThanOrEqual(1.55);
-      expect(step).toBeLessThanOrEqual(2.15);
+      // LOOK-23/24 (council on 6eaf6223, FAST LOOP re-pin): under the glyph Apple's pill stays a dark lens over bright art,
+      // so there the pill is pinned to Apple's interior and the step has no upper bound; the 1.55-2.15 guard stays where
+      // Apple's frames were read, across the pill's end.
+      expect(ends).toBeGreaterThanOrEqual(1.55);
+      expect(ends).toBeLessThanOrEqual(2.15);
+      expect(pill).toBeGreaterThanOrEqual(appleInterior[0]);
+      expect(pill).toBeLessThanOrEqual(appleInterior[1]);
     }
     // Black art: wait for the bar to darken under it (light frost about 188, dark smoke about 32), then two equal reads.
     await page.locator('#contrast-patch').evaluate(patch=>{(patch as HTMLElement).style.background='#000';});
@@ -286,11 +321,14 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       previous='';
       await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
       const [greyRatio,greyPill]=previous.split(' ').map(Number);
-      const greyStep=await barToPill(greyPill);
-      console.log(`selected accent over #777 art, dark: ${greyRatio}:1, pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)}`);
+      const greyStep=await barToPill(greyPill),greyEnds=await endStep();
+      console.log(`selected accent over #777 art, dark: ${greyRatio}:1, pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)} under the glyph, ${greyEnds.toFixed(2)} across the pill's end`);
       expect(greyRatio).toBeGreaterThanOrEqual(floor.dark.ratio);
       expect(greyStep).toBeGreaterThanOrEqual(1.55);
-      expect(greyStep).toBeLessThanOrEqual(2.15);
+      expect(greyEnds).toBeGreaterThanOrEqual(1.55);
+      expect(greyEnds).toBeLessThanOrEqual(2.15);
+      expect(greyPill).toBeGreaterThanOrEqual(appleInterior[0]);
+      expect(greyPill).toBeLessThanOrEqual(appleInterior[1]);
     }
   }
 });
@@ -384,7 +422,10 @@ test('dark: when the art under the resting bar changes, the settle repaint follo
   const {patch,trace,ratio}=await inkPage(page);
   await patch('#222');
   await page.waitForTimeout(1200);
-  for (const art of ['#777','#ddd']) {
+  // LOOK-25 (FAST LOOP re-pin with the council fix): the dark rest pill keeps its interior a dark lens over bright art
+  // (section-lens.ts PILL_CAP), so #0a84ff keeps 2.2:1 over #777 as over #222 (2.43:1 there; Apple's ink stays its system
+  // blue over a dark lens). From #222 the ink changes going to #ddd (a lighter blue) and back on #777 (#0a84ff).
+  for (const art of ['#ddd','#777']) {
     const tracing=trace(1800);
     await page.waitForTimeout(100);
     await patch(art);

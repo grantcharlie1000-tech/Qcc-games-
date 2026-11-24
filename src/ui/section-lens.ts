@@ -1,6 +1,7 @@
 import {onGlassFrame,requestGlassFrame,watchGlassFrameSources} from './glass-frame-source';
 import {createSectionBackdrop} from './section-backdrop';
 import type {Crop} from './section-backdrop';
+import {capsulePill} from './glass';
 
 // The frosted scene sample, shared by both stages.
 const GLASS = `uniform sampler2D scene;
@@ -269,6 +270,18 @@ const vec4 PILL_DOME = vec4(.08, .35, 3., 4.);
 // edge, falling as the cube of the depth, so a title bends along the capsule's ends while the glyph middle is unmoved.
 const vec3 PILL_SPEC = vec3(.3, .35, 1.4);
 const float PILL_LENS = 6.;
+// LOOK-23 (council on 6eaf6223, Opus 7.8 and Grok 8.3: over the Grand Budapest Hotel poster the dark rest pill read as a
+// milky grey disc with navy ink, where Apple's stays a near-black smoked lens with its arc and bright blue ink). Read in
+// Charlie's video inside the pill (inset 4 css px, glyph and label masked; tools-look23/miss23.py), Apple's interior
+// sits at WCAG luminance .107 (sRGB 92) under a .214 bar over the bright green poster (19.5 s) and .041 (57) over the
+// bright photo (32.5 s), its ink a lighter blue (38,173,253 and 31,166,255; 12,141,255 over black at 38.75 s). Ours took
+// PILL_STEP of a much brighter bar (.482 over the hotel) to .262 (140), a neutral grey. The step still holds at the
+// capsule's ends, where apple_match reads it (2-4.6 css px in); past PILL_CAP.z css px in, eased fully by .w, the pill's
+// linear tone above PILL_CAP.x rolls off toward PILL_CAP.y, so over any art the interior under the glyph stays a dark
+// lens that keeps #0a84ff at about 2:1 or more (dark art and black, under .04, are unchanged). It keeps PILL_TINT of the
+// smoke's colour at the bar's own saturation, so it reads as smoked glass over the art, not a grey disc.
+const vec4 PILL_CAP = vec4(.04, .085, 3., 8.);
+const float PILL_TINT = 1.;
 // LOOK-23 (#24: the dark rest pill over a title read the title's strokes nearly as plainly as the bar beside it). Read in
 // the band 5 css px inside the capsule with the glyph column left out, Apple's pill at 38.75 s over "New Releases for You"
 // reads median 16-18, p90 47, p99 52 (css px 16, 47, 51.5): its strokes sink to a third of the bar's lift, into a dark
@@ -759,7 +772,11 @@ void main() {
       float floorBar = min(barLinear, floorTone);
       barLinear = mix(barLinear, floorBar + PILL_FLOOR.x * (barLinear - floorBar), 1. - smoothstep(PILL_FLOOR.y, PILL_FLOOR.z, floorTone));
       float pillStep = mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, barLinear));
-      vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / pillStep - .05, 0.)));
+      float pillTone = max((barLinear + .05) / pillStep - .05, 0.), pillOver = max(0., pillTone - PILL_CAP.x);
+      pillTone = mix(pillTone, min(pillTone, PILL_CAP.x) + pillOver / (1. + pillOver / (PILL_CAP.y - PILL_CAP.x)), smoothstep(PILL_CAP.z, PILL_CAP.w, pillDepth));
+      vec3 smokeColor = darkSmoke(pillArt);
+      float smokeLuma = dot(smokeColor, vec3(.2126, .7152, .0722)), pillGrey = linearSrgb(pillTone);
+      vec3 darkPill = max(vec3(pillGrey) + PILL_TINT * (smokeColor - smokeLuma) * pillGrey / max(smokeLuma, .02), 0.);
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
       // +15 to +20 over the bar beside it in the video at 38.75 s), so it reads as glass, not a hole: PILL_DARK_RIM of white
       // over the bar rim's old dark depth (PILL_RIM).
@@ -903,10 +920,19 @@ function smoothstep(value:number) {
 // of a box about the wide field's reach, the rest about the soft frost's with its bright detail sunk INK_EVEN of the way
 // to the field, as smoked() sinks it), and takes the pill's luminance there (DARK_GLASS, then PILL_STEP). selectionAccent gives the least step of the #0099ff accent toward white (over a mid pill) or toward a
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
-// (section-lens.spec reads the median); its margin over 2:1 covers the model. LOOK-17: ACCENT is Apple's dark system blue,
+// (section-lens.spec reads the median); its margin over 2:1 covers the model. LOOK-23: lighter blues only (no deeper one). LOOK-17: ACCENT is Apple's dark system blue,
 // #0a84ff (hue 210, Apple's dark still 210.4; #0099ff read 204). section-navigation.css draws it at rest; press and drag keep their own accents.
-const ACCENT = [10,132,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
+const ACCENT = [10,132,255], ACCENT_FLOOR = 2.2;
 const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
+// LOOK-23 (F21 review note a): the model reads the pill as the shader draws it. Its art comes from INK_LENS (PILL_LENS) css
+// px further in at the capsule's edge, falling as the cube of the depth (20ea5577), up to about 2.5 css px at the label's
+// lowest rows. The floor of the darkest of the field's four taps (INK_TAPS, FIELD_TAP_X/Y, each a mip texel INK_TEXEL css
+// px across) sinks it as PILL_FLOOR does (INK_FLOOR). Over uniform art neither moves it.
+const INK_LENS = 6, INK_FLOOR = [.3,.02,.06], INK_TEXEL = 16/3, INK_TAPS = [[9,3.9],[-9,-3.9],[-3.9,9],[3.9,-9]];
+// LOOK-23 (council on 6eaf6223): the interior's roll-off (PILL_CAP), by the point's depth in its tab's capsule.
+const INK_CAP = [.04,.085,3,8];
+/** A tab's rest pill, a capsule in viewport css px. */
+export type InkPill = {x:number; y:number; w:number; h:number};
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
 const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
 /** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for ACCENT (#0a84ff). */
@@ -918,8 +944,11 @@ export function selectionAccent(pills:number[]):string {
     return ratios[Math.floor((1-INK_SHARE)*(ratios.length-1))];
   };
   if (!pills.length || floor(ACCENT)>=ACCENT_FLOOR) return '';
+  // LOOK-23 (council on 6eaf6223): toward white only. Apple's selected ink turns a lighter blue over bright art (Charlie's
+  // video: 12,141,255 over black at 38.75 s, 38,173,253 and 31,166,255 over the bright poster and photo at 19.5 and
+  // 32.5 s), never navy, and the pill's interior stays dark enough (PILL_CAP) that a lighter blue keeps the floor.
   let best = ACCENT, most = floor(ACCENT);
-  for (let step=1;step<=16;step++) for (const end of [[255,255,255],ACCENT_DEEP]) {
+  for (let step=1;step<=16;step++) for (const end of [[255,255,255]]) {
     const ink = ACCENT.map((value,i)=>Math.round(value+(end[i]-value)*step/16)), reached = floor(ink);
     if (reached>=ACCENT_FLOOR) return `rgb(${ink.join(' ')})`;
     if (reached>most) {
@@ -942,12 +971,12 @@ export function inkRegion(width:number, height:number, crop:Crop, boxes:DOMRect[
   return w>0 && h>0 ? {left,top,w,h,sx,sy} : null;
 }
 /** The dark rest pill's luminance every 2 css px over each box (viewport css px), from the backdrop's RGBA bytes over its
- * ink region, top row first. */
-export function pillUnder(data:ArrayLike<number>, region:InkRegion, crop:Crop, boxes:DOMRect[]):number[] {
-  return pillTables(data,region,crop)(boxes);
+ * ink region, top row first. With the tab's rest pill the art is read where the pill refracts it (INK_LENS). */
+export function pillUnder(data:ArrayLike<number>, region:InkRegion, crop:Crop, boxes:DOMRect[], pill?:InkPill):number[] {
+  return pillTables(data,region,crop)(boxes,pill);
 }
 /** pillUnder for several sets of boxes over one region: the summed-area table is built once. */
-export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):(boxes:DOMRect[])=>number[] {
+export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):(boxes:DOMRect[], pill?:InkPill)=>number[] {
   const {left,top,w,h,sx,sy} = region;
   // A summed-area table of the art's tone gives each box mean in four reads.
   const sum = new Float64Array((w+1)*(h+1));
@@ -964,17 +993,40 @@ export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):
     const y0 = Math.max(0,Math.round(y-reach*sy)), y1 = Math.min(h,Math.round(y+reach*sy)+1);
     return (sum[y1*(w+1)+x1]-sum[y0*(w+1)+x1]-sum[y1*(w+1)+x0]+sum[y0*(w+1)+x0])/Math.max(1,(x1-x0)*(y1-y0));
   };
-  return boxes=>{
+  // The smoked bar's linear luminance over art of luma art (DARK_GLASS on the art's own tone).
+  const barOf = (art:number)=>{
+    const over = Math.max(0,art-.5);
+    return srgbLinear(Math.min(1,32/255+.875*art-.402*over*over));
+  };
+  return (boxes,pill)=>{
     const pills:number[] = [];
     for (const box of boxes) for (let v=box.top+1;v<box.bottom;v+=2) for (let u=box.left+1;u<box.right;u+=2) {
       const x = (u-crop.x)*sx-left, y = (v-crop.y)*sy-top;
       if (x<0 || y<0 || x>=w || y>=h) continue;
-      const field = mean(x,y,INK_FIELD), soft = mean(x,y,INK_SOFT);
-      const art = INK_BLUR*field+(1-INK_BLUR)*(soft+INK_EVEN*(Math.min(soft,field)-soft)), over = Math.max(0,art-.5);
-      const tone = Math.min(1,32/255+.875*art-.402*over*over), bar = srgbLinear(tone);
+      // The pill's art is read INK_LENS * (1 - depth / radius)^3 css px further in, toward the capsule's axis.
+      let lx = x, ly = y, depth = Infinity;
+      if (pill) {
+        const radius = Math.min(pill.w,pill.h)/2, run = Math.max(0,Math.abs(pill.w-pill.h)/2);
+        const px = u-pill.x-pill.w/2, py = v-pill.y-pill.h/2;
+        const ax = pill.w>=pill.h ? px-Math.min(run,Math.max(-run,px)) : px, ay = pill.w>=pill.h ? py : py-Math.min(run,Math.max(-run,py));
+        const reach = Math.hypot(ax,ay), lu = 1-Math.min(1,Math.max(0,(radius-reach)/radius)), shift = INK_LENS*lu*lu*lu/Math.max(reach,.001);
+        depth = radius-reach;
+        lx = x-ax*shift*sx;
+        ly = y-ay*shift*sy;
+      }
+      const field = mean(x,y,INK_FIELD), soft = mean(lx,ly,INK_SOFT);
+      const art = INK_BLUR*field+(1-INK_BLUR)*(soft+INK_EVEN*(Math.min(soft,field)-soft));
+      let bar = barOf(art);
+      // PILL_FLOOR: the darkest of the field's taps, where it is dark, sinks the pill toward it.
+      let dark = Infinity;
+      for (const [tx,ty] of INK_TAPS) dark = Math.min(dark,mean(x+tx*sx,y+ty*sy,INK_TEXEL/2));
+      const floorTone = barOf(dark), floorBar = Math.min(bar,floorTone);
+      bar += (1-smoothstep((floorTone-INK_FLOOR[1])/(INK_FLOOR[2]-INK_FLOOR[1])))*(floorBar+INK_FLOOR[0]*(bar-floorBar)-bar);
       // PILL_STEP's step, deeper under brighter art as Apple's capsule (LOOK-17).
       const step = INK_STEP[0]+(INK_STEP[1]-INK_STEP[0])*smoothstep((bar-INK_STEP[2])/(INK_STEP[3]-INK_STEP[2]));
-      pills.push(Math.max(0,(bar+.05)/step-.05));
+      // PILL_CAP: past INK_CAP[2] css px in, the tone above INK_CAP[0] rolls off toward INK_CAP[1].
+      const tone = Math.max(0,(bar+.05)/step-.05), over = Math.max(0,tone-INK_CAP[0]);
+      pills.push(tone+smoothstep((depth-INK_CAP[2])/(INK_CAP[3]-INK_CAP[2]))*(Math.min(tone,INK_CAP[0])+over/(1+over/(INK_CAP[1]-INK_CAP[0]))-tone));
     }
     return pills;
   };
@@ -1165,6 +1217,15 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
     // LOOK-11: the backdrop's bytes come from the texture the lens uploaded for paintedCrop (renderer.read), read without
     // a wait, never from the 2D canvas: one getImageData there made Chrome stop accelerating that canvas (+.4 ms a scroll
     // frame in swiftshader, and a 250-330 ms stall at the read that switched it).
+    // Each tab's rest pill (glass.ts capsulePill, as the stylesheet places it), where the shader refracts the art it shows.
+    const barBox = bar.getBoundingClientRect(), after = getComputedStyle(bar,'::after');
+    const inset = parseFloat(after.top)||0, bleed = parseFloat(after.getPropertyValue('--section-pill-bleed'))||0;
+    const scaleX = barBox.width/(bar.offsetWidth||1), scaleY = barBox.height/(bar.offsetHeight||1), count = tabs.filter(tab=>tab.offsetWidth).length;
+    const pills = tabs.map(tab=>{
+      const pill = capsulePill({left:tab.offsetLeft,width:tab.offsetWidth},{width:bar.clientWidth,tabs:count,inset,bleed});
+      return {x:barBox.left+(bar.clientLeft+pill.left-bleed)*scaleX, y:barBox.top+(bar.clientTop+inset)*scaleY,
+        w:(pill.width+2*bleed)*scaleX, h:(bar.clientHeight-2*inset)*scaleY};
+    });
     const [width,height] = renderer.size();
     const region = inkRegion(width,height,crop,tabBoxes.flat());
     if (!region) return inkWith(paint,tabs,tabs.map(()=>''));
@@ -1189,8 +1250,8 @@ export function bindSectionLens(bar:HTMLElement, host:HTMLElement, scene:()=>HTM
       inkRead = undefined;
       read.cancel();
       if (data && inkable()) {
-        const pills = pillTables(data,region,crop);
-        inkWith(paint,tabs,tabBoxes.map(boxes=>selectionAccent(pills(boxes))));
+        const tables = pillTables(data,region,crop);
+        inkWith(paint,tabs,tabBoxes.map((boxes,i)=>selectionAccent(tables(boxes,pills[i]))));
       }
       // A newer paint since the read began is read in turn.
       requestInk();
