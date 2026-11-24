@@ -256,7 +256,15 @@ const float PILL_DARK_RIM = .15;
 // takes PILL_DOME.x of white along its top, fading over PILL_DOME.z css px, and loses PILL_DOME.y of its tone along its
 // foot over PILL_DOME.w, each falling off with how far the edge faces up or down. Both stay in the capsule's outer few px,
 // clear of the icon and label the ink reads, so its middle keeps PILL_STEP under the bar.
-const vec4 PILL_DOME = vec4(.14, .35, 5., 4.);
+const vec4 PILL_DOME = vec4(.08, .35, 3., 4.);
+// LOOK-20 (Grok on 071faed9: the dark rest pill read as a flat grey disc, where Apple's is a near-black convex lens with a
+// bright specular arc that the title curves through). At device px over black Apple's still lifts the pill's cap edge to
+// 67 over a 15 interior (+53, about 3 css px wide); ours rose +27 over a 25 interior, its .14 dome a soft glow over 5 css
+// px. The rest pill now catches PILL_SPEC.x of white along the edges that face the top left light, over PILL_SPEC.y to .z
+// css px, its dome narrower, and it refracts what lies behind it: it samples the art PILL_LENS.x css px further in at its
+// edge, falling as the cube of the depth, so a title bends along the capsule's ends while the glyph middle is unmoved.
+const vec3 PILL_SPEC = vec3(.3, .35, 1.4);
+const float PILL_LENS = 6.;
 float srgbLinear(float c) { return c <= .04045 ? c / 12.92 : pow((c + .055) / 1.055, 2.4); }
 float linearSrgb(float c) { return c <= .0031308 ? 12.92 * c : 1.055 * pow(c, 1. / 2.4) - .055; }
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -720,7 +728,16 @@ void main() {
       // darker, so the art still shows through it. A press and the raised lens take it back to their milky and clear
       // pieces. LOOK-10: it takes only the smoke's tone, so it reads as a neutral smoked capsule with the blue in the icon
       // and label alone (the council read the darkened art's colour as a blue one).
-      float barLinear = srgbLinear(clamp(dot(darkSmoke(selectionColor), vec3(.2126, .7152, .0722)), 0., 1.));
+      // LOOK-20: the rest pill refracts what lies behind it (PILL_LENS): its edge shows the art from further in.
+      vec3 pillArt = selectionColor;
+      if (pillSmoke > 0. && pillLift < 1. && pillPress < 1.) {
+        float lu = 1. - clamp(pillDepth / pillRadius, 0., 1.);
+        vec2 lensPos = body - pillNormal * PILL_LENS * lu * lu * lu;
+        softFrostMix = pillSmoke;
+        pillArt = mix(smoked(glassColor(lensPos, BODY_SPREAD), 0., field), blurColor, bodyBlur);
+        softFrostMix = 0.;
+      }
+      float barLinear = srgbLinear(clamp(dot(darkSmoke(pillArt), vec3(.2126, .7152, .0722)), 0., 1.));
       float pillStep = mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, barLinear));
       vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / pillStep - .05, 0.)));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
@@ -731,6 +748,9 @@ void main() {
       float domeUp = max(0., -pillNormal.y), domeDown = max(0., pillNormal.y);
       darkPill = mix(darkPill, vec3(1.), PILL_DOME.x * (1. - smoothstep(0., PILL_DOME.z, pillDepth)) * domeUp * domeUp);
       darkPill *= 1. - PILL_DOME.y * (1. - smoothstep(0., PILL_DOME.w, pillDepth)) * domeDown * domeDown;
+      // LOOK-20: the specular arc along the edges that face the top left light (PILL_SPEC).
+      float specUp = max(0., dot(pillNormal, vec2(-.5, -.866)));
+      darkPill = mix(darkPill, vec3(1.), PILL_SPEC.x * (1. - smoothstep(PILL_SPEC.y, PILL_SPEC.z, pillDepth)) * specUp * specUp);
       selection = mix(selection, darkPill, pillSmoke * (1. - pillLift) * (1. - pillPress));
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
       // frost of its milky thumb, as the dark theme's press lifts its pill; the raised lens clears it smoothly.
