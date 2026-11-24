@@ -269,6 +269,17 @@ const vec4 PILL_DOME = vec4(.08, .35, 3., 4.);
 // edge, falling as the cube of the depth, so a title bends along the capsule's ends while the glyph middle is unmoved.
 const vec3 PILL_SPEC = vec3(.3, .35, 1.4);
 const float PILL_LENS = 6.;
+// LOOK-23 (#24: the dark rest pill over a title read the title's strokes nearly as plainly as the bar beside it). Read in
+// the band 5 css px inside the capsule with the glyph column left out, Apple's pill at 38.75 s over "New Releases for You"
+// reads median 16-18, p90 47, p99 52 (css px 16, 47, 51.5): its strokes sink to a third of the bar's lift, into a dark
+// floor. Ours read 33 and 73 (title pose, device px; 24, 71 and 115 on capture_apple's title-150 at css px). Pulling the
+// art toward the wide field's mean cannot do it: over a title the field is about the strokes' own level. So the pill
+// floors on the darkest of fieldSample's four taps (fieldDark, its own taps, so no extra reads): where that floor is
+// darker than the pixel's tone, the pill keeps PILL_FLOOR.x of the difference. Over uniform art every tap is the pixel's
+// own tone, so the pill over black (11), the uniform-art step and the ink pins are unchanged. It fades out as the floor
+// brightens (linear tone PILL_FLOOR.y to .z, about 39 to 68/255 under the smoke), so over bright posters the pill keeps
+// its step (pill_step_bright 1.75, Apple 1.72), and only a title or marks over a dark page sink.
+const vec3 PILL_FLOOR = vec3(.25, .02, .06);
 float srgbLinear(float c) { return c <= .04045 ? c / 12.92 : pow((c + .055) / 1.055, 2.4); }
 float linearSrgb(float c) { return c <= .0031308 ? 12.92 * c : 1.055 * pow(c, 1. / 2.4) - .055; }
 // The raised lens is a capsule of clear glass whose height field comes from its SDF: flat
@@ -422,6 +433,8 @@ vec3 smokedBlur(vec3 field, float motion) {
 // its furthest tap offset (9 css px on each axis) plus that, at every density. Its centre is held
 // that far, plus RIM_SLACK, inside the crop, so it never reads the clamped edge where the
 // viewport clips the crop margin.
+// LOOK-23: the darkest of fieldSample's four taps by luma (the dark rest pill's floor, PILL_FLOOR).
+vec3 fieldDark = vec3(0.);
 vec3 fieldSample(vec2 pos) {
   float density = float(textureSize(scene, 0).x) * region.z;
   float lod = log2(FIELD_TEXEL * density);
@@ -430,8 +443,13 @@ vec3 fieldSample(vec2 pos) {
   vec2 hi = max(lo, (1. - region.xy) / region.zw - reach);
   vec2 uv = region.xy + clamp(pos, lo, hi) * region.zw;
   vec2 tapX = FIELD_TAP_X * region.zw, tapY = FIELD_TAP_Y * region.zw;
-  vec3 rgb = textureLod(scene, uv + tapX, lod).rgb + textureLod(scene, uv - tapX, lod).rgb
-           + textureLod(scene, uv + tapY, lod).rgb + textureLod(scene, uv - tapY, lod).rgb;
+  vec3 a = textureLod(scene, uv + tapX, lod).rgb, b = textureLod(scene, uv - tapX, lod).rgb;
+  vec3 c = textureLod(scene, uv + tapY, lod).rgb, d = textureLod(scene, uv - tapY, lod).rgb;
+  vec3 W = vec3(.2126, .7152, .0722);
+  fieldDark = dot(a, W) < dot(b, W) ? a : b;
+  fieldDark = dot(c, W) < dot(fieldDark, W) ? c : fieldDark;
+  fieldDark = dot(d, W) < dot(fieldDark, W) ? d : fieldDark;
+  vec3 rgb = a + b + c + d;
   return rgb * .25;
 }
 float capsuleRadius(vec2 bounds) {
@@ -732,6 +750,10 @@ void main() {
         softFrostMix = 0.;
       }
       float barLinear = srgbLinear(clamp(dot(darkSmoke(pillArt), vec3(.2126, .7152, .0722)), 0., 1.));
+      // LOOK-23: the floor of the darkest nearby art (PILL_FLOOR): strokes over a dark page sink toward it.
+      float floorTone = srgbLinear(clamp(dot(darkSmoke(smokedBlur(glassTone(fieldDark, 0.), 0.)), vec3(.2126, .7152, .0722)), 0., 1.));
+      float floorBar = min(barLinear, floorTone);
+      barLinear = mix(barLinear, floorBar + PILL_FLOOR.x * (barLinear - floorBar), 1. - smoothstep(PILL_FLOOR.y, PILL_FLOOR.z, floorTone));
       float pillStep = mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, barLinear));
       vec3 darkPill = vec3(linearSrgb(max((barLinear + .05) / pillStep - .05, 0.)));
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
