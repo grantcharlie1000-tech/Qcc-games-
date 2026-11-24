@@ -302,29 +302,30 @@ const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // Its edge is a thin crisp rim about LENS_RIM css px deep, falling off over half a px either side of its inner edge
 // (MOTION-5: the video's hold and drag rims read about 2 px at half height, ours read 4.5 and 3 at LENS_RIM 3; MOTION-11:
 // 1 and 2 at 1.5, against the video's 2 and 3.5, so it is 2.2), lit
-// all round and brightest along the top, whose light splits into a thin rainbow (LENS_FRINGE), red at the outside
-// running to blue inside, as Apple's does. MOTION-12 (#24): the video's moving lens has the wider rim, 3.5 css px at half
+// all round and brightest along the top. MOTION-12 (#24): the video's moving lens has the wider rim, 3.5 css px at half
 // height at 13.5 s against the 12.75 s hold's 2, with about the same rainbow (fringe 13 and 10). So through drag travel
 // the rim widens to LENS_RIM_DRAG along the top and bottom (weighted by how far the edge faces up or down, as the band;
-// the ends keep the held rim) and its rainbow, spread over the wider rim, eases to LENS_FRINGE_DRAG; both ease back to the
-// held rim's as the press holds the lens still.
-// MOTION-13 (#24): the video's held rim is a rainbow more colourful than the art on both sides of it (12.75 s: rim band
-// p90 chroma 19 over 3 above and 3 inside along the top, 74 over 70 and 69 along the bottom; two-sided fringe 10). At .24
-// ours carried less colour than the navy card art beside it (two-sided 1.0): over 2.2 css px the spectrum's .8 turn
-// averages out within each css px, where the drag's 3.4 px rim keeps it. The held rainbow is LENS_FRINGE .4 (.36 read
-// 7.5, top 9 and bottom 6).
-const float LENS_RIM = 2.2, LENS_FRINGE = .4, LENS_RIM_DRAG = 3.4, LENS_FRINGE_DRAG = .19;
-// MOTION-14 (#24): mixed toward the spectrum at .4, the white rim lost up to a third of its light where the rainbow runs
-// through magenta and blue, and over bright art (the pink poster) the held rim read 1.5 css px at half height, not the
-// video's 2. The rainbow keeps its colour at LENS_FRINGE but darkens the rim only as much as the .24 rainbow did
-// (LENS_FRINGE_SHADE); the drag's .19 is unchanged.
-const float LENS_FRINGE_SHADE = .24;
-// MOTION-11 (#24 council on aa6359ee): the video's rim is a thick, darker refracting band along the top and bottom,
-// about 5 css px deep just inside the bright line, tapering round the ends (12.75 s and 13.5 s). The face darkens by up
-// to LENS_BAND_DARK across depths LENS_BAND (in, full, full, out), weighted by how far the edge faces up or down: the
-// light theme's band is lighter (.x), so on its pale bar the bubble reads as glass and not a dark hole.
-const vec4 LENS_BAND = vec4(2., 3.4, 5.8, 8.8);
-const vec2 LENS_BAND_DARK = vec2(.25, .45);
+// the ends keep the held rim), easing back to the held rim as the press holds the lens still.
+// MOTION-13 (#24): the video's held rim is more colourful than the art on both sides of it (12.75 s: rim band p90 chroma
+// 19 over 3 above and 3 inside along the top, 74 over 70 and 69 along the bottom; two-sided fringe 10).
+const float LENS_RIM = 2.2, LENS_RIM_DRAG = 3.4;
+// MOTION-23 (#24 council on 071faed9: Opus saw a thick bright grey ring, Grok a pale hairline; the video settles it). Over
+// the 10.5 s frame (no lens there, the page unmoved) the video's held rim (12.75 s, the middle 60% of each edge) is 2 css
+// px at half height along the top and the foot, as ours, but only +49 and +44 luma over the art under it, where ours
+// rose +152 and +110: a fifth of the way to white, not a bright ring. Its light is coloured, and the colour turns round
+// the lens: cyan to green along the top and the lit left end (delta 39,66,70 and 44,50,34 over black; 28,69,52 at the
+// end), warm toward magenta along the foot (53,44,32; 39,33,38), where ours carried an eighth of its light as colour. The
+// 13.5 s drag rim is the same light and colours. So the rim mixes LENS_RIM_LIGHT (.x, less .y as its edge faces the light,
+// so the top and the foot read alike, as the video's +49 and +44) toward LENS_RIM_TOP where the edge faces the light and
+// LENS_RIM_FOOT where it faces away; that colour is the lens's rainbow.
+const vec2 LENS_RIM_LIGHT = vec2(.2, .03);
+const vec3 LENS_RIM_TOP = vec3(.6, .96, 1.), LENS_RIM_FOOT = vec3(1., .78, .95);
+// MOTION-11 (#24 council on aa6359ee) darkened the face in a band about 5 css px deep just inside the rim, along the top
+// and bottom, as the video's held and dragged lens is dark there. MOTION-23 (#24 council on 071faed9: a dark halo round a
+// bright ring, and over bright art a wide blotchy band): that dark band is the art the lens bends in, not a shade. Over
+// the pink poster the video's held lens is dark just under its top edge (12.75 s, 2-5 px in: luma 48-74 against 118-137
+// further in) where the page above the bar is black, and light where the art round it is light. The fixed darkening also
+// darkened the band over a bright poster and the drag lens's own top rows, so the face is no longer darkened there.
 // The raised lens is Apple's clear, bright bubble (Charlie's video, 12.75-13.5 s; MOTION-5 council): held or dragged,
 // the art under it shows unfrosted, magnified and in its own colour and contrast, lifted a little toward white:
 // LENS_LIGHT held and LENS_LIGHT_DRAG through drag travel in the light theme, LENS_LIGHT_DARK in the dark. The held
@@ -481,23 +482,19 @@ float lensBevel(float radius) {
 }
 // The raised lens's surface: clear glass, darkened only a little where the bevel tilts away
 // from the light, with no broad lit band over the content. Its edge is Apple's thin crisp rim
-// (LENS_RIM), brightest along the top and still clear along the bottom, carrying the faint
-// rainbow fringe (LENS_FRINGE) across its depth.
+// (LENS_RIM), a fifth of the way to a light that runs from cyan along its top to magenta along
+// its foot (LENS_RIM_LIGHT, LENS_RIM_TOP, LENS_RIM_FOOT), as the video's.
 vec3 lensFace(vec3 sceneColor, vec3 clearArt, vec2 outward, float pillDepth, float u) {
   vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
   float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
   float shade = max(0., -facing);
   vec3 face = mix(min(clearArt * LENS_CLEAR, vec3(1.)), LENS_LIGHT_DARK + (1. - LENS_LIGHT_DARK) * min(sceneColor * LENS_BRIGHT, vec3(1.)), pillSmoke);
-  float band = smoothstep(LENS_BAND.x, LENS_BAND.y, pillDepth) * (1. - smoothstep(LENS_BAND.z, LENS_BAND.w, pillDepth));
-  face *= (1. - .22 * shade - .1 * (1. - normal.z)) * (1. - mix(LENS_BAND_DARK.x, LENS_BAND_DARK.y, pillSmoke) * band * outward.y * outward.y);
+  face *= 1. - .22 * shade - .1 * (1. - normal.z);
   float facing2 = outward.y * outward.y, facing4 = facing2 * facing2, facing8 = facing4 * facing4;
   float rimDepth = mix(LENS_RIM, mix(LENS_RIM_DRAG, LENS_RIM, pillPress), facing8 * facing8);
-  float t = clamp(pillDepth / rimDepth, 0., 1.);
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
-  float lit = .5 + .38 * max(0., facing) + .12 * max(0., outward.y);
-  vec3 spectrum = .5 + .5 * cos(6.2832 * (.8 * t + vec3(0., .33, .67)));
-  float fringe = mix(LENS_FRINGE_DRAG, LENS_FRINGE, pillPress), tone = dot(spectrum, vec3(.2126, .7152, .0722));
-  vec3 rimLight = 1. - min(fringe, LENS_FRINGE_SHADE) * (1. - tone) + fringe * (spectrum - tone);
+  float lit = LENS_RIM_LIGHT.x - LENS_RIM_LIGHT.y * max(0., facing);
+  vec3 rimLight = mix(LENS_RIM_FOOT, LENS_RIM_TOP, smoothstep(-.5, .5, facing));
   return mix(face, rimLight, lit * line);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone, float deepen) {
@@ -965,6 +962,10 @@ export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):
 // caps it, standing at least LENS_PROUD css px past the bar top and bottom. LENS_PAD is the surface's
 // margin past the bar while it is drawn: the end room plus its edge.
 const LENS_END_ROOM = 14, LENS_MENU_ROOM = 8, LENS_MIN_ASPECT = 1.36, LENS_PROUD = 3, LENS_PAD = 16;
+// MOTION-23 (#24 council: the held bubble stands proud of the bar): the video's held lens (12.75 s, 73 css px on the
+// 66 px grown bar) stands 4 px over the bar top and 3 under its bottom, its centre LENS_HOLD_RISE bar heights above the
+// bar's; the 13.5 s drag lens is centred (2 and 2). So the press raises the drawn lens and its sample by that much.
+const LENS_HOLD_RISE = .0076;
 
 /** The lens each bar last drew: [cx, cy, width, height] in the bar's on-screen css px, and the bar's own scale
  * (sx, sy) against its layout box. tabbar.ts sizes the glyph zoom from it, so the zoom covers the wide bubble. */
@@ -1037,9 +1038,10 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   const pressWidth = 1 + .045 * press;
   const stretch = Math.min(1,Math.max(0,(1.14-scaleY)/.16));
   // Keep the active sample centered on the bar as the visible capsule flattens and rises.
+  const holdRise = projection * press * LENS_HOLD_RISE * bar.height;
   const samplePill = projection > 0 ? [
     cx,
-    cy + projection * (bar.height/2 - cy),
+    cy + projection * (bar.height/2 - cy) - holdRise,
     pillWidth + projection * Math.min(8,2*sideRoom),
     pillHeight + projection * (bar.height + 8 - 3*stretch - pillHeight),
   ] : pill;
@@ -1068,7 +1070,7 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   if (projection > 0) samplePill[0] = drawnCx;
   const drawnPill = projection > 0 || press > 0 ? [
     drawnCx,
-    cy + projection * (bar.height/2 - cy),
+    cy + projection * (bar.height/2 - cy) - holdRise,
     pressedWidth + projection * (raisedWidth - pressedWidth),
     pressedHeight + projection * (raisedHeight - pressedHeight),
   ] : pill;
