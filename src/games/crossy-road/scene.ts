@@ -23,7 +23,7 @@ import {
   CAR_COLORS, CONTAINER_COLORS, LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, mastGeometry, rockGeometry,
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
-import {bushGeometry, crystalGeometry, decoratedTreeGeometry, giftsGeometry, lampPostGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
+import {bushGeometry, decoratedTreeGeometry, giftsGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
 import {
   CAR_MODELS, FIRE, LOCOS, PLOUGH, PROP, TRUCK_MODELS, WAGONS,
   carLength, carModel, lilyLook, mix, propAt, trainKind, truckModel, wagonAt,
@@ -74,17 +74,16 @@ export function focusXTarget(playerX: number, _halfWidth: number): number {
 
 const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
-const C_WHITE = reg(0xffffff), C_GRASS = reg(0xcdd9ea, 0xc4d1e4), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
+const C_WHITE = reg(0xffffff), C_GRASS = reg(0xe9eff9, 0xdfe7f4), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
 const C_DASH = reg(0x6b6f83), C_SLEEPER = reg(0x7a5444), C_STEEL = reg(0x5b5d70), C_FOAM = reg(0xfaffff), C_RIPPLE = reg(0xb8f1ff);
 const C_WATER_EDGE = reg(0x5ac3fc);
 const C_DIRT = reg(0x633642);
-/** Winter: snow lying on tracks and the grass, green tufts poking through it, and falling flakes. */
-const C_SNOW = reg(0xe6eef8),
+/** Winter: snow lying on tracks and the grass, and falling flakes. */
+const C_SNOW = reg(0xf7faff),
   /** The track: a two-step gravel bed with speckles, tie plates, and polished rail heads. */
-  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_WIRE = reg(0x3d4250), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
-/** Small floor details: mushrooms, cones, pebbles, flowers, manhole covers and reeds. */
-const C_CAP = reg(0xd8343c), C_STEM = reg(0xf3ecdc), C_CONE = reg(0x7a4f38), C_PEBBLE = reg(0x8f8ba0, 0x77738a), C_PETAL = reg(0xffffff, 0x9a6fe0, 0xffd84a),
-  C_COVER = reg(0x2c303b, 0x5b6070), C_REED = reg(0x9aa35c, 0x7a4b32);
+  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_WIRE = reg(0x3d4250), C_FLAKE = reg(0xffffff);
+/** Small floor details: manhole covers and reeds. */
+const C_COVER = reg(0x2c303b, 0x5b6070), C_REED = reg(0x9aa35c, 0x7a4b32);
 const C_TRUCK = reg(...TRUCK_COLORS), C_FIRE = reg(0xd0202e), C_PLOUGH = reg(0xf08a1c);
 const C_CAR = reg(...CAR_COLORS), C_TAXI = reg(0xf4d33e), C_TRAIN = reg(...TRAIN_COLORS), C_CONTAINER = reg(...CONTAINER_COLORS), C_LOG = reg(...LOG_COLORS);
 const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x3a1218), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
@@ -109,10 +108,10 @@ const TRACK_Z = 0.1;
 /** Half the depth of a car and of a lorry at scale 1, wheels and mirrors included. */
 const CAR_HALF = 0.35, TRUCK_HALF = 0.3;
 /** How much larger than its model each obstacle stands (width, height), in PROP order: three bare trees, the stump,
- * three boulders, two pines, the Christmas tree, snowman, lamp, bush, log pile, presents and crystal. */
+ * three boulders, two pines, the Christmas tree, snowman, bush, log pile and presents. */
 const PROP_SCALE: readonly (readonly [number, number])[] = [
   [1.25, 1.55], [1.25, 1.55], [1.25, 1.55], [1.4, 1.4], [1.25, 1.35], [1.25, 1.35], [1.25, 1.35], [1.3, 1.45], [1.3, 1.45],
-  [1.3, 1.45], [1.4, 1.4], [1.35, 1.4], [1.3, 1.3], [1.25, 1.25], [1.3, 1.3], [1.35, 1.5],
+  [1.3, 1.45], [1.4, 1.4], [1.3, 1.3], [1.25, 1.25], [1.3, 1.3],
 ];
 /** Track layers (tiles): the gravel bed's two steps, sleeper thickness, rail centre lines from the track axis and the
  * rail-head top, which sits just above TRAIN_BASE_Y so bogies ride on the heads. */
@@ -350,7 +349,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Scenery in PROP order: bare trees, the stump, boulders, then the zone models.
   const props = [
     ...[0, 1, 2, 3].map(treeGeometry), ...[0, 1, 2].map(rockGeometry), pineGeometry(false), pineGeometry(true), decoratedTreeGeometry(),
-    snowmanGeometry(), lampPostGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(), crystalGeometry(),
+    snowmanGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(),
   ].map((g, i) => pool(geo(g), lit, i < PROP.stump || i === PROP.pineSmall || i === PROP.pineTall ? 320 : 160, true));
   const carBody = CAR_MODELS.map(model => pool(merged(carGeometry(model)), painted, 80, true));
   /** Lorries by model, then by length (2 or 3 tiles). The fire engine and the plough have no long form. */
@@ -499,42 +498,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     ground.put((left+right)/2, y, zc, right-left, h, depth, 0, ci, 1);
   }
 
-  function tuft(x: number, z: number, h: number): void {
-    ground.put(x, 0, z, 0.07, 0.1, 0.07, 0, C_TUFT + ((h >>> 12) & 1), 1);
-    ground.put(x + 0.08, 0, z + 0.04, 0.06, 0.07, 0.06, 0, C_TUFT + ((h >>> 13) & 1), 1);
-  }
-
-  /** Small details on an open cell. Nothing here is tall enough to look like an obstacle. */
-  function decor(c: number, row: number): void {
-    const h = hash(row, c + 1000), kind = h & 15, a = (h >>> 14) & 3;
-    const x = c + (((h >>> 4) & 15) / 15 - 0.5) * 0.6, z = curZ + (((h >>> 8) & 15) / 15 - 0.5) * 0.7 * ROW_DEPTH;
-    switch (kind) {
-      case 0: tuft(x, z, h); break;
-      case 1: case 2: ground.put(x, 0, z, 0.3 + a * 0.08, 0.05, 0.22, 0, C_SNOW, 1); break;
-      case 3:
-        ground.put(x, 0, z, 0.12, 0.06, 0.1, 0, C_PEBBLE, 1);
-        ground.put(x + 0.13, 0, z + 0.06, 0.07, 0.04, 0.07, 0, C_PEBBLE + 1, 1);
-        break;
-      case 4:
-        // Two red mushrooms.
-        for (let i = 0; i < 2; i++) {
-          const s = 1 - i * 0.35, mx = x + i * 0.14, mz = z + i * 0.09;
-          ground.put(mx, 0, mz, 0.05 * s, 0.08 * s, 0.05 * s, 0, C_STEM, 1);
-          ground.put(mx, 0.08 * s, mz, 0.14 * s, 0.05 * s, 0.14 * s, 0, C_CAP, 1);
-        }
-        break;
-      case 5: ground.put(x, 0, z, 0.09, 0.07, 0.13, a * 0.7, C_CONE, 1); break;
-      case 6: ground.put(x, 0, z, 0.36, 0.03, 0.04, a * 0.8, C_SLEEPER, 1); break;
-      case 7:
-        // A candy cane stuck in the snow.
-        for (let i = 0; i < 4; i++) ground.put(x, i * 0.055, z, 0.05, 0.055, 0.05, 0, i & 1 ? C_WHITE : C_CAP, 1);
-        ground.put(x + 0.05, 0.165, z, 0.05, 0.055, 0.05, 0, C_CAP, 1);
-        break;
-      case 8:
-        // A winter flower: white, purple or yellow.
-        ground.put(x, 0, z, 0.03, 0.1, 0.03, 0, C_TUFT, 1);
-        ground.put(x, 0.1, z, 0.09, 0.05, 0.09, 0, C_PETAL + a % 3, 1);
-    }
+  /** A low snow drift on about one open cell in five. The ground stays clean, so obstacles and hazards read clearly. */
+  function drift(c: number, row: number): void {
+    const h = hash(row, c + 1000);
+    if (h % 5 !== 0) return;
+    const x = c + (((h >>> 4) & 15) / 15 - 0.5) * 0.5, z = curZ + (((h >>> 8) & 15) / 15 - 0.5) * 0.5 * ROW_DEPTH;
+    ground.put(x, 0, z, 0.5 + ((h >>> 14) & 3) * 0.1, 0.04, 0.3, 0, C_SNOW, 1);
   }
 
   function drawGrass(lane: GrassLane, row: number): void {
@@ -542,10 +511,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     band(C_GRASS + lane.shade, -0.5, 0.5, curZ, ROW_DEPTH);
     for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) {
       const o = obstacleAt(lane, c);
-      if (o === null) { decor(c, row); continue; }
+      if (o === null) { drift(c, row); continue; }
       const h = hash(row, c + 400), i = propAt(o, obstacleVariant(lane, c), h >>> 2);
-      // Boulders and crystals turn a quarter at a time; everything else faces the camera.
-      const turn = (i >= PROP.rock && i < PROP.rock + 3) || i === PROP.crystal ? (h & 3) * (Math.PI / 2) : 0;
+      // Boulders turn a quarter at a time; everything else faces the camera.
+      const turn = i >= PROP.rock && i < PROP.rock + 3 ? (h & 3) * (Math.PI / 2) : 0;
       // The forest behind the start keeps its model size, so it does not hide the bird on row 0.
       const wide = row < 0 ? 1 : PROP_SCALE[i][0], tall = row < 0 ? 1 : PROP_SCALE[i][1];
       props[i].put(c, 0, curZ, wide, tall, wide, turn, C_WHITE, 1);
