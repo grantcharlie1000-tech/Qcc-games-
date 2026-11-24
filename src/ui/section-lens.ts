@@ -302,7 +302,7 @@ const float PILL_LENS = 6.;
 // linear tone above PILL_CAP.x rolls off toward PILL_CAP.y, so over any art the interior under the glyph stays a dark
 // lens that keeps #0a84ff at about 2:1 or more (dark art and black, under .04, are unchanged). It keeps PILL_TINT of the
 // smoke's colour at the bar's own saturation, so it reads as smoked glass over the art, not a grey disc.
-const vec4 PILL_CAP = vec4(.04, .085, 3., 8.);
+const vec4 PILL_CAP = vec4(.04, .085, 4.6, 9.);
 // LOOK-26 (F22 review I-1 on c7f78314): that roll-off ran 3-8 css px in all round the capsule, so the selected label's
 // lowest rows (its baseline about 6.6 css px from the pill's foot, its descenders about 4) and the glyph's top (about 6.5
 // from the pill's top) stood on the brighter edge tone, about 1.9:1 and 1.1:1 over white art where the interior holds
@@ -312,6 +312,10 @@ const vec4 PILL_CAP = vec4(.04, .085, 3., 8.);
 // rim, the dome and the arc stay in the outer px. Toward the ends, where the normal is under PILL_CAP_RUN.z vertical
 // (about 42 degrees off the bar's axis, outside the +-40 degrees where Apple's step was read), it keeps PILL_CAP.zw, so
 // the step across the capsule's end is unchanged.
+// LOOK-26 (item 4, the pill step at the capsule's ends): from 3 css px in, that end roll-off reached the inner px of the
+// 2-4.6 css px band where Apple's step was read in pairs, so pill_step_bright read 1.852 against Apple's 1.722 (1.75 before
+// the roll-off). The ends now roll off from PILL_CAP.z 4.6 to .w 9 css px in, past that band; under the glyph rows the
+// roll-off is PILL_CAP_RUN's, so the label's contrast is unchanged.
 const vec4 PILL_CAP_RUN = vec4(1., 3., .67, .83);
 // LOOK-29 (council 942de639, Opus and Grok: over bright art the dark rest pill read as a grey-brown disc, chroma 13 over the
 // hotel, where Apple's smoked lens carries the poster's colour, 23.9-56.7). Like for like on Apple's own art
@@ -1056,7 +1060,7 @@ function smoothstep(value:number) {
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
 // (section-lens.spec reads the median and, since LOOK-26, the 5th percentile); its margin over 2:1 covers the model. LOOK-23: lighter blues only (no deeper one). LOOK-17: ACCENT is Apple's dark system blue,
 // #0a84ff (hue 210, Apple's dark still 210.4; #0099ff read 204). section-navigation.css draws it at rest; press and drag keep their own accents.
-const ACCENT = [10,132,255], ACCENT_FLOOR = 2.6;
+const ACCENT = [10,132,255], ACCENT_FLOOR = 3;
 // LOOK-26 (F22 review I-1): INK_SHARE's tail let the pill's brighter edge band under the label's lowest rows pass unseen
 // (about 18% of the points). The ink must also keep ACCENT_LOW against INK_LOW of the points, so no allowance absorbs a
 // band: the floor holds down to the label's lowest rows, as section-lens.spec now reads it (the 5th percentile, 2:1).
@@ -1064,6 +1068,10 @@ const ACCENT = [10,132,255], ACCENT_FLOOR = 2.6;
 // 2.2:1 (the band's points had pushed the ink lighter). ACCENT_FLOOR is now Apple's own contrast there, 2.6 (its ink
 // against the pill's interior over the bright poster at 19.5 s reads 2.69:1, item 48), so over bright art the ink stays
 // c7f78314's lighter blue (the hotel rgb(41,147,255) 2.6:1, white rgb(56,155,255) 2.8:1); over dark art #0a84ff is unchanged.
+// LOOK-26 (item 3, ink luminance): Apple's ink over bright art is lighter still, WCAG L .348-.374 (rgb(31,166,255) at 32.5 s
+// and rgb(38,173,253) at 19.5 s, against .286 for rgb(41,147,255)), at 2.69-4.35:1 against its pill's interior. At
+// ACCENT_FLOOR 3 the ink over bright art is rgb(71,163,255), L .348 (the hotel and white about 3.1:1); over #777 it is
+// rgb(56,155,255), L .315; over dark art (#444 and darker) #0a84ff, the accent, as before.
 const ACCENT_LOW = 2, INK_LOW = .95;
 const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
 // LOOK-23 (F21 review note a): the model reads the pill as the shader draws it. Its art comes from INK_LENS (PILL_LENS) css
@@ -1072,7 +1080,7 @@ const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 1
 // px across) sinks it as PILL_FLOOR does (INK_FLOOR). Over uniform art neither moves it.
 const INK_LENS = 6, INK_FLOOR = [.3,.02,.06], INK_TEXEL = 16/3, INK_TAPS = [[9,3.9],[-9,-3.9],[-3.9,9],[3.9,-9]];
 // LOOK-23 (council on 6eaf6223): the interior's roll-off (PILL_CAP), by the point's depth in its tab's capsule.
-const INK_CAP = [.04,.085,3,8];
+const INK_CAP = [.04,.085,4.6,9];
 // LOOK-27: the roll-off acts on the local mean and each point keeps its ratio to it (PILL_DETAIL), anchored under the label
 // rows to the darkest tap's capped tone.
 const INK_DETAIL = [2,7,2];

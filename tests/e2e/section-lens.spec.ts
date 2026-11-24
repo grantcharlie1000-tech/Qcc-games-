@@ -516,6 +516,8 @@ test('dark: when the art under the resting bar changes, the settle repaint follo
   // LOOK-25 (FAST LOOP re-pin with the council fix): the dark rest pill keeps its interior a dark lens over bright art
   // (section-lens.ts PILL_CAP), so #0a84ff keeps 2.2:1 over #777 as over #222 (2.43:1 there; Apple's ink stays its system
   // blue over a dark lens). From #222 the ink changes going to #ddd (a lighter blue) and back on #777 (#0a84ff).
+  // LOOK-27 (F23 review note): since ab225677 (ACCENT_FLOOR 2.6, and 3 for Apple's ink luminance) the ink over #777 is a
+  // lighter blue than #0a84ff as well, not as light as over #ddd, so it still changes at each step.
   for (const art of ['#ddd','#777']) {
     const tracing=trace(1800);
     await page.waitForTimeout(100);
