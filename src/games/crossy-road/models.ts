@@ -749,7 +749,7 @@ const BARK = 0x94664c, BARK_SIDE = 0x80543e, BARK_LIGHT = 0xb08262, SNOW = 0xf6f
 export function treeGeometry(variant: number): THREE.BufferGeometry {
   if (variant === 3) return voxel([
     [0, 0, 0, 0.42, 0.07, 0.42, SNOW, 0, 0, SNOW_SIDE],
-    [0, 0, 0, 0.35, 0.32, 0.35, 0x613d48, 0, 0, 0x4b2d3b],
+    [0, 0, 0, 0.35, 0.32, 0.35, BARK, 0, 0, BARK_SIDE],
     [0, 0.32, 0, 0.37, 0.05, 0.37, SNOW, 0, 0, SNOW_SIDE],
   ], 0.9);
   const v = clampInt(variant, 0, 2), H = 0.8 + 0.3 * v, m = v === 1 ? -1 : 1, half = H / 2;
@@ -793,7 +793,7 @@ const clampInt = (v: number, lo: number, hi: number): number => Math.min(hi, Mat
 
 /** Lavender notched boulders, split tops and low clusters, each with a snow cap on its highest block. */
 export function rockGeometry(variant: number): THREE.BufferGeometry {
-  const top=0xab99c9, side=0x7e6c9a, cap = (x: number, y: number, z: number, w: number, d: number): Part => [x, y, z, w, 0.05, d, SNOW, 0, 0, SNOW_SIDE];
+  const top=0xa3acbd, side=0x7c8598, cap = (x: number, y: number, z: number, w: number, d: number): Part => [x, y, z, w, 0.05, d, SNOW, 0, 0, SNOW_SIDE];
   if(variant<=0) return voxel([
     [0,0,0,0.77,0.30,0.64,top,0,0,side],
     [-0.10,0.30,-0.12,0.56,0.15,0.37,top,0,0,side],

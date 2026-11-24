@@ -14,13 +14,13 @@ export function mix(a: number, b: number, c = 0): number {
 // Scenery ---------------------------------------------------------------------
 
 /** Obstacle models. `bare` and `rock` are the first of three variants. */
-export const PROP = {bare: 0, stump: 3, rock: 4, pineSmall: 7, pineTall: 8, decorated: 9, snowman: 10, lamp: 11, bush: 12, logPile: 13, gifts: 14, crystal: 15} as const;
+export const PROP = {bare: 0, stump: 3, rock: 4, pineSmall: 7, pineTall: 8, decorated: 9, snowman: 10, bush: 11, logPile: 12, gifts: 13} as const;
 
-const B = PROP.bare, R = PROP.rock;
-/** What a tree cell and a rock cell can be. Repeats set the odds: the same mix everywhere, so nothing gathers in one place. */
-const TREES: readonly number[] = [B, B, B, B, B, B, B, PROP.pineTall, PROP.pineTall, PROP.pineTall, PROP.pineTall, PROP.pineSmall, PROP.pineSmall, PROP.pineSmall,
-  PROP.bush, PROP.bush, PROP.decorated, PROP.snowman, PROP.lamp, PROP.crystal];
-const ROCKS: readonly number[] = [R, R, R, R, R, PROP.logPile, PROP.logPile, PROP.gifts, PROP.bush, PROP.crystal];
+const B = PROP.bare, R = PROP.rock, S = PROP.pineSmall, T = PROP.pineTall;
+/** What a tree cell and a rock cell can be. Repeats set the odds: mostly pines and boulders, so the ground reads as one
+ * snowy wood, with a rare snowman, Christmas tree or pile of presents. */
+const TREES: readonly number[] = [T, T, T, T, T, T, T, S, S, S, S, S, S, B, B, B, B, PROP.bush, PROP.decorated, PROP.snowman];
+const ROCKS: readonly number[] = [R, R, R, R, R, R, R, PROP.bush, PROP.logPile, PROP.gifts];
 
 /** The model for an obstacle. `variant` is the lane's own 0..2 (or 3 for a stump, which stays a stump). */
 export function propAt(obstacle: Exclude<Obstacle, null>, variant: number, h: number): number {
