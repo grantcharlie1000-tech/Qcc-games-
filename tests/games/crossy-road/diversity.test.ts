@@ -89,7 +89,7 @@ describe('larger models still fit their row', () => {
     };
     for (const model of CAR_MODELS) { const car = carGeometry(model); for (const g of [car.body, car.detail]) check(g, VEHICLE_SCALE, ROW_DEPTH / 2 - 0.02 - 0.35 * VEHICLE_SCALE); }
     for (const model of TRUCK_MODELS) for (const len of [2, 3] as const) { const truck = truckGeometry(len, model); for (const g of [truck.body, truck.detail]) check(g, VEHICLE_SCALE, ROW_DEPTH / 2 - 0.02 - 0.3 * VEHICLE_SCALE); }
-    for (const piece of Object.values(train)) for (const g of [piece.body, piece.detail]) check(g, TRAIN_SCALE, 0.2);
+    for (const piece of Object.values(train)) for (const g of [piece.body, piece.detail]) check(g, TRAIN_SCALE, 0.1);
   });
   it('every road vehicle model is as long as its collision span, and train pieces are two tiles with couplers', () => {
     for (const model of CAR_MODELS) {
