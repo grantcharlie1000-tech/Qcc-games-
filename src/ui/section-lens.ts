@@ -281,6 +281,16 @@ const float PILL_LENS = 6.;
 // lens that keeps #0a84ff at about 2:1 or more (dark art and black, under .04, are unchanged). It keeps PILL_TINT of the
 // smoke's colour at the bar's own saturation, so it reads as smoked glass over the art, not a grey disc.
 const vec4 PILL_CAP = vec4(.04, .085, 3., 8.);
+// LOOK-26 (F22 review I-1 on c7f78314): that roll-off ran 3-8 css px in all round the capsule, so the selected label's
+// lowest rows (its baseline about 6.6 css px from the pill's foot, its descenders about 4) and the glyph's top (about 6.5
+// from the pill's top) stood on the brighter edge tone, about 1.9:1 and 1.1:1 over white art where the interior holds
+// 2.8:1. Apple's pill is dark right up to its ink (item 48: rings 2-3 px out of the ink read .85-1.0x of the interior).
+// Along the capsule's top and foot, where its normal is past PILL_CAP_RUN.w vertical, the roll-off now runs from
+// PILL_CAP_RUN.x to .y css px in, so every glyph row from the descenders up stands on the near-black interior; the lit
+// rim, the dome and the arc stay in the outer px. Toward the ends, where the normal is under PILL_CAP_RUN.z vertical
+// (about 42 degrees off the bar's axis, outside the +-40 degrees where Apple's step was read), it keeps PILL_CAP.zw, so
+// the step across the capsule's end is unchanged.
+const vec4 PILL_CAP_RUN = vec4(1., 3., .67, .83);
 const float PILL_TINT = 1.;
 // LOOK-23 (#24: the dark rest pill over a title read the title's strokes nearly as plainly as the bar beside it). Read in
 // the band 5 css px inside the capsule with the glyph column left out, Apple's pill at 38.75 s over "New Releases for You"
@@ -773,7 +783,8 @@ void main() {
       barLinear = mix(barLinear, floorBar + PILL_FLOOR.x * (barLinear - floorBar), 1. - smoothstep(PILL_FLOOR.y, PILL_FLOOR.z, floorTone));
       float pillStep = mix(PILL_STEP.x, PILL_STEP.y, smoothstep(PILL_STEP.z, PILL_STEP.w, barLinear));
       float pillTone = max((barLinear + .05) / pillStep - .05, 0.), pillOver = max(0., pillTone - PILL_CAP.x);
-      pillTone = mix(pillTone, min(pillTone, PILL_CAP.x) + pillOver / (1. + pillOver / (PILL_CAP.y - PILL_CAP.x)), smoothstep(PILL_CAP.z, PILL_CAP.w, pillDepth));
+      vec2 capBand = mix(PILL_CAP.zw, PILL_CAP_RUN.xy, smoothstep(PILL_CAP_RUN.z, PILL_CAP_RUN.w, abs(pillNormal.y)));
+      pillTone = mix(pillTone, min(pillTone, PILL_CAP.x) + pillOver / (1. + pillOver / (PILL_CAP.y - PILL_CAP.x)), smoothstep(capBand.x, capBand.y, pillDepth));
       vec3 smokeColor = darkSmoke(pillArt);
       float smokeLuma = dot(smokeColor, vec3(.2126, .7152, .0722)), pillGrey = linearSrgb(pillTone);
       vec3 darkPill = max(vec3(pillGrey) + PILL_TINT * (smokeColor - smokeLuma) * pillGrey / max(smokeLuma, .02), 0.);
@@ -920,9 +931,17 @@ function smoothstep(value:number) {
 // of a box about the wide field's reach, the rest about the soft frost's with its bright detail sunk INK_EVEN of the way
 // to the field, as smoked() sinks it), and takes the pill's luminance there (DARK_GLASS, then PILL_STEP). selectionAccent gives the least step of the #0099ff accent toward white (over a mid pill) or toward a
 // deeper blue (over a bright one) that keeps ACCENT_FLOOR against INK_SHARE of the points, '' where #0099ff already does
-// (section-lens.spec reads the median); its margin over 2:1 covers the model. LOOK-23: lighter blues only (no deeper one). LOOK-17: ACCENT is Apple's dark system blue,
+// (section-lens.spec reads the median and, since LOOK-26, the 5th percentile); its margin over 2:1 covers the model. LOOK-23: lighter blues only (no deeper one). LOOK-17: ACCENT is Apple's dark system blue,
 // #0a84ff (hue 210, Apple's dark still 210.4; #0099ff read 204). section-navigation.css draws it at rest; press and drag keep their own accents.
-const ACCENT = [10,132,255], ACCENT_FLOOR = 2.2;
+const ACCENT = [10,132,255], ACCENT_FLOOR = 2.6;
+// LOOK-26 (F22 review I-1): INK_SHARE's tail let the pill's brighter edge band under the label's lowest rows pass unseen
+// (about 18% of the points). The ink must also keep ACCENT_LOW against INK_LOW of the points, so no allowance absorbs a
+// band: the floor holds down to the label's lowest rows, as section-lens.spec now reads it (the 5th percentile, 2:1).
+// With that band gone from under the glyphs (PILL_CAP_RUN), the same 2.2 would have let #0a84ff back over bright art at
+// 2.2:1 (the band's points had pushed the ink lighter). ACCENT_FLOOR is now Apple's own contrast there, 2.6 (its ink
+// against the pill's interior over the bright poster at 19.5 s reads 2.69:1, item 48), so over bright art the ink stays
+// c7f78314's lighter blue (the hotel rgb(41,147,255) 2.6:1, white rgb(56,155,255) 2.8:1); over dark art #0a84ff is unchanged.
+const ACCENT_LOW = 2, INK_LOW = .95;
 const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
 // LOOK-23 (F21 review note a): the model reads the pill as the shader draws it. Its art comes from INK_LENS (PILL_LENS) css
 // px further in at the capsule's edge, falling as the cube of the depth (20ea5577), up to about 2.5 css px at the label's
@@ -931,6 +950,9 @@ const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 1
 const INK_LENS = 6, INK_FLOOR = [.3,.02,.06], INK_TEXEL = 16/3, INK_TAPS = [[9,3.9],[-9,-3.9],[-3.9,9],[3.9,-9]];
 // LOOK-23 (council on 6eaf6223): the interior's roll-off (PILL_CAP), by the point's depth in its tab's capsule.
 const INK_CAP = [.04,.085,3,8];
+// LOOK-26 (F22 review I-1): along the capsule's top and foot the roll-off runs INK_CAP_RUN[0] to [1] css px in (PILL_CAP_RUN),
+// easing in as the point's normal turns from INK_CAP_RUN[2] to [3] vertical.
+const INK_CAP_RUN = [1,3,.67,.83];
 /** A tab's rest pill, a capsule in viewport css px. */
 export type InkPill = {x:number; y:number; w:number; h:number};
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
@@ -941,7 +963,7 @@ export function selectionAccent(pills:number[]):string {
   const floor = (rgb:number[])=>{
     const ink = inkLuminance(rgb);
     const ratios = pills.map(pill=>(Math.max(ink,pill)+.05)/(Math.min(ink,pill)+.05)).sort((x,y)=>x-y);
-    return ratios[Math.floor((1-INK_SHARE)*(ratios.length-1))];
+    return Math.min(ratios[Math.floor((1-INK_SHARE)*(ratios.length-1))],ratios[Math.floor((1-INK_LOW)*(ratios.length-1))]*ACCENT_FLOOR/ACCENT_LOW);
   };
   if (!pills.length || floor(ACCENT)>=ACCENT_FLOOR) return '';
   // LOOK-23 (council on 6eaf6223): toward white only. Apple's selected ink turns a lighter blue over bright art (Charlie's
@@ -1004,13 +1026,14 @@ export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):
       const x = (u-crop.x)*sx-left, y = (v-crop.y)*sy-top;
       if (x<0 || y<0 || x>=w || y>=h) continue;
       // The pill's art is read INK_LENS * (1 - depth / radius)^3 css px further in, toward the capsule's axis.
-      let lx = x, ly = y, depth = Infinity;
+      let lx = x, ly = y, depth = Infinity, vertical = 1;
       if (pill) {
         const radius = Math.min(pill.w,pill.h)/2, run = Math.max(0,Math.abs(pill.w-pill.h)/2);
         const px = u-pill.x-pill.w/2, py = v-pill.y-pill.h/2;
         const ax = pill.w>=pill.h ? px-Math.min(run,Math.max(-run,px)) : px, ay = pill.w>=pill.h ? py : py-Math.min(run,Math.max(-run,py));
         const reach = Math.hypot(ax,ay), lu = 1-Math.min(1,Math.max(0,(radius-reach)/radius)), shift = INK_LENS*lu*lu*lu/Math.max(reach,.001);
         depth = radius-reach;
+        vertical = Math.abs(ay)/Math.max(reach,.001);
         lx = x-ax*shift*sx;
         ly = y-ay*shift*sy;
       }
@@ -1026,7 +1049,9 @@ export function pillTables(data:ArrayLike<number>, region:InkRegion, crop:Crop):
       const step = INK_STEP[0]+(INK_STEP[1]-INK_STEP[0])*smoothstep((bar-INK_STEP[2])/(INK_STEP[3]-INK_STEP[2]));
       // PILL_CAP: past INK_CAP[2] css px in, the tone above INK_CAP[0] rolls off toward INK_CAP[1].
       const tone = Math.max(0,(bar+.05)/step-.05), over = Math.max(0,tone-INK_CAP[0]);
-      pills.push(tone+smoothstep((depth-INK_CAP[2])/(INK_CAP[3]-INK_CAP[2]))*(Math.min(tone,INK_CAP[0])+over/(1+over/(INK_CAP[1]-INK_CAP[0]))-tone));
+      const run = smoothstep((vertical-INK_CAP_RUN[2])/(INK_CAP_RUN[3]-INK_CAP_RUN[2]));
+      const from = INK_CAP[2]+run*(INK_CAP_RUN[0]-INK_CAP[2]), to = INK_CAP[3]+run*(INK_CAP_RUN[1]-INK_CAP[3]);
+      pills.push(tone+smoothstep((depth-from)/(to-from))*(Math.min(tone,INK_CAP[0])+over/(1+over/(INK_CAP[1]-INK_CAP[0]))-tone));
     }
     return pills;
   };

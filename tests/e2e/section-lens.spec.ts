@@ -234,8 +234,12 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       }
       values.sort((a,b)=>a-b);
       pill.sort((a,b)=>a-b);
-      return `${Math.round(100*values[values.length>>1])/100} ${Math.round(1000*pill[pill.length>>1])/1000}`;
+      return `${Math.round(100*values[values.length>>1])/100} ${Math.round(1000*pill[pill.length>>1])/1000} ${Math.round(100*values[Math.floor(.05*(values.length-1))])/100}`;
     });
+    // LOOK-26 (F22 review I-1 on c7f78314): the median let the pill's brighter edge band under the label's lowest rows pass
+    // (1.9:1 at the baseline, 1.1:1 at a descender, over white art). The dark rest pill must hold 2:1 at the 5th percentile
+    // of its per-pixel ratios under the label and glyph boxes too (the label's line box takes in its descenders).
+    const lowFloor=2;
     // LOOK-10: the bar body at the canvas centre (no glyph is drawn into the canvas) against the dark pill's luminance.
     const barToPill=(pillLuminance:number)=>canvas.evaluate((element,pillLuminance)=>{
       const surface=element as HTMLCanvasElement,data=surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data;
@@ -275,8 +279,9 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     })).toBeGreaterThan(110);
     let previous='';
     await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
-    const [ratio,pill]=previous.split(' ').map(Number);
-    console.log(`selected accent over white art, ${scheme}: ${ratio}:1, pill luminance ${pill}`);
+    const [ratio,pill,low]=previous.split(' ').map(Number);
+    console.log(`selected accent over white art, ${scheme}: ${ratio}:1 (p5 ${low}:1), pill luminance ${pill}`);
+    if (scheme==='dark') expect(low,'p5 under the label and glyph over white art').toBeGreaterThanOrEqual(lowFloor);
     // The pill may be no brighter than the smoked pill either, so its contrast cannot recover
     // by crossing over the accent (light theme) while the art still washes it out.
     expect(ratio).toBeGreaterThanOrEqual(floor[scheme].ratio);
@@ -302,8 +307,9 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     })).toBeLessThan(scheme==='light'?225:110);
     previous='';
     await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
-    const [blackRatio,blackPill]=previous.split(' ').map(Number);
-    console.log(`selected accent over black art, ${scheme}: ${blackRatio}:1, pill luminance ${blackPill}`);
+    const [blackRatio,blackPill,blackLow]=previous.split(' ').map(Number);
+    console.log(`selected accent over black art, ${scheme}: ${blackRatio}:1 (p5 ${blackLow}:1), pill luminance ${blackPill}`);
+    if (scheme==='dark') expect(blackLow,'p5 under the label and glyph over black art').toBeGreaterThanOrEqual(lowFloor);
     expect(blackRatio).toBeGreaterThanOrEqual(floor[scheme].ratio);
     expect(blackPill).toBeLessThanOrEqual(floor[scheme].pill);
     expect(blackPill).toBeGreaterThanOrEqual(milky[scheme]);
@@ -320,10 +326,11 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
       })).toBeGreaterThan(110);
       previous='';
       await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
-      const [greyRatio,greyPill]=previous.split(' ').map(Number);
+      const [greyRatio,greyPill,greyLow]=previous.split(' ').map(Number);
       const greyStep=await barToPill(greyPill),greyEnds=await endStep();
-      console.log(`selected accent over #777 art, dark: ${greyRatio}:1, pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)} under the glyph, ${greyEnds.toFixed(2)} across the pill's end`);
+      console.log(`selected accent over #777 art, dark: ${greyRatio}:1 (p5 ${greyLow}:1), pill luminance ${greyPill}, bar to pill ${greyStep.toFixed(2)} under the glyph, ${greyEnds.toFixed(2)} across the pill's end`);
       expect(greyRatio).toBeGreaterThanOrEqual(floor.dark.ratio);
+      expect(greyLow,'p5 under the label and glyph over #777 art').toBeGreaterThanOrEqual(lowFloor);
       expect(greyStep).toBeGreaterThanOrEqual(1.55);
       expect(greyEnds).toBeGreaterThanOrEqual(1.55);
       expect(greyEnds).toBeLessThanOrEqual(2.15);
@@ -391,10 +398,91 @@ async function inkPage(page:Page){
       for (let i=0;i<data.length;i+=4) {const bg=lum([data[i],data[i+1],data[i+2]]);values.push((Math.max(inkLum,bg)+.05)/(Math.min(inkLum,bg)+.05));}
     }
     values.sort((a,b)=>a-b);
-    return Math.round(100*values[values.length>>1])/100;
+    // LOOK-26 (F22 review I-1): the 5th percentile, not the median, so the label's lowest rows count.
+    return Math.round(100*values[Math.floor(.05*(values.length-1))])/100;
   },ink);
   return {bar,patch,trace,ratio};
 }
+// LOOK-26 (F22 review I-1 on c7f78314): with Study or My list selected (their 'y' descends to about 4 css px from the pill's
+// foot) over white, #ccc, #777 and bright posters, the resting dark pill's per-pixel ratio against the selected ink must hold
+// 2:1 at the 5th percentile under the label and glyph boxes, and under the label's lowest 3 css px rows on their own. On
+// c7f78314 the interior held 2.6-2.8:1 while the label's baseline row read about 1.9:1 and its descender about 1.1:1.
+test('dark: the selected label keeps 2:1 down to its descenders over bright art, with My list and Study selected',async({page})=>{
+  test.setTimeout(120_000);
+  const {bar,patch}=await inkPage(page);
+  // Study is the bar's action button (it opens Study Mode), so the selection moves as inkPage's caught click moves it: the
+  // current tab's aria-current goes to the target, and the pill springs there.
+  const select=(target:string)=>bar.evaluate((element,target)=>{
+    const tab=[...element.querySelectorAll<HTMLElement>('.ui-tab')].find(t=>t.textContent?.trim()===target)!;
+    for (const other of element.querySelectorAll('.ui-tab[aria-current="page"]')) if (other!==tab) other.removeAttribute('aria-current');
+    tab.setAttribute('aria-current','page');
+  },target);
+  const canvas=bar.locator('canvas.section-lens');
+  const centre=()=>canvas.evaluate(element=>{const surface=element as HTMLCanvasElement;return surface.getContext('2d')!.getImageData(surface.width/2,surface.height/2,1,1).data[1];});
+  // Bright posters the backdrop can paint (an image, no CSS gradient or filter): a pink and cream facade with dark windows and
+  // fine light strokes, and a photo lifted to poster brightness. Each goes over the black patch in its own holder, and the
+  // last one is taken off first, so each poster's arrival changes the bar plainly.
+  const poster=async(kind:'facade'|'photo')=>{
+    await page.evaluate(()=>document.getElementById('ink-poster')?.remove());
+    await expect.poll(centre).toBeLessThan(60);
+    const before=await centre();
+    await page.locator('.game-grid').evaluate(async(grid,kind)=>{
+      const art=document.createElement('canvas');art.width=780;art.height=200;
+      const ctx=art.getContext('2d')!;
+      if(kind==='facade'){
+        ctx.fillStyle='#f4c4cf';ctx.fillRect(0,0,780,200);
+        for(let y=0;y<200;y+=40){ctx.fillStyle='#f8e4cc';ctx.fillRect(0,y,780,12);}
+        ctx.fillStyle='#6b3343';for(let y=18;y<200;y+=20)for(let x=6;x<780;x+=14)ctx.fillRect(x,y,5,9);
+        ctx.strokeStyle='#ffffff';ctx.lineWidth=2;for(let x=0;x<780;x+=26){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+40,200);ctx.stroke();}
+      }else{
+        const photo=new Image();photo.src='/study/photos/reading-writing.webp';await photo.decode();
+        ctx.filter='brightness(1.45)';ctx.drawImage(photo,0,(photo.naturalHeight-photo.naturalWidth*200/780)/2,photo.naturalWidth,photo.naturalWidth*200/780,0,0,780,200);
+      }
+      const image=document.createElement('img');image.src=art.toDataURL('image/png');image.style.cssText='display:block;width:100%;height:100%;object-fit:cover';
+      await image.decode();
+      const holder=document.createElement('div');holder.id='ink-poster';holder.style.cssText='position:fixed;inset:auto 0 0;height:100px;z-index:2;pointer-events:none';
+      holder.append(image);grid.append(holder);
+    },kind);
+    await expect.poll(async()=>Math.abs(await centre()-before)).toBeGreaterThan(20);
+  };
+  // The per-pixel ratios of the selected ink against the pill under the label and glyph boxes (p5), and under the label's
+  // lowest 3 css px rows alone (p5): no glyph is drawn into the canvas.
+  const reads=()=>canvas.evaluate(element=>{
+    const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect(),sx=surface.width/rect.width,sy=surface.height/rect.height;
+    const tab=surface.closest('.app-tabbar')!.querySelector('[aria-current="page"]')!,label=tab.querySelector(':scope > span')!,icon=tab.querySelector('.ui-icon')!;
+    const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+    const ink=getComputedStyle(label).color,inkLum=lum(ink.match(/[\d.]+/g)!.slice(0,3).map(Number));
+    const read=(box:{left:number;top:number;width:number;height:number})=>{
+      const x=Math.round((box.left-rect.left)*sx),y=Math.round((box.top-rect.top)*sy),w=Math.max(1,Math.round(box.width*sx)),h=Math.max(1,Math.round(box.height*sy));
+      const data=surface.getContext('2d')!.getImageData(x,y,w,h).data,values:number[]=[];
+      for (let i=0;i<data.length;i+=4) {const bg=lum([data[i],data[i+1],data[i+2]]);values.push((Math.max(inkLum,bg)+.05)/(Math.min(inkLum,bg)+.05));}
+      return values;
+    };
+    const p5=(values:number[])=>{values.sort((a,b)=>a-b);return Math.round(100*values[Math.floor(.05*(values.length-1))])/100;};
+    const l=label.getBoundingClientRect(),all=[...read(l),...read(icon.getBoundingClientRect())];
+    return [tab.textContent!.trim(),ink,p5(all),p5(read({left:l.left,top:l.bottom-3,width:l.width,height:3})),Math.round(l.bottom-surface.closest('.app-tabbar')!.getBoundingClientRect().top)].join('|');
+  });
+  const settled=async(target:string)=>{
+    await expect(bar.locator('.ui-tab[aria-current="page"]')).toHaveText(target);
+    await expect.poll(()=>bar.evaluate(element=>element.getAnimations({subtree:true}).filter(a=>a.playState==='running'&&a.effect?.getComputedTiming().iterations!==Infinity).length)).toBe(0);
+    let previous='';
+    await expect.poll(async()=>{const current=await reads();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
+    return previous;
+  };
+  for (const art of ['#fff','#ccc','#777','facade','photo']) {
+    if (art==='facade') await patch('#000');
+    if (art==='facade'||art==='photo') await poster(art); else await patch(art);
+    for (const target of ['My list','Study']) {
+      await select(target);
+      const read=await settled(target);
+      const [tab,ink,low,lowest,labelBottom]=read.split('|');
+      console.log(`dark ${target} over ${art}: ink ${ink} p5 ${low}:1 under the label and glyph, ${lowest}:1 under the label's lowest rows (label foot ${labelBottom} css px down the bar)`);
+      expect(tab).toBe(target);
+      expect(Number(low),`${target} over ${art}: p5 under the label and glyph`).toBeGreaterThanOrEqual(2);
+      expect(Number(lowest),`${target} over ${art}: p5 under the label's lowest rows`).toBeGreaterThanOrEqual(2);
+    }
+  }
+});
 test('dark: a tab switch\'s selected ink is its 2:1 blue by the time the pill lands, and never changes after',async({page})=>{
   const {bar,patch,trace,ratio}=await inkPage(page);
   let target='Movies';
