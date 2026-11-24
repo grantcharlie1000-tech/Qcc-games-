@@ -21,10 +21,13 @@ uniform vec4 region;
 // stay calm (48 levels): soft letters, not a smudge. Its reach is .9 plus 2 css px of mip 1, inside the crop's floor.
 float softFrostMix = 0.;
 const float DARK_RING = .9;
+// The raised lens's bevel squeeze as a mip level (frostLod, MOTION-23 at frost()). MOTION-25: the dark lens's soft frost
+// reads it too, so its bent art stays smooth; the bar's soft frost reads it at 0, unchanged.
+float frostLod = 0.;
 vec3 softFrost(vec2 pos) {
   vec2 uv = region.xy + pos * region.zw;
   float density = float(textureSize(scene, 0).x) * region.z;
-  float lod = log2(max(1., .77 * DARK_RING * density));
+  float lod = max(log2(max(1., .77 * DARK_RING * density)), frostLod);
   vec3 rgb = 2. * textureLod(scene, uv, lod).rgb;
   for (int i = 0; i < 8; i++) {
     float a = .3927 + .7854 * float(i);
@@ -35,7 +38,6 @@ vec3 softFrost(vec2 pos) {
 // MOTION-23 (#24 council on 071faed9: a blocky, pixelated fisheye inside the held lens): the raised lens's bevel squeezes
 // the art it draws in up to about 5x toward the rim, and frost read it at mip 0, so it aliased into blocks. While the lens
 // is up, frostLod is the mip level that squeeze needs (log2 of it), so the bent art stays smooth; elsewhere it is 0.
-float frostLod = 0.;
 vec3 frost(vec2 pos, float spread) {
   if (softFrostMix > .5) return softFrost(pos);
   vec2 uv = region.xy + pos * region.zw;
@@ -386,7 +388,20 @@ const vec3 LENS_RIM_TOP = vec3(.6, .96, 1.), LENS_RIM_FOOT = vec3(1., .78, .95);
 // to pastel. The light lens is now the clear art under it (the bent, unfrosted sample) times LENS_CLEAR, the video's
 // small gain (its lens reads 7-11% over bright art), with no floor and no veil. The dark lens keeps its smoked sample
 // over LENS_LIGHT_DARK at LENS_BRIGHT.
+// MOTION-25 (#24, tooling item 46: the held face against the bar body over the same art): Charlie's dark video's held lens
+// is its bar body over the same art, a little brighter. Pixel for pixel the 12.75 s held face reads 1.126 x the 10.5 s
+// body less 3 levels (correlation .987), and its luma spread over the body's is 1.14 both blurred (3-7 css px boxes) and in
+// what those boxes leave (1.06-1.14): it keeps the bar's smoke and its soft blur. Ours showed the clear art (LENS_LIGHT_DARK
+// .1 + LENS_BRIGHT 1.12 of the frost), 2.33 x the body's spread over Games +210's navy and white title (the navy 60 where
+// the body reads 74, the title 228 where it reads 140) and 1.92 x over the bright Grand Budapest Hotel poster. So the dark
+// lens is the dark bar's own look at its sample (darkBar) at LENS_DARK_GAIN of it: it still bends the art through its
+// bevel, at pix1's mip level there, and its rim and glyph are unchanged. The light lens keeps the clear art.
+// MOTION-27 (#24): only the held lens. Dragged, that face kept .61 of the bar body's clarity over the bright poster
+// (dark Movies, the clarity band over the lens's top rows) against the video's .98, where the clear art keeps .91; so the
+// dark lens takes the bar's look while the press holds it still (pillPress, as the held rim) and the clear art through
+// the drag stretch, easing between the two with it.
 const float LENS_LIGHT_DARK = .1, LENS_SHARP = .7, LENS_BRIGHT = 1.12, LENS_CLEAR = 1.08;
+const vec2 LENS_DARK_GAIN = vec2(1.126, 3. / 255.);
 // MOTION-23 (#24): no held-only softening. With the tab glyph masked in both frames, Charlie's video's held face keeps
 // 1.05-1.24 of the bar body's detail over the same art (18 frame pairs over two holds) and 1.06 of the moving lens's,
 // so the held lens is as clear as the dragged one. MOTION-19's .58 (the soft face this replaced) left the 10.5 s white
@@ -479,6 +494,20 @@ vec3 fieldSample(vec2 pos) {
   vec3 rgb = a + b + c + d;
   return rgb * .25;
 }
+// MOTION-25 (#24): the dark bar's body over the art at pos, as main() draws it: the soft frost smoked over the wide field
+// with DARK_BLUR of the smoked field, Apple's dark smoke (darkSmoke), and over bright art SEE_CHROMA of the art's own
+// colour (LOOK-20). The raised dark lens shows it (LENS_DARK_GAIN).
+vec3 darkBar(vec2 pos) {
+  // fieldSample also sets fieldDark (LOOK-23's dark rest pill floor, read later in main()): keep the body's.
+  vec3 bodyDark = fieldDark;
+  vec3 wide = fieldSample(pos), field = glassTone(wide, 0.), soft = softFrost(pos);
+  fieldDark = bodyDark;
+  vec3 tone = darkSmoke(mix(smoked(glassTone(soft, 0.), 0., field), smokedBlur(field, 0.), DARK_BLUR));
+  vec3 seeArt = mix(soft, wide, DARK_BLUR);
+  float toneL = dot(tone, vec3(.2126, .7152, .0722)), artL = dot(seeArt, vec3(.2126, .7152, .0722));
+  float see = smoothstep(SEE_FIELD.x, SEE_FIELD.y, dot(wide, vec3(.2126, .7152, .0722)));
+  return vec3(toneL) + mix(tone - toneL, SEE_CHROMA * (seeArt - artL), see);
+}
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
 }
@@ -526,11 +555,13 @@ float lensBevel(float radius) {
 // from the light, with no broad lit band over the content. Its edge is Apple's thin crisp rim
 // (LENS_RIM), a fifth of the way to a light that runs from cyan along its top to magenta along
 // its foot (LENS_RIM_LIGHT, LENS_RIM_TOP, LENS_RIM_FOOT), as the video's.
-vec3 lensFace(vec3 sceneColor, vec3 clearArt, vec2 outward, float pillDepth, float u) {
+vec3 lensFace(vec3 sceneColor, vec3 darkArt, vec3 clearArt, vec2 outward, float pillDepth, float u) {
   vec3 normal = normalize(vec3(outward * LENS_SLOPE * u * u, 1.));
   float facing = dot(normal.xy, normalize(vec2(-.25, -1.)));
   float shade = max(0., -facing);
-  vec3 face = mix(min(clearArt * LENS_CLEAR, vec3(1.)), LENS_LIGHT_DARK + (1. - LENS_LIGHT_DARK) * min(sceneColor * LENS_BRIGHT, vec3(1.)), pillSmoke);
+  vec3 darkFace = mix(LENS_LIGHT_DARK + (1. - LENS_LIGHT_DARK) * min(sceneColor * LENS_BRIGHT, vec3(1.)),
+                      clamp(darkArt * LENS_DARK_GAIN.x - LENS_DARK_GAIN.y, 0., 1.), pillPress);
+  vec3 face = mix(min(clearArt * LENS_CLEAR, vec3(1.)), darkFace, pillSmoke);
   face *= 1. - .22 * shade - .1 * (1. - normal.z);
   float facing2 = outward.y * outward.y, facing4 = facing2 * facing2, facing8 = facing4 * facing4;
   float rimDepth = mix(LENS_RIM, mix(LENS_RIM_DRAG, LENS_RIM, pillPress), facing8 * facing8);
@@ -678,6 +709,8 @@ void main() {
       vec3 clearArt = selectionColor;
       float clear = mix(PILL_CLEAR.x, PILL_CLEAR.y, pillSmoke) * (1. - pillMotion) * (1. - pillLift) * (1. - pillPress);
       vec3 clearGlass = vec3(0.), plainGlass = vec3(0.);
+      // MOTION-25: the raised dark lens's art (darkBar at its sample), held only (MOTION-27).
+      vec3 darkLens = vec3(0.);
       if (pillMotion > 0.) {
         // One scale across the whole face, centred on the active sample: the raised lens's own LENS_ZOOM, so the art
         // keeps its size as the lens rises and falls. Only a narrow band at the edge refracts, drawing in
@@ -714,6 +747,7 @@ void main() {
         // The bevel's squeeze along its normal: d(sample)/d(screen) = 1 + 3 u^2 x reach / bevel (frostLod).
         frostLod = pillLift * log2(1. + 3. * u * u * dot(edgeReach, abs(outward)) / lensBevel(pillRadius));
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
+        if (pillSmoke > 0. && pillLift > 0. && pillPress > 0.) darkLens = darkBar(mix(body, warped, pillMotion));
         frostLod = 0.;
         clearArt = frosted;
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
@@ -744,6 +778,7 @@ void main() {
         clearGlass = glassTone(mix(frosted, wide, bodyBlur), 1.);
         plainGlass = glassTone(frosted, 0.);
       }
+      if (pillSmoke > 0. && pillLift > 0. && pillPress > 0. && pillMotion <= 0.) darkLens = darkBar(body);
       vec2 pillNormal = pillAxis / max(length(pillAxis), .001);
       vec3 faceColor = selectionColor;
       float deepen = mix(PILL_DEEPEN, PILL_DEEPEN_DARK, pillSmoke);
@@ -807,7 +842,7 @@ void main() {
       lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
       selection = mix(selection, lightPill, (1. - pillSmoke) * (1. - pillLift));
       float lensU = 1. - clamp(pillDepth / lensBevel(pillRadius), 0., 1.);
-      selection = mix(selection, lensFace(selectionColor, clearArt, pillNormal, pillDepth, lensU), pillLift);
+      selection = mix(selection, lensFace(selectionColor, darkLens, clearArt, pillNormal, pillDepth, lensU), pillLift);
 
       // The selected surface owns the covered rim. Blend coverage in
       // premultiplied alpha so the two outlines meet as one contour.
