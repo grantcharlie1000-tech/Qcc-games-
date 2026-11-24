@@ -185,7 +185,7 @@ export function restore(data: unknown): RunState | null {
     if (!isRecord(data)) return null;
     const { v, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started, death } = data;
     const worldVersion = data.worldVersion === undefined ? 1 : data.worldVersion;
-    if (worldVersion !== 1 && worldVersion !== 2 && worldVersion !== 3 && worldVersion !== 4 && worldVersion !== 5 && worldVersion !== 6) return null;
+    if (worldVersion !== 1 && worldVersion !== 2 && worldVersion !== 3 && worldVersion !== 4 && worldVersion !== 5 && worldVersion !== 6 && worldVersion !== 7) return null;
     if (v !== 1 || !isInt(seed, 0, 4294967295) || !isNum(t, 0, 1e7)) return null;
     if (phase !== 'ready' && phase !== 'running' && phase !== 'over') return null;
     if (!isInt(row, 0, MAX_ROW) || !isInt(maxRow, 0, MAX_ROW) || !isInt(fromRow, 0, MAX_ROW)) return null;

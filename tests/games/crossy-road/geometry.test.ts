@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {carGeometry,truckGeometry,trainGeometry,logGeometry,lilyGeometry,signalPostGeometry,lampGeometry,treeGeometry,mergeVehicle,chickenGeometry,ufoGeometry} from '../../../src/games/crossy-road/models';
 import type {BufferGeometry} from 'three';
-import {ROW_DEPTH,TRAFFIC_ROW_Z,TRAIN_BASE_Y} from '../../../src/games/crossy-road/config';
+import {ROW_DEPTH,TRAFFIC_ROW_Z} from '../../../src/games/crossy-road/config';
 
 function bounds(g:BufferGeometry) {g.computeBoundingBox();return g.boundingBox!;}
 it('merges vehicle paint and fixed details into one draw without tinting windows or wheels',()=>{
@@ -16,10 +16,10 @@ it('merges vehicle paint and fixed details into one draw without tinting windows
 });
 describe('objects remain within one row of ground',()=>{
   it('both directions of every vehicle silhouette project entirely inside their lane',()=>{
-    const train=trainGeometry();
-    const vehicles=[...(['compact','sedan','taxi'] as const).map(carGeometry),truckGeometry(2),truckGeometry(3),train.nose,train.carriage];
+    // Trains are drawn larger on their own track axis; diversity.test.ts checks that they fit their row.
+    const vehicles=[...(['compact','sedan','taxi'] as const).map(carGeometry),truckGeometry(2),truckGeometry(3)];
     for (let model=0;model<vehicles.length;model++) for (const g of [vehicles[model].body,vehicles[model].detail]) {
-      const vertices=g.getAttribute('position'), baseY=model>=5?TRAIN_BASE_Y:0;
+      const vertices=g.getAttribute('position'), baseY=0;
       for (const dir of [-1,1]) for (let i=0;i<vertices.count;i++) {
         const z=vertices.getZ(i)*dir+TRAFFIC_ROW_Z;
         // At fixed screen x, height projects towards the far lane by y*cot(45°)*cos(20°).
@@ -40,7 +40,7 @@ describe('objects remain within one row of ground',()=>{
   it('cargo, train carriages, logs and pads fit their own row',()=>{
     const train=trainGeometry();
     const all=[truckGeometry(2),truckGeometry(3),train.nose,train.carriage].flatMap(g=>[g.body,g.detail]);
-    all.push(...([2,3,4] as const).map(logGeometry),lilyGeometry());
+    all.push(...([2,3,4] as const).map(len=>logGeometry(len)),lilyGeometry());
     for(const g of all) {const b=bounds(g);expect(b.min.z).toBeGreaterThan(-0.5);expect(b.max.z).toBeLessThan(0.5);g.dispose();}
   });
   it('the signal post and its flat front bulb stay inside the rail cell',()=>{

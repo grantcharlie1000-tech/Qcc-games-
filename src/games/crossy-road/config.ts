@@ -7,9 +7,9 @@ export type LaneKind = 'grass' | 'road' | 'river' | 'lily' | 'rail';
 export type Phase = 'ready' | 'running' | 'dying' | 'over';
 export type DeathCause = 'car' | 'train' | 'water' | 'swept' | 'ufo-idle' | 'ufo-behind';
 export type Quality = 'high' | 'low';
-export type WorldVersion = 1 | 2 | 3 | 4 | 5 | 6;
+export type WorldVersion = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 /** The generation revision new runs use. Saved runs keep replaying the revision they were made with. */
-export const CURRENT_WORLD: WorldVersion = 6;
+export const CURRENT_WORLD: WorldVersion = 7;
 
 /** One vehicle or log in a moving lane's repeating pattern. `offset` is its left edge inside the
  * pattern (tiles, 0 ≤ offset < cycle), `len` its length in tiles and `color` a palette index. */
@@ -19,6 +19,10 @@ export interface GrassLane {
   kind: 'grass'; row: number;
   /** Revision five's stateless horizontal terrain and open connecting bank. */
   seed?: number; clearing?: boolean;
+  /** Revision seven: more obstacles on every row. */
+  dense?: boolean;
+  /** Revision seven: this bank carries scenery, and the player walks round it this way (see bankObstacle). */
+  detour?: 'below' | 'above';
   /** Two greens alternate by row parity. */
   shade: 0 | 1;
   /** Columns 0..8. A tree or rock blocks its column: `blocked[c] === (obstacles[c] !== null)`. */
@@ -30,7 +34,9 @@ export interface GrassLane {
 }
 export type CarStyle = 'compact' | 'sedan' | 'taxi';
 /** Vehicles: one type and one direction per lane. `movers` repeat every `cycle` tiles. */
-export interface RoadLane { kind: 'road'; row: number; dir: -1 | 1; speed: number; vehicle: 'car' | 'truck'; style?: CarStyle; cycle: number; phase: number; movers: Mover[] }
+export interface RoadLane { kind: 'road'; row: number; dir: -1 | 1; speed: number; vehicle: 'car' | 'truck'; style?: CarStyle; cycle: number; phase: number; movers: Mover[];
+  /** Revision seven: every vehicle is this many times its reference size. Its mover length includes the factor. */
+  scale?: number }
 /** Logs: they carry the player at `dir·speed` tiles/s. */
 export interface RiverLane { kind: 'river'; row: number; dir: -1 | 1; speed: number; cycle: number; phase: number; movers: Mover[] }
 /** Static lily pads on columns 0..8; the rest of the row is water. */
@@ -146,6 +152,10 @@ export const ROW_DEPTH = 1.38;
 /** Near-side vehicle placement keeps their elevated silhouettes inside their own rendered row. */
 export const TRAFFIC_ROW_Z = 0.32;
 export const TRAIN_BASE_Y = 0.13;
+/** Revision seven draws road vehicles this many times larger, and makes their collision spans as much longer. */
+export const VEHICLE_SCALE = 1.45;
+/** Trains and scenery are drawn larger in every revision. The bird keeps its size. */
+export const TRAIN_SCALE = 1.4;
 export const AHEAD_ROWS = 40;
 export const BEHIND_ROWS = 20;
 export const MOVERS = 3;
