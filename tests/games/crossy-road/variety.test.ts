@@ -5,7 +5,7 @@ import {HOP_TIME, PLATFORM_GRACE, roadGapMin, type Lane} from '../../../src/game
 
 describe('revision five terrain', () => {
   it('is no longer the revision new runs start on, but saved revision-five runs still replay it', () => {
-    expect(createRun(11).worldVersion).toBe(6);
+    expect(createRun(11).worldVersion).toBe(7);
   });
 
   it('replays seeds independently of the requested generation batch sizes', () => {
