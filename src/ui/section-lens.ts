@@ -418,6 +418,15 @@ const vec2 LENS_RIM_LIGHT = vec2(.2, .03);
 // light (LENS_RIM_LIGHT): over dark art they add about +35,+45,+26 (hue 92) and +45,+31,+20 (hue 26), the brighter row as
 // light as the old top's (+25,+43,+45).
 const vec3 LENS_RIM_OUTER = vec3(.8, 1., .62), LENS_RIM_INNER = vec3(1., .72, .5);
+// MOTION-31 (#24 council on 942de639, Opus 1 and Grok 1: the raised rim is a grey ring at 1x): along its curved ends the
+// video's ring reads coloured light. Over the pink poster at 13.5 s its upper right arc is blue, (63,152,221) to
+// (135,158,235) from 60 to 16 degrees above the axis, and its lower right magenta, (207,107,177) to (245,145,215) from 31
+// to 44 below; the 12.75 s right end reads (128,146,201), hue 225, above and (211,161,212), hue 299, below. Ours read grey
+// there (chroma 2-30, about 90 over Games +210's navy). A brighter white rim gained nothing over bright art (it mixes
+// toward a near-white) and overshot the drag foot. So along the ends the rim also carries LENS_ARC.z of a hue that runs
+// from LENS_ARC.x where the end faces up to LENS_ARC.y where it faces down, added as colour alone (its luma is 0), so it
+// reads over bright art as over dark. The top and foot runs keep their light, their width and the warm foot.
+const vec3 LENS_ARC = vec3(215., 315., .22);
 // MOTION-11 (#24 council on aa6359ee) darkened the face in a band about 5 css px deep just inside the rim, along the top
 // and bottom, as the video's held and dragged lens is dark there. MOTION-23 (#24 council on 071faed9: a dark halo round a
 // bright ring, and over bright art a wide blotchy band): that dark band is the art the lens bends in, not a shade. Over
@@ -626,7 +635,10 @@ vec3 lensFace(vec3 darkArt, vec3 clearArt, vec2 outward, float pillDepth, float 
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
   float lit = LENS_RIM_LIGHT.x - LENS_RIM_LIGHT.y * max(0., facing);
   vec3 rimLight = mix(LENS_RIM_OUTER, LENS_RIM_INNER, smoothstep(.5, 1.5, pillDepth));
-  return mix(face, rimLight, lit * line);
+  // MOTION-31: the ends' coloured light (LENS_ARC), none along the top and foot runs.
+  vec3 arc = clamp(abs(mod(mix(LENS_ARC.x, LENS_ARC.y, .5 + .5 * outward.y) / 60. + vec3(0., 4., 2.), 6.) - 3.) - 1., 0., 1.);
+  float ends = smoothstep(.2, .7, abs(outward.x));
+  return clamp(mix(face, rimLight, lit * line) + LENS_ARC.z * line * ends * (arc - dot(arc, vec3(.2126, .7152, .0722))), 0., 1.);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone, float deepen) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
