@@ -104,10 +104,18 @@ test('icon palette still respects high contrast and forced colours',async({page}
 // LOOK-6 (Charlie's 23:10Z feedback, Apple's dark still): the dark menu circle is the bar's see-through smoke, .125 of
 // white over the art, no longer #92's near-black .36 veil. Its white glyph must keep 4.5:1 over that glass, or carry the
 // dark halo where the art behind it is bright; glass off stays opaque.
+// LOOK-26 (FAST LOOP re-pin to Apple; council-6eaf6223 Opus miss 2, the copper disc with a bold outlined glyph): beside the
+// WebGL bar the circle's smoke under the glyph stops at 149 grey's luminance by a uniform dim (glass-ink.ts menuInk,
+// section-navigation.css ::after). Apple's white Search glyph over its bright poster (Charlie's video at 19.5 s;
+// tools-look25/circ25.py) keeps 3.22:1 against the glass's median and 2.58:1 against its p90 (WCAG .271/.351), with no
+// outline. So there the glyph keeps 2:1 or more over the lightest glass px with no halo, over mid grey and white too.
+// The CSS fallback (the circle beside the CSS bar) keeps the 4.5:1-or-halo rule.
 test('the dark menu circle\'s smoked glass keeps its white glyph at 4.5:1 or halos it',async({page})=>{
  await page.emulateMedia({colorScheme:'dark'});
  await page.goto('/#/collection');
  const menu=page.locator('.app-navigation .section-menu'),icon=menu.locator('svg.ui-icon');
+ await expect(page.locator('.app-tabbar')).toHaveAttribute('data-section-lens','webgl');
+ const capped=await menu.getAttribute('data-glass')==='backdrop';
  await expect(icon).toHaveCSS('color','rgb(255, 255, 255)');
  await expect.poll(()=>menu.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
  // White ink's contrast over the lightest glass pixel under the glyph, the glyph itself hidden.
@@ -130,10 +138,14 @@ test('the dark menu circle\'s smoked glass keeps its white glyph at 4.5:1 or hal
  for(const [color,bright] of [['#000',false],['#777',true],['#fff',true]] as const){
   await page.evaluate(color=>{document.getElementById('menu-ink-patch')?.remove();const p=document.createElement('div');p.id='menu-ink-patch';
    p.style.cssText=`position:fixed;inset:auto 0 0;height:160px;z-index:1;pointer-events:none;background:${color}`;document.body.append(p);},color);
-  await expect.poll(halo,color).toBe(bright);
+  await expect.poll(halo,color).toBe(bright&&!capped);
+  // Capped, the dim under the glyph follows the art (none over black).
+  if(capped)await expect.poll(()=>menu.evaluate(e=>e.hasAttribute('data-glass-dim')),color).toBe(color==='#fff');
   const contrast=await glass();
-  // Over black the smoke reads about 32 (16:1); over mid grey and white it drops under 4.5:1, so the halo carries it.
+  // Over black the smoke reads about 32 (16:1); over mid grey and white it drops under 4.5:1, so the halo carries it, or,
+  // capped, white keeps 2:1 or more over the lightest glass px with no halo (about 3.5:1 over #777, 3:1 over white).
   if(!bright)expect(contrast,color).toBeGreaterThanOrEqual(4.5);
+  else if(capped)expect(contrast,color).toBeGreaterThanOrEqual(2);
   else expect(contrast,color).toBeLessThan(4.5);
  }
  // LOOK-7 (#24 review of LOOK-6, I1): a live switch to light with the bright art still under the circle must leave the light
@@ -142,7 +154,7 @@ test('the dark menu circle\'s smoked glass keeps its white glyph at 4.5:1 or hal
  await page.emulateMedia({colorScheme:'light'});
  await expect.poll(glyph).toEqual({ink:false,halo:false,filter:'none',color:'rgb(110, 110, 115)'});
  await page.emulateMedia({colorScheme:'dark'});
- await expect.poll(halo).toBe(true);
+ await expect.poll(halo).toBe(!capped);
  await page.emulateMedia({reducedMotion:'reduce',contrast:'more'});
  await expect(menu).toHaveAttribute('data-glass','off');
  expect(await menu.evaluate(e=>getComputedStyle(e).backgroundColor)).toMatch(/^rgb\(\d+, \d+, \d+\)$/);

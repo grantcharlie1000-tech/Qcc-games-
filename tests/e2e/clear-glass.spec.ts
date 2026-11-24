@@ -273,13 +273,24 @@ test('navigation and its companion share frost while game controls retain their 
     await expect(page.locator(scope)).toBeVisible();
     const materials=await page.locator(`${scope} .arcade-glass`).evaluateAll(elements=>elements.map(e=>{
       const s=getComputedStyle(e),v=getComputedStyle(e,'::before');
-      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),knee:v.backdropFilter,shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
+      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),knee:v.backdropFilter,shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim(),
+        beside:e.matches('.section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu[data-glass=backdrop]')?'yes':''};
     }));
+    // LOOK-26 (FAST LOOP re-pin to Apple; council-6eaf6223 Opus miss 2, the copper disc): beside the WebGL bar the dark menu
+    // circle takes that bar's see-through frost, blur(3px), not the CSS bar's 12px (hidden under the lens there). Apple's dark
+    // bar keeps .40 of the art's detail over bright art at css px (Charlie's video at 32.5 s against the same art at 33.3 s;
+    // tools-look20/bright); 3px keeps .40 over the face poster under the circle, 12px kept .12, a flat disc. Every other part
+    // of its material is still the bar's, and the CSS fallback circle keeps 12px.
+    for(const material of materials)if(material.beside){
+      expect(material.blur,route).toBe('blur(3px)');
+      material.blur=materials[0].blur;
+    }
     expect(materials.length).toBeGreaterThanOrEqual(2);
     const group=route.startsWith('game/')?'game':'navigation';
     // WebKit's frost mode carries its own measured rim strength (theme.css), so
     // controls are compared with others in the same group and glass mode.
     for(const material of materials){
+      delete (material as Partial<typeof material>).beside;
       references[`${group}|${material.mode}`]??=material;
       expect(material,route).toEqual(references[`${group}|${material.mode}`]);
       references[group]??=material;

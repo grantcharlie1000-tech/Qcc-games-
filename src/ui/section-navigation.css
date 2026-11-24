@@ -90,6 +90,24 @@
     -webkit-backdrop-filter:brightness(1.5773) brightness(.634) opacity(.291);
     backdrop-filter:brightness(1.5773) brightness(.634) opacity(.291);
   }
+  /* LOOK-26 (council-6eaf6223 Opus miss 2: over bright art the menu circle read as an opaque copper disc with a bold,
+     outlined glyph, where Apple's search glass shows the poster through it and its white glyph has no outline). Beside the
+     WebGL bar the circle takes the bar's see-through frost, not the CSS bar's 12px. Apple's dark bar keeps .40 of the art's
+     detail over bright art at css px (Charlie's video at 32.5 s, read like for like against the same art at 33.3 s;
+     tools-look20/bright). blur(3px) keeps .40 over the face poster under the circle (movies-bright-rest-dark; a model of
+     these layers that reads the capture at 12px within 0.9 levels). blur(12px) kept .12, the flat disc. The CSS fallback,
+     whose bar is CSS frost, keeps 12px. Under the glyph the smoke stops at 149 grey's luminance by a uniform dim
+     (glass-ink.ts menuInk sets --menu-glass-dim and data-glass-dim), so the art keeps its colour. That layer fades out
+     from 55% to 80% of the radius, so the rim, the sides and the arc stay the bar's. */
+  .section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu.arcade-glass[data-glass=backdrop]:not([data-pressing]){--glass-frost:blur(3px)}
+  .section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu.arcade-glass[data-glass=backdrop][data-glass-dim]::after{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    -webkit-backdrop-filter:brightness(var(--menu-glass-dim,1));backdrop-filter:brightness(var(--menu-glass-dim,1));
+    -webkit-mask:radial-gradient(closest-side,#000 55%,transparent 80%);mask:radial-gradient(closest-side,#000 55%,transparent 80%);
+  }
+}
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
+  .section-navigation>.section-menu.arcade-glass::after{display:none}
 }
 /* Apple Music's side margins: about 16 css px at 390, not 12, with an 8 px gap to the menu circle. */
 @media (min-width:360px){.section-navigation.section-navigation{--home-inset:16px;--home-gap:8px}}
