@@ -352,7 +352,10 @@ const float LENS_NEUTRAL = .1, LENS_GAIN = 1.25, LENS_LIFT = 0.;
 // page unmoved) subtracted, the video's 13.5 s drag rim is 2 css px at half height along the top (rows 28-29) and 1
 // along the bottom, the same as the 12.75 s hold's (2 and 1); behaviour_match's 3.5 also counted the page's grey strip
 // above the lens and the poster under it. So the moving lens keeps the held rim.
-const float LENS_RIM = 2.2, LENS_RIM_DRAG = 2.2;
+// MOTION-27 (#24): with that reading (tooling item 41) the video's held rim is 1.5 css px (2 rows at half height along
+// its top, 1 along its foot) and its drag rim 2; ours read 2 and 2. So while the press holds the lens still (pillPress)
+// its foot narrows to LENS_RIM_HELD_FOOT, one row at half height; the top, the ends and the drag rim are unchanged.
+const float LENS_RIM = 2.2, LENS_RIM_DRAG = 2.2, LENS_RIM_HELD_FOOT = 1.2;
 // MOTION-23 (#24 council on 071faed9: Opus saw a thick bright grey ring, Grok a pale hairline; the video settles it). Over
 // the 10.5 s frame (no lens there, the page unmoved) the video's held rim (12.75 s, the middle 60% of each edge) is 2 css
 // px at half height along the top and the foot, as ours, but only +49 and +44 luma over the art under it, where ours
@@ -362,8 +365,13 @@ const float LENS_RIM = 2.2, LENS_RIM_DRAG = 2.2;
 // 13.5 s drag rim is the same light and colours. So the rim mixes LENS_RIM_LIGHT (.x, less .y as its edge faces the light,
 // so the top and the foot read alike, as the video's +49 and +44) toward LENS_RIM_TOP where the edge faces the light and
 // LENS_RIM_FOOT where it faces away; that colour is the lens's rainbow.
+// MOTION-25 (#24 council on 6eaf6223, Grok: the video's drag foot reads magenta, ours warm): at 13.5 s the video's foot
+// is magenta only as the pink poster under it is (192,148,172 over 145,105,140); the light the rim adds is a warm white,
+// +47,+43,+32 (hue 44; the 12.75 s hold +55,+41,+27, hue 30). A mix toward the old pink foot (1,.78,.95) added
+// +30,+23,+25 over navy (hue 345) and turned blue over the orange poster (hue 214-226); LENS_RIM_FOOT is now that warm
+// white, so the foot adds +45,+37,+16 over navy (hue 43) and stays near-neutral over bright art.
 const vec2 LENS_RIM_LIGHT = vec2(.2, .03);
-const vec3 LENS_RIM_TOP = vec3(.6, .96, 1.), LENS_RIM_FOOT = vec3(1., .78, .95);
+const vec3 LENS_RIM_TOP = vec3(.6, .96, 1.), LENS_RIM_FOOT = vec3(1., .85, .62);
 // MOTION-11 (#24 council on aa6359ee) darkened the face in a band about 5 css px deep just inside the rim, along the top
 // and bottom, as the video's held and dragged lens is dark there. MOTION-23 (#24 council on 071faed9: a dark halo round a
 // bright ring, and over bright art a wide blotchy band): that dark band is the art the lens bends in, not a shade. Over
@@ -565,6 +573,7 @@ vec3 lensFace(vec3 sceneColor, vec3 darkArt, vec3 clearArt, vec2 outward, float 
   face *= 1. - .22 * shade - .1 * (1. - normal.z);
   float facing2 = outward.y * outward.y, facing4 = facing2 * facing2, facing8 = facing4 * facing4;
   float rimDepth = mix(LENS_RIM, mix(LENS_RIM_DRAG, LENS_RIM, pillPress), facing8 * facing8);
+  rimDepth = mix(rimDepth, LENS_RIM_HELD_FOOT, pillPress * smoothstep(.5, .9, outward.y));
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
   float lit = LENS_RIM_LIGHT.x - LENS_RIM_LIGHT.y * max(0., facing);
   vec3 rimLight = mix(LENS_RIM_FOOT, LENS_RIM_TOP, smoothstep(-.5, .5, facing));
