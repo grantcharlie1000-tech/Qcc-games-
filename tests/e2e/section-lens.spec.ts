@@ -186,7 +186,7 @@ test('the selected ink has a thin outline over bright live glass',async({page})=
 // across the capsule's ends on Apple's dark rest frames (fast/look/tools-look17/apple_step.py), Apple's pill sits 1.16
 // under its bar over black (video 38.75 s; the 16 Nov still 1.21), 1.68 over a bright green poster (19.5 s, bar 137/255)
 // and 2.05-2.08 over a bright photo (32.5-32.75 s). The guard is now Apple's with a little room: 1.10-1.30 over black,
-// 1.45-2.30 over white and #777 art (PILL_STEP 1.21 rising to 1.65).
+// 1.45-2.30 over white and #777 art (PILL_STEP 1.21 rising to 1.8, LOOK-19).
 test('the selected accent keeps its contrast against the WebGL pill over white art and over black art',async({page})=>{
   const floor={dark:{ratio:2,pill:1},light:{ratio:2,pill:1}},milky={dark:0,light:.5};
   for (const scheme of ['dark','light'] as const) {

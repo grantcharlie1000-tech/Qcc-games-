@@ -228,8 +228,9 @@ const vec4 DARK_GLASS = vec4(32. / 255., .875, .5, .402);
 // 1.22-1.25 over dark art (32.5-32.75 s), 1.68 over a bright green poster (19.5 s, its bar 137/255) and 2.05-2.08 over a
 // bright photo (32.5-32.75 s). So the step follows the bar's smoke at the pixel: PILL_STEP.x over a black page (32 -> 11),
 // rising to PILL_STEP.y as the bar's linear luminance runs from PILL_STEP.z to PILL_STEP.w (about 38 to 108/255): #777's
-// 136 -> 100 and white's 229 -> 180, a smoked capsule plainly under the bar over any art.
-const vec4 PILL_STEP = vec4(1.21, 1.65, .02, .15);
+// 136 -> 95 and white's 229 -> 172, a smoked capsule plainly under the bar over any art. LOOK-19: PILL_STEP.y 1.65 -> 1.8,
+// as apple_match's pill_step_bright (the spec's step in end-cap pairs over bright art) read 1.56 against Apple's 1.72 at 1.65.
+const vec4 PILL_STEP = vec4(1.21, 1.8, .02, .15);
 const float PILL_DARK_RIM = .15;
 // LOOK-12 (council on ea5b395c: Apple's dark selected pill reads as a convex dome, ours as a flat grey disc): the rest pill
 // takes PILL_DOME.x of white along its top, fading over PILL_DOME.z css px, and loses PILL_DOME.y of its tone along its
@@ -824,7 +825,7 @@ function smoothstep(value:number) {
 // (section-lens.spec reads the median); its margin over 2:1 covers the model. LOOK-17: ACCENT is Apple's dark system blue,
 // #0a84ff (hue 210, Apple's dark still 210.4; #0099ff read 204). section-navigation.css draws it at rest; press and drag keep their own accents.
 const ACCENT = [10,132,255], ACCENT_DEEP = [0,32,92], ACCENT_FLOOR = 2.2;
-const INK_STEP = [1.21,1.65,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
+const INK_STEP = [1.21,1.8,.02,.15], INK_BLUR = .2, INK_EVEN = .8, INK_FIELD = 10, INK_SOFT = .9, INK_REACH = 12, INK_SHARE = .85;
 const srgbLinear = (value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
 const inkLuminance = (rgb:number[])=>.2126*srgbLinear(rgb[0]/255)+.7152*srgbLinear(rgb[1]/255)+.0722*srgbLinear(rgb[2]/255);
 /** The selected accent that keeps ACCENT_FLOOR against INK_SHARE of the pill luminances given, or '' for ACCENT (#0a84ff). */
