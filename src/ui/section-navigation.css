@@ -98,12 +98,16 @@
      these layers that reads the capture at 12px within 0.9 levels). blur(12px) kept .12, the flat disc. The CSS fallback,
      whose bar is CSS frost, keeps 12px. Under the glyph the smoke stops at 149 grey's luminance by a uniform dim
      (glass-ink.ts menuInk sets --menu-glass-dim and data-glass-dim), so the art keeps its colour. That layer fades out
-     from 55% to 80% of the radius, so the rim, the sides and the arc stay the bar's. */
+     from 55% to 80% of the radius, so the rim, the sides and the arc stay the bar's.
+     LOOK-27 (council on 874125ae: over a white title the circle read as a glossy black marble with a hot highlight at its
+     top left): the dim stopped at 55-80% of the radius, so the title's strokes in the outer ring stayed at their own
+     brightness around a dimmed middle. The dim now runs to 86% and fades by 95%, so the whole disc takes the same smoke
+     and only the lit rim line (its outer 1.25 css px, about 4.5% of the radius) and the arc above it stay bright. */
   .section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu.arcade-glass[data-glass=backdrop]:not([data-pressing]){--glass-frost:blur(3px)}
   .section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu.arcade-glass[data-glass=backdrop][data-glass-dim]::after{
     content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
     -webkit-backdrop-filter:brightness(var(--menu-glass-dim,1));backdrop-filter:brightness(var(--menu-glass-dim,1));
-    -webkit-mask:radial-gradient(closest-side,#000 55%,transparent 80%);mask:radial-gradient(closest-side,#000 55%,transparent 80%);
+    -webkit-mask:radial-gradient(closest-side,#000 86%,transparent 95%);mask:radial-gradient(closest-side,#000 86%,transparent 95%);
   }
 }
 @media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
