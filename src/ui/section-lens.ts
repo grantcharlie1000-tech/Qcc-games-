@@ -349,17 +349,10 @@ const vec3 LENS_RIM_TOP = vec3(.6, .96, 1.), LENS_RIM_FOOT = vec3(1., .78, .95);
 // small gain (its lens reads 7-11% over bright art), with no floor and no veil. The dark lens keeps its smoked sample
 // over LENS_LIGHT_DARK at LENS_BRIGHT.
 const float LENS_LIGHT_DARK = .1, LENS_SHARP = .7, LENS_BRIGHT = 1.12, LENS_CLEAR = 1.08;
-// MOTION-19 (#24): Charlie's video softens the art under the parked lens. The page does not move between 10.5 s and
-// 12.75 s, so the same art is seen under the bar body (10.5 s) and under the held lens (12.75 s): with the glyph masked,
-// the held lens's face keeps .58 of the body's detail and matches the body blurred by about .75 css px (gradient NCC
-// peak at .75-1); over the clarity band's rows it keeps 1.03 of it. Our light lens showed 5.3 times its frosted body's
-// detail over the same art. While the press holds the lens still (pillPress, which falls to 0 as a drag stretches the
-// lens) the light lens's face takes HOLD_SOFT of the soft frost (softFrost, about the dark body's .94 css px blur), with
-// no veil, gain or colour change, so the art keeps the council's full colour and only its fine detail softens. The
-// bevel, whose samples reach toward the crop's edge, stays crisp (the face from HOLD_FACE.y of the bevel inward).
-// Rest (no lift, no press) and drag travel (no press) are untouched.
-const float HOLD_SOFT = 1.;
-const vec2 HOLD_FACE = vec2(.3, .5);
+// MOTION-23 (#24): no held-only softening. With the tab glyph masked in both frames, Charlie's video's held face keeps
+// 1.05-1.24 of the bar body's detail over the same art (18 frame pairs over two holds) and 1.06 of the moving lens's,
+// so the held lens is as clear as the dragged one. MOTION-19's .58 (the soft face this replaced) left the 10.5 s white
+// Radio glyph in the body frame.
 // The pressed thumb's hairline rim carries the same spectrum at PRESS_FRINGE.
 const float PRESS_FRINGE = .4;
 const vec2 LENS_NEUTRAL_VIVID = vec2(.2, .32);
@@ -678,9 +671,6 @@ void main() {
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
         frostLod = 0.;
         clearArt = frosted;
-        // MOTION-19: the held light lens's soft face (HOLD_SOFT). Zero at rest, in drag travel and in the dark theme.
-        float holdSoft = HOLD_SOFT * pillPress * pillLift * (1. - pillSmoke) * (1. - smoothstep(HOLD_FACE.x, HOLD_FACE.y, u));
-        if (holdSoft > 0.) clearArt = mix(frosted, softFrost(mix(body, warped, pillMotion)), holdSoft);
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
         // The dark rest pill is the body's soft frost (softFrost), so as the motion falls the selection eases into that
         // sample: the last moving frame is the rest pill, and a press's first frame leaves it without a step. The clear
