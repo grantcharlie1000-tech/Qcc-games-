@@ -38,8 +38,15 @@ vec3 softFrost(vec2 pos) {
 // MOTION-23 (#24 council on 071faed9: a blocky, pixelated fisheye inside the held lens): the raised lens's bevel squeezes
 // the art it draws in up to about 5x toward the rim, and frost read it at mip 0, so it aliased into blocks. While the lens
 // is up, frostLod is the mip level that squeeze needs (log2 of it), so the bent art stays smooth; elsewhere it is 0.
+// F21 review (LOOK-23): the last soft frost frost() took and where, so the dark see-through colour reuses it (softTaken).
+vec3 softTaken = vec3(0.);
+vec2 softAt = vec2(-1e9);
 vec3 frost(vec2 pos, float spread) {
-  if (softFrostMix > .5) return softFrost(pos);
+  if (softFrostMix > .5) {
+    softTaken = softFrost(pos);
+    softAt = pos;
+    return softTaken;
+  }
   vec2 uv = region.xy + pos * region.zw;
   // Stagger the RGB samples to soften edges across angles.
   vec2 tapScale = region.zw * spread;
@@ -235,6 +242,19 @@ const float DARK_HUE = .5;
 // colour follows the band's bent sample, so the ends still bend the art.
 const float SEE_CHROMA = .92;
 const vec2 SEE_FIELD = vec2(.15, .4);
+// LOOK-23 (LOOK-21's draft; LOOK-27 rebase): over mid art (luma 40-90) Apple keeps all of the art's colour (Charlie's video,
+// 32.5 s against the same art clean at 33.3 s) and ours kept .65: SEE_FIELD began at a wide field of .15, so mid art took
+// only part of the see-through colour. The bar body's field now runs from SEE_BODY .06 to .22, and over mid art the colour
+// takes SEE_MID of the soft frost's colour (the frost dulls it a little), easing to SEE_CHROMA as the field brightens over
+// SEE_BRIGHT, so bright art keeps its .87. Only the colour moves: the tone, the pill and the ink are as before. The raised
+// dark lens (darkBar) keeps SEE_FIELD and SEE_CHROMA, so the held lens is unchanged.
+// LOOK-27, like for like on Apple's own art (tools-look27/colour27.py: this body modelled on the video's clean art under
+// its bar at 32.5, 32.9, 33.0 and 33.1 s, read as Apple's bar is read): colour kept over bright art .717 -> .892 and over
+// mid art .511 -> .904 (Apple .886 and .947), the tone unchanged (x.722 and x1.161, Apple x.738 and x1.132). LOOK-23's
+// SEE_DETAIL (.35) is left out: on the same art it lifts the bar over art of luma 120-170 9-10 levels past Apple's (2-4
+// without it) and leaves the brightest marks 25 under (26 without it).
+const vec2 SEE_BODY = vec2(.06, .22), SEE_BRIGHT = vec2(.2, .35);
+const float SEE_MID = 1.1;
 // LOOK-5 (owner: our dark bar read as a near-black slab beside Apple's see-through smoke): that gain on the veiled frost
 // lifted dark art at a slope of 1.15 (the floor's 76 read 118, mid grey 160) and sank white to 230, so posters read hazy
 // and flat. The smoke now undoes the frost's veil and roll-off and the dark smoked() slope first (uniform art a tones to
@@ -702,10 +722,14 @@ void main() {
   surface = mix(surface, darkSmoke(surface), pillSmoke);
   // LOOK-20: over bright art the dark bar keeps the art's own colour (SEE_CHROMA, SEE_FIELD) under the smoke's tone.
   if (pillSmoke > 0.) {
-    vec3 seeArt = mix(softFrost(band > 0. ? bent : body), wide, DARK_BLUR);
+    float wideL = dot(wide, vec3(.2126, .7152, .0722)), seeBright = smoothstep(SEE_BRIGHT.x, SEE_BRIGHT.y, wideL);
+    float see = pillSmoke * smoothstep(SEE_BODY.x, SEE_BODY.y, wideL) * (1. - mirrorZone);
+    // F21 review (LOOK-23): the body's or band's own soft frost at this point (softTaken); a new one only where the
+    // band took the sparse frost (its mirrored rows) and the colour shows. Where see is 0 the art has no weight.
+    vec2 seePos = band > 0. ? bent : body;
+    vec3 seeArt = mix(softAt == seePos ? softTaken : see > 0. ? softFrost(seePos) : wide, wide, DARK_BLUR);
     float seeL = dot(surface, vec3(.2126, .7152, .0722)), artL = dot(seeArt, vec3(.2126, .7152, .0722));
-    float see = pillSmoke * smoothstep(SEE_FIELD.x, SEE_FIELD.y, dot(wide, vec3(.2126, .7152, .0722))) * (1. - mirrorZone);
-    surface = vec3(seeL) + mix(surface - seeL, SEE_CHROMA * (seeArt - artL), see);
+    surface = vec3(seeL) + mix(surface - seeL, mix(SEE_MID, SEE_CHROMA, seeBright) * (seeArt - artL), see);
   }
   // The light theme's pale frost (MILK_LIFT, MILK_GAIN). The mirrored band keeps MILK_MIRROR of its strokes over it.
   surface = mix(surface, MILK_LIFT + MILK_GAIN * surface + (1. - MILK_GAIN) * MILK_MIRROR * mirrorZone * (surface - blurColor),
