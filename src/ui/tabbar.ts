@@ -85,13 +85,20 @@ export function tabCover(center:number,halfWidth:number,bevel:number,boxes:reado
 }
 // MOTION-11 (#24 council on aa6359ee: Movies and My list crossed the raised lens's rim whole and unbent, where the video's
 // rim warps the glyphs into it): a tab the rim crosses bends as the art under the rim does (section-lens.ts
-// LENS_EDGE_REACH): across the bubble's bevel each point shows what lies WARP_REACH * u^3 further out, so a glyph's outer
-// part is squeezed into the rim. An SVG displacement map of the bubble, drawn once per size, sits under each such tab.
+// LENS_EDGE_REACH): across the bubble's bevel each point showed what lies WARP_REACH * u^3 further out, so a glyph's outer
+// part was squeezed into the rim. An SVG displacement map of the bubble, drawn once per size, sits under each such tab.
 // The bend stays in the outer WARP_BAND css px, as the video's does (a glyph in the face is not squeezed).
 // MOTION-23 (#24 council on 071faed9: the glyph under the drag lens's edge tears): the rim pulled a glyph from 18 css px
 // out into its outer band, and a glyph just past the edge stays put, so the two halves split by up to 18 px there.
 // A 6 px pull still bends the glyph into the rim but no longer splits it.
-const WARP_REACH=6,WARP_BAND=9,WARP_SPAN=2.2*WARP_REACH,WARP_DENSITY=2;
+// MOTION-25 (#24 council on 6eaf6223, Opus: the rim still tears glyphs into hard pieces, Mo/vies and a split film glyph
+// held, a doubled TV and My lis/t with a red sliver dragged, Stu/dy over the bright art): any pull OUTWARD at the edge
+// draws the strip just past the edge twice, once squeezed inside the rim and once in place outside it. Charlie's video
+// squeezes Ne (12.75 s) and Library (13.5 s) into the edge in one continuous piece. So the band now shows what lies a
+// little further IN: p(u) = WARP_PULL * (u^WARP_POWER - u^2), 0 at both ends of the band (the face and the edge) and
+// at most about 1.7 css px between. The mapping is one continuous, monotonic piece: the glyph swells at most x1.35 across
+// the band and squeezes about x3 into the edge, and nothing past the edge is drawn twice.
+const WARP_PULL=3.1,WARP_POWER=11,WARP_BAND=14,WARP_SPAN=4,WARP_DENSITY=2;
 const SVG_NS='http://www.w3.org/2000/svg';
 let warpIds=0;
 // MOTION-13 (#24 review of aa6359ee..691f4616, I-2): the map was drawn and PNG-encoded (toDataURL) inside the rAF tick at
@@ -154,6 +161,7 @@ function warpCanvas(width:number,height:number,bevel:number):HTMLCanvasElement|n
   if(!ctx||!w||!h)return null;
   const image=ctx.createImageData(w,h),radius=Math.min(width,height)/2,line=Math.max(0,(width-height)/2),band=Math.min(bevel,WARP_BAND);
   // Channel .5 (128) is no displacement; at full lift feDisplacementMap's scale WARP_SPAN spans the whole pull either way.
+  // The pull is inward (p <= 0): a point in the band shows the glyph |p| css px nearer the bubble's centre.
   // Only the bubble's outer band moves, so the map starts flat and only pixels within a px of that band are worked out.
   image.data.fill(128);
   for(let i=3;i<image.data.length;i+=4)image.data[i]=255;
@@ -164,7 +172,7 @@ function warpCanvas(width:number,height:number,bevel:number):HTMLCanvasElement|n
       const px=(x+.5)/WARP_DENSITY-width/2,ax=px-Math.max(-line,Math.min(line,px)),reach=ax*ax+py*py;
       if(reach<near||reach>far)continue;
       const length=Math.hypot(ax,py),depth=radius-length;
-      const u=depth>0&&length>0?Math.max(0,1-depth/band):0,pull=WARP_REACH*u*u*u/Math.max(length,1e-3);
+      const u=depth>0&&length>0?Math.max(0,1-depth/band):0,pull=WARP_PULL*(u**WARP_POWER-u*u)/Math.max(length,1e-3);
       const i=(y*w+x)*4;
       image.data[i]=Math.round(255*(.5+ax*pull/WARP_SPAN));
       image.data[i+1]=Math.round(255*(.5+py*pull/WARP_SPAN));
