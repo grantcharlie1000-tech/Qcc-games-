@@ -847,12 +847,15 @@ void main() {
       // and label alone (the council read the darkened art's colour as a blue one).
       // LOOK-20: the rest pill refracts what lies behind it (PILL_LENS): its edge shows the art from further in.
       vec3 pillArt = selectionColor;
+      // LOOK-27: the art's own colour at the pill's lens sample, for the see-through colour below (pillSee.x < 0: none).
+      vec3 pillSee = vec3(-1.);
       if (pillSmoke > 0. && pillLift < 1. && pillPress < 1.) {
         float lu = 1. - clamp(pillDepth / pillRadius, 0., 1.);
         vec2 lensPos = body - pillNormal * PILL_LENS * lu * lu * lu;
         softFrostMix = pillSmoke;
         pillArt = mix(smoked(glassColor(lensPos, BODY_SPREAD), 0., field), blurColor, bodyBlur);
         softFrostMix = 0.;
+        pillSee = mix(softFrost(lensPos), wide, DARK_BLUR);
       }
       float barLinear = srgbLinear(clamp(dot(darkSmoke(pillArt), vec3(.2126, .7152, .0722)), 0., 1.));
       // LOOK-23: the floor of the darkest nearby art (PILL_FLOOR): strokes over a dark page sink toward it.
@@ -874,6 +877,16 @@ void main() {
       detailTone = mix(detailTone, min(detailTone, darkCapped), smoothstep(PILL_DETAIL.y, PILL_DETAIL.y + PILL_DETAIL.z, pp.y));
       pillTone = mix(pillTone, detailTone, smoothstep(capBand.x, capBand.y, pillDepth));
       vec3 smokeColor = darkSmoke(pillArt);
+      // LOOK-27 (Grok on 874125ae: the pill over bright posters read as a grey disc, where Apple's smoked lens keeps the
+      // poster's colour inside it, smoked down): over bright art the bar body shows SEE_CHROMA of the art's own colour
+      // (LOOK-20), but the pill kept the smoke's cored colour. It now takes the same see-through colour at its lens sample,
+      // as the bar does where the wide field is bright (SEE_FIELD), scaled to its own tone below (PILL_TINT). Only the
+      // colour moves, so the pill's tone, the step, the ink and the label's contrast are as before.
+      if (pillSee.x >= 0.) {
+        float smokeL = dot(smokeColor, vec3(.2126, .7152, .0722));
+        float pillSeeL = dot(pillSee, vec3(.2126, .7152, .0722));
+        smokeColor = vec3(smokeL) + mix(smokeColor - smokeL, SEE_CHROMA * (pillSee - pillSeeL), smoothstep(SEE_FIELD.x, SEE_FIELD.y, dot(wide, vec3(.2126, .7152, .0722))));
+      }
       float smokeLuma = dot(smokeColor, vec3(.2126, .7152, .0722)), pillGrey = linearSrgb(pillTone);
       vec3 darkPill = max(vec3(pillGrey) + PILL_TINT * (smokeColor - smokeLuma) * pillGrey / max(smokeLuma, .02), 0.);
       // LOOK-5: Apple's smoked capsule catches a faint light line along its edge, brightest at its ends and foot (about
