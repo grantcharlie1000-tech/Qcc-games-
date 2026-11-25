@@ -781,9 +781,10 @@ void main() {
   // The light theme's pale frost (MILK_LIFT, MILK_GAIN). The mirrored band keeps MILK_MIRROR of its strokes over it.
   surface = mix(surface, MILK_LIFT + MILK_GAIN * surface + (1. - MILK_GAIN) * MILK_MIRROR * mirrorZone * (surface - blurColor),
                 1. - pillSmoke);
+  float white = 0.;
   if (pillSmoke < 1.) {
     // Lower the pale tone over white without darkening the material over black art.
-    float white = smoothstep(.75, 1., dot(wide, vec3(.2126, .7152, .0722)));
+    white = smoothstep(.75, 1., dot(wide, vec3(.2126, .7152, .0722)));
     surface -= (1. - pillSmoke) * white * (6. / 255.);
     if (lightTop > 0.) {
       // Keep local high-frequency detail at the uncompressed page coordinates. The wide
@@ -982,6 +983,20 @@ void main() {
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
       // frost of its milky thumb, as the dark theme's press lifts its pill; the raised lens clears it smoothly.
       vec3 lightPill = mix(MILK_LIFT + MILK_GAIN * selectionColor - PILL_MILK_DROP, MILK_LIFT + MILK_GAIN * selection, pillPress);
+      // Share the pale bar's white-page tone and keep the resting selection's step.
+      // The extra edge refraction is confined to a hairline; it fades out on lift or press.
+      float lightRest = (1. - pillSmoke) * (1. - pillLift) * (1. - pillPress) * (1. - pillMotion);
+      if (lightRest > 0.) {
+        lightPill -= lightRest * white * (9. / 255.);
+        float edge = 1. - smoothstep(.25, 1.65, pillDepth);
+        if (edge > 0.) {
+          vec2 uv = region.xy + pos * region.zw;
+          vec3 refracted = textureLod(scene, uv + 1.6 * edge * pillNormal * region.zw, 0.).rgb;
+          vec3 direct = textureLod(scene, uv, 0.).rgb;
+          lightPill += .25 * lightRest * edge * (refracted - direct);
+          lightPill = mix(lightPill, vec3(1.), .18 * lightRest * edge * max(0., -pillNormal.y));
+        }
+      }
       float lightLuma = dot(lightPill, vec3(.2126, .7152, .0722));
       lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
       selection = mix(selection, lightPill, (1. - pillSmoke) * (1. - pillLift));

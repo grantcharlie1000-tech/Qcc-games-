@@ -85,6 +85,48 @@ test('the light bar carries fine page strokes at their original coordinates',asy
   console.log(`light detail contrast at page coordinates: ${before.delta}, shifted: ${shifted.delta}; body ${shifted.body}`);
 });
 
+test('the light resting pill catches a nearby page stroke only at its rim',async({page})=>{
+  await page.emulateMedia({colorScheme:'light'});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar'),canvas=bar.locator('canvas.section-lens');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await page.locator('.game-grid').evaluate(grid=>{
+    const patch=document.createElement('div');
+    patch.id='light-rim-patch';
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;background:#fff;z-index:1;pointer-events:none';
+    grid.append(patch);
+  });
+  const samples=()=>canvas.evaluate(el=>{
+    const surface=el as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+    const bar=surface.closest('.app-tabbar') as HTMLElement,b=bar.getBoundingClientRect(),pill=getComputedStyle(bar,'::after');
+    const x=b.left+parseFloat(pill.left)+parseFloat(pill.translate)+parseFloat(pill.width)/2;
+    const y=b.top+parseFloat(pill.top);
+    const sx=surface.width/rect.width,sy=surface.height/rect.height,ctx=surface.getContext('2d')!;
+    const pixel=(depth:number)=>ctx.getImageData(Math.floor((x-rect.left)*sx),Math.floor((y+depth-rect.top)*sy),1,1).data[1];
+    return {rim:pixel(.5),interior:pixel(4.5),body:pixel(12.5)};
+  });
+  await expect.poll(async()=>(await samples()).body).toBeGreaterThan(205);
+  let previous='';
+  await expect.poll(async()=>{const next=JSON.stringify(await samples()),same=next===previous;previous=next;return same;},{intervals:[250]}).toBe(true);
+  const clear=await samples();
+  // The real page stroke lies immediately outside the pill, not inside its face.
+  await page.locator('#light-rim-patch').evaluate(patch=>{
+    const bar=patch.ownerDocument.querySelector('.app-tabbar')!,b=bar.getBoundingClientRect(),pill=getComputedStyle(bar,'::after');
+    const x=b.left+parseFloat(pill.left)+parseFloat(pill.translate)+parseFloat(pill.width)/2;
+    const y=b.top+parseFloat(pill.top);
+    const mark=document.createElement('div');
+    mark.style.cssText=`position:fixed;left:${x-5}px;top:${y-2}px;width:10px;height:1.5px;background:#666`;
+    patch.append(mark);
+  });
+  await expect.poll(async()=>clear.rim-(await samples()).rim).toBeGreaterThan(8);
+  const stroke=await samples();
+  expect(Math.abs(stroke.interior-clear.interior)).toBeLessThanOrEqual(4);
+  expect(Math.abs(stroke.body-clear.body)).toBeLessThanOrEqual(2);
+  expect(clear.body).toBeGreaterThanOrEqual(206);
+  expect(clear.body).toBeLessThanOrEqual(212);
+  console.log(`light pill top stroke: rim ${clear.rim} -> ${stroke.rim}, interior ${clear.interior} -> ${stroke.interior}, face ${clear.body} -> ${stroke.body}`);
+});
+
 test('section lens ignores game mutations and resumes live sampling at the restored library scroll',async({page})=>{
   await page.addInitScript(()=>{
     let queued=0;
