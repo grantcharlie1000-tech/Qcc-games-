@@ -112,7 +112,8 @@ const WARP_PULL=5.15,WARP_POWER=11,WARP_BAND=14,WARP_SPAN=8,WARP_DENSITY=2;
 // video cuts only the neighbour's, "rary", and keeps "Radio" whole): only a tab whose GLYPH is mostly outside the bubble
 // is cut and split; a tab whose glyph is mostly under it keeps its whole label.
 const FRINGE_BAND=6,FRINGE_SHIFT=1.25,FRINGE_TOP='rgb(64,214,255)',FRINGE_FOOT='rgb(255,64,200)';
-const PRISM_SHIFT=1.65,PRISM_FOOT='rgb(80,230,180)';
+// A raised dark lens has one displaced stroke with a fine colour edge, not two offset copies of the glyph.
+const PRISM_BAND=2,PRISM_SHIFT=.55,PRISM_OPACITY=.45,PRISM_FOOT='rgb(80,230,180)';
 // MOTION-30 (#24, orchestrator item 3): in Charlie's video a tab's ink is the lens's cyan wherever it lies inside the raised
 // lens's outline and white outside it, whichever tab it belongs to: New's squares inside the 12.75 s lens read rgb(44,180,252)
 // (median) against white outside, and at 14.0 s Ra|dio and Libr|ary split at the outline the same way. Ours kept a tab the rim
@@ -133,7 +134,7 @@ type WarpMap={url:string;ready:boolean};
 // A tab's layout box in the bar [left, top, width, height] and its label's rows in the tab [top, height] (MOTION-28).
 type Box=readonly [number,number,number,number,number,number];
 const warpMaps=new Map<string,WarpMap>();
-let warpWanted:{key:string;width:number;height:number;bevel:number}|null=null,warpBuilding=false;
+let warpWanted:{key:string;width:number;height:number;bevel:number;prism:boolean}|null=null,warpBuilding=false;
 function warpBuild(){
   const next=warpWanted;
   warpWanted=null;
@@ -144,7 +145,7 @@ function warpBuild(){
   warpBuilding=true;
   const done=(url='')=>{entry.url=url;entry.ready=true;warpBuilding=false;warpBuild();};
   setTimeout(()=>{
-    const canvas=warpCanvas(next.width,next.height,next.bevel);
+    const canvas=warpCanvas(next.width,next.height,next.bevel,next.prism);
     if(!canvas||typeof canvas.toBlob!=='function'||typeof FileReader!=='function'){done();return;}
     canvas.toBlob(blob=>{
       if(!blob){done();return;}
@@ -160,24 +161,25 @@ function warpBuild(){
   },0);
 }
 // The decoded map for a bubble size, or null while it is being built (a size not yet asked for starts building).
-function warpMap(width:number,height:number,bevel:number):WarpMap|null{
-  const key=`${width}x${height}x${Math.round(bevel)}`,hit=warpMaps.get(key);
+function warpMap(width:number,height:number,bevel:number,prism:boolean):WarpMap|null{
+  const key=`${width}x${height}x${Math.round(bevel)}x${Number(prism)}`,hit=warpMaps.get(key);
   if(hit){warpMaps.delete(key);warpMaps.set(key,hit);return hit.ready?hit:null;}
-  warpWanted={key,width,height,bevel};
+  warpWanted={key,width,height,bevel,prism};
   if(!warpBuilding)warpBuild();
   return null;
 }
 // The decoded map nearest a size, for a bar whose first bend comes before its own size is ready ('' if none is).
-function warpNearest(width:number,height:number):string{
+function warpNearest(width:number,height:number,prism:boolean):string{
   let url='',best=Infinity;
   for(const [key,map] of warpMaps){
     if(!map.ready||!map.url)continue;
-    const [w,h]=key.split('x').map(Number),gap=Math.abs(w-width)+Math.abs(h-height);
+    const [w,h,,mode]=key.split('x').map(Number),gap=Math.abs(w-width)+Math.abs(h-height);
+    if(mode!==Number(prism))continue;
     if(gap<best){best=gap;url=map.url;}
   }
   return url;
 }
-function warpCanvas(width:number,height:number,bevel:number):HTMLCanvasElement|null{
+function warpCanvas(width:number,height:number,bevel:number,prism:boolean):HTMLCanvasElement|null{
   const w=Math.ceil(width*WARP_DENSITY),h=Math.ceil(height*WARP_DENSITY);
   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
   const ctx=canvas.getContext('2d');
@@ -199,7 +201,11 @@ function warpCanvas(width:number,height:number,bevel:number):HTMLCanvasElement|n
       if(reach<near){image.data[i+2]=255;continue;}
       const length=Math.hypot(ax,py),depth=radius-length;
       image.data[i+2]=Math.round(255*Math.max(0,Math.min(1,.5+depth*WARP_DENSITY)));
-      const u=depth>0&&length>0?Math.max(0,1-depth/band):0,pull=WARP_PULL*(u**WARP_POWER-u*u)/Math.max(length,1e-3);
+      // Fade the pull across the lower face into the label rows: the icon keeps the full bend,
+      // but the smaller lettering crosses the rim as a single gently displaced stroke.
+      const label=prism?Math.max(0,Math.min(1,(py/radius-.16)/.24)):0;
+      const u=depth>0&&length>0?Math.max(0,1-depth/band):0;
+      const pull=WARP_PULL*(1-.85*label*label*(3-2*label))*(u**WARP_POWER-u*u)/Math.max(length,1e-3);
       image.data[i]=Math.round(255*(.5+ax*pull/WARP_SPAN));
       image.data[i+1]=Math.round(255*(.5+py*pull/WARP_SPAN));
     }
@@ -216,12 +222,12 @@ function bindLensWarp(bar:HTMLElement){
     cutIn:SVGFEFloodElement;keepLabel:SVGFEFloodElement;ink:SVGFECompositeElement;inked:SVGFEMergeNodeElement};
   const filters=new Map<HTMLElement,Warp>();
   // The last decoded map the tabs were given.
-  let shown='';
+  let shown='',shownPrism=false;
   // A map at the raised bubble's usual size (about 1.58 x 1.11 bar heights held, section-lens.ts) is built once the bar is
   // laid out, so the first press bends from its first frame, not from when its own size is ready.
   const warm=requestAnimationFrame(()=>{
     const height=bar.offsetHeight;
-    if(height>0){const w=Math.round(1.58*height/2)*2,h=Math.round(1.11*height/2)*2;warpMap(w,h,raisedBevel(w,h));}
+    if(height>0){const w=Math.round(1.58*height/2)*2,h=Math.round(1.11*height/2)*2;warpMap(w,h,raisedBevel(w,h),typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme: dark)').matches);}
   });
   const make=(tab:HTMLElement)=>{
     let entry=filters.get(tab);
@@ -273,11 +279,12 @@ function bindLensWarp(bar:HTMLElement){
   return {
     // Once per frame: the map for the bubble in the bar's layout px (width, height, bevel), drawn at its size to the
     // nearest 2 css px, or the last decoded one until that is ready.
-    map(lens:readonly [number,number,number,number,number]){
-      const width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,ready=warpMap(width,height,lens[4]);
+    map(lens:readonly [number,number,number,number,number],prism:boolean){
+      const width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,ready=warpMap(width,height,lens[4],prism);
+      if(prism!==shownPrism){shown='';shownPrism=prism;}
       if(ready)shown=ready.url;
       // The bar's first bend takes the nearest decoded size, stretched to the bubble, until its own is ready.
-      else if(!shown)shown=warpNearest(width,height);
+      else if(!shown)shown=warpNearest(width,height,prism);
       return shown;
     },
     // The bubble (centre x, centre y, width, height, bevel), its lift and map, and the tab's layout box [left, top, width,
@@ -287,18 +294,19 @@ function bindLensWarp(bar:HTMLElement){
       if(!lens||!map){if(tab.style.filter)tab.style.removeProperty('filter');return;}
       // The map is centred on the bubble and stretched to its box.
       const [cx,cy]=lens,width=Math.round(lens[2]/2)*2,height=Math.round(lens[3]/2)*2,[left,top,tabWidth,tabHeight,labelTop,labelHeight]=box;
-      const {id,image,filter,displace,up,down,cyan,magenta,cutIn,keepLabel,ink:inkMix,inked}=make(tab);
+      const {id,image,filter,displace,band,up,down,cyan,magenta,cutIn,keepLabel,ink:inkMix,inked}=make(tab);
       if(image.getAttribute('href')!==map)image.setAttribute('href',map);
       // Only a tab whose glyph is mostly outside the bubble splits at the rim and loses its label's part inside it; the one
       // under it keeps its label whole (MOTION-30) and the selection's accent whole.
       const outside=!keep&&glyph<.5,fringe=outside?(prism?PRISM_SHIFT:FRINGE_SHIFT)*lift:0;
       const side=prism?Math.sign(left+tabWidth/2-cx):0,labelStart=labelTop-3;
+      const fringeOpacity=fringe?(prism?PRISM_OPACITY*lift:1):0;
       const wholeLabel=keep&&Math.abs(left+tabWidth/2-cx)+tabWidth/2>width/2-lens[4];
       const foot=prism?PRISM_FOOT:FRINGE_FOOT;
       if(magenta.getAttribute('flood-color')!==foot)magenta.setAttribute('flood-color',foot);
       const attributes:[SVGElement,string,number][]=[[displace,'scale',WARP_SPAN*lift*(prism?1:3.1/WARP_PULL)],[filter,'x',-24],[filter,'y',-24],[filter,'width',tabWidth+48],
         [filter,'height',tabHeight+48],[image,'x',cx-width/2-left],[image,'y',cy-height/2-top],
-        [image,'width',width],[image,'height',height],[up,'dx',fringe*side*.65],[up,'dy',-fringe],[down,'dx',-fringe*side*.65],[down,'dy',fringe],[cyan,'flood-opacity',fringe?1:0],[magenta,'flood-opacity',fringe?1:0],
+        [image,'width',width],[image,'height',height],[band,'radius',prism?PRISM_BAND:FRINGE_BAND],[up,'dx',fringe*side*.65],[up,'dy',-fringe],[down,'dx',-fringe*side*.65],[down,'dy',fringe],[cyan,'flood-opacity',fringeOpacity],[magenta,'flood-opacity',fringeOpacity],
         [cutIn,'flood-opacity',outside?1:0],[cutIn,'x',-24],[cutIn,'width',tabWidth+48],[cutIn,'y',labelTop-1],[cutIn,'height',labelHeight+2],
         [inkMix,'k2',1-ink],[inkMix,'k3',ink],
         [keepLabel,'flood-opacity',wholeLabel?lift:0],[keepLabel,'x',-24],[keepLabel,'width',tabWidth+48],
@@ -353,7 +361,7 @@ function bindLensZoom(bar:HTMLElement):()=>void{
   const bend=(drawn:{pill:number[];sx:number;sy:number}|undefined,lift:number,covers:readonly Cover[],keep?:HTMLElement)=>{
     const lens=drawn&&lift>0?[drawn.pill[0]/drawn.sx,drawn.pill[1]/drawn.sy,drawn.pill[2]/drawn.sx,drawn.pill[3]/drawn.sy] as const:null;
     const bubble=lens?[...lens,raisedBevel(lens[2],lens[3])] as const:null;
-    const map=bubble&&covers.some(([,cover])=>cover>0&&cover<.999)?warp.map(bubble):'';
+    const map=bubble&&covers.some(([,cover])=>cover>0&&cover<.999)?warp.map(bubble,dark?.matches===true):'';
     const ink=dark?.matches?lift:0;
     for(const [tab,cover,place,glyph] of covers)warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place,glyph,tab===keep?0:ink,tab===keep,dark?.matches===true);
   };

@@ -572,8 +572,16 @@ vec3 darkBar(vec2 pos) {
   vec3 bodyDark = fieldDark;
   vec3 wide = fieldSample(pos), field = glassTone(wide, 0.), soft = softFrost(pos);
   fieldDark = bodyDark;
-  vec3 tone = darkSmoke(mix(smoked(glassTone(soft, 0.), 0., field), smokedBlur(field, 0.), DARK_BLUR));
-  vec3 seeArt = mix(soft, wide, DARK_BLUR);
+  // F26: a bright poster under the held lens should retain its own detail, rather than the
+  // wide-field haze appropriate to the surrounding smoked bar and the navy-card lens.
+  float wideL = dot(wide, vec3(.2126, .7152, .0722));
+  float heldClear = pillPress * pillMotion * smoothstep(.4, .65, wideL);
+  float blur = DARK_BLUR * (1. - .8 * heldClear);
+  float bodyEven = darkEven;
+  darkEven *= 1. - .9 * heldClear;
+  vec3 tone = darkSmoke(mix(smoked(glassTone(soft, 0.), 0., field), smokedBlur(field, 0.), blur));
+  darkEven = bodyEven;
+  vec3 seeArt = mix(soft, wide, blur);
   float toneL = dot(tone, vec3(.2126, .7152, .0722)), artL = dot(seeArt, vec3(.2126, .7152, .0722));
   // MOTION-31 (#24 council on 942de639, Opus 2: the dark held lens is hazy, a grey veil over the art where the video's
   // 12.75 s lens shows its full colour): over the same pixels the video's held face is its bar body x1.125 - 3 with 1.117
@@ -582,7 +590,7 @@ vec3 darkBar(vec2 pos) {
   // SEE_BODY, with SEE_MID over mid art, and left the lens on SEE_FIELD, so over navy the body shows the art's colour and
   // the lens the smoke's cored one. The lens now takes the body's rule, so it is the body's colour at LENS_DARK_GAIN; only
   // the colour moves (the luma is the tone's), so the face's tone and detail, held and dragged, are as before.
-  float wideL = dot(wide, vec3(.2126, .7152, .0722)), see = smoothstep(SEE_BODY.x, SEE_BODY.y, wideL);
+  float see = smoothstep(SEE_BODY.x, SEE_BODY.y, wideL);
   return vec3(toneL) + mix(tone - toneL, mix(SEE_MID, SEE_CHROMA, smoothstep(SEE_BRIGHT.x, SEE_BRIGHT.y, wideL)) * (seeArt - artL), see);
 }
 float capsuleRadius(vec2 bounds) {
