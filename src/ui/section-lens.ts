@@ -367,11 +367,11 @@ const float LENS_ZOOM = 1., LENS_BEVEL = 14., LENS_SLOPE = 2.4;
 // rim, and a straight edge visibly curves into it, as the video's rim warps what passes under it. The face is unchanged.
 const float LENS_EDGE_REACH = 18.;
 // Like the owner's thumb, each end of the lens is a dome: its vertical magnification climbs as
-// (1 - d / LENS_SWELL_SPAN)^3 over the last LENS_SWELL_SPAN css px before the end (d is the
+// (1 - d / LENS_SWELL_SPAN)^2 over the last LENS_SWELL_SPAN css px before the end (d is the
 // distance to the end), to 1 / (1 - LENS_SWELL) times the face's at the very end. A track or
 // card seam thickens and curves away from the centre line as it enters, then settles to the
 // even face. It only draws samples toward the centre, so the furthest sample is unchanged.
-const float LENS_SWELL = .33, LENS_SWELL_SPAN = 8.;
+const float LENS_SWELL = .33, LENS_SWELL_SPAN = 16.;
 // The raised lens is clear glass, as Apple Music's held and dragged bubble: the content under it
 // shows through in its own colour and contrast, not milky. Dull colour under it (a navy or teal
 // card, chroma spread below about .2) loses only LENS_NEUTRAL of its saturation, while a vivid
@@ -654,8 +654,14 @@ vec3 lensFace(vec3 darkArt, vec3 clearArt, vec2 outward, float pillDepth, float 
   float lit = LENS_RIM_LIGHT.x - LENS_RIM_LIGHT.y * max(0., facing);
   lit += .025 * pillSmoke * (1. - smoothstep(.2, .7, dot(face, vec3(.2126, .7152, .0722))));
   vec3 rimLight = mix(LENS_RIM_OUTER, LENS_RIM_INNER, smoothstep(.5, 1.5, pillDepth));
-  // MOTION-32: along the curved ends the outline is a dark line in the art's hue (LENS_END_DARK of its luma), not lit.
-  float ends = smoothstep(.2, .7, abs(outward.x));
+  // The thin optical highlight follows the curved shoulders into the top and foot.
+  // At the side tangent it vanishes, so the outline is still a dark refracting edge.
+  float ends = 1. - smoothstep(.14, .78, abs(outward.y));
+  float shoulder = 2. * abs(outward.x * outward.y);
+  float darkField = 1. - smoothstep(.28, .75, dot(face, vec3(.2126, .7152, .0722)));
+  lit += darkField * (.08 + .16 * shoulder);
+  vec3 spectrum = mix(vec3(.38, .86, 1.), vec3(1., .65, .82), smoothstep(-.3, .3, outward.y));
+  rimLight = mix(rimLight, spectrum, .65 * shoulder * (1. - smoothstep(.6, 1.8, pillDepth)));
   float outline = smoothstep(-.6, .1, pillDepth) * (1. - smoothstep(.9, 1.7, pillDepth));
   vec3 rgb = mix(face, rimLight, lit * line * (1. - ends));
   return clamp(rgb * (1. - LENS_END_DARK * ends * outline), 0., 1.);
@@ -862,7 +868,11 @@ void main() {
         float swell = 1. - clamp((pill.z * .5 - abs(pp.x)) / LENS_SWELL_SPAN, 0., 1.);
         vec2 face = pill.zw * .5 / LENS_ZOOM;
         vec2 edgeReach = clamp(min(samplePill.xy - face - lo, hi - samplePill.xy - face), 0., LENS_EDGE_REACH);
-        vec2 lensWarp = samplePill.xy + pp * vec2(1., 1. - LENS_SWELL * swell * swell * swell) / LENS_ZOOM
+        // The flat top and foot also have a transverse curvature. A stripe through the
+        // centre remains 1:1 on the face, then flares into the last few pixels of the bevel.
+        float rimSwell = clamp(1. - pillDepth / 6., 0., 1.);
+        float across = .4 * rimSwell * rimSwell * smoothstep(.65, .92, abs(outward.y));
+        vec2 lensWarp = samplePill.xy + pp * vec2(1. - across, 1. - LENS_SWELL * swell * swell) / LENS_ZOOM
                       + outward * edgeReach * u * u * u;
         vec2 warped = mix(pressWarp, lensWarp, pillLift);
         // Keep color edges legible after the lens magnifies the frosted scene. The bar's
@@ -870,17 +880,30 @@ void main() {
         // One frost sample serves the moving selection and the clear glass it fades from.
         // The bevel's squeeze along its normal: d(sample)/d(screen) = 1 + 3 u^2 x reach / bevel (frostLod).
         frostLod = pillLift * log2(1. + 3. * u * u * dot(edgeReach, abs(outward)) / lensBevel(pillRadius));
-        vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
+        vec2 artSample = mix(body, warped, pillMotion);
+        vec3 frosted = frost(artSample, mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
+        // Split the bent backdrop ray by a fraction of a pixel through the bevel, not a
+        // second outline. The centre ray and the face remain at their original coordinates.
+        vec3 dispersion = vec3(0.);
+        if (pillLift > 0. && u > .45) {
+          vec2 uv = region.xy + artSample * region.zw;
+          vec2 spread = .65 * outward * region.zw * u * u;
+          vec3 direct = textureLod(scene, uv, frostLod).rgb;
+          dispersion = (vec3(textureLod(scene, uv + spread, frostLod).r, direct.g,
+                            textureLod(scene, uv - spread, frostLod).b) - direct)
+                       * pillLift * smoothstep(.45, .85, u);
+        }
         if (pillSmoke > 0. && pillLift > 0.) {
-          darkLens = darkBar(mix(body, warped, pillMotion));
+          darkLens = darkBar(artSample) + .65 * dispersion;
           // In the bar's upper/foot band the raised lens carries the bent body art through, fading to its own
           // refracted sample at the band edges. The same-frame body colour is already computed above.
           float carryBand = .65 * max(topFacing, footFacing) * band * smoothstep(0., 2., depth);
           carryBand *= 1. - .6 * footFacing * smoothstep(.3, .65, dot(surface, vec3(.2126, .7152, .0722)));
-          darkLens = mix(darkLens, surface, carryBand);
+          // Preserve the upper title band; let the bent ray show through the lower bevel.
+          darkLens = mix(darkLens, surface, carryBand * (1. - .8 * footFacing * smoothstep(.25, .9, u)));
         }
         frostLod = 0.;
-        clearArt = frosted;
+        clearArt = frosted + dispersion;
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
         // The dark rest pill is the body's soft frost (softFrost), so as the motion falls the selection eases into that
         // sample: the last moving frame is the rest pill, and a press's first frame leaves it without a step. The clear

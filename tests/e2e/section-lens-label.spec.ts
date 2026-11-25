@@ -3,7 +3,7 @@ import {expect,originalTheme,test} from '../fixtures';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 
-test('a nonselected dark label crossing the raised rim stays a single legible stroke',async({context,page},info)=>{
+for(const phase of ['held','drag'] as const)test(`a nonselected dark label crossing the ${phase} rim stays a single legible stroke`,async({context,page},info)=>{
   await originalTheme(context);
   await page.setViewportSize({width:390,height:844});
   await page.emulateMedia({colorScheme:'dark'});
@@ -30,17 +30,19 @@ test('a nonselected dark label crossing the raised rim stays a single legible st
   await page.mouse.move(x,y);await page.mouse.down();
   await expect(bar).toHaveAttribute('data-pressing','');
   await page.waitForTimeout(500);
-  await page.mouse.move(x+138,y,{steps:4});
-  await expect(bar).toHaveAttribute('data-pill-dragging','');
-  await page.waitForTimeout(400);
-  // Stop at the right rim of TV Shows even if the initial motion springs further in the desktop harness.
-  const selected=bar.getByRole('link',{name:'TV Shows',exact:true});
-  if(await selected.getAttribute('data-lens-target')===null){
-    await page.mouse.move(x+125,y,{steps:3});
+  if(phase==='drag'){
+    await page.mouse.move(x+138,y,{steps:4});
+    await expect(bar).toHaveAttribute('data-pill-dragging','');
     await page.waitForTimeout(400);
+    // Stop at the right rim of TV Shows even if the initial motion springs further in the desktop harness.
+    const selected=bar.getByRole('link',{name:'TV Shows',exact:true});
+    if(await selected.getAttribute('data-lens-target')===null){
+      await page.mouse.move(x+125,y,{steps:3});
+      await page.waitForTimeout(400);
+    }
+    await expect(selected).toHaveAttribute('data-lens-target','');
   }
-  await expect(selected).toHaveAttribute('data-lens-target','');
-  const crossing=bar.getByRole('link',{name:'My list',exact:true});
+  const crossing=bar.getByRole('link',{name:phase==='held'?'Movies':'My list',exact:true});
   await expect(crossing).not.toHaveAttribute('data-lens-target','');
   await expect.poll(()=>crossing.evaluate(el=>el.style.filter)).toContain('section-lens-warp');
   await page.waitForTimeout(500);
@@ -64,5 +66,5 @@ test('a nonselected dark label crossing the raised rim stays a single legible st
   const union=a.reduce((n,v,i)=>n+Number(v||b[i]),0),intersection=a.reduce((n,v,i)=>n+Number(v&&b[i]),0);
   expect(union).toBeGreaterThan(40);
   console.log('crossing label footprint overlap',intersection/union,{intersection,union});
-  expect(intersection/union).toBeGreaterThan(.72);
+  expect(intersection/union).toBeGreaterThanOrEqual(.93);
 });
