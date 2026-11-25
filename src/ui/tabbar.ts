@@ -334,14 +334,14 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const ink=dark?.matches?lift:0;
     for(const [tab,cover,place] of covers){
       warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place,tab===keep?0:ink,tab===keep,dark?.matches===true);
-      // A foreground keyline follows the same lift and coverage as the bend. Its
-      // polarity follows the ink role and the existing dark backdrop halo sample.
-      // Keep that polarity while the release returns the label to its resting ink.
+      // Keep the dark theme's nonselected labels on their existing adaptive ink
+      // and halo. The raised keyline supports the accent and light-theme crossings.
+      // Its polarity persists as the release returns the label to its resting ink.
       const strength=bubble?lift*smooth(cover/.5):0;
-      if(strength<.01){clearInk(tab);continue;}
+      if(strength<.01||dark?.matches===true&&tab!==keep){clearInk(tab);continue;}
       if(pressedAt!==null||!tab.hasAttribute('data-raised-ink')){
         const bright=dark?.matches===true
-          ?tab!==keep||!!tab.querySelector(':scope>span[data-glass-halo]')
+          ?!!tab.querySelector(':scope>span[data-glass-halo]')
           :tab===keep||bar.hasAttribute('data-pill-dragging')&&cover>=.5;
         const polarity=bright?'dark':'light';
         if(tab.dataset.raisedInk!==polarity)tab.dataset.raisedInk=polarity;

@@ -372,14 +372,22 @@
    not a blurred or displaced second word. The existing lift removes it at rest. */
 @media(prefers-reduced-motion:no-preference){
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink]>span{
-    -webkit-text-stroke-width:calc(1px * var(--section-raised-ink));
-    -webkit-text-stroke-color:rgb(20 16 25 / .92);
+    -webkit-text-stroke-width:calc(.7px * var(--section-raised-ink));
+    -webkit-text-stroke-color:rgb(20 16 25 / .84);
     paint-order:stroke fill;
     text-shadow:none;
     filter:none;
   }
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink=light]>span{
-    -webkit-text-stroke-color:rgb(255 255 255 / .88);
+    -webkit-text-stroke-color:rgb(255 255 255 / .72);
+  }
+  /* Over bright dark-theme art, a single soft halo helps the thinner edge.
+     Fade it with the lift so it cannot linger into the resting accent. */
+  @media(prefers-color-scheme:dark){
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink=dark]>span[data-glass-halo]{
+      -webkit-text-stroke-width:calc(.5px * var(--section-raised-ink));
+      filter:drop-shadow(0 0 .8px rgb(0 0 0 / calc(.8 * var(--section-raised-ink))));
+    }
   }
 }
 /* MOTION-6 (#24): Apple Music's compact bar (Charlie's video, 34.25 s) is separate glass pieces on the bar's own centre
