@@ -359,6 +359,11 @@
     --glass-icon-ink:#fff;--section-pill-accent:#fff;
   }
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]:not([data-lens-target])>span{color:#fff}
+  /* Keep the crossing label's soft dark rim through the light lens's release.
+     Its white ink is still easing to grey while the raised face exposes bright art. */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-pill-dragging],[data-pressing]) .ui-tab:not([aria-current=page],[aria-pressed=true])>span{
+    transition:scale 180ms var(--ease-out),opacity 180ms var(--ease-out),color 200ms cubic-bezier(.5,1,.89,1),filter 180ms linear;
+  }
   :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]>:is(.ui-icon,span){
     filter:drop-shadow(0 0 1px rgb(0 0 0 / .55));
   }
