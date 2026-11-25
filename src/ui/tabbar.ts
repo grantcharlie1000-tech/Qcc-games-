@@ -300,7 +300,11 @@ function bindLensZoom(bar:HTMLElement):()=>void{
   const warp=bindLensWarp(bar);
   const tabs=()=>[...bar.querySelectorAll<HTMLElement>('.ui-tab')];
   const unzoom=()=>{pressedAt=null;for(const tab of tabs()){tab.style.removeProperty('--section-lens-zoom');tab.removeAttribute('data-lens-target');tab.removeAttribute('data-lens-under');}};
-  const clear=()=>{unzoom();warp.clear(tabs());};
+  const clearInk=(tab:HTMLElement)=>{
+    tab.removeAttribute('data-raised-ink');
+    tab.style.removeProperty('--section-raised-ink');
+  };
+  const clear=()=>{unzoom();const all=tabs();warp.clear(all);all.forEach(clearInk);};
   // The icon and label boxes of a tab in the bar's coordinates, from layout, which the zoom's own scale never moves.
   // The label reports its offset box. The icon is an SVG, with no offset box, so it takes its used size, centred in the tab
   // as the column flex places it.
@@ -328,7 +332,23 @@ function bindLensZoom(bar:HTMLElement):()=>void{
     const bubble=lens?[...lens,raisedBevel(lens[2],lens[3])] as const:null;
     const map=bubble&&covers.some(([,cover])=>cover>0&&cover<.999)?warp.map(bubble,dark?.matches===true):'';
     const ink=dark?.matches?lift:0;
-    for(const [tab,cover,place] of covers)warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place,tab===keep?0:ink,tab===keep,dark?.matches===true);
+    for(const [tab,cover,place] of covers){
+      warp.set(tab,bubble&&cover>0&&cover<.999?bubble:null,lift,map,place,tab===keep?0:ink,tab===keep,dark?.matches===true);
+      // A foreground keyline follows the same lift and coverage as the bend. Its
+      // polarity follows the ink role and the existing dark backdrop halo sample.
+      // Keep that polarity while the release returns the label to its resting ink.
+      const strength=bubble?lift*smooth(cover/.5):0;
+      if(strength<.01){clearInk(tab);continue;}
+      if(pressedAt!==null||!tab.hasAttribute('data-raised-ink')){
+        const bright=dark?.matches===true
+          ?tab!==keep||!!tab.querySelector(':scope>span[data-glass-halo]')
+          :tab===keep||bar.hasAttribute('data-pill-dragging')&&cover>=.5;
+        const polarity=bright?'dark':'light';
+        if(tab.dataset.raisedInk!==polarity)tab.dataset.raisedInk=polarity;
+      }
+      const value=strength.toFixed(2);
+      if(tab.style.getPropertyValue('--section-raised-ink')!==value)tab.style.setProperty('--section-raised-ink',value);
+    }
   };
   const tick=()=>{
     frame=0;

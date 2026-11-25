@@ -368,6 +368,20 @@
     filter:drop-shadow(0 0 1px rgb(0 0 0 / .55));
   }
 }}
+/* MOTION-44: one tight keyline under the moving label's original fill,
+   not a blurred or displaced second word. The existing lift removes it at rest. */
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink]>span{
+    -webkit-text-stroke-width:calc(1px * var(--section-raised-ink));
+    -webkit-text-stroke-color:rgb(20 16 25 / .92);
+    paint-order:stroke fill;
+    text-shadow:none;
+    filter:none;
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink=light]>span{
+    -webkit-text-stroke-color:rgb(255 255 255 / .88);
+  }
+}
 /* MOTION-6 (#24): Apple Music's compact bar (Charlie's video, 34.25 s) is separate glass pieces on the bar's own centre
    line: the selected tab as a 48 css px circle 27.7-75.6 of 390 (about 7 px in from the bar's leading end), the mini
    player, and the search circle, 48 px, 314.6-362.5. Ours is the selected tab's circle and the menu circle at those sizes

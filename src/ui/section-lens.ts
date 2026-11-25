@@ -815,7 +815,9 @@ void main() {
       vec3 soft = textureLod(scene, uv, log2(max(1., 1.6 * density))).rgb;
       vec3 loss = max(vec3(0.), max(local, wide) - soft);
       detail = mix(detail, -loss / (.12 + 3.15 * loss), white);
-      vec3 transmitted = .70 * lightTop * detail;
+      // Slightly fuller transmission at rest; the raised glass keeps its original body.
+      float restTransmission = (1. - pillLift) * (1. - pillPress) * (1. - pillMotion);
+      vec3 transmitted = (.70 + .12 * restTransmission) * lightTop * detail;
       // Filled tab glyph ink starts about 12px down the 60px bar. Leave the page
       // strokes above it intact, but do not let extra dark detail pull a pale
       // material below the 3:1 floor for #6e6e73 ink (200/255).
@@ -1040,28 +1042,27 @@ void main() {
         lightPill -= lightRest * white * (9. / 255.);
         float radial = clamp(length(pillAxis) / pillRadius, 0., 1.);
         vec2 uv = region.xy + pos * region.zw;
-        // A spherical cap bends its rays outward more strongly than the
-        // cylindrical run. One continuous ray map joins the magnified face
-        // to the shoulder, with no second image or flattened reflection.
-        float capReach = 6. * abs(pillNormal.x) * smoothstep(.55, .90, radial);
-        vec2 faceRay = uv + (.44 * pillAxis * (radial * radial - .85) + capReach * pillNormal) * region.zw;
-        float density = float(textureSize(scene, 0).x) * region.z;
         float graze = 1. - smoothstep(.15, 6., pillDepth);
-        vec3 softRay = textureLod(scene, faceRay, log2(max(1., mix(1.4, 1., graze) * density))).rgb;
+        float upper = 1. - smoothstep(.05, .65, pp.y / pillRadius);
+        // Transverse magnification grows into the upper rim, then gives way
+        // to the spherical cap. The source stays one continuous bent image.
+        float capReach = 6. * abs(pillNormal.x) * smoothstep(.55, .90, radial);
+        float across = .22 * graze * upper * (1. - smoothstep(.25, .70, abs(pillNormal.x)));
+        vec2 faceRay = uv + (.44 * pillAxis * (radial * radial - .85) + capReach * pillNormal
+                            - vec2(across * pp.x, 0.)) * region.zw;
+        float density = float(textureSize(scene, 0).x) * region.z;
+        vec3 softRay = textureLod(scene, faceRay, log2(max(1., mix(1.25, .85, graze) * density))).rgb;
         vec3 localRay = textureLod(scene, faceRay, log2(max(1., 6. * density))).rgb;
         vec3 faceDetail = softRay - mix(localRay, wide, .30 * graze);
         faceDetail = mix(faceDetail, -max(vec3(0.), max(localRay, wide) - softRay), white);
-        // Grazing light extends into the curved shoulder, strongest toward
-        // the upper left. Transmit the bent image *after* that illumination
-        // so page strokes remain visible even in the brightest part.
+        // A narrow grazing glint adds a bright contour without whitening the
+        // face. The bent source detail passes through it, including the rim.
         float facing = max(0., dot(pillNormal, vec2(-.45, -.893)));
-        lightPill = mix(lightPill, vec3(1.), (.025 + .975 * facing) * lightRest * graze);
-        float upper = 1. - smoothstep(.05, .65, pp.y / pillRadius);
-        // Very close to the glass-air interface Fresnel light reflects more
-        // strongly. Keep the source visible through the glint without letting
-        // a dark stroke swallow the shoulder's brightest contour.
-        float fresnel = 1. - smoothstep(.4, 1.8, pillDepth);
-        lightPill += lightRest * upper * (.40 + .42 * graze) * (1. - .45 * fresnel) * faceDetail;
+        float fresnel = 1. - smoothstep(.35, 2.2, pillDepth);
+        float incidence = (.025 + .975 * facing) * graze;
+        float sheen = 1. - (1. - incidence) * (1. - .75 * fresnel * facing);
+        lightPill = mix(lightPill, vec3(1.), lightRest * sheen);
+        lightPill += lightRest * upper * (.56 + .42 * graze) * (1. - .56 * fresnel) * faceDetail;
       }
       float lightLuma = dot(lightPill, vec3(.2126, .7152, .0722));
       lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
