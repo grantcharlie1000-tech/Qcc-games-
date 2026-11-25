@@ -842,10 +842,11 @@ test('section lens rises above the bar on first press, as Charlie\'s video, and 
 // MOTION-4 (#24): a release that changes the tab (a tap on Movies while Games is current, or a drag let go over Movies)
 // used to start the selection stretch, whose first '1 1' frame beat the release transition: the lens's lift (read from
 // the pill's scale, section-lens.ts) fell from 1 to 0 in one frame and the raised bubble vanished. The bubble now falls
-// back on the release spring every time. The CSS timeline runs at .1x, so each frame is a small step of the spring; the
-// selection is made in place (no route change), so the Games scene and its lens stay up throughout.
+// back on the release spring every time. Step the real CSS timeline at 60 Hz instead of measuring wall-clock rAF gaps:
+// slow rendering can combine several spring frames into a single sample. The selection is made in place (no route
+// change), so the Games scene and its lens stay up throughout.
 for(const gesture of ['tap','drag'] as const) test(`a ${gesture} release that changes the tab lets the raised lens ease down on the release spring`,async({page,browserName})=>{
-  test.skip(browserName!=='chromium','the timeline is slowed through the Chromium DevTools protocol');
+  test.skip(browserName!=='chromium','the timeline is controlled through the Chromium DevTools protocol');
   await page.goto('/#/collection');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-section-lens','webgl');
@@ -866,39 +867,57 @@ for(const gesture of ['tap','drag'] as const) test(`a ${gesture} release that ch
   await page.waitForTimeout(300);
   const cdp=await page.context().newCDPSession(page);
   await cdp.send('Animation.enable');
-  await cdp.send('Animation.setPlaybackRate',{playbackRate:.1});
-  await page.evaluate(()=>{
-    const w=window as Window&{__trace?:{t:number;lift:number;pad:string}[];__released?:number};
-    const bar=document.querySelector<HTMLElement>('.app-tabbar')!;
-    w.__trace=[];
-    addEventListener('pointerup',()=>{w.__released??=performance.now();},{capture:true,once:true});
-    const end=performance.now()+2600;
-    // performance.now(), not the frame's timestamp: a frame that handles the pointer-up starts before the event.
-    const sample=()=>{
-      const t=performance.now();
-      const scale=getComputedStyle(bar,'::after').scale;
-      const [sx,sy=sx]=scale==='none'?[1]:scale.split(' ').map(Number);
-      const lens=bar.querySelector<HTMLCanvasElement>('canvas.section-lens');
-      w.__trace!.push({t,lift:Math.min(1,Math.max(0,(sx*sy-1.07)/.18)),pad:lens?.style.getPropertyValue('--section-lens-pad-x')??''});
-      if(t<end)requestAnimationFrame(sample);
-    };
-    requestAnimationFrame(sample);
-  });
-  await page.waitForTimeout(150);
-  await page.mouse.up();
-  await page.waitForTimeout(2800);
-  await cdp.send('Animation.setPlaybackRate',{playbackRate:1});
-  await expect(movies).toHaveAttribute('aria-current','page');
-  const {trace,released}=await page.evaluate(()=>{const w=window as Window&{__trace?:{t:number;lift:number;pad:string}[];__released?:number};return {trace:w.__trace!,released:w.__released!};});
-  const before=trace.filter(sample=>sample.t<released), after=trace.filter(sample=>sample.t>=released);
-  expect(before.at(-1)?.lift,'held lift').toBe(1);
-  expect(after.length).toBeGreaterThan(8);
-  const lifts=after.map(sample=>sample.lift);
-  // The first frame after the lift-off still shows the raised bubble, and it never falls by more than a third in a frame.
-  expect(lifts[0],JSON.stringify(lifts)).toBeGreaterThan(.6);
-  expect(Math.max(...lifts.slice(1).map((lift,i)=>lifts[i]-lift)),JSON.stringify(lifts)).toBeLessThanOrEqual(.3);
-  expect(lifts.at(-1)).toBe(0);
-  // The lens stays raised (padded past the bar) for several frames of the fall, not one.
-  expect(after.filter(sample=>sample.pad!=='').length,JSON.stringify(after.map(sample=>sample.pad))).toBeGreaterThanOrEqual(4);
-  void games;
+  const lift=(scale:string)=>{
+    const [sx,sy=sx]=scale==='none'?[1]:scale.split(' ').map(Number);
+    return Math.min(1,Math.max(0,(sx*sy-1.07)/.18));
+  };
+  try{
+    // Freeze the document timeline, not individual animations: release handlers must still see running transitions.
+    await cdp.send('Animation.setPlaybackRate',{playbackRate:0});
+    const held=await bar.evaluate(el=>getComputedStyle(el,'::after').scale);
+    expect(lift(held),'held lift').toBe(1);
+    await page.mouse.up();
+    await expect(movies).toHaveAttribute('aria-current','page');
+    const trace=await bar.evaluate(async el=>{
+      const frame=()=>new Promise<number>(resolve=>requestAnimationFrame(resolve));
+      const step=1000/60, samples=[];
+      // Include the instant of release and then 32 normal frames (over 500 ms, past the 460 ms spring).
+      for(let i=0;i<=32;i++){
+        // Allow the actual section-lens renderer to draw this pose before reading its pad.
+        await frame();
+        const timestamp=await frame();
+        const animations=el.getAnimations({subtree:true});
+        const spring=animations.find(a=>a instanceof CSSTransition&&a.transitionProperty==='scale'&&
+          (a.effect as KeyframeEffect|null)?.pseudoElement==='::after');
+        samples.push({elapsed:i*step,timestamp,wallTime:performance.now(),springTime:spring?.currentTime??null,
+          scale:getComputedStyle(el,'::after').scale,
+          pad:el.querySelector<HTMLCanvasElement>('canvas.section-lens')?.style.getPropertyValue('--section-lens-pad-x')??''});
+        // Advance only live animations, never resurrect a transition cancelled by the selection stretch.
+        // Step the bar's other transitions too so the rendered geometry follows the same animation time.
+        if(i<32)for(const a of animations){
+          if(a.playState==='running'&&typeof a.currentTime==='number')a.currentTime+=step;
+        }
+      }
+      return samples;
+    });
+    const lifts=trace.map(sample=>lift(sample.scale)), details=JSON.stringify(trace);
+    // The held bubble must survive lift-off, and no normal frame may drop its lift by more than .30.
+    expect(lifts[0],details).toBeGreaterThan(.6);
+    const maxDrop=Math.max(lift(held)-lifts[0],...lifts.slice(1).map((value,i)=>lifts[i]-value));
+    expect(maxDrop,details).toBeLessThanOrEqual(.3);
+    expect(lifts.at(-1),details).toBe(0);
+    const padded=trace.filter(sample=>sample.pad!=='').length;
+    expect(padded,details).toBeGreaterThanOrEqual(4);
+    expect(trace.at(-1)?.pad,details).toBe('');
+    expect(trace.at(-1)?.scale,details).toMatch(/^(none|1( 1)?)$/);
+    expect(trace.at(-1)?.springTime,details).toBeNull();
+    // Prove that wall-clock stalls did not advance the timeline, and that the release really stepped.
+    expect(new Set(trace.map(sample=>sample.timestamp)).size,details).toBe(1);
+    expect(trace[0].springTime,details).toBe(0);
+    expect(trace[1].springTime,details).toBeCloseTo(1000/60);
+    console.log(`${gesture} release: max 60 Hz lift drop ${maxDrop}, padded frames ${padded}, final lift ${lifts.at(-1)}`);
+  }finally{
+    await cdp.send('Animation.setPlaybackRate',{playbackRate:1});
+    await cdp.detach();
+  }
 });
