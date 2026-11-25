@@ -818,6 +818,16 @@ void main() {
       // Slightly fuller transmission at rest; the raised glass keeps its original body.
       float restTransmission = (1. - pillLift) * (1. - pillPress) * (1. - pillMotion);
       vec3 transmitted = (.70 + .12 * restTransmission) * lightTop * detail;
+      // At rest transmit a shallowly frosted scene, including its broad colour
+      // and type rather than just high-pass detail. Keep the moving material.
+      if (restTransmission > 0.) {
+        vec3 restRay = textureLod(scene, uv, log2(max(1., .95 * density))).rgb;
+        vec3 direct = mix(.58 * (restRay - wide), 1.06 * (restRay - max(local, wide)), white);
+        // On pale paper keep the antialiased stroke coverage, without
+        // carrying the halo of the broader frost into its clear gaps.
+        direct = mix(direct, min(direct, (.70 + .12 * restTransmission) * detail), .38 * white);
+        transmitted = mix(transmitted, lightTop * direct, restTransmission);
+      }
       // Filled tab glyph ink starts about 12px down the 60px bar. Leave the page
       // strokes above it intact, but do not let extra dark detail pull a pale
       // material below the 3:1 floor for #6e6e73 ink (200/255).
@@ -1053,16 +1063,21 @@ void main() {
         float density = float(textureSize(scene, 0).x) * region.z;
         vec3 softRay = textureLod(scene, faceRay, log2(max(1., mix(1.25, .85, graze) * density))).rgb;
         vec3 localRay = textureLod(scene, faceRay, log2(max(1., 6. * density))).rgb;
-        vec3 faceDetail = softRay - mix(localRay, wide, .30 * graze);
-        faceDetail = mix(faceDetail, -max(vec3(0.), max(localRay, wide) - softRay), white);
-        // A narrow grazing glint adds a bright contour without whitening the
-        // face. The bent source detail passes through it, including the rim.
+        // The curved shoulder is a thinner, illuminated part of the same
+        // transmissive material. Unlike a high-pass glint, its ray retains
+        // the wider scene's colour and the coverage of actual page strokes.
+        vec3 faceDetail = softRay - mix(wide, vec3(dot(wide, vec3(.2126, .7152, .0722))), .48);
+        faceDetail = mix(faceDetail, softRay - max(localRay, wide), white);
         float facing = max(0., dot(pillNormal, vec2(-.45, -.893)));
         float fresnel = 1. - smoothstep(.35, 2.2, pillDepth);
         float incidence = (.025 + .975 * facing) * graze;
-        float sheen = 1. - (1. - incidence) * (1. - .75 * fresnel * facing);
+        // The lit bevel transmits colour and strokes but compresses the
+        // broad darkening on darker art, where the thin edge catches light.
+        faceDetail -= .60 * (1. - white) * min(0., dot(faceDetail, vec3(.2126, .7152, .0722)));
+        float shoulderLight = .88 * facing * abs(pillNormal.x) * (1. - smoothstep(1., 11., pillDepth)) * upper;
+        float sheen = 1. - (1. - incidence) * (1. - .75 * fresnel * facing) * (1. - shoulderLight);
         lightPill = mix(lightPill, vec3(1.), lightRest * sheen);
-        lightPill += lightRest * upper * (.56 + .42 * graze) * (1. - .56 * fresnel) * faceDetail;
+        lightPill += lightRest * upper * (.76 + .20 * graze) * (1. - .50 * fresnel) * faceDetail;
       }
       float lightLuma = dot(lightPill, vec3(.2126, .7152, .0722));
       lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
