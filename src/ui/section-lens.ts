@@ -804,7 +804,15 @@ void main() {
       // A pale field already has its own highlight, so do not add a bright halo
       // round dark strokes. Bright detail on darker art still transmits normally.
       detail -= white * max(detail, vec3(0.));
-      surface += .70 * lightTop * detail;
+      vec3 transmitted = .70 * lightTop * detail;
+      // Filled tab glyph ink starts about 12px down the 60px bar. Leave the page
+      // strokes above it intact, but do not let extra dark detail pull a pale
+      // material below the 3:1 floor for #6e6e73 ink (200/255).
+      // If the underlying frost is already darker, preserve its tone; this limits
+      // only the added high-pass contribution, not the bar's own material.
+      float glyphRows = smoothstep(.15 * size.y, .175 * size.y, pos.y);
+      vec3 detailFloor = min(vec3(0.), vec3(200. / 255.) - surface);
+      surface += mix(transmitted, max(transmitted, detailFloor), glyphRows);
     }
   }
   vec3 rgb = rim(surface, normal, depth);

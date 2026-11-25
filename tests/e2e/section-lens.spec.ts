@@ -85,6 +85,49 @@ test('the light bar carries fine page strokes at their original coordinates',asy
   console.log(`light detail contrast at page coordinates: ${before.delta}, shifted: ${shifted.delta}; body ${shifted.body}`);
 });
 
+test('the light bar keeps unselected ink legible over fine black page strokes',async({page})=>{
+  await page.emulateMedia({colorScheme:'light'});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar'),canvas=bar.locator('canvas.section-lens');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await page.locator('.game-grid').evaluate(grid=>{
+    const b=document.querySelector('.app-tabbar')!.getBoundingClientRect();
+    const patch=document.createElement('div');
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;background:#fff;z-index:1;pointer-events:none';
+    // A real page pattern: one stroke above the glyphs and two aligned with their upper rows.
+    for(const depth of [5,12,14]){
+      const mark=document.createElement('div');
+      mark.style.cssText=`position:fixed;left:${b.left+80}px;top:${b.top+depth}px;width:180px;height:1px;background:#000`;
+      patch.append(mark);
+    }
+    grid.append(patch);
+  });
+  const samples=()=>canvas.evaluate(element=>{
+    const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+    const bar=surface.closest('.app-tabbar')!,b=bar.getBoundingClientRect();
+    const tab=Array.from(bar.querySelectorAll('.ui-tab')).find(tab=>tab.textContent!.trim()==='Movies')!;
+    const sx=surface.width/rect.width,sy=surface.height/rect.height,ctx=surface.getContext('2d')!;
+    const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+    const contrast=(glyph:Element)=>{
+      const box=glyph.getBoundingClientRect();
+      const ink=lum(getComputedStyle(glyph).color.match(/[\d.]+/g)!.slice(0,3).map(Number));
+      const data=ctx.getImageData(Math.round((box.left-rect.left)*sx),Math.round((box.top-rect.top)*sy),Math.round(box.width*sx),Math.round(box.height*sy)).data;
+      let darkest=1;
+      for(let i=0;i<data.length;i+=4)darkest=Math.min(darkest,lum([data[i],data[i+1],data[i+2]]));
+      return (darkest+.05)/(ink+.05);
+    };
+    const icon=tab.querySelector('.ui-icon')!,label=tab.querySelector(':scope > span')!;
+    const pixel=(depth:number)=>ctx.getImageData(Math.floor((b.left+130-rect.left)*sx),Math.floor((b.top+depth-rect.top)*sy),1,1).data[1];
+    return {detail:pixel(8.5)-pixel(5.5),icon:contrast(icon),label:contrast(label),iconTop:icon.getBoundingClientRect().top-b.top};
+  });
+  // Wait for the actual fine page pattern to reach the WebGL backdrop before measuring its ink.
+  await expect.poll(async()=>(await samples()).detail).toBeGreaterThan(20);
+  const ratios=await samples();
+  console.log('light unselected ink over page strokes',JSON.stringify(ratios));
+  expect(ratios.icon,'minimum contrast under the unselected icon').toBeGreaterThanOrEqual(3);
+  expect(ratios.label,'minimum contrast under the unselected label').toBeGreaterThanOrEqual(4.5);
+});
+
 test('the light resting pill catches a nearby page stroke only at its rim',async({page})=>{
   await page.emulateMedia({colorScheme:'light'});
   await page.goto('/#/collection');
