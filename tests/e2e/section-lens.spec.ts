@@ -32,6 +32,59 @@ test('section lens updates the visible Games backdrop as the page scrolls',async
   await expect(bar.getByRole('link',{name:'Games'})).toHaveAttribute('aria-current','page');
 });
 
+test('the light bar carries fine page strokes at their original coordinates',async({page})=>{
+  await page.emulateMedia({colorScheme:'light'});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar'),canvas=bar.locator('canvas.section-lens');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  // Place real narrow page marks just inside the straight top band, outside the selected pill.
+  // Shift them into their former gaps to distinguish transmission from a blurred or mirrored copy.
+  await page.locator('.game-grid').evaluate(grid=>{
+    const b=document.querySelector('.app-tabbar')!.getBoundingClientRect();
+    const patch=document.createElement('div');
+    patch.id='light-detail-patch';
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;background:#fff;z-index:1;pointer-events:none';
+    for(let i=0;i<10;i++){
+      const mark=document.createElement('div');
+      mark.style.cssText=`position:fixed;left:${b.left+104+8*i}px;top:${b.top+3}px;width:3px;height:7px;background:#888`;
+      patch.append(mark);
+    }
+    grid.append(patch);
+  });
+  const pixels=()=>canvas.evaluate(el=>{
+    const surface=el as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+    const b=surface.closest('.app-tabbar')!.getBoundingClientRect();
+    const sx=surface.width/rect.width,sy=surface.height/rect.height,ctx=surface.getContext('2d')!;
+    const pixel=(x:number,y:number)=>ctx.getImageData(Math.floor((b.left+x-rect.left)*sx),Math.floor((b.top+y-rect.top)*sy),1,1).data[1];
+    let mark=0,gap=0;
+    for(let i=0;i<10;i++)for(let y=4;y<=8;y++){
+      mark+=pixel(105+8*i,y);gap+=pixel(109+8*i,y);
+    }
+    return {delta:(gap-mark)/50,body:pixel(145,52)};
+  });
+  await expect.poll(async()=>(await pixels()).delta).toBeGreaterThan(20);
+  const before=await pixels();
+  expect(before.body).toBeGreaterThanOrEqual(231);
+  expect(before.body).toBeLessThanOrEqual(237);
+  await page.locator('#light-detail-patch').evaluate(patch=>{
+    for(const mark of Array.from(patch.children) as HTMLElement[])mark.style.left=`${parseFloat(mark.style.left)+4}px`;
+  });
+  await expect.poll(async()=>(await pixels()).delta).toBeLessThan(-20);
+  const shifted=await pixels();
+  expect(Math.abs(shifted.body-before.body)).toBeLessThanOrEqual(1);
+  // A same-tab press/drag/release must leave the shifted material unchanged at rest.
+  const box=(await bar.getByRole('link',{name:'Games',exact:true}).boundingBox())!;
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);await page.mouse.down();
+  const pad=()=>canvas.evaluate(el=>(el as HTMLCanvasElement).style.getPropertyValue('--section-lens-pad-x'));
+  await expect.poll(pad).not.toBe('');
+  await page.mouse.move(x+118,y,{steps:4});
+  await page.mouse.move(x,y,{steps:4});await page.mouse.up();
+  await expect.poll(pad).toBe('');
+  await expect.poll(pixels).toEqual(shifted);
+  console.log(`light detail contrast at page coordinates: ${before.delta}, shifted: ${shifted.delta}; body ${shifted.body}`);
+});
+
 test('section lens ignores game mutations and resumes live sampling at the restored library scroll',async({page})=>{
   await page.addInitScript(()=>{
     let queued=0;
@@ -281,7 +334,7 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
     const [ratio,pill,low]=previous.split(' ').map(Number);
     console.log(`selected accent over white art, ${scheme}: ${ratio}:1 (p5 ${low}:1), pill luminance ${pill}`);
-    if (scheme==='dark') expect(low,'p5 under the label and glyph over white art').toBeGreaterThanOrEqual(lowFloor);
+    expect(low,'p5 under the label and glyph over white art').toBeGreaterThanOrEqual(lowFloor);
     // The pill may be no brighter than the smoked pill either, so its contrast cannot recover
     // by crossing over the accent (light theme) while the art still washes it out.
     expect(ratio).toBeGreaterThanOrEqual(floor[scheme].ratio);
@@ -309,7 +362,7 @@ test('the selected accent keeps its contrast against the WebGL pill over white a
     await expect.poll(async()=>{const current=await contrast();const same=current===previous;previous=current;return same;},{intervals:[250]}).toBe(true);
     const [blackRatio,blackPill,blackLow]=previous.split(' ').map(Number);
     console.log(`selected accent over black art, ${scheme}: ${blackRatio}:1 (p5 ${blackLow}:1), pill luminance ${blackPill}`);
-    if (scheme==='dark') expect(blackLow,'p5 under the label and glyph over black art').toBeGreaterThanOrEqual(lowFloor);
+    expect(blackLow,'p5 under the label and glyph over black art').toBeGreaterThanOrEqual(lowFloor);
     expect(blackRatio).toBeGreaterThanOrEqual(floor[scheme].ratio);
     expect(blackPill).toBeLessThanOrEqual(floor[scheme].pill);
     expect(blackPill).toBeGreaterThanOrEqual(milky[scheme]);

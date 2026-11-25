@@ -746,6 +746,10 @@ void main() {
   float mirrorBand = mix(MIRROR_BAND, DARK_MIRROR.x, pillSmoke), mirrorK = mix(MIRROR_K, DARK_MIRROR.y, pillSmoke);
   float mirror = topFacing * (1. + mirrorK) * max(0., mirrorBand - depth) + footFacing * (1. + FOOT_MIRROR.y) * max(0., FOOT_MIRROR.x - depth);
   vec2 bent = body + normal * (12. * band * band * (1. - topFacing - footFacing) - mirror);
+  // The light bar's upper face transmits the page lettering at its actual screen position.
+  // The old mirrored, compressed coordinates skipped the fine strokes immediately beneath the rim.
+  float lightTop = (1. - pillSmoke) * topFacing * (1. - smoothstep(10., 16., depth));
+  bent = mix(bent, pos, lightTop);
   // The mirrored title stays crisp but reads at Apple's low strength: it keeps MIRROR_MIX of
   // its contrast against the wide field colour.
   float mirrorZone = topFacing * (1. - smoothstep(mirrorBand - 2., mirrorBand, depth));
@@ -777,6 +781,23 @@ void main() {
   // The light theme's pale frost (MILK_LIFT, MILK_GAIN). The mirrored band keeps MILK_MIRROR of its strokes over it.
   surface = mix(surface, MILK_LIFT + MILK_GAIN * surface + (1. - MILK_GAIN) * MILK_MIRROR * mirrorZone * (surface - blurColor),
                 1. - pillSmoke);
+  if (pillSmoke < 1.) {
+    // Lower the pale tone over white without darkening the material over black art.
+    float white = smoothstep(.75, 1., dot(wide, vec3(.2126, .7152, .0722)));
+    surface -= (1. - pillSmoke) * white * (6. / 255.);
+    if (lightTop > 0.) {
+      // Keep local high-frequency detail at the uncompressed page coordinates. The wide
+      // frosted field supplies the material colour; subtract a local low pass to avoid
+      // replacing the pale glass with the underlying art or sharpening broad fields.
+      vec2 uv = region.xy + pos * region.zw;
+      float density = float(textureSize(scene, 0).x) * region.z;
+      vec3 detail = textureLod(scene, uv, 0.).rgb - textureLod(scene, uv, log2(max(1., 3. * density))).rgb;
+      // A pale field already has its own highlight, so do not add a bright halo
+      // round dark strokes. Bright detail on darker art still transmits normally.
+      detail -= white * max(detail, vec3(0.));
+      surface += .70 * lightTop * detail;
+    }
+  }
   vec3 rgb = rim(surface, normal, depth);
 
   if (pillOpacity > 0.) {
