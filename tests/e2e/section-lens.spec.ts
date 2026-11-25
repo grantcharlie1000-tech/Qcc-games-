@@ -179,6 +179,49 @@ test('the light resting pill catches a nearby page stroke only at its rim',async
   console.log(`light pill top stroke: rim ${clear.rim} -> ${stroke.rim} -> ${away.rim}, interior ${clear.interior} -> ${stroke.interior}, face ${clear.body} -> ${stroke.body}`);
 });
 
+test('the light curved rest face transmits a displaced page stroke inside the capsule',async({page})=>{
+  await page.emulateMedia({colorScheme:'light'});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar'),canvas=bar.locator('canvas.section-lens');
+  await expect(bar).toHaveAttribute('data-section-lens','webgl');
+  await page.locator('.game-grid').evaluate(grid=>{
+    const patch=document.createElement('div');
+    patch.id='curved-face-patch';
+    patch.style.cssText='position:fixed;inset:auto 0 0;height:100px;background:#fff;z-index:1;pointer-events:none';
+    grid.append(patch);
+  });
+  const measure=()=>canvas.evaluate(el=>{
+    const surface=el as HTMLCanvasElement,rect=surface.getBoundingClientRect();
+    const bar=surface.closest('.app-tabbar')!,b=bar.getBoundingClientRect(),pill=getComputedStyle(bar,'::after');
+    const x=b.left+parseFloat(pill.left)+parseFloat(pill.translate)+parseFloat(pill.width)/2;
+    const y=b.top+parseFloat(pill.top);
+    const sx=surface.width/rect.width,sy=surface.height/rect.height,ctx=surface.getContext('2d')!;
+    const ix=Math.floor((x-rect.left)*sx),iy=Math.floor((y+10-rect.top)*sy);
+    const pixel=(row:number)=>ctx.getImageData(ix,row,1,1).data[1];
+    const stroke=document.querySelector('#curved-face-patch i')?.getBoundingClientRect();
+    return {bend:pixel(iy),reference:pixel(Math.floor((y+31-rect.top)*sy)),gap:stroke?stroke.top-(rect.top+(iy+.5)/sy):0};
+  });
+  await expect.poll(async()=>(await measure()).bend).toBeGreaterThan(205);
+  let previous='';
+  await expect.poll(async()=>{const next=JSON.stringify(await measure()),same=next===previous;previous=next;return same;},{intervals:[250]}).toBe(true);
+  const clear=await measure();
+  await page.locator('#curved-face-patch').evaluate(patch=>{
+    const bar=patch.ownerDocument.querySelector('.app-tabbar')!,b=bar.getBoundingClientRect(),pill=getComputedStyle(bar,'::after');
+    const x=b.left+parseFloat(pill.left)+parseFloat(pill.translate)+parseFloat(pill.width)/2;
+    const y=b.top+parseFloat(pill.top);
+    const mark=document.createElement('i');
+    mark.style.cssText=`position:fixed;left:${x-5}px;top:${y+13}px;width:10px;height:1.5px;background:#666`;
+    patch.append(mark);
+  });
+  await expect.poll(async()=>clear.bend-(await measure()).bend).toBeGreaterThanOrEqual(6);
+  const hit=await measure();
+  expect(hit.gap,'actual page stroke is outside the sampled face pixel').toBeGreaterThanOrEqual(2);
+  expect(Math.abs(hit.reference-clear.reference)).toBeLessThanOrEqual(2);
+  await page.locator('#curved-face-patch i').evaluate(el=>{(el as HTMLElement).style.top=`${parseFloat((el as HTMLElement).style.top)+7}px`;});
+  await expect.poll(async()=>Math.abs(clear.bend-(await measure()).bend)).toBeLessThanOrEqual(2);
+  console.log(`curved rest face: ${clear.bend} -> ${hit.bend} -> ${(await measure()).bend}, source gap ${hit.gap} CSS px`);
+});
+
 test('section lens ignores game mutations and resumes live sampling at the restored library scroll',async({page})=>{
   await page.addInitScript(()=>{
     let queued=0;

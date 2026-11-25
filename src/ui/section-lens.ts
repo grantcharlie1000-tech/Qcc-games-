@@ -812,9 +812,9 @@ void main() {
       // The wider field restores the reference level that the stroke itself
       // lowers in the local average. Compress the deepest ink without erasing
       // the softer stroke shoulders or adding a bright halo around them.
-      vec3 soft = textureLod(scene, uv, log2(max(1., 1.1 * density))).rgb;
+      vec3 soft = textureLod(scene, uv, log2(max(1., 1.6 * density))).rgb;
       vec3 loss = max(vec3(0.), max(local, wide) - soft);
-      detail = mix(detail, -loss / (.55 + 2. * loss), white);
+      detail = mix(detail, -loss / (.24 + 2.75 * loss), white);
       vec3 transmitted = .70 * lightTop * detail;
       // Filled tab glyph ink starts about 12px down the 60px bar. Leave the page
       // strokes above it intact, but do not let extra dark detail pull a pale
@@ -1027,21 +1027,34 @@ void main() {
       // The light theme's resting pill is the bar's own pale frost, PILL_MILK_DROP darker. A press lifts it to the
       // frost of its milky thumb, as the dark theme's press lifts its pill; the raised lens clears it smoothly.
       vec3 lightPill = mix(MILK_LIFT + MILK_GAIN * selectionColor - PILL_MILK_DROP, MILK_LIFT + MILK_GAIN * selection, pillPress);
-      // Share the pale bar's white-page tone and keep the resting selection's step.
-      // The extra edge refraction is confined to a hairline; it fades out on lift or press.
+      // Keep the resting step, with a gently magnifying cylindrical face and
+      // spherical shoulders. The ray moves continuously from the inset face to
+      // the outside of the capsule; it is not a second, flat reflection layer.
       float lightRest = (1. - pillSmoke) * (1. - pillLift) * (1. - pillPress) * (1. - pillMotion);
       if (lightRest > 0.) {
         lightPill -= lightRest * white * (9. / 255.);
         float edge = 1. - smoothstep(.25, 1.65, pillDepth);
+        float radial = clamp(length(pillAxis) / pillRadius, 0., 1.);
+        vec2 uv = region.xy + pos * region.zw;
+        vec2 faceRay = uv + .44 * pillAxis * (radial * radial - .85) * region.zw;
+        float density = float(textureSize(scene, 0).x) * region.z;
+        vec3 softRay = textureLod(scene, faceRay, log2(max(1., 1.4 * density))).rgb;
+        vec3 localRay = textureLod(scene, faceRay, log2(max(1., 6. * density))).rgb;
+        vec3 faceDetail = softRay - localRay;
+        faceDetail = mix(faceDetail, -max(vec3(0.), max(localRay, wide) - softRay), white);
+        // Transmit the bent source's local detail in the upper face, leaving the
+        // lower ink bed frosted. The existing contrast floor bounds dark rays.
+        float upper = 1. - smoothstep(.05, .65, pp.y / pillRadius);
+        lightPill += .40 * lightRest * upper * (1. - edge) * faceDetail;
+        // The convex face catches a grazing light along its upper-left shoulder.
+        // This falloff follows the radial profile into the face instead of
+        // tracing the silhouette; the ray response still comes after the light.
+        float facing = max(0., dot(pillNormal, vec2(-.45, -.893)));
+        float graze = smoothstep(.90, 1., radial);
+        lightPill = mix(lightPill, vec3(1.), (.10 + .90 * facing) * lightRest * graze);
         if (edge > 0.) {
-          vec2 uv = region.xy + pos * region.zw;
           vec3 refracted = textureLod(scene, uv + 1.6 * edge * pillNormal * region.zw, 0.).rgb;
           vec3 direct = textureLod(scene, uv, 0.).rgb;
-          // The light grazes the convex edge, especially at its upper-left arc.
-          // Add the refracted page difference after the specular contribution so
-          // the glass keeps its local optical detail rather than a white outline.
-          float facing = max(0., dot(pillNormal, vec2(-.45, -.893)));
-          lightPill = mix(lightPill, vec3(1.), (.12 + .78 * facing) * lightRest * edge);
           lightPill += .25 * lightRest * edge * (refracted - direct);
         }
       }
