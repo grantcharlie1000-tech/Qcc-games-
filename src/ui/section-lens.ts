@@ -247,7 +247,7 @@ const vec2 SEE_FIELD = vec2(.15, .4);
 // only part of the see-through colour. The bar body's field now runs from SEE_BODY .06 to .22, and over mid art the colour
 // takes SEE_MID of the soft frost's colour (the frost dulls it a little), easing to SEE_CHROMA as the field brightens over
 // SEE_BRIGHT, so bright art keeps its .87. Only the colour moves: the tone, the pill and the ink are as before. The raised
-// dark lens (darkBar) keeps SEE_FIELD and SEE_CHROMA, so the held lens is unchanged.
+// dark lens (darkBar) uses the same SEE_BODY/SEE_MID rule as the body while raised.
 // LOOK-27, like for like on Apple's own art (tools-look27/colour27.py: this body modelled on the video's clean art under
 // its bar at 32.5, 32.9, 33.0 and 33.1 s, read as Apple's bar is read): colour kept over bright art .717 -> .892 and over
 // mid art .511 -> .904 (Apple .886 and .947), the tone unchanged (x.722 and x1.161, Apple x.738 and x1.132). LOOK-23's
@@ -418,15 +418,17 @@ const vec2 LENS_RIM_LIGHT = vec2(.2, .03);
 // light (LENS_RIM_LIGHT): over dark art they add about +35,+45,+26 (hue 92) and +45,+31,+20 (hue 26), the brighter row as
 // light as the old top's (+25,+43,+45).
 const vec3 LENS_RIM_OUTER = vec3(.8, 1., .62), LENS_RIM_INNER = vec3(1., .72, .5);
-// MOTION-31 (#24 council on 942de639, Opus 1 and Grok 1: the raised rim is a grey ring at 1x): along its curved ends the
-// video's ring reads coloured light. Over the pink poster at 13.5 s its upper right arc is blue, (63,152,221) to
-// (135,158,235) from 60 to 16 degrees above the axis, and its lower right magenta, (207,107,177) to (245,145,215) from 31
-// to 44 below; the 12.75 s right end reads (128,146,201), hue 225, above and (211,161,212), hue 299, below. Ours read grey
-// there (chroma 2-30, about 90 over Games +210's navy). A brighter white rim gained nothing over bright art (it mixes
-// toward a near-white) and overshot the drag foot. So along the ends the rim also carries LENS_ARC.z of a hue that runs
-// from LENS_ARC.x where the end faces up to LENS_ARC.y where it faces down, added as colour alone (its luma is 0), so it
-// reads over bright art as over dark. The top and foot runs keep their light, their width and the warm foot.
-const vec3 LENS_ARC = vec3(215., 315., .22);
+// MOTION-32 (#24 C40 ruling, after the council on 942de639, Opus 1 and Grok 1: a grey ring at 1x): read in the same
+// frame across the outline, the video's curved ends are not lit. Its ring there is a dark line 1-2 css px wide in the
+// art's own hue, under the darker of the face and the bar beside it by -21 and -22 luma (.86, .87) at 12.75 s over the
+// pink poster, -7 and -19 (.95, .89) at 13.5 s, and -6 and -7 (.89, .87) over the dark art at its left end; its hue is
+// the art's beside it (229 by 226, 294 by 291, 311 by 302) and the art's colour is kept. MOTION-31 coloured the ends
+// (blue facing up to magenta facing down, .22): it read the brightest pixel near the outline, which is the art beside the
+// line (hue 225 by 226, 299 by 291) or a glyph the rim crosses, and its +15..+35 over the 10.5 s frame is the bar's own
+// change between the two frames (+12..+22 outside the lens in the same rows). So along the ends the rim light gives way
+// to a dimming of LENS_END_DARK of the luma across the outline, which keeps the art's hue and colour; the top and foot
+// runs keep their light, their colour and the warm foot.
+const float LENS_END_DARK = .12;
 // MOTION-11 (#24 council on aa6359ee) darkened the face in a band about 5 css px deep just inside the rim, along the top
 // and bottom, as the video's held and dragged lens is dark there. MOTION-23 (#24 council on 071faed9: a dark halo round a
 // bright ring, and over bright art a wide blotchy band): that dark band is the art the lens bends in, not a shade. Over
@@ -573,8 +575,15 @@ vec3 darkBar(vec2 pos) {
   vec3 tone = darkSmoke(mix(smoked(glassTone(soft, 0.), 0., field), smokedBlur(field, 0.), DARK_BLUR));
   vec3 seeArt = mix(soft, wide, DARK_BLUR);
   float toneL = dot(tone, vec3(.2126, .7152, .0722)), artL = dot(seeArt, vec3(.2126, .7152, .0722));
-  float see = smoothstep(SEE_FIELD.x, SEE_FIELD.y, dot(wide, vec3(.2126, .7152, .0722)));
-  return vec3(toneL) + mix(tone - toneL, SEE_CHROMA * (seeArt - artL), see);
+  // MOTION-31 (#24 council on 942de639, Opus 2: the dark held lens is hazy, a grey veil over the art where the video's
+  // 12.75 s lens shows its full colour): over the same pixels the video's held face is its bar body x1.125 - 3 with 1.117
+  // of its colour, and its 13.5 s drag face x1.154 - 6 with 1.183. Ours kept that luma (x1.101 held, x1.167 dragged, over
+  // Games +210's navy) but .72 and .56 of the body's colour: LOOK-23 and LOOK-27 moved the body's see-through colour to
+  // SEE_BODY, with SEE_MID over mid art, and left the lens on SEE_FIELD, so over navy the body shows the art's colour and
+  // the lens the smoke's cored one. The lens now takes the body's rule, so it is the body's colour at LENS_DARK_GAIN; only
+  // the colour moves (the luma is the tone's), so the face's tone and detail, held and dragged, are as before.
+  float wideL = dot(wide, vec3(.2126, .7152, .0722)), see = smoothstep(SEE_BODY.x, SEE_BODY.y, wideL);
+  return vec3(toneL) + mix(tone - toneL, mix(SEE_MID, SEE_CHROMA, smoothstep(SEE_BRIGHT.x, SEE_BRIGHT.y, wideL)) * (seeArt - artL), see);
 }
 float capsuleRadius(vec2 bounds) {
   return min(bounds.x, bounds.y) * .5;
@@ -632,13 +641,16 @@ vec3 lensFace(vec3 darkArt, vec3 clearArt, vec2 outward, float pillDepth, float 
   float facing2 = outward.y * outward.y, facing4 = facing2 * facing2, facing8 = facing4 * facing4;
   float rimDepth = mix(LENS_RIM, mix(LENS_RIM_DRAG, LENS_RIM, pillPress), facing8 * facing8);
   rimDepth = mix(rimDepth, LENS_RIM_HELD_FOOT, pillPress * smoothstep(.5, .9, outward.y));
+  rimDepth = max(.8, rimDepth - .2 * pillSmoke);
   float line = smoothstep(-.6, .3, pillDepth) * (1. - smoothstep(rimDepth - .5, rimDepth + .5, pillDepth));
   float lit = LENS_RIM_LIGHT.x - LENS_RIM_LIGHT.y * max(0., facing);
+  lit += .025 * pillSmoke * (1. - smoothstep(.2, .7, dot(face, vec3(.2126, .7152, .0722))));
   vec3 rimLight = mix(LENS_RIM_OUTER, LENS_RIM_INNER, smoothstep(.5, 1.5, pillDepth));
-  // MOTION-31: the ends' coloured light (LENS_ARC), none along the top and foot runs.
-  vec3 arc = clamp(abs(mod(mix(LENS_ARC.x, LENS_ARC.y, .5 + .5 * outward.y) / 60. + vec3(0., 4., 2.), 6.) - 3.) - 1., 0., 1.);
+  // MOTION-32: along the curved ends the outline is a dark line in the art's hue (LENS_END_DARK of its luma), not lit.
   float ends = smoothstep(.2, .7, abs(outward.x));
-  return clamp(mix(face, rimLight, lit * line) + LENS_ARC.z * line * ends * (arc - dot(arc, vec3(.2126, .7152, .0722))), 0., 1.);
+  float outline = smoothstep(-.6, .1, pillDepth) * (1. - smoothstep(.9, 1.7, pillDepth));
+  vec3 rgb = mix(face, rimLight, lit * line * (1. - ends));
+  return clamp(rgb * (1. - LENS_END_DARK * ends * outline), 0., 1.);
 }
 vec3 pillSurface(vec3 sceneColor, vec2 normal, float pillDepth, float barDepth, float liftEdge, float y, float milkTone, float deepen) {
   // Give the inset and exposed outline a bevel, and fade it at the join.
@@ -821,7 +833,14 @@ void main() {
         // The bevel's squeeze along its normal: d(sample)/d(screen) = 1 + 3 u^2 x reach / bevel (frostLod).
         frostLod = pillLift * log2(1. + 3. * u * u * dot(edgeReach, abs(outward)) / lensBevel(pillRadius));
         vec3 frosted = frost(mix(body, warped, pillMotion), mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
-        if (pillSmoke > 0. && pillLift > 0.) darkLens = darkBar(mix(body, warped, pillMotion));
+        if (pillSmoke > 0. && pillLift > 0.) {
+          darkLens = darkBar(mix(body, warped, pillMotion));
+          // In the bar's upper/foot band the raised lens carries the bent body art through, fading to its own
+          // refracted sample at the band edges. The same-frame body colour is already computed above.
+          float carryBand = .65 * max(topFacing, footFacing) * band * smoothstep(0., 2., depth);
+          carryBand *= 1. - .6 * footFacing * smoothstep(.3, .65, dot(surface, vec3(.2126, .7152, .0722)));
+          darkLens = mix(darkLens, surface, carryBand);
+        }
         frostLod = 0.;
         clearArt = frosted;
         selectionColor = mix(smoked(glassTone(frosted, pillMotion * pillLift), pillMotion, field), smokedBlur(field, pillMotion), bodyBlur * (1. - pillMotion));
