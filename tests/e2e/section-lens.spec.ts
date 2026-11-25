@@ -152,6 +152,7 @@ test('the light resting pill catches a nearby page stroke only at its rim',async
   let previous='';
   await expect.poll(async()=>{const next=JSON.stringify(await samples()),same=next===previous;previous=next;return same;},{intervals:[250]}).toBe(true);
   const clear=await samples();
+  expect(clear.rim-clear.interior,'visible top highlight on the resting glass edge').toBeGreaterThanOrEqual(20);
   // The real page stroke lies immediately outside the pill, not inside its face.
   await page.locator('#light-rim-patch').evaluate(patch=>{
     const bar=patch.ownerDocument.querySelector('.app-tabbar')!,b=bar.getBoundingClientRect(),pill=getComputedStyle(bar,'::after');
@@ -167,7 +168,15 @@ test('the light resting pill catches a nearby page stroke only at its rim',async
   expect(Math.abs(stroke.body-clear.body)).toBeLessThanOrEqual(2);
   expect(clear.body).toBeGreaterThanOrEqual(206);
   expect(clear.body).toBeLessThanOrEqual(212);
-  console.log(`light pill top stroke: rim ${clear.rim} -> ${stroke.rim}, interior ${clear.interior} -> ${stroke.interior}, face ${clear.body} -> ${stroke.body}`);
+  // Move the source further outside the capsule. The displaced stroke must leave
+  // the refractive hairline rather than merely changing the pill's mean tone.
+  await page.locator('#light-rim-patch > div').evaluate(mark=>{
+    const stroke=mark as HTMLElement;
+    stroke.style.top=`${parseFloat(stroke.style.top)-4}px`;
+  });
+  await expect.poll(async()=>Math.abs(clear.rim-(await samples()).rim)).toBeLessThanOrEqual(3);
+  const away=await samples();
+  console.log(`light pill top stroke: rim ${clear.rim} -> ${stroke.rim} -> ${away.rim}, interior ${clear.interior} -> ${stroke.interior}, face ${clear.body} -> ${stroke.body}`);
 });
 
 test('section lens ignores game mutations and resumes live sampling at the restored library scroll',async({page})=>{

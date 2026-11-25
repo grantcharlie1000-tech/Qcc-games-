@@ -806,10 +806,15 @@ void main() {
       // replacing the pale glass with the underlying art or sharpening broad fields.
       vec2 uv = region.xy + pos * region.zw;
       float density = float(textureSize(scene, 0).x) * region.z;
-      vec3 detail = textureLod(scene, uv, 0.).rgb - textureLod(scene, uv, log2(max(1., 3. * density))).rgb;
-      // A pale field already has its own highlight, so do not add a bright halo
-      // round dark strokes. Bright detail on darker art still transmits normally.
-      detail -= white * max(detail, vec3(0.));
+      vec3 local = textureLod(scene, uv, log2(max(1., 3. * density))).rgb;
+      vec3 detail = textureLod(scene, uv, 0.).rgb - local;
+      // On pale paper, transmit the stroke's coverage through a shallow frost.
+      // The wider field restores the reference level that the stroke itself
+      // lowers in the local average. Compress the deepest ink without erasing
+      // the softer stroke shoulders or adding a bright halo around them.
+      vec3 soft = textureLod(scene, uv, log2(max(1., 1.1 * density))).rgb;
+      vec3 loss = max(vec3(0.), max(local, wide) - soft);
+      detail = mix(detail, -loss / (.55 + 2. * loss), white);
       vec3 transmitted = .70 * lightTop * detail;
       // Filled tab glyph ink starts about 12px down the 60px bar. Leave the page
       // strokes above it intact, but do not let extra dark detail pull a pale
@@ -1032,8 +1037,12 @@ void main() {
           vec2 uv = region.xy + pos * region.zw;
           vec3 refracted = textureLod(scene, uv + 1.6 * edge * pillNormal * region.zw, 0.).rgb;
           vec3 direct = textureLod(scene, uv, 0.).rgb;
+          // The light grazes the convex edge, especially at its upper-left arc.
+          // Add the refracted page difference after the specular contribution so
+          // the glass keeps its local optical detail rather than a white outline.
+          float facing = max(0., dot(pillNormal, vec2(-.45, -.893)));
+          lightPill = mix(lightPill, vec3(1.), (.12 + .78 * facing) * lightRest * edge);
           lightPill += .25 * lightRest * edge * (refracted - direct);
-          lightPill = mix(lightPill, vec3(1.), .18 * lightRest * edge * max(0., -pillNormal.y));
         }
       }
       float lightLuma = dot(lightPill, vec3(.2126, .7152, .0722));
