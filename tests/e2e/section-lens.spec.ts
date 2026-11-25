@@ -560,10 +560,13 @@ async function inkPage(page:Page){
     },art);
     await expect.poll(async()=>Math.abs(await centre()-before)).toBeGreaterThan(20);
   };
-  // The selected label's colour, the running animations and the glyph repaints (tabbar.ts settle), every frame for ms.
-  const trace=(ms:number)=>page.evaluate(ms=>new Promise<{t:number;tab:string;color:string;pill:boolean;running:boolean;repaints:number}[]>(resolve=>{
+  // Sample the actual colour and display:none restores (tabbar.ts settle) on animation frames.
+  // A tab switch needs its whole observation window. For changed rest art, end as soon as
+  // the new ink, its following repaint and the actual settled canvas pixels are established.
+  const trace=(ms:number,untilSettled=false)=>page.evaluate(({ms,untilSettled})=>new Promise<{samples:{t:number;tab:string;color:string;pill:boolean;running:boolean;repaints:number}[];pixelsSettled:boolean}>(resolve=>{
     const bar=document.querySelector<HTMLElement>('.app-tabbar')!,samples:{t:number;tab:string;color:string;pill:boolean;running:boolean;repaints:number}[]=[];
-    let repaints=0;
+    let repaints=0,lastChange=-1,pixelsSettled=false;
+    let quiet:{t:number;width:number;height:number;pixels:Uint8ClampedArray}|undefined;
     // The repaint sets display:none !important on each glyph and restores it at once: count the restores.
     const watch=new MutationObserver(records=>{for(const record of records)if(/display:\s*none/.test(record.oldValue??''))repaints++;});
     for(const icon of bar.querySelectorAll('.ui-tab>.ui-icon'))watch.observe(icon,{attributes:true,attributeFilter:['style'],attributeOldValue:true});
@@ -571,12 +574,28 @@ async function inkPage(page:Page){
     const sample=()=>{
       const tab=bar.querySelector<HTMLElement>('.ui-tab[aria-current=page]'),label=tab?.querySelector(':scope > span');
       const animations=bar.getAnimations({subtree:true}).filter(a=>a.playState==='running'&&a.effect?.getComputedTiming().iterations!==Infinity);
-      samples.push({t:performance.now(),tab:tab?.textContent?.trim()??'',color:label?getComputedStyle(label).color:'',
-        pill:animations.some(a=>(a.effect as KeyframeEffect|null)?.pseudoElement==='::after'),running:animations.length>0,repaints});
-      if(performance.now()<end)requestAnimationFrame(sample);else{watch.disconnect();resolve(samples);}
+      const current={t:performance.now(),tab:tab?.textContent?.trim()??'',color:label?getComputedStyle(label).color:'',
+        pill:animations.some(a=>(a.effect as KeyframeEffect|null)?.pseudoElement==='::after'),running:animations.length>0,repaints};
+      if(samples.length && current.color!==samples.at(-1)!.color){lastChange=samples.length;quiet=undefined;}
+      samples.push(current);
+      if(untilSettled){
+        const canvas=bar.querySelector<HTMLCanvasElement>('canvas.section-lens');
+        if(lastChange>0 && repaints>samples[lastChange-1].repaints && !current.running &&
+            !bar.hasAttribute('data-ink-pending') && bar.dataset.sectionLens==='webgl' && canvas){
+          // Require two identical actual canvas reads 250 ms apart, with no intervening ink change or animation.
+          // Do not depend on idle animation frames for the remainder of an arbitrary 1800 ms window.
+          if(!quiet || current.t-quiet.t>=250){
+            const {width,height}=canvas,pixels=canvas.getContext('2d')!.getImageData(0,0,width,height).data;
+            pixelsSettled=!!quiet && width===quiet.width && height===quiet.height &&
+              pixels.every((value,i)=>value===quiet!.pixels[i]);
+            quiet={t:current.t,width,height,pixels};
+          }
+        }else quiet=undefined;
+      }
+      if(!pixelsSettled && performance.now()<end)requestAnimationFrame(sample);else{watch.disconnect();resolve({samples,pixelsSettled});}
     };
     requestAnimationFrame(sample);
-  }),ms);
+  }),{ms,untilSettled});
   const ratio=(ink:string)=>canvas.evaluate((element,ink)=>{
     const surface=element as HTMLCanvasElement,rect=surface.getBoundingClientRect(),sx=surface.width/rect.width,sy=surface.height/rect.height;
     const tab=surface.closest('.app-tabbar')!.querySelector('[aria-current="page"]')!;
@@ -685,7 +704,7 @@ test('dark: a tab switch\'s selected ink is its 2:1 blue by the time the pill la
     const tracing=trace(2000);
     await page.waitForTimeout(100);
     await bar.getByRole('link',{name:target,exact:true}).click();
-    const samples=await tracing;
+    const {samples}=await tracing;
     const first=samples.findIndex(sample=>sample.tab===target);
     expect(first,art).toBeGreaterThan(-1);
     const landed=samples.findIndex((sample,i)=>i>first&&samples.slice(i).every(s=>!s.pill&&s.tab===target));
@@ -709,17 +728,18 @@ test('dark: when the art under the resting bar changes, the settle repaint follo
   // LOOK-27 (F23 review note): since ab225677 (ACCENT_FLOOR 2.6, and 3 for Apple's ink luminance) the ink over #777 is a
   // lighter blue than #0a84ff as well, not as light as over #ddd, so it still changes at each step.
   for (const art of ['#ddd','#777']) {
-    const tracing=trace(1800);
+    const tracing=trace(1800,true);
     await page.waitForTimeout(100);
     await patch(art);
-    const samples=await tracing;
+    const {samples,pixelsSettled}=await tracing;
     const changes=samples.map((sample,i)=>i&&sample.color!==samples[i-1].color?i:-1).filter(i=>i>0);
     expect(changes.length,`${art}: the selected ink adapts to the new art`).toBeGreaterThan(0);
     const last=changes.at(-1)!;
     const repaint=samples.findIndex((sample,i)=>i>=last&&sample.repaints>samples[last-1].repaints);
     expect(repaint,`${art}: a settle repaint after the ink's last change at ${Math.round(samples[last].t-samples[0].t)} ms`).toBeGreaterThan(-1);
+    expect(pixelsSettled,`${art}: the repainted lens pixels settle after the ink's last change`).toBe(true);
     const ink=samples.at(-1)!.color,contrast=await ratio(ink);
-    console.log(`dark art change to ${art}: ink ${ink} (${contrast}:1), last change ${Math.round(samples[last].t-samples[0].t)} ms, repaint ${Math.round(samples[repaint].t-samples[0].t)} ms`);
+    console.log(`dark art change to ${art}: ink ${ink} (${contrast}:1), last change ${Math.round(samples[last].t-samples[0].t)} ms, repaint ${Math.round(samples[repaint].t-samples[0].t)} ms, pixels settled ${Math.round(samples.at(-1)!.t-samples[0].t)} ms`);
     expect(contrast,`${art}: ${ink}`).toBeGreaterThanOrEqual(2);
   }
 });
