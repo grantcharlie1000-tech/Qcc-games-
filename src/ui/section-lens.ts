@@ -814,7 +814,7 @@ void main() {
       // the softer stroke shoulders or adding a bright halo around them.
       vec3 soft = textureLod(scene, uv, log2(max(1., 1.6 * density))).rgb;
       vec3 loss = max(vec3(0.), max(local, wide) - soft);
-      detail = mix(detail, -loss / (.24 + 2.75 * loss), white);
+      detail = mix(detail, -loss / (.12 + 3.15 * loss), white);
       vec3 transmitted = .70 * lightTop * detail;
       // Filled tab glyph ink starts about 12px down the 60px bar. Leave the page
       // strokes above it intact, but do not let extra dark detail pull a pale
@@ -873,10 +873,13 @@ void main() {
         float swell = 1. - clamp((pill.z * .5 - abs(pp.x)) / LENS_SWELL_SPAN, 0., 1.);
         vec2 face = pill.zw * .5 / LENS_ZOOM;
         vec2 edgeReach = clamp(min(samplePill.xy - face - lo, hi - samplePill.xy - face), 0., LENS_EDGE_REACH);
-        // The flat top and foot also have a transverse curvature. A stripe through the
-        // centre remains 1:1 on the face, then flares into the last few pixels of the bevel.
-        float rimSwell = clamp(1. - pillDepth / 6., 0., 1.);
-        float across = .4 * rimSwell * rimSwell * smoothstep(.65, .92, abs(outward.y));
+        // The top and foot are a convex volume, not just a reflective outline.
+        // Grow transverse magnification continuously through the whole shoulder.
+        // Along each row this is a single affine compression of the source ray;
+        // the cap's outward refraction then takes over as it rounds the ends.
+        float shoulder = 1. - clamp((pillRadius - abs(pp.y)) / lensBevel(pillRadius), 0., 1.);
+        float capBlend = smoothstep(.28, .83, abs(pp.x) / face.x);
+        float across = .54 * shoulder * shoulder * (1. - capBlend);
         vec2 lensWarp = samplePill.xy + pp * vec2(1. - across, 1. - LENS_SWELL * swell * swell) / LENS_ZOOM
                       + outward * edgeReach * u * u * u;
         vec2 warped = mix(pressWarp, lensWarp, pillLift);
@@ -887,16 +890,18 @@ void main() {
         frostLod = pillLift * log2(1. + 3. * u * u * dot(edgeReach, abs(outward)) / lensBevel(pillRadius));
         vec2 artSample = mix(body, warped, pillMotion);
         vec3 frosted = frost(artSample, mix(BODY_SPREAD, .67 * mix(1., LENS_SHARP, pillLift), pillMotion) * .5);
-        // Split the bent backdrop ray by a fraction of a pixel through the bevel, not a
-        // second outline. The centre ray and the face remain at their original coordinates.
+        // Split those same bent source rays by wavelength. The transverse
+        // shoulder also disperses horizontally, even on the flat top and foot.
+        // Keep the centre ray singular and fade the spectral shift into the face.
         vec3 dispersion = vec3(0.);
-        if (pillLift > 0. && u > .45) {
+        if (pillLift > 0. && u > .12) {
           vec2 uv = region.xy + artSample * region.zw;
-          vec2 spread = .65 * outward * region.zw * u * u;
+          vec2 chromatic = 1.10 * outward * u * u + vec2(.32 * across * pp.x, 0.);
+          vec2 spread = clamp(chromatic, vec2(-1.6), vec2(1.6)) * region.zw;
           vec3 direct = textureLod(scene, uv, frostLod).rgb;
           dispersion = (vec3(textureLod(scene, uv + spread, frostLod).r, direct.g,
                             textureLod(scene, uv - spread, frostLod).b) - direct)
-                       * pillLift * smoothstep(.45, .85, u);
+                       * pillLift * smoothstep(.12, .75, u);
         }
         if (pillSmoke > 0. && pillLift > 0.) {
           darkLens = darkBar(artSample) + .65 * dispersion;
@@ -1033,30 +1038,30 @@ void main() {
       float lightRest = (1. - pillSmoke) * (1. - pillLift) * (1. - pillPress) * (1. - pillMotion);
       if (lightRest > 0.) {
         lightPill -= lightRest * white * (9. / 255.);
-        float edge = 1. - smoothstep(.25, 1.65, pillDepth);
         float radial = clamp(length(pillAxis) / pillRadius, 0., 1.);
         vec2 uv = region.xy + pos * region.zw;
-        vec2 faceRay = uv + .44 * pillAxis * (radial * radial - .85) * region.zw;
+        // A spherical cap bends its rays outward more strongly than the
+        // cylindrical run. One continuous ray map joins the magnified face
+        // to the shoulder, with no second image or flattened reflection.
+        float capReach = 6. * abs(pillNormal.x) * smoothstep(.55, .90, radial);
+        vec2 faceRay = uv + (.44 * pillAxis * (radial * radial - .85) + capReach * pillNormal) * region.zw;
         float density = float(textureSize(scene, 0).x) * region.z;
-        vec3 softRay = textureLod(scene, faceRay, log2(max(1., 1.4 * density))).rgb;
+        float graze = 1. - smoothstep(.15, 6., pillDepth);
+        vec3 softRay = textureLod(scene, faceRay, log2(max(1., mix(1.4, 1., graze) * density))).rgb;
         vec3 localRay = textureLod(scene, faceRay, log2(max(1., 6. * density))).rgb;
-        vec3 faceDetail = softRay - localRay;
+        vec3 faceDetail = softRay - mix(localRay, wide, .30 * graze);
         faceDetail = mix(faceDetail, -max(vec3(0.), max(localRay, wide) - softRay), white);
-        // Transmit the bent source's local detail in the upper face, leaving the
-        // lower ink bed frosted. The existing contrast floor bounds dark rays.
-        float upper = 1. - smoothstep(.05, .65, pp.y / pillRadius);
-        lightPill += .40 * lightRest * upper * (1. - edge) * faceDetail;
-        // The convex face catches a grazing light along its upper-left shoulder.
-        // This falloff follows the radial profile into the face instead of
-        // tracing the silhouette; the ray response still comes after the light.
+        // Grazing light extends into the curved shoulder, strongest toward
+        // the upper left. Transmit the bent image *after* that illumination
+        // so page strokes remain visible even in the brightest part.
         float facing = max(0., dot(pillNormal, vec2(-.45, -.893)));
-        float graze = smoothstep(.90, 1., radial);
-        lightPill = mix(lightPill, vec3(1.), (.10 + .90 * facing) * lightRest * graze);
-        if (edge > 0.) {
-          vec3 refracted = textureLod(scene, uv + 1.6 * edge * pillNormal * region.zw, 0.).rgb;
-          vec3 direct = textureLod(scene, uv, 0.).rgb;
-          lightPill += .25 * lightRest * edge * (refracted - direct);
-        }
+        lightPill = mix(lightPill, vec3(1.), (.025 + .975 * facing) * lightRest * graze);
+        float upper = 1. - smoothstep(.05, .65, pp.y / pillRadius);
+        // Very close to the glass-air interface Fresnel light reflects more
+        // strongly. Keep the source visible through the glint without letting
+        // a dark stroke swallow the shoulder's brightest contour.
+        float fresnel = 1. - smoothstep(.4, 1.8, pillDepth);
+        lightPill += lightRest * upper * (.40 + .42 * graze) * (1. - .45 * fresnel) * faceDetail;
       }
       float lightLuma = dot(lightPill, vec3(.2126, .7152, .0722));
       lightPill = mix(lightPill, vec3(1.), clamp((PILL_LIGHT_FLOOR - lightLuma) / max(1. - lightLuma, .001), 0., 1.));
@@ -1428,7 +1433,9 @@ function geometryOf(element:HTMLElement, pillAnimating:boolean, dark:boolean):Ge
   // where ours was capped by the screen edge into a round disc. So the raised lens keeps its natural width wherever the
   // span from endRoom past the bar's screen end to menuRoom past its menu end holds it, and its centre slides inward
   // just enough to stay in that span.
-  const raisedWidth = Math.min(naturalHeight * (1.40 + .07 * rise), bar.width + endRoom + menuRoom);
+  // Carry a slightly longer flat run between the two domed shoulders. The
+  // height, lift, centre clamp and release interpolation keep their spring.
+  const raisedWidth = Math.min(naturalHeight * (1.49 + .03 * rise), bar.width + endRoom + menuRoom);
   const raisedCx = Math.min(Math.max(cx, raisedWidth / 2 - endRoom), bar.width + menuRoom - raisedWidth / 2);
   const raisedHeight = Math.min(naturalHeight, Math.max(bar.height + 2 * LENS_PROUD, raisedWidth / LENS_MIN_ASPECT));
   const pressedWidth = pillWidth * pressWidth, pressedHeight = pillHeight * (1 - .1 * press);
