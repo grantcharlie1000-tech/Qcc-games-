@@ -518,15 +518,36 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     // observer below follows the change. If the click changes nothing, the pill still sits under the tapped tab, so the next
     // frame puts it back under the current one. Anything else springs back to the current tab now.
     if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
-    // Charlie's video (b24s, 13.5-15.2 s): a drag that lets go selects the tab under the lens, the one nearest the pill's
-    // centre, as a tap on it would (the page turns to Library at the lift), and the pill springs there, not back to the
-    // current tab. A cancelled drag springs back. If the click selects nothing, the pill goes back once the spring is done.
-    const target=drag?.active&&!cancelled?nearestTab(drag.center):null;
-    if(target&&target!==current()){
-      place(target,true);
-      target.click();
-      stopSettle(false);
-      settleTimer=setTimeout(()=>{settleTimer=undefined;sync(true);},500);
+    // A section drag that lets go selects the tab under the lens, the one nearest the pill's centre, as a tap on it
+    // would, and the pill springs there, not back to the current tab. A cancelled drag, or one released outside the bar,
+    // springs back. The destination click waits for the pill to settle so a newer action can cancel it (main mobile overhaul).
+    if(drag?.active){
+      const bounds=bar.getBoundingClientRect();
+      const inside=!cancelled&&event&&event.clientX>=bounds.left&&event.clientX<=bounds.right&&event.clientY>=bounds.top&&event.clientY<=bounds.bottom;
+      const target=inside?nearestTab(drag.center):null;
+      if(target&&target!==current()){
+        place(target,true);
+        bar.addEventListener('click',guardClick,true);
+        clickTimer=setTimeout(clearClickGuard,600);
+        const key=['href','data-kind','data-action'].find(name=>target.hasAttribute(name));
+        const value=key?target.getAttribute(key):null;
+        const activate=()=>{
+          stopSettle(false);
+          const chosen=target.isConnected&&bar.contains(target)?target:key?[...bar.querySelectorAll<HTMLElement>('.ui-tab')].find(candidate=>candidate.tagName===target.tagName&&candidate.getAttribute(key)===value):null;
+          if(chosen&&!chosen.matches(':disabled,[aria-disabled="true"]'))chosen.click();else sync(true);
+        };
+        if(reduceMotion())activate();else{
+          settleTimer=setTimeout(activate,340);
+          document.addEventListener('pointerdown',interruptSettle,true);
+          document.addEventListener('keydown',interruptSettle,true);
+          document.addEventListener('click',interruptClick,true);
+          document.addEventListener('visibilitychange',interruptHidden);
+          window.addEventListener('hashchange',interruptSettle);
+          window.addEventListener('blur',interruptSettle);
+        }
+        return;
+      }
+      sync(true);
       return;
     }
     sync(true);
