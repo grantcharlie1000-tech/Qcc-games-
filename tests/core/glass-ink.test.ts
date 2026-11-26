@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {glassInk} from '../../src/ui/glass-ink';
+import {glassInk,milkInk,MILK_INK} from '../../src/ui/glass-ink';
 
 describe('clear glass contrast',()=>{
   it('keeps pure white ink on bright and dark content',()=>{
@@ -39,5 +39,18 @@ describe('clear glass contrast',()=>{
     expect(glassInk([[200,200,200]])).toEqual({color:'#fff',halo:'rgb(0 0 0 / .8)'});
     // A grey that white ink cannot clear through the fill gets the shadow.
     expect(glassInk([[150,150,150]]).halo).not.toBe('transparent');
+  });
+  it('lets the frosted section bar drop texture halos but keep them over bright art',()=>{
+    // Dark game art under the nav frost reads plainly, as in C30, even where it is textured.
+    expect(glassInk([[31,90,85]],'light',true,false,.36,7)).toEqual({color:'#fff',halo:'transparent'});
+    // A pale patch that only clears 4.75:1 still gets the shadow at the 7:1 bar for 10px labels.
+    expect(glassInk([[170,170,170]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
+    expect(glassInk([[0,0,0],[255,255,255]],'light',true,false,.36,7).halo).toBe('rgb(0 0 0 / .8)');
+  });
+  it('gives the light theme\'s milky section bar grey ink, legible over any art',()=>{
+    // The milk (.86 of white) keeps Apple's grey label ink above 4.5:1 over black, white and saturated art alike.
+    for(const art of [[0,0,0],[255,255,255],[255,0,0],[0,40,200],[31,90,85]] as const)
+      expect(milkInk([art])).toEqual({color:MILK_INK,halo:'transparent'});
+    expect(milkInk([])).toEqual({color:MILK_INK,halo:'transparent'});
   });
 });

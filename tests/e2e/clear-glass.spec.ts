@@ -20,12 +20,63 @@ async function expectWhiteGlyphs(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-
   return (await visible()).length;
 }
 
-test('plain label cores stay white beside real mixed game art',async({page})=>{
+// LOOK-7 (#24): the tab bar checks below pinned #92's white glyphs and ran in Playwright's default light scheme. 133d37f2 gave
+// the light navigation Apple's ink from its light still (dark grey labels, about 45 there, #333336 here; mid-grey glyphs,
+// #6e6e73; the selected tab's accent), the light look Charlie approved at 23:10Z, so they went red with nothing broken (#24
+// review of LOOK-6, question 5). In light they now pin that ink, still one fixed ink with no stroke or vector halo, and
+// measure the labels at 4.5:1 or better. The dark theme keeps #92's white glyphs, checked on uniform and mixed content below.
+const NAV_INK={
+  light:{label:['rgb(51, 51, 54)'],icon:['rgb(110, 110, 115)'],selected:['rgb(255, 55, 95)']},
+  // Where glass-ink.ts finds bright art under the selected label, the CSS fallback draws that tab white with a dark rim.
+  dark:{label:['rgb(255, 255, 255)'],icon:['rgb(255, 255, 255)'],selected:['rgb(0, 153, 255)','rgb(255, 255, 255)']},
+};
+// LOOK-10: on the dark WebGL bar the selected tab takes the blue the lens picks to keep 2:1 against its pill, which now sits
+// a little darker than the bar over any art (section-lens.ts selectionAccent): #0099ff, or a lighter or deeper blue.
+const adaptiveBlue=(color:string)=>{const [r,g,b]=(color.match(/\d+/g)??[]).map(Number);return b>=200&&b>Math.max(r,g);};
+// Each unselected label's ink against the darkest pixel behind it, the labels hidden: WCAG 1.4.3's 4.5:1 for that grey ink.
+async function labelContrast(page:Page,scope:string):Promise<number[]>{
+  const labels=`${scope} .ui-tab:not([aria-current=page],[aria-pressed=true])>span:not(.ui-glass-lens,.ui-glass-glow)`;
+  const boxes=await page.locator(labels).evaluateAll(elements=>elements.map(e=>{
+    const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height,color:getComputedStyle(e).color};
+  }).filter(b=>b.w>0&&b.h>0));
+  expect(boxes.length).toBeGreaterThan(0);
+  const hide=await page.addStyleTag({content:`${labels}{visibility:hidden!important}`});
+  const png=(await page.screenshot({scale:'css'})).toString('base64');
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
+  return page.evaluate(async({png,boxes})=>{
+    const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();
+    const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+    const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);
+    const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
+    return boxes.map(b=>{
+      const ink=lum(b.color.match(/[\d.]+/g)!.slice(0,3).map(Number));
+      const data=ctx.getImageData(Math.round(b.x),Math.round(b.y),Math.max(1,Math.round(b.w)),Math.max(1,Math.round(b.h))).data;
+      let darkest=1;for(let i=0;i<data.length;i+=4)darkest=Math.min(darkest,lum([data[i],data[i+1],data[i+2]]));
+      return (darkest+.05)/(ink+.05);
+    });
+  },{png,boxes});
+}
+async function expectNavInk(page:Page,scope:string,scheme:'light'|'dark'='light',glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'):Promise<number>{
+  const nav=page.locator(scope),ink:Record<string,string[]>=NAV_INK[scheme];
+  const visible=()=>nav.locator(glyphs).evaluateAll(elements=>elements.filter(e=>{
+    const box=e.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(e).clip==='auto';
+  }).map(e=>({role:e.closest('.ui-tab:is([aria-current=page],[aria-pressed=true])')?'selected':e.matches('svg')?'icon':'label',
+    color:getComputedStyle(e).color,stroke:getComputedStyle(e).webkitTextStrokeWidth||'0px'})));
+  await expect.poll(async()=>{
+    const found=await visible();
+    return found.length>0&&found.every(g=>(ink[g.role].includes(g.color)||scheme==='dark'&&g.role==='selected'&&adaptiveBlue(g.color))&&g.stroke==='0px')?'':JSON.stringify(found);
+  }).toBe('');
+  await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
+  if(scheme==='light'){const ratios=await labelContrast(page,scope);expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);}
+  return (await visible()).length;
+}
+
+test('plain label cores keep one fixed ink beside real mixed game art',async({page})=>{
   await page.goto('/#/collection');
   await page.locator('.app-tabbar .ui-tab').first().focus();
   await page.evaluate(()=>scrollTo(0,180));
   await page.waitForTimeout(200);
-  expect(await expectWhiteGlyphs(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')).toBe(5);
+  expect(await expectNavInk(page,'.app-navigation','light','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')).toBe(5);
 });
 
 async function headerPalette(page:Page,width:number){
@@ -59,14 +110,14 @@ test.describe('desktop header at DPR1',()=>{
   for(const width of [1024,1366])test(`visible header glyphs retain fixed-white ink at ${width}px`,async({page})=>headerPalette(page,width));
 });
 
-for(const fallback of [false,true])test(`glyphs stay white while real game artwork scrolls behind them (${fallback?'fallback':'native'})`,async({page})=>{
+for(const fallback of [false,true])test(`glyphs keep one fixed ink while real game artwork scrolls behind them (${fallback?'fallback':'native'})`,async({page})=>{
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const first=page.locator('.app-tabbar .ui-tab').first();
   await first.focus(); // Keep the expanded dock visible during each sample.
   for(const y of [0,70,140,210,350,560]){
     await page.evaluate(y=>scrollTo(0,y),y);
     await page.waitForTimeout(180);
-    expect(await expectWhiteGlyphs(page,'.app-navigation')).toBeGreaterThanOrEqual(11);
+    expect(await expectNavInk(page,'.app-navigation')).toBeGreaterThanOrEqual(11);
   }
 });
 
@@ -93,7 +144,7 @@ test('captions adapt to dark canvas media without a stroke or vector halo',async
     canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
   });
   await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
-  await expectWhiteGlyphs(page,'.movies-navigation');
+  await expectNavInk(page,'.movies-navigation');
 });
 
 test('an unavailable displacement map keeps the transparent CSS fallback',async({page,browserName})=>{
@@ -112,7 +163,21 @@ test('a touch-focused tab still adapts the visible mini after scrolling',async({
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect(mini).toHaveCSS('opacity','1');
   await page.addStyleTag({content:'html,body{background:#000!important}#content{visibility:hidden}'});
-  await expect(mini.locator('svg')).toHaveCSS('color','rgb(255, 255, 255)');
+  // MOTION-8 (#24 review of MOTION-7, finding 2): this pinned white ink over black art until MOTION-7 re-pinned it to the
+  // light accent #ff375f, which reads 1.85:1 on the circle's bare frost there (about 188), under the accent's 2:1 floor
+  // (section-lens.spec.ts). Apple's compact circle keeps its tab's accent glyph (Charlie's video, 34.25 s), so the glyph is
+  // measured instead: its ink against the frost behind it, the rim left out, 2:1 or more over black art.
+  const svg=mini.locator('svg');
+  await expect(svg).toHaveCSS('opacity','1');
+  await page.waitForTimeout(400);
+  const bounds=(await mini.boundingBox())!;
+  const boxes=await mini.evaluate(e=>{const b=e.getBoundingClientRect(),icon=e.querySelector('svg')!,r=icon.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(icon).color}];});
+  const mask=await glyphFillMask(page,mini,'.app-navigation .ui-tabbar-mini svg',true);
+  const hide=await page.addStyleTag({content:'.app-navigation .ui-tabbar-mini svg{visibility:hidden!important}'});
+  const frost=(await mini.screenshot({animations:'disabled'})).toString('base64');
+  await hide.evaluate(e=>e.parentNode?.removeChild(e));
+  const ratios=await glyphContrast(page,frost,mask,boxes,bounds);
+  expect(Math.min(...ratios),JSON.stringify({ratios,boxes})).toBeGreaterThanOrEqual(2);
 });
 
 test('Games and Movies sheet closes use the same clear material and release it on close',async({page,browserName})=>{
@@ -143,12 +208,15 @@ test('Games and Movies sheet closes use the same clear material and release it o
 // The clear-variant acceptance supersedes the earlier regular-HIG alpha fit.
 // Rendered dark/chroma checks still reject hidden luminance compression.
 for(const fallback of [false,true])test(`frosted navigation retains backdrop colour and diffuses its boundary (${fallback?'fallback':'native'})`,async({page,browserName})=>{
+  await page.emulateMedia({colorScheme:'dark'});
   await page.setViewportSize({width:390,height:844});
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  // #92's navigation frost uses a dark 36% veil, never a white one.
-  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.36)');
+  // #92's navigation frost used a dark 36% veil, never a white one. Charlie's 23:10Z feedback (the dark look beside
+  // Apple's dark still and video) supersedes that for the dark theme: its navigation is Apple's see-through smoke, .125
+  // of white over the art (black 32, as the WebGL bar). Dark content still reads dark and colour stays colour, below.
+  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
   const patches=await page.evaluate(async png=>{
@@ -162,7 +230,9 @@ for(const fallback of [false,true])test(`frosted navigation retains backdrop col
   },png);
   // A clear material must leave dark content dark and colourful content colourful.
   expect(Math.max(...patches.colors[0])).toBeLessThan(85);
-  expect(patches.colors[1][0]-patches.colors[1][2]).toBeGreaterThan(40);
+  // LOOK-12: beside the WebGL bar (data-glass=backdrop) the dark smoke's knee (section-navigation.css) rolls bright art
+  // off as the bar does, so #f5ddb0's red-blue gap reads 39.5 under it by the filter maths (40.5 under the cap).
+  expect(patches.colors[1][0]-patches.colors[1][2]).toBeGreaterThan(37);
   // Real diffusion, not merely a computed blur declaration. 10–90% edge
   // spread is about 2.56 sigma for a Gaussian, with pixel rounding tolerance.
   if(browserName==='webkit'&&patches.spread===0){
@@ -187,7 +257,9 @@ for(const fallback of [false,true])test(`frosted navigation retains backdrop col
 });
 
 test('navigation and its companion share frost while game controls retain their clear optical recipe',async({page})=>{
-  // #92 gives navigation its own frost/tint; game controls remain clear.
+  // #92 gives navigation its own frost/tint; game controls remain clear. In the dark theme that frost is Apple's smoke
+  // (LOOK-6, Charlie's 23:10Z feedback with Apple's dark still), shared by the bar and its menu circle.
+  await page.emulateMedia({colorScheme:'dark'});
   const references:Record<string,Record<string,string>>={};
   for(const route of ['collection','study','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
@@ -201,27 +273,44 @@ test('navigation and its companion share frost while game controls retain their 
     await expect(page.locator(scope)).toBeVisible();
     const materials=await page.locator(`${scope} .arcade-glass`).evaluateAll(elements=>elements.map(e=>{
       const s=getComputedStyle(e),v=getComputedStyle(e,'::before');
-      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
+      return {mode:(e as HTMLElement).dataset.glass??'',veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),knee:v.backdropFilter,shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim(),
+        beside:e.matches('.section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu[data-glass=backdrop]')?'yes':''};
     }));
+    // LOOK-26 (FAST LOOP re-pin to Apple; council-6eaf6223 Opus miss 2, the copper disc): beside the WebGL bar the dark menu
+    // circle takes that bar's see-through frost, blur(3px), not the CSS bar's 12px (hidden under the lens there). Apple's dark
+    // bar keeps .40 of the art's detail over bright art at css px (Charlie's video at 32.5 s against the same art at 33.3 s;
+    // tools-look20/bright); 3px keeps .40 over the face poster under the circle, 12px kept .12, a flat disc. Every other part
+    // of its material is still the bar's, and the CSS fallback circle keeps 12px.
+    for(const material of materials)if(material.beside){
+      expect(material.blur,route).toBe('blur(3px)');
+      material.blur=materials[0].blur;
+    }
     expect(materials.length).toBeGreaterThanOrEqual(2);
     const group=route.startsWith('game/')?'game':'navigation';
     // WebKit's frost mode carries its own measured rim strength (theme.css), so
     // controls are compared with others in the same group and glass mode.
     for(const material of materials){
+      delete (material as Partial<typeof material>).beside;
       references[`${group}|${material.mode}`]??=material;
       expect(material,route).toEqual(references[`${group}|${material.mode}`]);
       references[group]??=material;
     }
-    expect(materials[0].veil,route).toBe(group==='navigation'?'rgba(8, 12, 18, 0.36)':'rgba(8, 12, 18, 0.2)');
+    expect(materials[0].veil,route).toBe(group==='navigation'?'rgba(255, 255, 255, 0.125)':'rgba(8, 12, 18, 0.2)');
   }
   for(const reference of Object.values(references))expect(reference.pill).toEqual(references.navigation.pill);
-  expect(references.navigation.veil).toBe('rgba(8, 12, 18, 0.36)');
+  expect(references.navigation.veil).toBe('rgba(255, 255, 255, 0.125)');
   expect(references.game.veil).toBe('rgba(8, 12, 18, 0.2)');
-  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(12px)','saturate(1.4) brightness(.94)']);
+  // LOOK-9: the dark smoke caps the art at 226 (each brightness step clamps), white reading 229.6 as under the WebGL bar.
+  // LOOK-11: beside the WebGL bar (data-glass=backdrop) a knee on the tint's own layer rolls it off as the bar does
+  // (section-navigation.css), in place of the cap; a frost on the glass itself (data-glass=frost) keeps the cap.
+  expect([references.navigation.blur,references.navigation.tone,references.navigation.knee]).toEqual(references.navigation.mode==='backdrop'?
+    ['blur(12px)','saturate(.92)','brightness(1.5773) brightness(0.634) opacity(0.291)']:['blur(12px)','saturate(.92) brightness(1.1283) brightness(.8863)','none']);
   expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
-for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: glyphs stay white on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+// The dark theme keeps #92's white glyphs; since 60108a24 its CSS fallback bar is white smoke that reads 255 over white art.
+for(const scheme of ['light','dark'] as const)for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: glyphs keep the ${scheme} ink on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+  await page.emulateMedia({colorScheme:scheme});
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
   const scope=route==='collection'?'.app-navigation':'.movies-navigation';
@@ -230,7 +319,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
   for(const background of ['#fff','#000','#606060','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
     const backdrop=await page.addStyleTag({content:`html,body{background:${background}!important}`});
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
-    expect(await expectWhiteGlyphs(page,scope)).toBeGreaterThanOrEqual(11);
+    expect(await expectNavInk(page,scope,scheme)).toBeGreaterThanOrEqual(11);
     await backdrop.evaluate(e=>(e as Element).remove());
   }
 });

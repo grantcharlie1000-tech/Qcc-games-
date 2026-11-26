@@ -21,9 +21,11 @@ for(const width of [390,1440])test(`auto-hide builds only the settled refraction
   });
   await page.evaluate(()=>scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
-  await expect.poll(()=>bar.evaluate(el=>Math.round(el.getBoundingClientRect().width))).toBe(56);
+  await expect.poll(()=>bar.evaluate(el=>Math.round(el.getBoundingClientRect().width))).toBe(48);// MOTION-6 (#24): was 56 (Apple's 48 px compact circle).
   await expect.poll(()=>page.evaluate(()=>(window as LensDiagnostics).__lensEncodes)).toBeGreaterThan(0);
-  expect(await page.evaluate(()=>(window as LensDiagnostics).__lensEncodes)).toBeLessThanOrEqual(1);
+  // MOTION-6 (#24): was <= 1. The compact bar keeps its menu circle (Apple's search circle, video 34.25 s), which morphs
+  // 60 -> 48 with the bar and builds its own settled map once, as the expand below already allows: bar and companion menu.
+  expect(await page.evaluate(()=>(window as LensDiagnostics).__lensEncodes)).toBeLessThanOrEqual(2);
   await page.evaluate(()=>{(window as LensDiagnostics).__lensEncodes=0;scrollTo(0,340);});
   await expect(bar).not.toHaveAttribute('data-minimized');
   await expect.poll(()=>bar.evaluate(el=>el.getAnimations().length)).toBe(0);
@@ -111,10 +113,13 @@ test('canceling a morph to its cached size restores both map and filter bounds',
     return {filter:[filter?.getAttribute('width'),filter?.getAttribute('height')],image:[image?.getAttribute('width'),image?.getAttribute('height')]};
   });
   const original=await geometry();
+  // MOTION-7: counts the bar's maps only (wider than twice their height). Since 2a6791de the compact bar keeps its menu
+  // circle, Apple's search circle (Charlie's video, 34.25 s), which morphs 60 -> 48 with the minimise and builds its own
+  // square settled map (the bound above allows bar and menu); that encode is the menu's, not the cancelled bar's.
   await page.evaluate(()=>{
     const w=window as LensDiagnostics;w.__lensEncodes=0;
     const encode=HTMLCanvasElement.prototype.toDataURL;
-    HTMLCanvasElement.prototype.toDataURL=function(...args){w.__lensEncodes!++;return encode.apply(this,args);};
+    HTMLCanvasElement.prototype.toDataURL=function(...args){if(this.width>2*this.height)w.__lensEncodes!++;return encode.apply(this,args);};
   });
   await bar.evaluate(el=>new Promise<void>(resolve=>{
     const hold=(event:Event)=>{

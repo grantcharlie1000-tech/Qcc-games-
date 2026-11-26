@@ -16,16 +16,15 @@ test.beforeEach(async({page})=>{
   await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
-// The centre of the pill, from its computed translate and width. The pill is the bar's ::after.
+// The centre of the pill on screen, from its computed translate and width. The pill is the bar's ::after. MOTION-3 (#24):
+// the section bar grows about its centre while pressed (Charlie's video, x1.046), so its layout px are taken through
+// that growth; at rest the growth is 1 and this is the layout sum it always was.
 function pillCentre(bar:Locator){
   return bar.evaluate(el=>{
     const pill=getComputedStyle(el,'::after');
     const box=el.getBoundingClientRect();
-    return box.left+el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2;
+    return box.left+(el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2)*box.width/(el as HTMLElement).offsetWidth;
   });
-}
-function centreOf(target:Locator){
-  return target.evaluate(el=>{const box=el.getBoundingClientRect();return box.left+box.width/2;});
 }
 // The tab's box once it is on screen. Movies mounts its island after the route loads, so the box waits for it.
 async function boxOf(target:Locator){
@@ -35,9 +34,26 @@ async function boxOf(target:Locator){
   await expect.poll(async()=>{const found=await target.boundingBox();if(found)boxes.push(found);return boxes.length>0;}).toBe(true);
   return boxes[0];
 }
-// The pill sits under the tab when its centre is within 2 px of the tab's centre.
+// MOTION-5 (#24): a section bar's pill is Apple's capsule (glass.ts capsulePill), 1.2 tab shares wide (Charlie's dark still:
+// 84 of a 350 px five-tab bar) and centred on its tab, and an end tab's capsule stops at the inset the pill keeps above and
+// below, as Apple's Home pill sits 4 px inside the bar, so its centre is held a few px in from the tab's. This is that centre
+// on screen, through the bar's growth as pillCentre reads it; on any other bar, and on a middle tab, it is the tab's centre.
+function capsuleCentreOf(tab:Locator){
+  return tab.evaluate(el=>{
+    const own=el as HTMLElement,bar=own.closest<HTMLElement>('.ui-tabbar')!,box=bar.getBoundingClientRect();
+    let centre=own.offsetLeft+own.offsetWidth/2;
+    if(bar.classList.contains('section-tabbar')){
+      const style=getComputedStyle(bar,'::after'),inset=parseFloat(style.top)||0,bleed=parseFloat(style.getPropertyValue('--section-pill-bleed'))||0;
+      const tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(entry=>entry.offsetWidth).length;
+      const width=Math.max(own.offsetWidth+2*bleed,1.2*bar.clientWidth/Math.max(1,tabs));
+      if(width+2*inset<=bar.clientWidth)centre=Math.min(Math.max(centre,inset+width/2),bar.clientWidth-inset-width/2);
+    }
+    return box.left+(bar.clientLeft+centre)*box.width/bar.offsetWidth;
+  });
+}
+// The pill sits under the tab when its centre is within 2 px of the tab's capsule centre (the tab's own centre but at an end tab).
 async function expectPillUnder(bar:Locator,tab:Locator){
-  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(await centreOf(tab)))).toBeLessThanOrEqual(2);
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(await capsuleCentreOf(tab)))).toBeLessThanOrEqual(2);
 }
 const oneFrame=(page:import('@playwright/test').Page)=>page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
 
@@ -112,8 +128,7 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
-  // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  await expect(bar.getByRole('link').or(bar.getByRole('button'))).toHaveCount(5);
   // No chat backend answers here, so the Apps tab is not added and the bar is the shell's own five tabs.
   await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-apps','on');
 });
@@ -124,7 +139,7 @@ for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
+  await expect(bar.getByRole('link').or(bar.getByRole('button'))).toHaveCount(5);
 });
 
 test('the Movies pill slides to the section chosen',async({page})=>{
@@ -157,11 +172,15 @@ test('the Movies pill survives a re-render of the page',async({page})=>{
 
 test('the pill appears under the current tab on load without sliding in from the edge',async({page})=>{
   await page.addInitScript(()=>{
-    const w=window as Window&{__pillX?:string[]};
-    w.__pillX=[];
+    const samples:number[]=[];
+    const w=window as Window&{__pillCentres?:number[]};
+    w.__pillCentres=samples;
     const sample=()=>{
       const bar=document.querySelector('.app-tabbar');
-      if(bar)w.__pillX!.push(getComputedStyle(bar,'::after').translate);
+      if(bar){
+        const pill=getComputedStyle(bar,'::after');
+        samples.push(parseFloat(pill.translate)+parseFloat(pill.width)/2);
+      }
       if(performance.now()<2500)requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
@@ -171,12 +190,13 @@ test('the pill appears under the current tab on load without sliding in from the
   const bar=page.locator('.app-tabbar');
   const games=bar.locator('[aria-current="page"]');
   await expectPillUnder(bar,games);
-  const samples=await page.evaluate(()=>(window as Window&{__pillX?:string[]}).__pillX??[]);
-  const xs=samples.map(sample=>parseFloat(sample)).filter(x=>Number.isFinite(x));
-  const target=xs[xs.length-1];
-  expect(Math.abs(target-await games.evaluate(el=>(el as HTMLElement).offsetLeft))).toBeLessThan(1);
-  // Each sample is either the unplaced pill at 0 or already at its target. A value in between is a slide.
-  expect(xs.filter(x=>Math.abs(x)>0.5&&Math.abs(x-target)>0.5)).toEqual([]);
+  const samples=await page.evaluate(()=>(window as Window&{__pillCentres?:number[]}).__pillCentres??[]);
+  // MOTION-5 (#24): Games is an end tab, so its capsule's centre is held at the bar's inset (capsuleCentreOf). The samples
+  // are in the bar's own px, so the screen centre is taken back by the bar's left edge.
+  const tabCentre=(await capsuleCentreOf(games))-(await bar.evaluate(el=>el.getBoundingClientRect().left+el.clientLeft));
+  expect(Math.abs(samples[samples.length-1]-tabCentre)).toBeLessThan(1);
+  // The unplaced pill is centred at 0. A centre between 0 and the tab is a slide.
+  expect(samples.filter(centre=>Math.abs(centre)>0.5&&Math.abs(centre-tabCentre)>0.5)).toEqual([]);
 });
 
 test('a press moves the pill under the finger and swells it, and release takes the swell away',async({page})=>{
@@ -217,6 +237,90 @@ test('a press that slides off the tab springs the pill back and selects nothing'
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
+// MOTION-3 (#24): was 'springs back on an off-tab release' (pill back under Games, route unchanged). Charlie's video
+// (pass-9/b24s, 13.5-15.183 s) lets go with the lens over Library and the page turns to Library: the release selects the
+// tab nearest the lens, never the current one. The reverse is 40 px short of TV Shows (was 30), so the nearest tab is
+// plainly Movies (15 px away; the tabs are 55 px apart) rather than within 2 px of the Movies/TV Shows midpoint.
+test('a horizontal drag carries the pill across tabs and selects the tab nearest it on release',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true});
+  const tv=bar.getByRole('link',{name:'TV Shows',exact:true});
+  await expectPillUnder(bar,games);
+  const start=await boxOf(games), end=await boxOf(tv);
+  const x=start.x+start.width/2, y=start.y+start.height/2;
+  const farX=end.x+end.width/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  // MOTION-3 (#24): the bar grows about its centre while pressed (video 349x62 -> 365x66, x1.046 x1.065), so the pill
+  // starts from Games as drawn on the grown bar (5 px left of the finger) and moves 1:1 with the finger from there.
+  await expect.poll(()=>bar.evaluate(el=>{const box=el.getBoundingClientRect(),bar=el as HTMLElement;return [box.width/bar.offsetWidth,box.height/bar.offsetHeight].map(v=>Math.round(v*1000)/1000);})).toEqual([1.046,1.065]);
+  // MOTION-5 (#24): Games is an end tab, so the drag leaves from its capsule's centre, held a few px in at the bar's inset.
+  const from=await capsuleCentreOf(games);
+  await page.mouse.move(farX,y,{steps:5});
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(from+farX-x))).toBeLessThan(3);
+  const reverseX=farX-40;
+  await page.mouse.move(reverseX,y,{steps:3});
+  await expect.poll(async()=>Math.abs((await pillCentre(bar))-(from+reverseX-x))).toBeLessThan(3);
+  await page.mouse.up();
+  await expect(bar).not.toHaveAttribute('data-pressing');
+  await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
+});
+
+// MOTION-3 (#24): was 'leaves the Games route active' (the release sprang back to the current tab). Charlie's video
+// (pass-9/b24s, 15.183 s) selects the tab under the lens at the lift, so a scrub that comes back to an unselected link
+// selects that link, once: the browser's own click on the link the press began on is still suppressed.
+test('a scrub back to an unselected link selects it on release',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true});
+  const tv=bar.getByRole('link',{name:'TV Shows',exact:true});
+  await expectPillUnder(bar,games);
+  const box=await boxOf(tv);
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.evaluate(()=>{const w=window as Window&{__tvClicks?:number};w.__tvClicks=0;
+    document.querySelector('.app-tabbar a[href="#/movies/browse/tv"]')!.addEventListener('click',event=>{if(!event.defaultPrevented)w.__tvClicks!++;});});
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  // Move within the same link so the browser still dispatches a click on release.
+  await page.mouse.move(x-18,y,{steps:3});
+  await expect(bar).toHaveAttribute('data-pill-dragging','');
+  await page.mouse.move(x,y,{steps:3});
+  await page.mouse.up();
+  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
+  await expect(bar).not.toHaveAttribute('data-pill-dragging');
+  await expect(page.locator('.movies-mobile-nav').getByRole('button',{name:'TV Shows'})).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>(window as Window&{__tvClicks?:number}).__tvClicks)).toBe(1);
+});
+
+test('reduced motion leaves section link drags to the browser',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const tv=bar.getByRole('link',{name:'TV Shows',exact:true});
+  const box=await boxOf(tv);
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await expect(bar).toHaveAttribute('data-pressing','');
+  // Automation does not guarantee an OS drag on every engine. Check whether
+  // the glass handler cancels the browser's dragstart event during the press.
+  const allowed=await tv.evaluate(el=>el.dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true})));
+  expect(allowed).toBe(true);
+  await page.mouse.move(x-35,y,{steps:5});
+  await expect(bar).not.toHaveAttribute('data-pill-dragging');
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await expect(bar).not.toHaveAttribute('data-pressing');
+  await expect(page).toHaveURL(/#\/collection$/);
+  await tv.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
+});
+
 test('keyboard activation moves the pill but never swells it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
@@ -236,16 +340,21 @@ test('keyboard activation moves the pill but never swells it',async({page})=>{
   expect(await page.evaluate(()=>(window as Window&{__sawPressing?:boolean}).__sawPressing)).toBe(false);
 });
 
-test('one glass surface shrinks in 300 ms while its labels fade in the first 80 ms',async({page})=>{
+test('one glass surface shrinks in 150 ms while its labels fade in the first 80 ms',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar'),tab=bar.locator('[aria-current="page"]'),capsule=page.locator('.ui-tabbar-mini');
   await expect(bar).toBeVisible();
-  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.16s',delay:'0.14s'});
+  // MOTION-7: was 0.3s each way. Every frame of Charlie's video puts the compact morph at about 150 ms to minimise
+  // (33.65-33.80 s) and about 120 ms to expand (38.35-38.47 s); the expanded bar's transition is the expand's.
+  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.12s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  // MOTION-7: was 0.16s after 0.14s, which began after the 120 ms expand; the video's tabs return as the bar opens.
+  expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.09s',delay:'0.04s'});
   await page.evaluate(()=>scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
+  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.15s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
   expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
   await expect(bar).toHaveCSS('opacity','1');
-  await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+  // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
+  await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);
   await expect(capsule).toHaveCSS('backdrop-filter','none');
   await expect(capsule).toHaveCSS('box-shadow','none');
   await expect(capsule.locator('.ui-icon')).toHaveCSS('opacity','1');
@@ -260,7 +369,8 @@ test('the transparent mini stays small, and the single glass surface lands exact
   // The mini has no material to leave behind, and never stretches over the bar.
   const start=expanded.capsule;
   expect(Math.abs(start.x-expanded.bar.x)).toBeLessThan(1);
-  expect(start.width).toBe(56);expect(start.height).toBe(48);
+  // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
+  expect(start.width).toBe(48);expect(start.height).toBe(48);
   expect(expanded.bar.width).toBeGreaterThan(200);
   await expect(page.locator('.ui-tabbar-mini')).toHaveCSS('backdrop-filter','none');
   await page.evaluate(()=>window.scrollTo(0,400));
@@ -297,7 +407,9 @@ test('the bounded morph uses CSS geometry and opacity transitions, with no scrip
     }).length,
   }));
   expect(runs.length).toBeGreaterThan(0);
-  for(const property of runs)expect(['width','height','min-height','left','opacity']).toContain(property);
+  // MOTION-6 (#24): bottom joins them. Apple's compact pieces sit on the rest bar's centre line (video 34.25 s), so the
+  // 48 px circle rises 6 px as the 60 px bar shrinks into it.
+  for(const property of runs)expect(['width','height','min-height','left','bottom','opacity']).toContain(property);
   expect(scripted).toBe(0);
 });
 
@@ -400,13 +512,18 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
   // The icon is a copy of the current tab's icon and always stays white.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(255, 255, 255)');
+  // MOTION-7: was the bar's mid-grey ink. Apple's compact circle keeps the selected tab's accent glyph (Charlie's video,
+  // 34.25 s), so the light theme's capsule glyph is the selected tab's accent. MOTION-8: a little deeper than the pill's
+  // #ff375f, #e02a52, since it sits on the bare frost, which reads about 188 over black art (2.4:1 there, clear-glass.spec).
+  await expect(capsule.locator('svg.ui-icon')).toHaveCSS('color','rgb(224, 42, 82)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
-  expect(box.width).toBeCloseTo(56,0);
+  // MOTION-6 (#24): was 56 x 48 at x 12 on the bar's bottom line (832). Apple's compact selected tab (Charlie's video, 34.25 s)
+  // is a 48 css px circle at 27.7-75.6 of 390, centred on the rest bar's line: 12 px in from the navigation, 6 px up.
+  expect(box.width).toBeCloseTo(48,0);
   expect(box.height).toBeCloseTo(48,0);
-  expect(box.x).toBeCloseTo(12,0);
-  expect(box.y+box.height).toBeCloseTo(832,0);
+  expect(box.x).toBeCloseTo(28,0);
+  expect(box.y+box.height).toBeCloseTo(826,0);
   expect(icon.x+icon.width/2).toBeCloseTo(box.x+box.width/2,0);
   expect(icon.y+icon.height/2).toBeCloseTo(box.y+box.height/2,0);
   // Its pointer box is the capsule, and the bar's own tabs are no longer reachable by a tap.
@@ -528,7 +645,11 @@ test('a pill move stretches the pill with a web animation',async({page})=>{
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
-  await tv.click();
+  // MOTION-4 (#24): was a mouse tap. A section bar's tap now lets its press swell ride the release spring instead (the
+  // stretch's first '1 1' frame dropped the lens's raised bubble at once, section-lens.spec.ts), so a move with no press,
+  // the keyboard's, is the one that stretches.
+  await tv.focus();
+  await page.keyboard.press('Enter');
   await expect(tv).toHaveAttribute('aria-pressed','true');
   // A three-keyframe scale animation on the pill itself, not a transition of the bar.
   await expect.poll(()=>page.evaluate(()=>document.getAnimations().some(animation=>{
@@ -547,7 +668,8 @@ for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) cha
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>barShown(bar)).toBe(1);
-  expect((await bar.boundingBox())!.width).toBe(56);
+  // MOTION-6 (#24): was 56 x 48. Apple's compact selected tab is a 48 css px circle (Charlie's video, 34.25 s).
+  expect((await bar.boundingBox())!.width).toBe(48);
   await expect.poll(()=>capsuleShown(page)).toBe(1);
   // The material remains; geometry changes at once, without slide or scale.
   for(const element of [bar,capsule]){
@@ -595,7 +717,7 @@ test('reduced motion moves the pill at once and never stretches it',async({page}
   await expect(tv).toHaveAttribute('aria-pressed','true');
   await oneFrame(page);
   // One frame after the change the pill is already under TV, so nothing is in transit.
-  expect(Math.abs((await pillCentre(bar))-(await centreOf(tv)))).toBeLessThanOrEqual(2);
+  expect(Math.abs((await pillCentre(bar))-(await capsuleCentreOf(tv)))).toBeLessThanOrEqual(2);
   expect(await page.evaluate(()=>document.getAnimations().filter(animation=>(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after').length)).toBe(0);
 });
 
@@ -707,12 +829,18 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
 // A tab's computed colour and weight.
 const tabInk=(locator:Locator)=>locator.evaluate(el=>{const style=getComputedStyle(el);return {color:style.color,weight:style.fontWeight};});
 
+// The dark theme's smoked island keeps white ink; the light theme's see-through frost takes Apple Music's dark grey label
+// ink, #333336 (Apple's light still reads its labels about 45; glass-ink.ts keeps it at 4.5:1 or adds the white halo).
+const islandInk={dark:'rgb(255, 255, 255)',light:'rgb(51, 51, 54)'} as const;
 test('the arcade light island uses white ink and a bold current tab',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
-  const bar=page.locator('.app-tabbar');
-  await expect(bar).toHaveAttribute('data-glass-tone','light');
-  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
-  expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  await page.setViewportSize({width:390,height:844});
+  for (const scheme of ['dark','light'] as const) {
+    await page.emulateMedia({colorScheme:scheme});await page.goto('/');
+    const bar=page.locator('.app-tabbar');
+    await expect(bar).toHaveAttribute('data-glass-tone','light');
+    await expect.poll(()=>tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:islandInk[scheme],weight:'500'});
+    expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:islandInk[scheme],weight:'700'});
+  }
 });
 
 test('the Movies island uses the same white ink and bold selection as Games',async({page})=>{
@@ -722,21 +850,37 @@ test('the Movies island uses the same white ink and bold selection as Games',asy
   await expect(bar).toBeVisible();
   // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
-  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:islandInk.light,weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:islandInk.light,weight:'700'});
+  await page.emulateMedia({colorScheme:'dark'});
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:islandInk.dark,weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:islandInk.dark,weight:'700'});
 });
 
-test('the navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
+test('the fallback navigation glass keeps its frosted backdrop, dark tint and clean glyphs',async({page})=>{
+  // The dark theme's fallback is Apple's dark see-through smoke (LOOK-6, Charlie's 23:10Z feedback and Apple's dark still:
+  // .125 of white over the art, the WebGL bar's 32 + .875 a; it was #92's .36 dark frost). The light theme's is Apple Music's pale see-through frost, as the
+  // WebGL lens and the menu circle: a .8 light grey tint (glass-ink.ts models it for the 4.5:1 labels), a deeper 20px
+  // blur and a grey pill a step darker than the bar over bright art, held near 199 over the black page (accent 2.1:1).
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/?glass=fallback');
+  const light=page.locator('.app-tabbar');await expect(light).toBeVisible();
+  expect(alphaOf(await light.evaluate(el=>getComputedStyle(el,'::before').backgroundColor))).toBeCloseTo(.8,2);
+  expect(await frostFilter(light)).toBe('blur(20px) saturate(1.2)');
+  expect(await light.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(208, 208, 212, 0.55)');
+  await page.emulateMedia({colorScheme:'dark'});await page.goto('/?glass=fallback');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  // #92 frosts navigation at .36; the selection pill remains near-transparent.
-  expect(tint).toBeCloseTo(.36,2);
-  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeLessThanOrEqual(.02);
+  // The dark smoke is .125 of white. Without the WebGL lens the selection pill is the C30 smoke, a clear step darker than the bar.
+  expect(tint).toBeCloseTo(.125,3);
+  expect(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
+  const pill=await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
+  expect(alphaOf(pill)).toBeGreaterThanOrEqual(.25);
+  expect(pill).toMatch(/^rgba\(0, 0, 0,/);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
-  // Navigation frost (section-navigation.css); Chromium's SVG lens adds its url() map.
-  expect(frost).toMatch(/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.4\) brightness\(0\.94\)$/);
+  // LOOK-9: the smoke caps the art at 226, so white reads 229.6 under it, as under the WebGL bar's roll-off.
+  expect(frost).toBe('blur(12px) saturate(0.92) brightness(1.1283) brightness(0.8863)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   // Clean glyphs: no stroke or blurred glow; over busy art the adaptive ink may
@@ -938,8 +1082,9 @@ test('a new press ends a press whose pointer-up never arrived, and the pill foll
   await expectPillUnder(bar,movie);
 });
 
-test('a touch press shows the press, and lifting on the tab selects it',async({page,browserName})=>{
+for(const reducedMotion of ['no-preference','reduce'] as const) test(`a touch press shows the press, and lifting selects the tab (${reducedMotion})`,async({page,browserName})=>{
   test.skip(browserName!=='chromium','touch input is sent through the Chromium DevTools protocol');
+  await page.emulateMedia({reducedMotion});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
@@ -954,6 +1099,7 @@ test('a touch press shows the press, and lifting on the tab selects it',async({p
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expect(tv).toHaveAttribute('aria-pressed','true');
   await expectPillUnder(bar,tv);
+  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
 });
 
 test('a touch that slides off the tab springs the pill back and selects nothing',async({page,browserName})=>{
@@ -975,6 +1121,61 @@ test('a touch that slides off the tab springs the pill back and selects nothing'
   await expectPillUnder(bar,home);
   await expect(home).toHaveAttribute('aria-pressed','true');
   await expect(tv).toHaveAttribute('aria-pressed','false');
+});
+
+// MOTION-4 (#24): the pressed section bar grows about its centre (x1.046, section-navigation.css), which carries the next tab's
+// edge, or the gap, under a pointer that has not moved: about 4 px of Games's inner edge at 390 px. A mouse's click there went
+// to the bar, the two tabs' common ancestor, and selected nothing, and the pill sprang to the current tab. A tap selects the
+// tab it began on, once, and the pill stays with it. Selections are made in place, as the route would make them.
+for(const input of ['mouse','touch'] as const) test(`a ${input} tap on a tab's inner edge selects that tab though the pressed bar grows`,async({page,browserName})=>{
+  test.skip(input==='touch'&&browserName!=='chromium','touch input is sent through the Chromium DevTools protocol');
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/collection');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true}), movies=bar.getByRole('link',{name:'Movies',exact:true});
+  await expectPillUnder(bar,games);
+  await page.evaluate(()=>{
+    const w=window as Window&{__clicks?:string[]};w.__clicks=[];
+    document.addEventListener('click',event=>{
+      const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.app-tabbar .ui-tab'):null;
+      w.__clicks!.push(tab?.querySelector('span')?.textContent??'(none)');
+      if(!(tab instanceof HTMLAnchorElement))return;
+      event.preventDefault();
+      document.querySelector('.app-tabbar [aria-current="page"]')?.removeAttribute('aria-current');
+      tab.setAttribute('aria-current','page');
+    });
+    document.querySelector('.app-tabbar [aria-current="page"]')?.removeAttribute('aria-current');
+    document.querySelector('.app-tabbar a[href="#/movies/browse/movie"]')!.setAttribute('aria-current','page');
+  });
+  await expectPillUnder(bar,movies);
+  const box=(await games.boundingBox())!, barBox=(await bar.boundingBox())!;
+  const centre=barBox.x+barBox.width/2, right=box.x+box.width;
+  // Midway across the band the growth takes from Games: its grown inner edge sits at centre-(centre-right)*1.046.
+  const x=(right+centre-(centre-right)*1.046)/2, y=box.y+box.height/2;
+  const gamesCentre=box.x+box.width/2;
+  expect(right-x).toBeGreaterThan(1);
+  const cdp=input==='touch'?await page.context().newCDPSession(page):null;
+  if(cdp)await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+  else{await page.mouse.move(x,y);await page.mouse.down();}
+  await expect.poll(()=>bar.evaluate(el=>{const box=el.getBoundingClientRect(),bar=el as HTMLElement;return Math.round(box.width/bar.offsetWidth*1000)/1000;})).toBe(1.046);
+  await page.evaluate(()=>{
+    const w=window as Window&{__pill?:number[]};w.__pill=[];
+    const el=document.querySelector<HTMLElement>('.app-tabbar')!,end=performance.now()+700;
+    const sample=()=>{
+      const pill=getComputedStyle(el,'::after'),box=el.getBoundingClientRect();
+      w.__pill!.push(box.left+(el.clientLeft+parseFloat(pill.translate)+parseFloat(pill.width)/2)*box.width/el.offsetWidth);
+      if(performance.now()<end)requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  if(cdp)await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  else await page.mouse.up();
+  await expect(games).toHaveAttribute('aria-current','page');
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(()=>(window as Window&{__clicks?:string[]}).__clicks)).toEqual(['Games']);
+  const pill=await page.evaluate(()=>(window as Window&{__pill?:number[]}).__pill!);
+  expect(Math.max(...pill)-gamesCentre,JSON.stringify(pill)).toBeLessThan(10);
+  await expectPillUnder(bar,games);
 });
 
 // The Study tab becomes a tab that selects nothing, so a tap changes nothing. The pill must not stay under the tapped tab.
@@ -1049,8 +1250,11 @@ test('a press on the island that Movies left behind does nothing',async({page})=
 
 // The specular layer masks a thin edge, with two bright arcs and a continuous rim.
 test('the arcade rim has two directional specular arcs around a clear centre',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
-  const rim=page.locator('.app-tabbar > .ui-glass-glow');
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/?glass=fallback');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-glass','frost');
+  const rim=bar.locator('.ui-glass-glow');
   await expect(rim).toBeVisible();
   const style=await rim.evaluate(el=>{const s=getComputedStyle(el);return {image:s.backgroundImage,mask:s.maskComposite,padding:s.paddingTop};});
   expect(style.image).toContain('conic-gradient');

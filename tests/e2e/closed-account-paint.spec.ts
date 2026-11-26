@@ -8,7 +8,7 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     const dialog=page.locator('#accounts-dialog'),mini=page.locator('.app-navigation .ui-tabbar-mini');
     await expect(dialog).toBeHidden();
     await expect(mini).toHaveCSS('backdrop-filter','none');await expect(mini).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
-    expect((await mini.boundingBox())!.width).toBe(56);
+    expect((await mini.boundingBox())!.width).toBe(48);// MOTION-6 (#24): was 56; the compact circle is 48 (Apple, video 34.25 s).
     await page.getByRole('button',{name:'Open menu',exact:true}).click();
     await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
     await expect(dialog).toBeVisible();

@@ -11,14 +11,63 @@ const CLEAR_FILL:RGB=[8,12,18];
 const CLEAR_VEIL=.2,NAV_VEIL=.36;
 const HALO_DARK='rgb(0 0 0 / .8)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
+// The light theme's section navigation is pale frost the art shows through (section-lens.ts MILK_LIFT/MILK_GAIN and
+// the CSS fallback's .8 tint): about 188 over black art and 240 over white, modelled here as .8 of a 236 grey over the
+// art. Its labels take Apple Music's dark grey label ink (about 45 in Apple's light still), which keeps about 6.6:1
+// over the frost's darkest case (black art), so the white halo only returns below 4.5:1.
+export const MILK_INK='#333336';
+const MILK:RGB=[236,236,236],MILK_VEIL=.8;
+export function milkInk(samples:readonly RGB[]):{color:string;halo:string}{
+  const colors=samples.length?samples:[[25,29,28] as RGB];
+  const ink=luminance([51,51,54]);
+  const contrast=Math.min(...colors.map(rgb=>(luminance(mix(rgb,MILK,MILK_VEIL))+.05)/(ink+.05)));
+  return {color:MILK_INK,halo:contrast>=4.5?'transparent':'rgb(255 255 255 / .8)'};
+}
+// The dark theme's WebGL bar (section-lens.ts DARK_GLASS) is a smoke over the art of about .2 of a 160 grey (black about
+// 32, white about 236). Section labels keep the dark halo wherever it, or #92's darker .36 frost (NAV_VEIL), would leave
+// white ink under the 7:1 bar for 10px labels. LOOK-6 made the dark CSS glass the same smoke, .125 of white (MENU_SMOKE,
+// section-navigation.css): within about 6 levels of NAV_SMOKE up to mid art, so the labels' model is kept.
+const NAV_SMOKE:RGB=[160,160,160],NAV_SMOKE_VEIL=.2;
+const MENU_SMOKE=.125,WHITE:RGB=[255,255,255];
+export function navInk(samples:readonly RGB[],selection:boolean):{color:string;halo:string}{
+  const frost=glassInk(samples,'light',selection,false,NAV_VEIL,7);
+  const smoke=glassInk(samples.map(rgb=>mix(rgb,NAV_SMOKE,NAV_SMOKE_VEIL)),'light',selection,false,0,7);
+  return frost.halo==='transparent'&&smoke.halo==='transparent'?frost:{color:'#fff',halo:HALO_DARK};
+}
+// LOOK-26 (council-6eaf6223 Opus miss 2: over bright art the dark menu circle read as an opaque copper disc with a bold,
+// outlined glyph). Beside the WebGL bar (section-navigation.css: its soft frost, and the dim layer under the glyph) the
+// circle's smoke under the glyph stops at MENU_CAP, the luminance of 149 grey (LOOK-25's cap; white 3.0:1), as Apple's
+// white Search glyph keeps 3.22:1 (2.58:1 at the glass's p90, WCAG .271/.351) over its bright poster with no outline
+// (Charlie's video at 19.5 s). It stops by a uniform dim, brightness(dim), so the art keeps its colour: a per-channel clamp
+// turned the face poster's orange into a grey-green patch. The dim is the one that brings the brightest of the glyph's
+// samples down to MENU_CAP; there white holds 2:1 (MENU_CAPPED_FLOOR) with no outline.
+const MENU_CAP=luminance([149,149,149]),MENU_CAPPED_FLOOR=2;
+const dimmed=(rgb:RGB,dim:number):RGB=>rgb.map(v=>v*dim) as [number,number,number];
+/** The dark menu circle is CSS glass only, that smoke: its white glyph keeps 4.5:1 over it, or takes the dark halo.
+ * Beside the WebGL bar (capped) the smoke is dimmed to MENU_CAP under the glyph instead (dim, for its ::after layer) and
+ * white keeps MENU_CAPPED_FLOOR there. Icon colour belongs to CSS, so only the halo is set (no --glass-adaptive-ink). */
+export function menuInk(samples:readonly RGB[],capped=false):{color:string;halo:string;dim:number}{
+  const smoke=samples.map(rgb=>mix(rgb,WHITE,MENU_SMOKE));
+  if(!capped)return {color:'',halo:glassInk(smoke,'light',false,false,0,4.5).halo,dim:1};
+  const brightest=smoke.reduce((a,b)=>luminance(b)>luminance(a)?b:a,smoke[0]??[0,0,0]);
+  let dim=1;
+  if(luminance(brightest)>MENU_CAP){
+    let low=0,high=1;
+    for(let i=0;i<20;i++){const mid=(low+high)/2;if(luminance(dimmed(brightest,mid))>MENU_CAP)high=mid;else low=mid;}
+    dim=Math.round(1000*low)/1000;
+  }
+  return {color:'',halo:glassInk(smoke.map(rgb=>dimmed(rgb,dim)),'light',false,false,0,MENU_CAPPED_FLOOR).halo,dim};
+}
+/** The dark menu circle beside the WebGL bar: its soft frost and the dim layer under its glyph (section-navigation.css). */
+const MENU_BESIDE_LENS='.section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu[data-glass=backdrop]';
 /** Keep the glyph itself white. Sample only to decide whether a soft dark
  * shadow is needed over bright or busy artwork; never invert labels or scores.
  * Opaque accessibility surfaces bypass this function in the binding below. */
-export function glassInk(samples:readonly RGB[],_preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL):{color:string;halo:string}{
+export function glassInk(samples:readonly RGB[],_preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false,veil=CLEAR_VEIL,minContrast=4.75):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
   const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,veil))*(selection==='dark'?.91:selection?.99:1));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
-  return {color:'#fff',halo:!textured&&lightContrast>=4.75?'transparent':HALO_DARK};
+  return {color:'#fff',halo:!textured&&lightContrast>=minContrast?'transparent':HALO_DARK};
 }
 
 // Cache one small image readback per source, never per sample or scroll frame.
@@ -145,6 +194,7 @@ let frame=0;
 let liveTimer:ReturnType<typeof setTimeout>|undefined;
 let observer:MutationObserver|undefined;
 let density:MediaQueryList|undefined;
+let scheme:MediaQueryList|undefined;
 /** Retained for existing sheet callers; icons now use their original strokes. */
 export function syncSheetIconInk(sheet:HTMLElement):void{
   for(const outline of sheet.querySelectorAll('.glass-vector-halo'))outline.remove();
@@ -164,7 +214,8 @@ function update(){
   // their existing SVGs without changing any control or dialog lifecycle.
   for(const sheet of document.querySelectorAll<HTMLElement>('.mp-card,.movies-resume-pill,.movies-fullscreen'))syncSheetIconInk(sheet);
   const {style,rect,sample}=sampler();
-  const changes:{glyph:HTMLElement;ink:ReturnType<typeof glassInk>|null}[]=[];
+  const changes:{glyph:HTMLElement;ink:ReturnType<typeof glassInk>|null}[]=[],released:HTMLElement[]=[];
+  const dims=new Map<HTMLElement,number>();
   for(const bar of bindings){
     const box=rect(bar);if(!box.width||!box.height||style(bar).visibility==='hidden')continue;
     const mini=bar.parentElement?.querySelector<HTMLElement>('.ui-tabbar-mini');
@@ -182,22 +233,38 @@ function update(){
         if(glyph.closest('.apps-danger,.is-danger')){changes.push({glyph,ink:null});continue;}
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
         if(glyph.closest('.game-button:not(.secondary),.ui-btn.primary')&&!glyph.closest('.arcade-glass'))continue;
-        const key=bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
+        // C30: each section label reads its own backdrop, so one bright tile does not halo all five.
+        const key=bar.matches('.section-tabbar')&&!target.matches('.ui-tabbar-mini')?glyph:bar.matches('.ui-tabbar')||target.matches('.ui-tabbar-mini')?bar:glyph.closest('.ui-tab,button,a,.game-hud-item,label')??glyph;
         const group=groups.get(key)??[];group.push(glyph);groups.set(key,group);
       }
       const modal=bar.closest('dialog');
       const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
       const selection=bar.matches('.ui-tabbar,.floating-glass-group');
+      const nav=!!bar.closest('.section-navigation');
       const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
+      const milky=nav&&!matchMedia('(prefers-color-scheme: dark)').matches;
+      // LOOK-6: the dark menu circle's lighter smoke can leave its white glyph under 4.5:1 over bright art (menuInk).
+      const circle=nav&&!milky&&target.matches('.section-menu');
       for(const group of groups.values()){
-        const labels=group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
+        const labels=circle?group:group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
+        // LOOK-7 (#24 review of LOOK-6, I1): only the dark menu circle inks its svg. After a live switch to light that svg is
+        // no longer a label, so what the dark circle set is cleared back to a fresh light load's glyph; its dark halo would
+        // otherwise stay round the light circle's grey glyph until the bar is rebuilt.
+        if(!circle&&target.matches('.section-menu'))released.push(...group.filter(glyph=>glyph.matches('svg.glass-ink')));
         if(!labels.length)continue;
         let ink:ReturnType<typeof glassInk>|null=null;
         // Frosted sheets carry a dark tint under a deep blur: plain white ink, no halo.
         if(bar.closest('.ui-glass-sheet')&&!accessible)ink={color:'#fff',halo:'transparent'};
         else if(bar.dataset.glass!=='off'&&!accessible){
           const samples=group.map(sample),known=samples.filter(s=>!isUnknown(s)).flat();
-          ink=glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),bar.closest('.section-navigation')?NAV_VEIL:CLEAR_VEIL);
+          // The section bar's deep frost blurs fine texture away, so C30 showed plain labels over art.
+          // There only low contrast (bright art, unreadable media) keeps the halo, at a 7:1 bar for 10px text.
+          const menu=circle?menuInk(known.length?known:UNKNOWN,target.matches(MENU_BESIDE_LENS)):null;
+          if(menu&&menu.dim<1)dims.set(target,menu.dim);
+          ink=milky?milkInk(known.length?known:UNKNOWN)
+            :menu?menu
+            :nav?navInk(known.length?known:UNKNOWN,selection)
+            :glassInk(known.length?known:UNKNOWN,preference,selection,samples.some(s=>s.textured),CLEAR_VEIL);
         }
         for(const glyph of labels)changes.push({glyph,ink});
       }
@@ -212,6 +279,17 @@ function update(){
     const halo=ink.halo!=='transparent';
     if(glyph.hasAttribute('data-glass-halo')!==halo)glyph.toggleAttribute('data-glass-halo',halo);
     glyph.querySelector(':scope > .glass-vector-halo')?.remove();
+  }
+  // LOOK-26: the dark circle's dim under its glyph (section-navigation.css ::after), cleared wherever it no longer applies.
+  for(const bar of bindings)if(bar.matches('.section-menu')){
+    const dim=dims.get(bar);
+    if(dim===undefined){if(bar.hasAttribute('data-glass-dim')){bar.removeAttribute('data-glass-dim');bar.style.removeProperty('--menu-glass-dim');}continue;}
+    if(bar.style.getPropertyValue('--menu-glass-dim')!==String(dim))bar.style.setProperty('--menu-glass-dim',String(dim));
+    if(!bar.hasAttribute('data-glass-dim'))bar.setAttribute('data-glass-dim','');
+  }
+  for(const glyph of released){
+    glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.removeAttribute('data-glass-halo');
+    glyph.querySelector(':scope > .glass-vector-halo')?.remove();glyph.classList.remove('glass-ink');
   }
   clearTimeout(liveTimer);
   if(bindings.size&&!document.hidden&&document.querySelector('#game-stage canvas:not(.ui-glass-gl>canvas)'))liveTimer=setTimeout(schedule,140);
@@ -231,6 +309,8 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     window.addEventListener('resize',schedule,{passive:true});
     density??=window.matchMedia('(max-resolution: 1.5dppx)');
     density.addEventListener('change',schedule);
+    scheme??=window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change',schedule);
     observer=new MutationObserver(records=>{
       const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
       if(records.some(r=>{
@@ -243,10 +323,10 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
         // hit-testing for label colours.
         if(r.type==='childList'&&r.addedNodes.length===r.removedNodes.length&&
           [...r.addedNodes].every((node,i)=>node.isEqualNode(r.removedNodes[i])))return false;
-        return !(r.target instanceof Element)||!r.target.closest('.arcade-glass,.ui-tabbar-mini')||r.attributeName==='data-minimized'||r.attributeName==='data-glass'||(r.type==='childList'&&[...r.addedNodes,...r.removedNodes].some(n=>n instanceof Element&&!n.matches('.ui-glass-contrast,.ui-glass-glow,.ui-glass-lens')));
+        return !(r.target instanceof Element)||!r.target.closest('.arcade-glass,.ui-tabbar-mini')||r.attributeName==='data-minimized'||r.attributeName==='data-glass'||r.attributeName==='data-section-lens'||(r.type==='childList'&&[...r.addedNodes,...r.removedNodes].some(n=>n instanceof Element&&!n.matches('.ui-glass-contrast,.ui-glass-glow,.ui-glass-lens')));
       }))schedule();
     });
-    observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','data-minimized','data-glass']});
+    observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','data-minimized','data-glass','data-section-lens']});
   }
   schedule();
   return ()=>{
@@ -258,6 +338,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     if(!bindings.size){
       observer?.disconnect();observer=undefined;
       density?.removeEventListener('change',schedule);density=undefined;
+      scheme?.removeEventListener('change',schedule);scheme=undefined;
       document.removeEventListener('scroll',schedule,true);document.removeEventListener('load',schedule,true);document.removeEventListener('visibilitychange',schedule);document.removeEventListener('transitionend',schedule,true);document.removeEventListener('focusin',schedule,true);document.removeEventListener('focusout',schedule,true);window.removeEventListener('resize',schedule);
       cancelAnimationFrame(frame);frame=0;clearTimeout(liveTimer);syncCanvasInkSource(null);
     }

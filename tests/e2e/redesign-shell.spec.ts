@@ -302,7 +302,7 @@ test('reduced motion changes the minimized pill bounds without slide or scale',a
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','1');
- await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+ await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);// MOTION-6 (#24): was 56 (Apple's 48 px compact circle).
  await expect(bar).toHaveCSS('pointer-events','none');
 });
 
@@ -317,7 +317,7 @@ test('the app reduce-motion setting changes pill bounds without motion',async({p
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','1');
- await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+ await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(48);// MOTION-6 (#24): was 56 (Apple's 48 px compact circle).
 });
 
 test('the island floats and minimizes on scroll on desktop too',async({page})=>{
@@ -424,9 +424,13 @@ test('the island clears the last game card when the library is scrolled to the e
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(844);
  const island=(await bar.boundingBox())!;
  const lastCard=(await page.locator('.game-card').last().boundingBox())!;
- // The 88 px bottom padding of #content keeps the last card clear of the bar.
+ // The bottom padding of #content keeps the last card clear of the bar.
  expect(island.y).toBeGreaterThanOrEqual(lastCard.y+lastCard.height);
- expect(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollPaddingBottom)).toBe('88px');
+ // MOTION-15 (#24): was '88px', the 64 px bar and a 12 px gap either side. 99b1fff9 sized the bar as Apple Music's, 60 css
+ // px, so the padding is the bar's own height and its two gaps: 84 px.
+ const gap=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabbar-gap')));
+ expect(Math.round(island.height)).toBe(60);
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollPaddingBottom)).toBe(`${Math.round(island.height)+2*gap}px`);
 });
 
 for(const width of [320,390]) test(`home fits ${width}px phones`,async({page})=>{
@@ -444,8 +448,15 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
- await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
+ // MOTION-15 (#24): was toBeHidden. 0742c32a (Charlie's video, 15.183 s: the tab bar never leaves the screen when a tab turns
+ // the page) keeps the Games bar up through a route's loading page in a handover, inert as its navigation is, its pill
+ // sprung to the tab it was sent to, until the page goes. So while Movies loads the bar stands on Movies and takes no input.
+ const chrome=page.locator('.app-navigation');
+ await expect(chrome).toHaveAttribute('data-route-handover','');
+ await expect(chrome).toHaveJSProperty('inert',true);
+ await expect(page.locator('.app-tabbar a.ui-tab[aria-current=page]')).toHaveAttribute('href','#/movies/browse/movie');
+ // The bar is up and not minimised, so its mini control stays unpainted (was toBeHidden, with the whole navigation hidden).
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('opacity','0');
  await expect(back).toHaveClass('game-button secondary');
  const loadingBox=await back.boundingBox();
  expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);

@@ -28,6 +28,108 @@
   /* Keep the selection's inner highlight from washing out the outer cap. */
   box-shadow:inset 0 1px 0 rgb(255 255 255 / .16),0 2px 5px rgb(0 0 0 / .04);
 }
+/* Apple Music's light bar and its menu circle are pale frost the art shows through (about .2 of it under a light grey),
+   so the light theme's navigation takes Apple's ink: mid-grey glyphs and dark grey labels (glass-ink.ts's MILK_INK),
+   which keep 4.5:1 over the frost's darkest case. The WebGL lens draws the same frost (section-lens.ts). */
+@media not (prefers-color-scheme:dark){
+  .section-navigation>:is(.arcade-glass,.arcade-glass-mini):not([data-glass=off]){
+    --glass-tint:rgb(236 236 238 / .8);--glass-frost:blur(20px);--glass-tone:saturate(1.2);
+    --glass-ink:#333336;--glass-icon-ink:#6e6e73;
+  }
+}
+/* The menu circle carries the bar's crisp light rim (section-lens.ts RIM_REST), about 1.2 css px: brightest along the
+   top and bottom, fainter at the sides. Over the light milk the default .19 white rim does not show. The bar's own CSS
+   material takes the same rim, so both keep one material: under the WebGL lens its CSS layers are hidden, and the
+   CSS fallback bar shows the lens's crisp rim.
+   Outside that rim Apple's light bar and search circle cast a soft shadow on the page: about -21 luma at the rim, -12
+   at 4 css px and gone by 15. The rim took the default's .5px dark ring with it, and the default 60px lift reads only
+   -3, so this lift (sigma 7.5px) is the circle's only edge on a white page. */
+@media not (prefers-color-scheme:dark){
+  .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off]){
+    --glass-rim-edge:inset 0 1.2px 0 rgb(255 255 255 / .95),inset 0 -1.2px 0 rgb(255 255 255 / .9),inset 0 0 0 1.2px rgb(255 255 255 / .4);
+    --glass-lift:0 0 15px rgb(0 0 0 / .18);
+  }
+}
+/* In the dark theme the circle's rim matches the bar's Apple profile (section-lens.ts RIM_REST): a line about 1 css px
+   deep, about +70 over the glass at its outer device px and gone within the next two, where the default rim and the
+   edge glow read +83, +82 and +61.
+   LOOK-12 (council on ea5b395c: no bright, thin lit rim): it follows the bar's brighter lit edge (RIM_REST, RIM_LIGHT),
+   its top line .31 of white, its foot .15 (RIM_FOOT) and a faint .08 ring lighting its sides, as the bar's ends now are:
+   over black (LOOK-12's device-px profile) its top lifts +71 and its foot +47 at the outer css px (the bar +70 and +40;
+   at .34 and .2, +76 and +54).
+   LOOK-19 (the circle's rim reads as one line with the bar's, as Apple's): at device px over black the circle's lines
+   were harder and brighter than the bar's own, a 2 px line peaking +93 at its top and +64 at its foot where the bar's end
+   rises over 3 px to +62 and +39 and fades over 3 more, and its sides +52 against the bar's ends +22. The top and foot
+   lines now fall 1.25 css px in with a 1.25 px blur (.25 and .10 of white), the side ring is off and the edge glow .45:
+   top +66 against the bar's +62 with the same light in its first 8 device px (264 against 261), foot +38 against +39,
+   sides +41 (tools-look19/radial19.py, RMS from the bar's profile 21.3 -> 10.2 levels).
+   LOOK-20 (the circle's sides glowed +41 against the bar's ends +22): a blurred inset line lights about half its alpha
+   along the whole edge, so at the sides the top and foot lines still gave about +30 and the edge glow's 1 px ring +10.
+   Each line now sits 2.25 px down (up) on a hole 1 px wider than the circle (spread -1px): its crescent at the top
+   (foot) stays 1.25 css px deep, and at the sides its blurred edge falls outside the circle, so the sides keep about
+   the glow ring's light, as the bar's ends (tools-look20/circ20.py, a model of these layers within 2 levels of the
+   captured circle). */
+@media (prefers-color-scheme:dark){
+  .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off]){
+    --glass-rim-edge:inset 0 2.25px 1.25px -1px rgb(255 255 255 / .25),inset 0 -2.25px 1.25px -1px rgb(255 255 255 / .10),inset 0 0 0 .75px rgb(255 255 255 / 0),0 0 0 .5px rgb(0 0 0 / .144);
+  }
+  .section-navigation>:is(.section-tabbar,.section-menu).arcade-glass:not([data-glass=off])>.ui-glass-glow{opacity:.45}
+}
+/* LOOK-6 (Charlie, 23:10Z: the dark look read very badly beside Apple's): in the dark theme the section navigation's CSS
+   glass is the WebGL bar's own dark see-through smoke (section-lens.ts DARK_GLASS, Apple's dark still and video: black
+   32, the art at 32 + .875 of itself, about four fifths of its colour). .125 of white over the art is exactly that line,
+   and saturate(.92) keeps .875 x .92 = .8 of the colour. So the menu circle, the compact circle and the CSS fallback bar
+   are one glass family with the lens's bar; #92's dark .36 veil left the circle about 3 over black beside the bar's 32.
+   Glass off and reduced transparency stay opaque (theme.css), and a glass-off bar's compact circle keeps the .36 veil.
+   LOOK-9: the lens's smoke rolls its highlights off (DARK_GLASS.zw), so white art reads 229 under the bar, where this
+   straight line read 255 under the circle beside it. Each filter step clamps to 0..1, so brightness(1.1283) then
+   brightness(.8863) caps the art at 226 and leaves everything under it as it was: white reads .875 x 226 + 32 = 229.6
+   under the circle, as under the bar, and black and mid art keep the line (32, #777 136). Between 128 and 226 the
+   bar's own roll-off sits up to about 15 under this cap.
+   LOOK-11: so the circle read up to 16 over the bar beside it (226 art: 230 against 214). CSS filter steps compose to
+   one slope, but a layer over the smoke whose backdrop filter caps it and then keeps only part of that, opacity(.291),
+   mixes the capped and the plain smoke: the line bends at 160 art (KNEE, brightness(1.5773) then (.634), .634 of the
+   art) to .709 of its slope, a two-segment fit of the bar's square roll-off within about 2 levels from black to white
+   (32, #777 136, 226 213 against the bar's 214, white 231 against 229), so the cap above goes. The tint's own layer
+   carries it, so the knee sits between the frosted art and the tint. That needs the frost on the lens layer under it
+   (data-glass=backdrop, beside the WebGL bar): a frost on the glass itself (data-glass=frost, the CSS fallback, where
+   the circle sits beside the CSS bar) makes it the tint's backdrop root, so there both keep the cap. The compact circle
+   is the bar itself drawn small (its button only holds the glyph), so it already reads as the bar. */
+@media (prefers-color-scheme:dark){
+  .section-navigation>.arcade-glass:not([data-glass=off]),
+  .section-navigation>.section-tabbar:not([data-glass=off])~.arcade-glass-mini{
+    --glass-tint:rgb(255 255 255 / .125);--glass-tone:saturate(.92) brightness(1.1283) brightness(.8863);
+  }
+  .section-navigation>.arcade-glass[data-glass=backdrop]{--glass-tone:saturate(.92)}
+  .section-navigation>.arcade-glass[data-glass=backdrop]::before{
+    -webkit-backdrop-filter:brightness(1.5773) brightness(.634) opacity(.291);
+    backdrop-filter:brightness(1.5773) brightness(.634) opacity(.291);
+  }
+  /* LOOK-26 (council-6eaf6223 Opus miss 2: over bright art the menu circle read as an opaque copper disc with a bold,
+     outlined glyph, where Apple's search glass shows the poster through it and its white glyph has no outline). Beside the
+     WebGL bar the circle takes the bar's see-through frost, not the CSS bar's 12px. Apple's dark bar keeps .40 of the art's
+     detail over bright art at css px (Charlie's video at 32.5 s, read like for like against the same art at 33.3 s;
+     tools-look20/bright). blur(3px) keeps .40 over the face poster under the circle (movies-bright-rest-dark; a model of
+     these layers that reads the capture at 12px within 0.9 levels). blur(12px) kept .12, the flat disc. The CSS fallback,
+     whose bar is CSS frost, keeps 12px. Under the glyph the smoke stops at 149 grey's luminance by a uniform dim
+     (glass-ink.ts menuInk sets --menu-glass-dim and data-glass-dim), so the art keeps its colour. That layer fades out
+     from 55% to 80% of the radius, so the rim, the sides and the arc stay the bar's.
+     LOOK-27 (council on 874125ae: over a white title the circle read as a glossy black marble with a hot highlight at its
+     top left): the dim stopped at 55-80% of the radius, so the title's strokes in the outer ring stayed at their own
+     brightness around a dimmed middle. The dim now runs to 86% and fades by 95%, so the whole disc takes the same smoke
+     and only the lit rim line (its outer 1.25 css px, about 4.5% of the radius) and the arc above it stay bright. */
+  .section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu.arcade-glass[data-glass=backdrop]:not([data-pressing]){--glass-frost:blur(3px)}
+  .section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.section-menu.arcade-glass[data-glass=backdrop][data-glass-dim]::after{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    -webkit-backdrop-filter:brightness(var(--menu-glass-dim,1));backdrop-filter:brightness(var(--menu-glass-dim,1));
+    -webkit-mask:radial-gradient(closest-side,#000 86%,transparent 95%);mask:radial-gradient(closest-side,#000 86%,transparent 95%);
+  }
+}
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
+  .section-navigation>.section-menu.arcade-glass::after{display:none}
+}
+/* Apple Music's side margins: about 16 css px at 390, not 12, with an 8 px gap to the menu circle. */
+@media (min-width:360px){.section-navigation.section-navigation{--home-inset:16px;--home-gap:8px}}
 .section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
   background:none;border:0;box-shadow:none;
 }
@@ -40,29 +142,331 @@
   -webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
   backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
 }
+/* MOTION-7: Charlie's video expands the compact bar back to full width in about 120 ms (38.35-38.47 s), so the expanded
+   bar takes its box on a 120 ms drawer curve (was 300 ms); the minimise has its own 150 ms below. */
 .section-navigation>.section-tabbar.ui-tabbar{
   width:min(calc(100vw - var(--home-inset) - var(--home-inset) - var(--home-action) - var(--home-gap)),calc(440px - var(--home-action) - var(--home-gap)));
   right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
-  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+  transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
+/* Keep vertical scrolling and pinch zoom native while the pill tracks horizontal drags. */
+.section-tabbar .ui-tab{touch-action:pan-y pinch-zoom}
+/* MOTION-7: the video's tabs come back while the bar is still opening (38.37-38.44 s of a 120 ms expand), so the expand
+   fades them in over 90 ms from 40 ms, where they waited 140 ms, past the end of the morph. */
+.section-navigation>.section-tabbar .ui-tab{transition:transform var(--t-fast) var(--ease),opacity 90ms var(--ease) 40ms}
+.section-tabbar.ui-tabbar::after{
+  --section-pill-bleed:2px;
+  /* Apple Music's selected tab fills its bar but for an even 4px above and below: 52 of its 60 css px (.87 of the height;
+     the light still's pill is 51.9 in a 59.8 bar, the dark still's about 53 in 61.5). */
+  top:4px;bottom:4px;
+  width:calc(var(--ui-pill-w, 0px) + 2 * var(--section-pill-bleed));
+  translate:calc(var(--ui-pill-x, 0px) - var(--section-pill-bleed)) 0;
+  transition-duration:240ms,240ms,120ms;
+}
+/* Charlie's video: the clear lens is up one frame after the press (19.650-19.667 s), so the press swell takes two. */
+.section-tabbar.ui-tabbar[data-pressing]::after{transition-duration:0ms,34ms,120ms}
+/* A release snaps the pill to its tab on a damped spring (damping .64): one overshoot of about 7% of the travel at 200 ms,
+   a faint recoil of about .5% at 420 ms, settled by 460 ms, inside the 500 ms the settle checks wait. The press swell
+   rides the same spring, and the section lens's raised bubble falls with it (glass.ts keeps the selection stretch off a
+   releasing pill), so the bubble eases down on every release, the ones that change the tab too. */
+@supports (transition-timing-function:linear(0,1)){
+  .section-tabbar.ui-tabbar:not([data-pressing])::after{
+    transition-duration:460ms,460ms,120ms;
+    transition-timing-function:linear(0, .035, .125, .245, .379, .514, .641, .753, .847, .923, .981, 1.023, 1.05, 1.066, 1.072, 1.072, 1.067, 1.059, 1.05, 1.04, 1.03, 1.021, 1.014, 1.008, 1.003, 1, .997, .995, .995, .996, .997, .999, 1),linear(0, .035, .125, .245, .379, .514, .641, .753, .847, .923, .981, 1.023, 1.05, 1.066, 1.072, 1.072, 1.067, 1.059, 1.05, 1.04, 1.03, 1.021, 1.014, 1.008, 1.003, 1, .997, .995, .995, .996, .997, .999, 1),var(--ease);
+  }
+}
+/* Charlie's video (b24s/MEASUREMENTS.md, b24-apple stills.json): the whole bar grows about its centre while a press lasts,
+   349x62 -> 365x66 (x1.046 wide, x1.065 tall), a frame after the press (19.650 -> 19.667 s). After the lift it is back
+   within 1 px by about 134 ms and recoils once by about 1 px (15.183 -> 15.367 s): here a damped spring, within 1 px by
+   112 ms, a .8 px recoil at 175 ms, still by 300 ms. glass.ts keeps a drag 1:1 with the finger on the grown bar. The
+   section bar's minimise and hide keep scale 1, so its origin can sit at the centre, as the video's growth does. */
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:not([data-hidden=true]):not([data-minimized=true]){
+    transform-origin:50% 50%;
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 200ms var(--ease-out);
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
+      scale 300ms linear(0, .039, .136, .265, .405, .542, .668, .776, .865, .935, .986, 1.021, 1.043, 1.055, 1.059, 1.057, 1.051, 1.044, 1.036, 1.028, 1.02, 1.014, 1.008, 1.004, 1);
+  }
+  /* MOTION-7: every frame of the video's press (19.587-19.920 s, sub-px bar edges) shows the bar growing on a spring, not
+     in one frame: it starts about a frame after the touch, is half grown by about 45 ms, reaches its size at about 110 ms,
+     overshoots its growth by about 10% at 160 ms (363.2 against 362.0 css px) and settles by about 300 ms. Here a damped
+     spring (damping .6, 24 rad/s) over 360 ms, where it was a 34 ms ease. The lens still rises on the pill's own swell. */
+  :root:not(.reduce-motion) .section-navigation>.section-tabbar.ui-tabbar:is([data-pressing],[data-pill-dragging]):not([data-hidden=true]):not([data-minimized=true]){
+    scale:1.046 1.065;
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),scale 100ms var(--ease-out);
+    transition:width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-height 120ms var(--ease-drawer),left 120ms var(--ease-drawer),bottom 120ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out),
+      scale 360ms linear(0, .026, .094, .19, .303, .422, .54, .651, .752, .84, .914, .974, 1.02, 1.054, 1.076, 1.089, 1.095, 1.094, 1.089, 1.081, 1.071, 1.06, 1.049, 1.038, 1.028, 1.02, 1.012, 1.007, 1.002, .999, .997, .996, .996, .996, .997, .998, 1);
+  }
+}
+.section-tabbar.arcade-glass.ui-tabbar:not([data-glass=off])::after{
+  box-shadow:inset 0 .5px 0 rgb(255 255 255 / .22),inset 0 -2px 3px rgb(0 0 0 / .13);
+}
+/* The C30 accent, rim and pill belong to the lens and its CSS blur fallback (context loss, a rejected crop, ?glass=blur).
+   Glass-off bars (more contrast, reduced transparency, forced colours) are opaque and keep the plain --glass-ink selection. */
+.section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
+  --section-pill-accent:#ff375f;
+  --glass-icon-ink:var(--section-pill-accent);
+  --section-pill-ink-halo:rgb(0 0 0 / .85);
+}
+/* C30 shows every tab's 24px filled glyph in both themes and in every glass mode, not the 16px outline. Apple Music's
+   glyph ink stands about .39-.40 of the bar's height (23-24 css px of its 60), so the 24px box draws at 32.4px: a
+   transform, which leaves the drag zoom's own scale and the layout box alone, with the margin it needs and the column's
+   gap closed, labels kept. */
+.section-tabbar .ui-tab{padding-block:0;gap:0}
+.section-tabbar .ui-tab .ui-icon{width:24px;height:24px;margin-block:4px;transform:scale(1.35)}
+.section-tabbar .ui-nav-icon .ui-icon-line{display:none}
+.section-tabbar .ui-nav-icon .ui-icon-fill{display:inline}
+/* LOOK-5 (owner: the dark bar's heavy white icons): at that size every filled twin is a block of 362-534 css px^2 of ink,
+   where Apple's unselected New, Radio and Library hold 297, 146 and 307 (its light still; Radio's strokes about 2.3 css
+   px) and its selected Home 364. In white on the dark smoke they read as solid slabs, so the dark theme's unselected tabs
+   draw theme.css's 1.75 line twin (a 2.4 css px stroke, 191-300 px^2) and the tab carrying the accent keeps the filled
+   one (Games 377). The light theme keeps C30's grey filled glyphs. */
+@media (prefers-color-scheme:dark){
+  .section-tabbar .ui-tab:not([aria-current=page],[aria-pressed=true]) .ui-nav-icon .ui-icon-line{display:inline}
+  .section-tabbar .ui-tab:not([aria-current=page],[aria-pressed=true]) .ui-nav-icon .ui-icon-fill{display:none}
+}
+/* C30 keeps the accent inside the glyph. A soft rim, not a hard outline, still separates it from bright glass. */
+.section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
+  filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo)) drop-shadow(0 0 .75px var(--section-pill-ink-halo));
+}
+.section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
+  color:var(--section-pill-accent);font-weight:600;paint-order:normal;
+  text-shadow:0 0 1px var(--section-pill-ink-halo),0 0 1px var(--section-pill-ink-halo);
+}
+/* The smoked resting pill hides that rim. Over the milky press lens and the moving bar it read as a doubled
+   dark outline, so press and drag draw it once, and only where glass-ink.ts found bright art under the label. */
+.section-tabbar:not([data-glass=off])[data-pressing] .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{
+  filter:drop-shadow(0 0 .75px var(--section-pill-ink-halo));
+}
+.section-tabbar:not([data-glass=off])[data-pressing] .ui-tab:is([aria-current=page],[aria-pressed=true])>span{
+  text-shadow:0 0 1px var(--section-pill-ink-halo);
+}
+.section-tabbar:not([data-glass=off])[data-pressing] .ui-tab:is([aria-current=page],[aria-pressed=true]):not(:has(>span[data-glass-halo])){
+  --section-pill-ink-halo:transparent;
+}
+@media(prefers-color-scheme:dark){
+  .section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-accent:#0099ff;
+  }
+  /* LOOK-10 (council on aa6359ee): the WebGL bar's resting pill is the bar's own smoke a step darker, deeper over bright
+     art as Apple's capsule (section-lens.ts PILL_STEP, LOOK-17), no longer held dark for the accent. Where #0099ff would fall under 2:1 against it,
+     glass-ink.ts gives the selected tab the nearest lighter or deeper blue that keeps it; press and drag keep theirs. */
+  .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-accent:var(--section-pill-adaptive-accent,#0a84ff);
+  }
+  /* LOOK-23 (council on 6eaf6223): over bright art the dark rest pill's .85 black rim read as a dark outline round navy
+     ink. Apple's selected ink has none (Charlie's video, 19.5 and 32.5 s): the lens keeps its interior dark (section-lens.ts
+     PILL_CAP), so the WebGL rest pill's accent stands on it without a rim. Press and drag keep theirs. */
+  .section-tabbar[data-section-lens=webgl]:not([data-glass=off]):not([data-pressing],[data-pill-dragging]) .ui-tab:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-ink-halo:transparent;
+  }
+}
+/* The light theme's accent sits on the pale grey pill, held lighter than the accent over any art: no dark rim. */
+@media not (prefers-color-scheme:dark){
+  .section-tabbar:not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){--section-pill-ink-halo:transparent}
+}
+/* On the CSS fallback the accent cannot reach 3:1 over bright art, smoked or milky pill alike. Where glass-ink.ts
+   flags bright art under the selected label, the tab keeps white ink with the full dark .85 rim, at rest and held. */
+@media not (prefers-contrast:more){@media (forced-colors:none){
+  .section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]):has(>span[data-glass-halo]){
+    --section-pill-accent:#fff;--section-pill-ink-halo:rgb(0 0 0 / .85);
+  }
+}}
+/* Without the lens the CSS pill carries the C30 selection: a smoked body a clear step darker than the frosted bar,
+   lit along its top edge. A press lifts it toward the milky lens the WebGL path draws. */
+.section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])::after{
+  background:rgb(0 0 0 / .34);
+  box-shadow:inset 0 .5px 0 rgb(255 255 255 / .3),inset 0 -.5px 0 rgb(255 255 255 / .1),inset 0 1px 6px rgb(0 0 0 / .25);
+}
+.section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])[data-pressing]::after{
+  background:rgb(255 255 255 / .2);
+  box-shadow:inset 0 .5px 0 rgb(255 255 255 / .55),inset 0 0 0 .5px rgb(255 255 255 / .25),0 4px 12px -4px rgb(0 0 0 / .35);
+}
+/* The light pill pulls the frost toward a 208 grey: about 18 under the bar over white art, and about 199 over the
+   black page (the frost's 189), where a .1 black step left the #ff375f accent at 1.5:1. It keeps 2.1:1 there. */
+@media not (prefers-color-scheme:dark){
+  .section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])::after{
+    background:rgb(208 208 212 / .55);box-shadow:inset 0 .5px 0 rgb(255 255 255 / .5);
+  }
+}
+/* Contrast guards, for a bar whose mode is not yet off: a light pill and the bar's own plain ink. Once glass.ts marks it
+   off, none of the accent rules above match and theme.css draws the opaque selection. */
+@media(prefers-contrast:more){
+  .section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])::after{background:rgb(255 255 255 / .16)}
+  .section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){--section-pill-accent:var(--glass-ink);--section-pill-ink-halo:transparent}
+}
+@media(forced-colors:active){
+  .section-navigation>.section-tabbar.arcade-glass.ui-tabbar:not([data-section-lens=webgl]):not([data-glass=off])::after{background:Canvas;box-shadow:none}
+  .section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true]){--section-pill-accent:CanvasText;--section-pill-ink-halo:transparent}
+  .section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]) .ui-tab:is([aria-current=page],[aria-pressed=true])>.ui-icon{filter:none}
+}
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-tabbar[data-pill-dragging][data-pill-ready]:not([data-hidden=true]):not([data-minimized=true])::after{
+    translate:calc(var(--ui-pill-drag-x) - var(--section-pill-bleed)) 0;
+    scale:var(--ui-pill-drag-scale);
+    transition:scale 100ms var(--ease-out),opacity 120ms var(--ease);
+  }
+  /* The raised lens, held or dragged, magnifies the icon and label under it (tabbar.ts). Release eases them back to 1. */
+  /* MOTION-8: the accent the raised lens hands from tab to tab, and its lighter press shade below, ease with the glyph's
+     growth (tabbar.ts glyphRise: a quadratic ease-out over 200 ms), as the video's glyph ink does (154 -> 193 luma over
+     about 200 ms, 19.60-19.80 s), where they stepped in one frame. */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl] .ui-tab>:is(.ui-icon,span){transition:scale 180ms var(--ease-out),opacity 180ms var(--ease-out),color 200ms cubic-bezier(.5,1,.89,1)}
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab>:is(.ui-icon,span){
+    scale:var(--section-lens-zoom,1);transition:color 200ms cubic-bezier(.5,1,.89,1);
+  }
+  /* MOTION-10: Charlie's video grows the pressed glyph by the raised lens and the bar's own growth together, x1.21 by about
+     217 ms (19.60-19.82 s, MOTION-7's frames), and its tab never shrinks. The generic press shrink (theme.css .ui-tab:active,
+     .95) took the bar's 1.046 back off the pressed tab (53.66 css px against the other tabs' 56.48 at the hold), so its glyph
+     grew only the lens's 1.16 (1.143 measured). While the lens is raised the pressed tab keeps its size, so the glyph grows
+     1.16 x 1.046 = 1.21 on screen. A keyboard press, reduced motion and the CSS fallback keep theme.css's rules. */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:active{transform:none}
+  /* Charlie's video (12.75-13.5 s): the tab under the raised bubble takes the selection's accent while the press lasts
+     and the current tab gives it up until the release (tabbar.ts data-lens-target). */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:is([aria-current=page],[aria-pressed=true]):not([data-lens-target]){
+    --section-pill-accent:var(--glass-ink);
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:not([aria-current=page],[aria-pressed=true]){
+    --glass-icon-ink:var(--section-lens-accent);
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:not([aria-current=page],[aria-pressed=true])>span{
+    color:var(--section-lens-accent);
+  }
+  /* LOOK-5: in the dark theme the filled glyph goes with the accent, so the release that makes the target current swaps
+     no glyph. */
+  @media (prefers-color-scheme:dark){
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target] .ui-nav-icon .ui-icon-line,
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:is([aria-current=page],[aria-pressed=true]):not([data-lens-target]) .ui-nav-icon .ui-icon-fill{display:none}
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target] .ui-nav-icon .ui-icon-fill,
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab:is([aria-current=page],[aria-pressed=true]):not([data-lens-target]) .ui-nav-icon .ui-icon-line{display:inline}
+  }
+}
+.section-tabbar{--section-lens-accent:#ff375f}
+/* LOOK-17: the WebGL bar's dark accent is Apple's dark system blue (#0a84ff, hue 210; the still reads 210.4). The CSS
+   fallback, glass off and the mini control keep #0099ff. */
+@media(prefers-color-scheme:dark){.section-tabbar{--section-lens-accent:#0a84ff}}
+/* MOTION-7: Charlie's video (19.60-19.80 s): the glyph under the rising lens turns lighter and translucent, the art under
+   the lens passing through it (its ink 154 -> 193 luma and its texture spread 11 -> 26 by 19.75 s), as it grows. So the
+   tab under the raised bubble takes its accent a sixth of the way to white and lets .15 of the lens through, easing in
+   with the glyph's growth and back on the release. */
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]>:is(.ui-icon,span){
+    opacity:.85;transition:opacity 150ms var(--ease-out),color 200ms cubic-bezier(.5,1,.89,1);
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]{
+    --section-lens-accent:color-mix(in srgb,#ff375f 84%,#fff);
+  }
+  :root:not(.reduce-motion) .section-tabbar:not([data-glass=off])[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-accent:color-mix(in srgb,#ff375f 84%,#fff);
+  }
+}
+@media(prefers-reduced-motion:no-preference) and (prefers-color-scheme:dark){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]{
+    --section-lens-accent:color-mix(in srgb,#0a84ff 84%,#fff);
+  }
+  :root:not(.reduce-motion) .section-tabbar:not([data-glass=off])[data-section-lens=webgl]:is([data-pill-dragging],[data-pressing]) .ui-tab[data-lens-target]:is([aria-current=page],[aria-pressed=true]){
+    --section-pill-accent:color-mix(in srgb,#0a84ff 84%,#fff);
+  }
+}
+/* The light theme's clear drag bubble shows the art under it unfrosted (section-lens.ts LENS_LIGHT_DRAG), so the grey ink of
+   a tab mostly under it turns white with a soft dark rim, as the video's glyphs over its art; the accent keeps its colour. */
+@media(prefers-reduced-motion:no-preference){@media not (prefers-color-scheme:dark){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]:not([data-lens-target]){
+    --glass-icon-ink:#fff;--section-pill-accent:#fff;
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]:not([data-lens-target])>span{color:#fff}
+  /* Keep the crossing label's soft dark rim through the light lens's release.
+     Its white ink is still easing to grey while the raised face exposes bright art. */
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-pill-dragging],[data-pressing]) .ui-tab:not([aria-current=page],[aria-pressed=true])>span{
+    transition:scale 180ms var(--ease-out),opacity 180ms var(--ease-out),color 200ms cubic-bezier(.5,1,.89,1),filter 180ms linear;
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl][data-pill-dragging] .ui-tab[data-lens-under]>:is(.ui-icon,span){
+    filter:drop-shadow(0 0 1px rgb(0 0 0 / .55));
+  }
+}}
+/* MOTION-44: one tight keyline under the moving label's original fill,
+   not a blurred or displaced second word. The existing lift removes it at rest. */
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink]>span{
+    -webkit-text-stroke-width:calc(.7px * var(--section-raised-ink));
+    -webkit-text-stroke-color:rgb(20 16 25 / .84);
+    paint-order:stroke fill;
+    text-shadow:none;
+    filter:none;
+  }
+  :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink=light]>span{
+    -webkit-text-stroke-color:rgb(255 255 255 / .72);
+  }
+  /* Over bright dark-theme art, a single soft halo helps the thinner edge.
+     Fade it with the lift so it cannot linger into the resting accent. */
+  @media(prefers-color-scheme:dark){
+    :root:not(.reduce-motion) .section-tabbar[data-section-lens=webgl]:not([data-glass=off]) .ui-tab[data-raised-ink=dark]>span[data-glass-halo]{
+      -webkit-text-stroke-width:calc(.5px * var(--section-raised-ink));
+      filter:drop-shadow(0 0 .8px rgb(0 0 0 / calc(.8 * var(--section-raised-ink))));
+    }
+  }
+}
+/* MOTION-6 (#24): Apple Music's compact bar (Charlie's video, 34.25 s) is separate glass pieces on the bar's own centre
+   line: the selected tab as a 48 css px circle 27.7-75.6 of 390 (about 7 px in from the bar's leading end), the mini
+   player, and the search circle, 48 px, 314.6-362.5. Ours is the selected tab's circle and the menu circle at those sizes
+   and places (12 px in from the navigation's ends, centred on the 60 px bar's line), with no accessory. The video's
+   minimise (33.65-33.80 s) contracts the bar toward its leading end while search moves out to its circle, and its expand
+   (38.35-38.47 s) reverses that. MOTION-7: every frame of those spans puts the minimise's contraction at about 150 ms
+   (the bar's trailing end 389 -> 262 by 33.687, 166 by 33.737, the 48 px circle by 33.803) and the expand at about 120 ms
+   (the circle opens from 38.353, full width by 38.437-38.470), where both pieces took 300 ms here. */
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
-  left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;
+  left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));width:48px;height:48px;min-height:48px;
+  bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom) + (var(--tabbar-h) - 48px)/2);
   --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;
-  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+  transition:width 150ms var(--ease-drawer),height 150ms var(--ease-drawer),min-height 150ms var(--ease-drawer),left 150ms var(--ease-drawer),bottom 150ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
 }
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true])::before,
 .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]) :is(.ui-glass-lens,.ui-glass-glow){opacity:1;transition:none}
 .section-navigation>.ui-tabbar-mini{
   background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
-  left:max(var(--home-inset),calc((100vw - 440px)/2));
+  left:max(var(--home-inset),calc((100vw - 440px)/2));width:48px;height:48px;
+  bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom) + (var(--tabbar-h) - 48px)/2);
   translate:0 0;scale:1;color:var(--glass-ink);
-  transition:left 300ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
+  transition:left 120ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
 }
-.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left));transition:left 300ms var(--ease-drawer),opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
-.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left))}
-/* Hidden companions have no filtered box for WebKit to leave on its compositor. */
-.section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu{width:0;height:0;min-width:0;min-height:0;overflow:hidden}
-.section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu>.ui-glass-lens{display:none}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left));transition:left 150ms var(--ease-drawer),opacity 120ms var(--ease) 40ms,translate 180ms var(--ease-out)}
+/* MOTION-7: the video's selected glyph stays in sight through the whole minimise (33.65-33.80 s), so the circle's copy of it
+   fades in while the bar's own glyph fades out (80 ms), not after the morph (was a 160 ms delay). */
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini .ui-icon{transition:opacity 100ms var(--ease) 30ms}
+/* MOTION-7: Apple's compact circle keeps the selected tab's accent glyph (Charlie's video, 34.25 s: the Home glyph in the
+   blue of its selected tab), where ours drew the bar's grey ink. It takes the selected tab's accent and halo: the dark
+   theme's #0099ff with its soft .85 dark rim (5.5:1 over the black page's smoke). The light theme's accent sits on the
+   bare frost here, not on the pill held at 200/255: about 188 over black art, where #ff375f reads 1.85:1, under the
+   accent's 2:1 floor (MOTION-8, #24 review of MOTION-7). So the circle draws the accent a little deeper, #e02a52, 2.4:1
+   on that frost and 2:1 down to a frost of about 172, with the thin dark rim on top. Glass off (more contrast, reduced
+   transparency, forced colours) keeps the plain ink (theme.css). */
+.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#e02a52;--section-mini-halo:rgb(0 0 0 / .6)}
+@media(prefers-color-scheme:dark){.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#0099ff;--section-mini-halo:rgb(0 0 0 / .85)}}
+/* LOOK-18: beside the WebGL bar the compact circle copies that bar's dark accent, Apple's #0a84ff (clear-ink-adaptation :38:
+   the copy keeps the selected icon's own colour); beside the CSS fallback it keeps #0099ff, as that bar does. */
+@media(prefers-color-scheme:dark){.section-navigation>.section-tabbar[data-section-lens=webgl]:not([data-glass=off])~.ui-tabbar-mini{--glass-icon-ink:#0a84ff}}
+.section-navigation>.section-tabbar:not([data-glass=off])~.ui-tabbar-mini .ui-icon{filter:drop-shadow(0 0 .75px var(--section-mini-halo)) drop-shadow(0 0 .75px var(--section-mini-halo))}
+/* As the selected tab on the CSS fallback: where glass-ink.ts flagged bright art under its label, white ink, full rim. */
+@media not (prefers-contrast:more){@media (forced-colors:none){
+  .section-navigation>.section-tabbar:not([data-section-lens=webgl]):not([data-glass=off]):has(.ui-tab:is([aria-current=page],[aria-pressed=true])>span[data-glass-halo])~.ui-tabbar-mini{
+    --glass-icon-ink:#fff;--section-mini-halo:rgb(0 0 0 / .85);
+  }
+}}
+.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + 12px + env(safe-area-inset-left))}
+/* Hidden companions have no filtered box for WebKit to leave on its compositor. MOTION-6: the compact bar keeps the menu
+   circle as its second piece, Apple's search circle: 48 px (style.css --home-action), centred on the bar's line, its
+   trailing edge 12 px in from the navigation's (362 of 390, Apple 362.5), so only the full hide removes it. */
+.section-navigation:has(.section-tabbar[data-hidden=true]):not(:has(:focus-visible))>.section-menu{width:0;height:0;min-width:0;min-height:0;overflow:hidden}
+.section-navigation:has(.section-tabbar[data-hidden=true]):not(:has(:focus-visible))>.section-menu>.ui-glass-lens{display:none}
+.section-navigation:not(:has(:focus-visible)):has(>.section-tabbar[data-minimized=true]:not([data-hidden=true]))>.section-menu{right:12px}
+@media(prefers-reduced-motion:no-preference){
+  :root:not(.reduce-motion) .section-navigation>.section-menu:not([data-pressing]){
+    transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease),width 120ms var(--ease-drawer),height 120ms var(--ease-drawer),min-width 120ms var(--ease-drawer),margin-top 120ms var(--ease-drawer),right 120ms var(--ease-drawer);
+  }
+  /* MOTION-7: the menu circle moves out to its compact place on the minimise's 150 ms, and back on the expand's 120 ms. */
+  :root:not(.reduce-motion) .section-navigation:not(:has(:focus-visible)):has(>.section-tabbar[data-minimized=true]:not([data-hidden=true]))>.section-menu:not([data-pressing]){
+    transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease),width 150ms var(--ease-drawer),height 150ms var(--ease-drawer),min-width 150ms var(--ease-drawer),margin-top 150ms var(--ease-drawer),right 150ms var(--ease-drawer);
+  }
+}
 .section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible))>.ui-glass-lens{display:none}
 .section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible)){-webkit-backdrop-filter:none;backdrop-filter:none}
 @media(prefers-reduced-motion:reduce){
@@ -80,4 +484,25 @@
   .section-navigation>.section-tabbar.ui-tabbar{padding-block:4px}
   .section-navigation>.section-tabbar.ui-tabbar .ui-tab{padding-block:2px;gap:0;font-size:9px}
   .section-navigation>.section-tabbar.ui-tabbar .ui-tab .ui-icon{width:20px;height:20px}
+}
+
+.section-tabbar>.section-lens{
+  position:absolute;pointer-events:none;z-index:-1;
+  left:calc(0% - var(--section-lens-pad-x, 0%));top:calc(0% - var(--section-lens-pad-y, 0%));
+  width:calc(100% + 2 * var(--section-lens-pad-x, 0%));height:calc(100% + 2 * var(--section-lens-pad-y, 0%));
+  visibility:hidden;
+}
+.section-navigation>.section-tabbar.ui-tabbar[data-section-lens=webgl]{
+  background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
+}
+.section-tabbar[data-section-lens=webgl]>.section-lens{visibility:inherit}
+.section-tabbar[data-section-lens=webgl] :is(.ui-glass-lens,.ui-glass-glow),
+.section-tabbar[data-section-lens=webgl]::before,
+.section-tabbar[data-section-lens=webgl]::after{visibility:hidden}
+/* The WebGL lens hides the bar's CSS layers, the veil that carries the light theme's soft shadow among them (bb123a61), in
+   Chromium and WebKit alike, so the lens canvas casts it instead: a drop shadow of the capsule it draws, the same 15px
+   blur (sigma 7.5px) at .18 as the menu circle's. The bar's own box keeps no shadow, so the bar and circle keep one
+   material (navigation-material.spec). */
+@media not (prefers-color-scheme:dark){
+  .section-navigation>.section-tabbar[data-section-lens=webgl]>.section-lens{filter:drop-shadow(0 0 15px rgb(0 0 0 / .18))}
 }

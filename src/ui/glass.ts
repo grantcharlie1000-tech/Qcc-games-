@@ -125,6 +125,19 @@ export function glassMode(brands:readonly Brand[]|undefined,flags:{reducedTransp
 }
 
 const round=(value:number)=>Math.round(value*100)/100;
+// Apple Music's selected tab is a capsule PILL_SHARE of a tab's share of the bar wide, not one tab: Charlie's dark still
+// 84 of a 350 px five-tab bar (1.2), his video 82-84 of 347-349 (1.17-1.21), the light still 71.5 of about 260 for four
+// (1.1). It is centred on its tab, and an end tab's capsule stops at the bar's inset, the gap the pill keeps above and
+// below (Apple's Home pill sits 4 px inside the bar), so there it sits a few px in from its tab's centre.
+export const PILL_SHARE=1.2;
+// The pill's box for a tab of a section bar, in the same terms as the tab's own: left and width without the bleed the
+// stylesheet adds on each side. A bar too narrow to hold the capsule (a minimised bar) keeps the tab's own box.
+export function capsulePill(tab:{left:number;width:number},bar:{width:number;tabs:number;inset:number;bleed:number}):{left:number;width:number}{
+  const width=Math.max(tab.width+2*bar.bleed,PILL_SHARE*bar.width/Math.max(1,bar.tabs));
+  if(width+2*bar.inset>bar.width)return tab;
+  const centre=Math.min(Math.max(tab.left+tab.width/2,bar.inset+width/2),bar.width-bar.inset-width/2);
+  return {left:centre-width/2+bar.bleed,width:width-2*bar.bleed};
+}
 // The custom properties that place the pill over a tab. With no current tab only its visibility changes, so it fades
 // out where it was instead of sliding to the edge.
 export function pillVars(tab:{left:number;width:number}|null):Record<string,string>{
@@ -198,6 +211,7 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
+  const section=bar.classList.contains('section-tabbar');
   // Convex arcade lenses sample inward, so their compositor surface needs no
   // legacy outward margin. This also bounds live canvas controls to their own
   // area instead of filtering an extra 14px on all four sides every frame.
@@ -228,13 +242,59 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
-  let press:{tab:HTMLElement;pointerId:number;startX:number;left:number;transform:string;priority:string;dragging:boolean}|null=null;
+  let press:{
+    tab:HTMLElement;
+    pointerId:number;
+    // A drag's pill: its box when the drag began, and the span its centre may travel (in the bar's layout px); the finger's
+    // last x, and the pill centre's screen x when the drag began, which the pill keeps 1:1 with the finger from.
+    drag:{x:number;y:number;active:boolean;center:number;pill:{left:number;width:number};range:[number,number];finger:number;screen:number}|null;
+    // The bar's growth when the press began (section-navigation.css grows a pressed section bar about its centre).
+    growth:[number,number];
+    // Non-section bars keep the real control in place while the decorative pill moves (main mobile overhaul).
+    startX:number;left:number;transform:string;priority:string;dragging:boolean;
+  }|null=null;
+  let scrubbedPointer:number|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
   let settleTimer:ReturnType<typeof setTimeout>|undefined;
   let clickTimer:ReturnType<typeof setTimeout>|undefined;
 
   const current=()=>bar.querySelector<HTMLElement>(CURRENT);
+  // A section pill still easing out of a press (its swell or a drag's stretch) is on the release spring, and the section
+  // lens reads its raised bubble from that scale (section-lens.ts lift). The stretch's first '1 1' frame would win over
+  // the transition and drop the bubble in one frame, so a selection made by the release rides the spring instead.
+  const releasing=()=>section&&typeof CSSTransition==='function'&&bar.getAnimations({subtree:true}).some(animation=>
+    animation instanceof CSSTransition&&animation.transitionProperty==='scale'&&(animation.effect as KeyframeEffect|null)?.pseudoElement==='::after');
+  // The bar's on-screen size over its layout size, and the screen point that sits where a point sat in a press that began at
+  // another growth: the bar grows about its centre, so a point keeps its place in the layout by scaling its offset from it.
+  const growthOf=():[number,number]=>{
+    const box=bar.getBoundingClientRect();
+    return [box.width/(bar.offsetWidth||1)||1,box.height/(bar.offsetHeight||1)||1];
+  };
+  const throughGrowth=(x:number,y:number,from:[number,number]):[number,number]=>{
+    const box=bar.getBoundingClientRect(),[sx,sy]=growthOf();
+    const cx=box.left+box.width/2,cy=box.top+box.height/2;
+    return [cx+(x-cx)*sx/from[0],cy+(y-cy)*sy/from[1]];
+  };
+  // A section bar's pill is Apple's capsule (capsulePill): its inset is the pill's own top (section-navigation.css), so
+  // the ends keep the gap the pill keeps above and below. Every other bar's pill is its tab's box.
+  const pillBox=(tab:HTMLElement)=>{
+    const box={left:tab.offsetLeft,width:tab.offsetWidth};
+    if(!section)return box;
+    const style=getComputedStyle(bar,'::after');
+    const tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(entry=>entry.offsetWidth).length;
+    return capsulePill(box,{width:bar.clientWidth,tabs,inset:parseFloat(style.top)||0,bleed:parseFloat(style.getPropertyValue('--section-pill-bleed'))||0});
+  };
+  const tabAt=(x:number,y:number)=>document.elementFromPoint(x,y)?.closest('.ui-tab')??null;
+  // The tab whose centre is nearest a point along the bar, in its layout px.
+  const nearestTab=(center:number)=>{
+    let best:HTMLElement|null=null,gap=Infinity;
+    for(const tab of bar.querySelectorAll<HTMLElement>('.ui-tab')){
+      const away=Math.abs(tab.offsetLeft+tab.offsetWidth/2-center);
+      if(tab.offsetWidth&&away<gap){best=tab;gap=away;}
+    }
+    return best;
+  };
   // Moves the pill over a tab. The first placement after the bar has a size is instant, so the pill never slides in
   // from the edge. A bar with no size (detached, or hidden with display:none) is not measured, and its next placement is instant too.
   // A press moves the pill under the finger without settling it: the selection that the tap causes is still a move from the
@@ -242,19 +302,19 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const place=(tab:HTMLElement|null,animate:boolean,pressing=false)=>{
     if(disposed)return;
     if(!bar.offsetWidth){bar.removeAttribute('data-pill-ready');return;}
-    const box=tab?{left:tab.offsetLeft,width:tab.offsetWidth}:null;
+    const box=tab?pillBox(tab):null;
     for(const [name,value] of Object.entries(pillVars(box)))bar.style.setProperty(name,value);
     if(!bar.hasAttribute('data-pill-ready')){
       // Read the layout so the instant write is applied before transitions are switched on.
       void bar.offsetWidth;
       bar.setAttribute('data-pill-ready','');
-    }else if(animate&&box&&placedLeft!==null&&Math.abs(box.left-placedLeft)>0.5&&stretchable&&!reduceMotion()){
+    }else if(animate&&box&&placedLeft!==null&&Math.abs(box.left-placedLeft)>0.5&&stretchable&&!reduceMotion()&&!releasing()){
       stretch?.cancel();
       stretch=bar.animate([{scale:'1 1'},{scale:'1.18 .9',offset:.4},{scale:'1 1'}],{duration:340,easing:'ease-out',pseudoElement:'::after'});
     }
     if(box&&!pressing)placedLeft=box.left;
   };
-  // Nothing re-places the pill under a finger that is still down.
+  // Nothing re-places the pill under a finger that is still down, or while a post-drag settle is waiting to activate.
   const sync=(animate:boolean)=>{if(!press&&!settleTimer)place(current(),animate);};
   const stopSettle=(restore=true)=>{
     if(!settleTimer)return;
@@ -276,18 +336,20 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // began the press can end it, but a new primary press on the bar ends a stale one, since its pointer-up may never come.
   // A window that loses focus or a page that is hidden ends it too, for the same reason.
   const down=(event:PointerEvent)=>{
-    if(event.button!==0)return;
+    if(event.button!==0||(section&&event.pointerType==='touch'&&!event.isPrimary))return;
+    scrubbedPointer=null;
     stopSettle();
     if(press)release(null,true);
     clearClickGuard();
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    press={tab,pointerId:event.pointerId,startX:event.clientX,left:tab.offsetLeft,transform:tab.style.getPropertyValue('transform'),priority:tab.style.getPropertyPriority('transform'),dragging:false};
+    const drag=section&&!reduceMotion()?{x:event.clientX,y:event.clientY,active:false,center:0,pill:{left:0,width:0},range:[0,0] as [number,number],finger:event.clientX,screen:0}:null;
+    press={tab,pointerId:event.pointerId,drag,growth:growthOf(),startX:event.clientX,left:tab.offsetLeft,transform:tab.style.getPropertyValue('transform'),priority:tab.style.getPropertyPriority('transform'),dragging:false};
     // Keep the actual control in place while the decorative pill moves.
     tab.style.setProperty('transform','none','important');
     bar.setAttribute('data-pressing','');
+    document.addEventListener('pointermove',move,drag?{passive:true}:undefined);
     document.addEventListener('pointerup',up);
-    document.addEventListener('pointermove',move);
     document.addEventListener('dragstart',preventDrag);
     document.addEventListener('pointercancel',cancel);
     document.addEventListener('lostpointercapture',cancel);
@@ -295,9 +357,97 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     document.addEventListener('visibilitychange',hidden);
     if(!standalone)place(tab,false,true);
   };
+  const move=(event:PointerEvent)=>{
+    if(!press||event.pointerId!==press.pointerId)return;
+    if(!press.drag){
+      if(standalone)return;
+      const delta=(event.clientX-press.startX)*(bar.offsetWidth/bar.getBoundingClientRect().width);
+      if(!press.dragging&&Math.abs(delta)<1)return;
+      press.dragging=true;
+      // Disabling the CSS transition lets each pointer sample paint immediately.
+      bar.setAttribute('data-glass-dragging','');
+      const left=Math.max(0,Math.min(bar.offsetWidth-press.tab.offsetWidth,press.left+delta));
+      bar.style.setProperty('--ui-pill-x',`${round(left)}px`);
+      return;
+    }
+    const {drag,tab}=press;
+    const dx=event.clientX-drag.x;
+    // Leave taps and vertical pans alone until the pointer makes a horizontal move.
+    if(!drag.active&&(Math.abs(dx)<6||Math.abs(dx)<=Math.abs(event.clientY-drag.y)))return;
+    const width=tab.offsetWidth;
+    if(!width||!bar.clientWidth)return;
+    drag.finger=event.clientX;
+    const begins=!drag.active;
+    if(begins){
+      // The capsule leaves from where it sat and its centre travels between the end tabs' capsules (capsulePill), so a
+      // drag from an end tab, whose capsule sits a few px in from its tab, starts with no jump.
+      const tabs=[...bar.querySelectorAll<HTMLElement>('.ui-tab')].filter(entry=>entry.offsetWidth);
+      const centre=(box:{left:number;width:number})=>box.left+box.width/2;
+      drag.pill=pillBox(tab);
+      drag.range=[centre(pillBox(tabs[0]??tab)),centre(pillBox(tabs[tabs.length-1]??tab))];
+      const box=bar.getBoundingClientRect();
+      drag.screen=box.left+centre(drag.pill)*(box.width/(bar.offsetWidth||1)||1);
+    }
+    follow();
+    if(begins){
+      // The gesture takes over from any in-flight selection stretch.
+      stretch?.cancel();
+      drag.active=true;
+      bar.setAttribute('data-pill-dragging','');
+      followFrame=requestAnimationFrame(keepFollowing);
+    }
+  };
+  // The bar grows about its centre while it is pressed (section-navigation.css), on a spring that is still settling for
+  // about 300 ms (Charlie's video), so a layout px is a changing number of screen px. The pill's centre is placed from
+  // the finger in screen px: where it sat on screen when the drag began, plus the finger's travel since, taken back into
+  // the bar's layout px at its current scale. So it stays 1:1 with the finger on screen, and it is placed again on every
+  // frame of the drag, so the settling bar never carries it off the finger (MOTION-7: it drifted by up to 1.1 px).
+  let followFrame=0;
+  const follow=()=>{
+    const drag=press?.drag;
+    if(!drag)return;
+    const box=bar.getBoundingClientRect(),scale=box.width/(bar.offsetWidth||1)||1;
+    const want=(drag.screen+drag.finger-drag.x-box.left)/scale;
+    const center=Math.max(drag.range[0],Math.min(drag.range[1],want));
+    const travel=want-(drag.pill.left+drag.pill.width/2);
+    const deformation=Math.min(1,Math.abs(travel)/(press!.tab.offsetWidth||1));
+    const scaleX=1.1+.22*deformation,scaleY=1.14-.16*deformation;
+    drag.center=center;
+    const x=`${round(center-drag.pill.width/2)}px`,stretchScale=`${scaleX} ${scaleY}`;
+    if(bar.style.getPropertyValue('--ui-pill-drag-x')!==x)bar.style.setProperty('--ui-pill-drag-x',x);
+    if(bar.style.getPropertyValue('--ui-pill-drag-scale')!==stretchScale)bar.style.setProperty('--ui-pill-drag-scale',stretchScale);
+  };
+  const keepFollowing=()=>{
+    followFrame=0;
+    if(!press?.drag?.active)return;
+    follow();
+    followFrame=requestAnimationFrame(keepFollowing);
+  };
+  // A native link drag would stop pointermove on the tabs that use anchors.
+  const nativeDrag=(event:DragEvent)=>{
+    if(press?.drag)event.preventDefault();
+  };
+  // The browser can still click the starting tab when a scrub returns to it.
+  const suppressScrubClick=(event:MouseEvent)=>{
+    if(scrubbedPointer===null||event.detail===0||
+      (event instanceof PointerEvent&&event.pointerId!==scrubbedPointer))return;
+    scrubbedPointer=null;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  if(section){
+    bar.addEventListener('dragstart',nativeDrag);
+    bar.addEventListener('click',suppressScrubClick,true);
+  }
+  const clearDrag=()=>{
+    cancelAnimationFrame(followFrame);followFrame=0;
+    bar.removeAttribute('data-pill-dragging');
+    bar.style.removeProperty('--ui-pill-drag-x');
+    bar.style.removeProperty('--ui-pill-drag-scale');
+  };
   const stopListening=()=>{
-    document.removeEventListener('pointerup',up);
     document.removeEventListener('pointermove',move);
+    document.removeEventListener('pointerup',up);
     document.removeEventListener('dragstart',preventDrag);
     document.removeEventListener('pointercancel',cancel);
     document.removeEventListener('lostpointercapture',cancel);
@@ -306,11 +456,15 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   const release=(event:PointerEvent|null,cancelled:boolean)=>{
     if(!press)return;
-    const {tab,transform,priority,dragging}=press;
+    const {tab,drag,growth,transform,priority,dragging}=press;
     press=null;
     stopListening();
     if(transform)tab.style.setProperty('transform',transform,priority);
     else tab.style.removeProperty('transform');
+    if(drag?.active){
+      clearDrag();
+      if(!cancelled&&event)scrubbedPointer=event.pointerId;
+    }
     if(dragging){void bar.offsetWidth;bar.removeAttribute('data-glass-dragging');}
     bar.removeAttribute('data-pressing');
     if(dragging){
@@ -350,27 +504,58 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       return;
     }
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
-    const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
+    // The point is taken in the layout the press began in: the pressed bar has grown about its centre since, so a pointer
+    // that has not moved can sit over the next tab's grown edge (about 4 px at Games/Movies at 390 px).
+    const tapped=!drag?.active&&!cancelled&&!!event&&tabAt(...throughGrowth(event.clientX,event.clientY,growth))===tab;
+    // There the browser's own click follows the grown bar: a mouse's goes to the bar (the common ancestor of the two tabs)
+    // and selects nothing, and a touch's may go to the neighbour. The tap selects the tab it began on, and that click is
+    // dropped as a scrub's is.
+    if(tapped&&section&&tabAt(event!.clientX,event!.clientY)!==tab){
+      scrubbedPointer=event!.pointerId;
+      tab.click();
+    }
     // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current, and the
     // observer below follows the change. If the click changes nothing, the pill still sits under the tapped tab, so the next
     // frame puts it back under the current one. Anything else springs back to the current tab now.
     if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
+    // A section drag that lets go selects the tab under the lens, the one nearest the pill's centre, as a tap on it
+    // would, and the pill springs there, not back to the current tab. A cancelled drag, or one released outside the bar,
+    // springs back. The destination click waits for the pill to settle so a newer action can cancel it (main mobile overhaul).
+    if(drag?.active){
+      const bounds=bar.getBoundingClientRect();
+      const inside=!cancelled&&event&&event.clientX>=bounds.left&&event.clientX<=bounds.right&&event.clientY>=bounds.top&&event.clientY<=bounds.bottom;
+      const target=inside?nearestTab(drag.center):null;
+      if(target&&target!==current()){
+        place(target,true);
+        bar.addEventListener('click',guardClick,true);
+        clickTimer=setTimeout(clearClickGuard,600);
+        const key=['href','data-kind','data-action'].find(name=>target.hasAttribute(name));
+        const value=key?target.getAttribute(key):null;
+        const activate=()=>{
+          stopSettle(false);
+          const chosen=target.isConnected&&bar.contains(target)?target:key?[...bar.querySelectorAll<HTMLElement>('.ui-tab')].find(candidate=>candidate.tagName===target.tagName&&candidate.getAttribute(key)===value):null;
+          if(chosen&&!chosen.matches(':disabled,[aria-disabled="true"]'))chosen.click();else sync(true);
+        };
+        if(reduceMotion())activate();else{
+          settleTimer=setTimeout(activate,340);
+          document.addEventListener('pointerdown',interruptSettle,true);
+          document.addEventListener('keydown',interruptSettle,true);
+          document.addEventListener('click',interruptClick,true);
+          document.addEventListener('visibilitychange',interruptHidden);
+          window.addEventListener('hashchange',interruptSettle);
+          window.addEventListener('blur',interruptSettle);
+        }
+        return;
+      }
+      sync(true);
+      return;
+    }
     sync(true);
   };
   const guardClick=(event:MouseEvent)=>{if(event.isTrusted&&event.detail>0){event.preventDefault();event.stopImmediatePropagation();clearClickGuard();}};
   const clearClickGuard=()=>{clearTimeout(clickTimer);clickTimer=undefined;bar.removeEventListener('click',guardClick,true);};
-  const move=(event:PointerEvent)=>{
-    if(!press||event.pointerId!==press.pointerId||standalone)return;
-    const delta=(event.clientX-press.startX)*(bar.offsetWidth/bar.getBoundingClientRect().width);
-    if(!press.dragging&&Math.abs(delta)<1)return;
-    press.dragging=true;
-    // Disabling the CSS transition lets each pointer sample paint immediately.
-    bar.setAttribute('data-glass-dragging','');
-    const left=Math.max(0,Math.min(bar.offsetWidth-press.tab.offsetWidth,press.left+delta));
-    bar.style.setProperty('--ui-pill-x',`${round(left)}px`);
-  };
-  const up=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(event,false);};
   const preventDrag=(event:DragEvent)=>{if(press?.tab.contains(event.target as Node))event.preventDefault();};
+  const up=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(event,false);};
   const cancel=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(null,true);};
   const lost=()=>release(null,true);
   const hidden=()=>{if(document.hidden)release(null,true);};
@@ -506,7 +691,15 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
       bar.removeEventListener('pointerdown',down);
-      if(press){if(press.transform)press.tab.style.setProperty('transform',press.transform,press.priority);else press.tab.style.removeProperty('transform');}
+      if(section){
+        bar.removeEventListener('dragstart',nativeDrag);
+        bar.removeEventListener('click',suppressScrubClick,true);
+      }
+      if(press){
+        if(press.transform)press.tab.style.setProperty('transform',press.transform,press.priority);
+        else press.tab.style.removeProperty('transform');
+        if(press.drag?.active)clearDrag();
+      }
       stopListening();
       press=null;
       stopSettle(false);

@@ -2,11 +2,14 @@ import './modal-navigation.css';
 
 const CHROME='.section-navigation,.game-dock';
 const PANELS='dialog,[role="dialog"]';
+// A closing dialog's exit lasts 180-320 ms (theme.css, arcade-sheets.css); a slow frame stretches it. Looked at each frame
+// for at most this many frames, then left to the transition and close events.
+const EXIT_FRAMES=120;
 
 /** Navigation is a lower functional layer: never leave its paint under a sheet.
  * Watches presentation only; owners retain their actions, traps and Escape. */
 export function suppressNavigationUnderSheets():void{
-  let returnTo:HTMLElement|null=null,hidden=false,movedFocus=false,focusGeneration=0;
+  let returnTo:HTMLElement|null=null,hidden=false,movedFocus=false,focusGeneration=0,exitFrame=0,exitFrames=0;
   const remember=(event:Event)=>{
     const target=event.target instanceof Element?event.target.closest<HTMLElement>('a,button'):null;
     if(!hidden&&target?.closest(CHROME))returnTo=target;
@@ -50,6 +53,14 @@ export function suppressNavigationUnderSheets():void{
       movedFocus=false;
     }
     hidden=next;
+    // MOTION-16 (#24): a closed dialog that still paints is in its exit (its display and overlay transitions). Its
+    // transitionend or transitioncancel normally brings the last sync, but an exit that a busy frame creates and cancels
+    // before the next frame dispatches neither, and the navigation stayed hidden and inert under no sheet: Escape on the
+    // menu left the tab bar unusable (sheet-navigation :38, glass-menus :335). So while a closing dialog keeps it hidden,
+    // look again on the next frame.
+    if(next&&panels.some(panel=>panel instanceof HTMLDialogElement&&!panel.open)){
+      if(!exitFrame&&exitFrames<EXIT_FRAMES){exitFrames++;exitFrame=requestAnimationFrame(()=>{exitFrame=0;sync();});}
+    }else exitFrames=0;
   };
   const observer=new MutationObserver(records=>{
     if(records.some(record=>record.type==='childList'

@@ -16,7 +16,7 @@
 --sh-xl:0 20px 25px -5px #0000001a,0 8px 10px -6px #0000001a;
 --sh-2xl:0 25px 50px -12px #00000040;
 --ease:cubic-bezier(.4,0,.2,1);--ease-drawer:cubic-bezier(.32,.72,0,1);--t-fast:150ms;--t:200ms;--t-slow:300ms;
---page-max:1280px;--gutter:16px;--header-h:56px;--tabbar-h:64px;--tabbar-gap:12px;
+--page-max:1280px;--gutter:16px;--header-h:56px;--tabbar-h:60px;--tabbar-gap:12px;
 }
 @media (min-width:640px){:root{--gutter:24px}}
 /* Liquid Glass springs: linear() curves for a damped spring with about 3% (glass) and 5% (glass-pop) overshoot. Engines without linear() use the drawer curve. */
@@ -124,7 +124,11 @@
 .ui-tabbar[data-glass="backdrop"][data-hidden="true"]:not(:has(:focus-visible))::before{opacity:0;transition:opacity 160ms var(--ease)}
 .ui-tabbar[data-glass="backdrop"][data-hidden="true"]:not(:has(:focus-visible))::after{opacity:0;transition:opacity 160ms var(--ease)}
 /* Fine pointers get a faint lozenge. The current item keeps none, and colour and background change at once. */
-@media (hover:hover) and (pointer:fine){.ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}}
+@media (hover:hover) and (pointer:fine){
+  .ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}
+  /* The moving pill supplies the highlight during a scrub. */
+  .section-tabbar[data-pill-dragging] .ui-tab:hover{background-color:transparent}
+}
 /* Chromium only (glass.ts sets is-refracting): the lens's backdrop is blurred, then bent by the filter, so the rim bends what is behind the bar. Keep this above the fallbacks, which must win under reduced transparency. */
 .ui-tabbar.is-refracting .ui-glass-lens{-webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone)}
 /* The capsule: a button beside the bar, out of the tab order and hidden from assistive technology. It has the frost material in every lens mode, drawn

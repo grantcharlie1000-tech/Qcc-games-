@@ -60,20 +60,35 @@ for(const width of [390,1366])test(`Movies shares navigation geometry, actions a
  await page.keyboard.press('Enter');await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('#menu')).toHaveAttribute('data-glass-tone','dark');
  await page.keyboard.press('Escape');await expect(menu).toBeFocused();
  await page.evaluate(()=>{(document.activeElement as HTMLElement).blur();document.documentElement.dataset.input='pointer';});
- await bar.evaluate(e=>e.setAttribute('data-minimized','true'));await expect(menu).toHaveCSS('opacity','0');
+ await bar.evaluate(e=>e.setAttribute('data-minimized','true'));await expect(menu).toHaveCSS('opacity','1');// MOTION-6 (#24): was 0; the compact bar keeps the menu circle (Apple's search circle, video 34.25 s).
  await menu.focus();await expect(menu).toHaveCSS('opacity','1');await expect(bar).toHaveCSS('opacity','1');
  await page.keyboard.press('Enter');await page.locator('#search').fill('snake');await expect(page).toHaveURL(/#\/collection$/);await page.keyboard.press('Escape');await expect(page.getByRole('link',{name:'Play Snake',exact:true})).toBeVisible();
 });
 
 for(const mode of ['flag','WebKit brands'])test(`${mode} selects one fallback surface without blurring its companion`,async({page})=>{
- if(mode==='WebKit brands')await page.addInitScript(()=>Object.defineProperty(navigator,'userAgentData',{value:undefined}));
+ if(mode==='WebKit brands')await page.addInitScript(()=>{
+  Object.defineProperty(navigator,'userAgentData',{value:undefined});
+  // UA brands gate the SVG path. Simulate unavailable WebGL2 to exercise CSS frost.
+  const getContext=HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,...args:unknown[]){
+   if(args[0]==='webgl2')return null;
+   return Reflect.apply(getContext,this,args);
+  };
+ });
+ // The dark theme's smoked frost; the light theme's milky frost is pinned in liquid-glass.spec.ts. Since LOOK-6 (60108a24,
+ // Charlie's 23:10Z order to rebuild dark to Apple's dark) that smoke is Apple's see-through dark glass, .125 of white with
+ // saturate(.92) under the same 12px blur, not #92's saturate(1.4) brightness(.94): the bar and its menu circle each carry
+ // exactly one such frost (an SVG lens url only on the Safari path), one glass family, as clear-material-rules pins it.
+ // LOOK-9: that frost caps the art at 226 (brightness(1.1283) then brightness(.8863), each step clamped), so white reads
+ // 229.6 under the circle, as the WebGL bar's roll-off reads it, not 255.
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto(`/${mode==='flag'?'?glass=fallback':''}#/collection`);
  const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu');
  await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
  await expect(page.locator('.app-navigation .ui-scroll-edge')).toHaveCount(0);await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
  for(const object of [bar,menu]){
-  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(12px)');
-  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('saturate(1.4) brightness(0.94)');
+  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toMatch(/^blur\(12px\) (url\("#ui-glass-\d+"\) )?saturate\(0\.92\) brightness\(1\.1283\) brightness\(0\.8863\)$/);
+  await expect.poll(()=>object.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(255, 255, 255, 0.125)');
   expect(await object.locator('.ui-glass-glow').evaluate(e=>getComputedStyle(e).maskComposite.split(',').every(value=>value.trim()==='exclude'))).toBe(true);
  }
 });
@@ -109,15 +124,23 @@ for(const stuck of ['fetch','body','restore'])test(`a stalled catalog ${stuck} r
  await page.evaluate(()=>(window as any).__releaseCatalog());await expect(page.getByRole('heading',{name:'TV Shows',exact:true})).toBeVisible();await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
 });
 
+// The dark theme's smoked Menu keeps white ink over any content; the light theme's milky Menu takes Apple's grey ink.
+// LOOK-6 (60108a24, Charlie's 23:10Z order to rebuild dark to Apple's dark) made the dark circle the bar's see-through smoke,
+// .125 of white, not #92's .36 veil. glass-ink's menuInk keeps its white glyph at 4.5:1 over that smoke or gives it the dark
+// halo: black art reads 32 under it (about 16:1, plain), white art 255 (about 1:1, so the halo carries the glyph), and the
+// halo drops again once the art is dark. The glyph's own colour stays white throughout.
 for(const route of ['collection','movies'])test(`${route} fallback Menu icon stays white on black and white content`,async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto(`/?glass=fallback#/${route}`);const menu=page.locator(route==='collection'?'.app-menu':'.movies-menu');
  await expect(menu).toHaveAttribute('data-glass','frost');
  if(route==='movies')await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
  const art=await page.evaluateHandle(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none';(document.querySelector('.section-navigation:not(.app-navigation)')?.parentElement??document.body).append(art);return art;});
- for(const fill of ['#000','#fff','#000']){
+ for(const [fill,bright] of [['#000',false],['#fff',true],['#000',false]] as const){
   await art.evaluate((e,fill)=>{(e as HTMLElement).style.background=fill;},fill);
-  await expect(menu.locator('.ui-icon')).toHaveCSS('color','rgb(255, 255, 255)');
-  await expect(menu.locator('.ui-icon')).not.toHaveAttribute('data-glass-halo');
+  const icon=menu.locator('.ui-icon');
+  if(bright){await expect(icon,fill).toHaveAttribute('data-glass-halo');await expect(icon,fill).not.toHaveCSS('filter','none');}
+  else await expect(icon,fill).not.toHaveAttribute('data-glass-halo');
+  await expect(icon,fill).toHaveCSS('color','rgb(255, 255, 255)');
  }
 });
 
@@ -146,7 +169,9 @@ test.describe('live Movies motion preference',()=>{
  });
 });
 
+// The dark theme's smoked bar; the light theme's milky bar keeps its accent on the grey pill.
 for(const press of [false,true])test(`selected label and icon remain white over white artwork${press?' while pressed':''}`,async({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
  await page.goto('/?glass=fallback#/movies');await expect(page.locator('.movies-hero')).toBeVisible();
  await page.evaluate(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none;background:white';document.querySelector('.movies-view')!.append(art);});
  const tab=page.locator('.movies-mobile-nav [aria-pressed=true]');await tab.evaluate(e=>e.classList.add('contrast-target'));
