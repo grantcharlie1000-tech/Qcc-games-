@@ -1,0 +1,2439 @@
+{
+  "generatedAt": "2026-11-16T11:55:59.603Z",
+  "protocol": "capacity-v1",
+  "method": "Actual dev-browser providers and module Workers. A persistent Windows CPU-rate controller owns only a new browser tree. The queried416 hard cap is unchanged. Actual Worker OS PID/TID and job membership are proven before retained work. Three50M arithmetic loops per leg verify scheduled CPU duty with whole-job user+kernel accounting divided by summed actual loop wall duration; .20 is accounting tolerance alongside the fixed cap. Relative wall ratios are descriptive, with no6xthroughput or physical-core equivalence claim. Five alternating baseline/candidate repetitions per viewport and CPU condition. Startup, first replies, warm legal replies and host load remain separate. Phone viewport and touch are emulated. No physical-phone or production-runtime claim.",
+  "cpu": "Intel(R) Core(TM) i5-7300HQ CPU @ 2.50GHz",
+  "logicalCpuCount": 4,
+  "cpuRatePer10000": 416,
+  "configuredHostCpuFraction": 0.0416,
+  "nominalLogicalProcessorEquivalents": 0.1664,
+  "sources": {
+    "baseline": {
+      "sha256": "1309d6d6dee5072ce9c6c5e9b3c285f32dd1276da7fa5df6a83ed7b1302e5fc9",
+      "files": {
+        "brook.ts": "4fc4fdec6a2dbe8ebddb2da6e5ce553cacdb2c2eee536264575d5ecfa5e1b7c9",
+        "engine.ts": "c261a549bba247a272510b3391844c45c529d75a98bb3dc5d60250a1cf726721",
+        "engine.worker.ts": "8fffa72ade55568146ed3740f0627c7021b59d0a7f2d3b6397a31cfb04b23042",
+        "index.ts": "e0285e88340f3beca7c0840f20b925677ee0a75a69d9bc2daa7d08a7380f04f0",
+        "manifest.ts": "976bcf9e5f611717d9280c7c98b05e8e482290141c9058b3c84555e3bb5c6963",
+        "protocol.ts": "b0db4cf52f32bdd39050183e4b06054197bc02ddf8d5e3ca0588f2fa85909fbc",
+        "vendor/chess.d.ts": "29f09463bf7aedb31c93b4f692b9001eb5529b9dcc52829a1c0d5895e2f2e8f8",
+        "vendor/chess.js": "6ec742c5b513c309938634dbc29b7fa302b37da6e8adebcded0694290582a22a"
+      }
+    },
+    "candidate": {
+      "sha256": "979c29723d41bd18780ffb3a303e06a9c675ead10360ec9d547c689707ad43c7",
+      "files": {
+        "brook.ts": "21a16157aee3d0ec1068bc79176a5cde072ba922566c2b6dcba3474783c0a0b8",
+        "engine.ts": "683473e915ee0edef5e4743c89a147e5c5298e33ea450e8fec790829b1108dbf",
+        "engine.worker.ts": "8fffa72ade55568146ed3740f0627c7021b59d0a7f2d3b6397a31cfb04b23042",
+        "index.ts": "f31b5adfd2d737bff245d6b346ef414bc284ff68cf220194061fa7ece3b0c31f",
+        "manifest.ts": "bac9ad2a8e39d9107636e4634cd7f1a219fa201488cbd5deef40722bd605319b",
+        "perception.ts": "5347386ee841516a7a8c1fbf9bb5a47d9678dbd969692f597f741291a190f3b5",
+        "protocol.ts": "b0db4cf52f32bdd39050183e4b06054197bc02ddf8d5e3ca0588f2fa85909fbc",
+        "search-rules.ts": "baf80daec01ec15197dbc882b288b86666ffae202ae366d46f39befd74a7d63b",
+        "vendor/chess.d.ts": "29f09463bf7aedb31c93b4f692b9001eb5529b9dcc52829a1c0d5895e2f2e8f8",
+        "vendor/chess.js": "6ec742c5b513c309938634dbc29b7fa302b37da6e8adebcded0694290582a22a"
+      }
+    }
+  },
+  "corpus": {
+    "path": "tests/chess-ai/providers/benchmarks/hillclimb-900/human-900-validation-2.json",
+    "sha256": "70eac3a46d96dfc0b39c30d48760186a7348e0b529de8dc1b895b8614050ec5b",
+    "positions": [
+      {
+        "fen": "rnbqkb1r/ppp2pp1/4pn1p/6N1/8/3B4/PPP2PPP/RNBQ1RK1 w kq - 0 7",
+        "history": [
+          "e2e4",
+          "d7d5",
+          "g1f3",
+          "d5e4",
+          "f3g5",
+          "g8f6",
+          "d2d3",
+          "e4d3",
+          "f1d3",
+          "e7e6",
+          "e1g1",
+          "h7h6"
+        ],
+        "legal": [
+          "g5e6",
+          "g5f7",
+          "g5h7",
+          "g5h3",
+          "g5f3",
+          "g5e4",
+          "d3c4",
+          "d3b5",
+          "d3a6",
+          "d3e4",
+          "d3f5",
+          "d3g6",
+          "d3h7",
+          "d3e2",
+          "a2a3",
+          "a2a4",
+          "b2b3",
+          "b2b4",
+          "c2c3",
+          "c2c4",
+          "f2f3",
+          "f2f4",
+          "g2g3",
+          "g2g4",
+          "h2h3",
+          "h2h4",
+          "b1a3",
+          "b1c3",
+          "b1d2",
+          "c1d2",
+          "c1e3",
+          "c1f4",
+          "d1d2",
+          "d1e2",
+          "d1f3",
+          "d1g4",
+          "d1h5",
+          "d1e1",
+          "f1e1",
+          "g1h1"
+        ]
+      },
+      {
+        "fen": "r2qr1k1/1pp2p2/p2b2pn/8/3P2PP/P4Q2/1PP2P2/1K3R1R b - - 0 25",
+        "history": [
+          "d2d4",
+          "d7d5",
+          "e2e3",
+          "b8c6",
+          "d1h5",
+          "g8f6",
+          "h5h4",
+          "c8d7",
+          "c1d2",
+          "e7e6",
+          "f1e2",
+          "f8e7",
+          "h4g3",
+          "e8g8",
+          "h2h4",
+          "h7h6",
+          "e2d3",
+          "e7d6",
+          "g3f3",
+          "e6e5",
+          "d4e5",
+          "c6e5",
+          "f3e2",
+          "e5d3",
+          "e2d3",
+          "d6e5",
+          "b1c3",
+          "d5d4",
+          "e3d4",
+          "e5d6",
+          "g1e2",
+          "f8e8",
+          "e1c1",
+          "a7a6",
+          "c1b1",
+          "f6g4",
+          "d1f1",
+          "d7b5",
+          "d3h3",
+          "b5e2",
+          "c3e2",
+          "e8e2",
+          "d2h6",
+          "g4h6",
+          "h3f3",
+          "e2e8",
+          "a2a3",
+          "g7g6",
+          "g2g4"
+        ],
+        "legal": [
+          "a8b8",
+          "a8c8",
+          "a8a7",
+          "d8e7",
+          "d8f6",
+          "d8g5",
+          "d8h4",
+          "d8d7",
+          "d8c8",
+          "d8b8",
+          "e8f8",
+          "e8e7",
+          "e8e6",
+          "e8e5",
+          "e8e4",
+          "e8e3",
+          "e8e2",
+          "e8e1",
+          "g8h8",
+          "g8h7",
+          "g8g7",
+          "g8f8",
+          "b7b6",
+          "b7b5",
+          "c7c6",
+          "c7c5",
+          "f7f6",
+          "f7f5",
+          "a6a5",
+          "d6e7",
+          "d6f8",
+          "d6e5",
+          "d6f4",
+          "d6g3",
+          "d6h2",
+          "d6c5",
+          "d6b4",
+          "d6a3",
+          "g6g5",
+          "h6g4",
+          "h6f5"
+        ]
+      },
+      {
+        "fen": "2kr4/ppp1n3/4b2p/2b1Pp2/8/2P2N1P/PP4PK/R1Br1R2 w - - 7 20",
+        "history": [
+          "e2e4",
+          "e7e5",
+          "g1f3",
+          "b8c6",
+          "f1c4",
+          "h7h6",
+          "e1g1",
+          "d7d6",
+          "h2h3",
+          "g7g5",
+          "d2d4",
+          "g5g4",
+          "d4e5",
+          "g4f3",
+          "d1f3",
+          "c6e5",
+          "f3e2",
+          "e5c4",
+          "e2c4",
+          "c8e6",
+          "c4d3",
+          "d8d7",
+          "c2c3",
+          "e8c8",
+          "f2f4",
+          "f7f5",
+          "e4e5",
+          "d6e5",
+          "d3d7",
+          "d8d7",
+          "f4e5",
+          "f8c5",
+          "g1h2",
+          "g8e7",
+          "b1d2",
+          "h8d8",
+          "d2f3",
+          "d7d1"
+        ],
+        "legal": [
+          "c3c4",
+          "f3d4",
+          "f3g5",
+          "f3h4",
+          "f3g1",
+          "f3e1",
+          "f3d2",
+          "h3h4",
+          "a2a3",
+          "a2a4",
+          "b2b3",
+          "b2b4",
+          "g2g3",
+          "g2g4",
+          "h2g3",
+          "h2h1",
+          "a1b1",
+          "c1d2",
+          "c1e3",
+          "c1f4",
+          "c1g5",
+          "c1h6",
+          "f1f2",
+          "f1g1",
+          "f1h1",
+          "f1e1",
+          "f1d1"
+        ]
+      },
+      {
+        "fen": "r1b2rk1/pp3p1p/1q2pnp1/3p4/3N1P2/1PNB4/P4PPP/R2QR1K1 b - - 0 13",
+        "history": [
+          "d2d4",
+          "d7d5",
+          "g1f3",
+          "c7c5",
+          "c1f4",
+          "e7e6",
+          "c2c3",
+          "f8d6",
+          "e2e3",
+          "g8f6",
+          "f1d3",
+          "d6f4",
+          "e3f4",
+          "c5d4",
+          "c3d4",
+          "e8g8",
+          "e1g1",
+          "b8c6",
+          "b1c3",
+          "d8b6",
+          "b2b3",
+          "g7g6",
+          "f1e1",
+          "c6d4",
+          "f3d4"
+        ],
+        "legal": [
+          "a8b8",
+          "c8d7",
+          "f8e8",
+          "f8d8",
+          "g8h8",
+          "g8g7",
+          "a7a6",
+          "a7a5",
+          "h7h6",
+          "h7h5",
+          "b6c7",
+          "b6d8",
+          "b6c6",
+          "b6d6",
+          "b6c5",
+          "b6d4",
+          "b6b5",
+          "b6b4",
+          "b6b3",
+          "b6a5",
+          "b6a6",
+          "e6e5",
+          "f6d7",
+          "f6e8",
+          "f6h5",
+          "f6g4",
+          "f6e4",
+          "g6g5"
+        ]
+      },
+      {
+        "fen": "rnbq1rk1/ppp2pbp/3p1np1/4p3/2PPP2P/2N1B3/PP3PP1/R2QKBNR w KQ - 0 7",
+        "history": [
+          "d2d4",
+          "g8f6",
+          "c2c4",
+          "g7g6",
+          "b1c3",
+          "f8g7",
+          "h2h4",
+          "d7d6",
+          "e2e4",
+          "e8g8",
+          "c1e3",
+          "e7e5"
+        ],
+        "legal": [
+          "c4c5",
+          "d4d5",
+          "d4e5",
+          "h4h5",
+          "c3a4",
+          "c3b5",
+          "c3d5",
+          "c3e2",
+          "c3b1",
+          "e3f4",
+          "e3g5",
+          "e3h6",
+          "e3d2",
+          "e3c1",
+          "a2a3",
+          "a2a4",
+          "b2b3",
+          "b2b4",
+          "f2f3",
+          "f2f4",
+          "g2g3",
+          "g2g4",
+          "a1b1",
+          "a1c1",
+          "d1c2",
+          "d1b3",
+          "d1a4",
+          "d1d2",
+          "d1d3",
+          "d1e2",
+          "d1f3",
+          "d1g4",
+          "d1h5",
+          "d1c1",
+          "d1b1",
+          "e1d2",
+          "e1e2",
+          "f1e2",
+          "f1d3",
+          "g1e2",
+          "g1f3",
+          "g1h3",
+          "h1h2",
+          "h1h3"
+        ]
+      },
+      {
+        "fen": "3q3r/p5pp/4Rn2/5ppk/3b4/5Q2/PPr2PP1/5RK1 b - - 1 25",
+        "history": [
+          "e2e4",
+          "d7d5",
+          "g1f3",
+          "d5e4",
+          "f3e5",
+          "c8e6",
+          "d1e2",
+          "g8f6",
+          "b1c3",
+          "e6d5",
+          "e2b5",
+          "d5c6",
+          "e5c6",
+          "b8c6",
+          "f1c4",
+          "e7e6",
+          "b5b7",
+          "c6e5",
+          "c4b5",
+          "c7c6",
+          "b5c6",
+          "e5c6",
+          "b7c6",
+          "f6d7",
+          "c3e4",
+          "a8c8",
+          "c6b7",
+          "c8c2",
+          "e1g1",
+          "f8c5",
+          "d2d4",
+          "c5d4",
+          "c1g5",
+          "f7f6",
+          "e4d6",
+          "e8e7",
+          "d6f5",
+          "e6f5",
+          "a1e1",
+          "e7f7",
+          "b7d5",
+          "f7g6",
+          "h2h4",
+          "f6g5",
+          "e1e6",
+          "d7f6",
+          "h4h5",
+          "g6h5",
+          "d5f3"
+        ],
+        "legal": [
+          "f6g4",
+          "g5g4",
+          "h5g6",
+          "h5h6",
+          "h5h4"
+        ]
+      },
+      {
+        "fen": "r2qr2k/ppp4p/4b3/6p1/2Nn1Q2/2NP4/PPP2P1P/2K1RB2 w - - 0 20",
+        "history": [
+          "e2e4",
+          "e7e5",
+          "g1f3",
+          "b8c6",
+          "b1c3",
+          "g8f6",
+          "d2d3",
+          "d7d5",
+          "e4d5",
+          "f6d5",
+          "c1d2",
+          "d5f4",
+          "d2f4",
+          "e5f4",
+          "d1e2",
+          "f8e7",
+          "e1c1",
+          "e8g8",
+          "d1e1",
+          "f8e8",
+          "g2g3",
+          "g7g5",
+          "g3f4",
+          "g5f4",
+          "h1g1",
+          "g8h8",
+          "f3e5",
+          "c6d4",
+          "e2e4",
+          "c8e6",
+          "e5c4",
+          "e7h4",
+          "e4e5",
+          "f7f6",
+          "e5f4",
+          "h4g5",
+          "g1g5",
+          "f6g5"
+        ],
+        "legal": [
+          "c4a5",
+          "c4b6",
+          "c4d6",
+          "c4e5",
+          "c4e3",
+          "c4d2",
+          "c4a3",
+          "f4e5",
+          "f4d6",
+          "f4c7",
+          "f4f5",
+          "f4f6",
+          "f4f7",
+          "f4f8",
+          "f4g5",
+          "f4g4",
+          "f4h4",
+          "f4g3",
+          "f4f3",
+          "f4e3",
+          "f4d2",
+          "f4e4",
+          "f4d4",
+          "c3a4",
+          "c3b5",
+          "c3d5",
+          "c3e4",
+          "c3e2",
+          "c3d1",
+          "c3b1",
+          "a2a3",
+          "a2a4",
+          "b2b3",
+          "b2b4",
+          "f2f3",
+          "h2h3",
+          "h2h4",
+          "c1d2",
+          "c1d1",
+          "c1b1",
+          "e1e2",
+          "e1e3",
+          "e1e4",
+          "e1e5",
+          "e1e6",
+          "e1d1",
+          "f1e2",
+          "f1g2",
+          "f1h3"
+        ]
+      },
+      {
+        "fen": "rn2k1nr/ppp3pp/4p1p1/b3P2q/bPB4B/2PQ1N2/P4P2/RN2K3 b Qkq - 0 13",
+        "history": [
+          "e2e4",
+          "e7e6",
+          "f1c4",
+          "d8g5",
+          "g1f3",
+          "g5g2",
+          "h1g1",
+          "g2h2",
+          "d2d4",
+          "h2h5",
+          "c1g5",
+          "d7d6",
+          "e4e5",
+          "c8d7",
+          "d1d3",
+          "d7a4",
+          "g5h4",
+          "d6e5",
+          "g1g6",
+          "f7g6",
+          "d4e5",
+          "f8b4",
+          "c2c3",
+          "b4a5",
+          "b2b4"
+        ],
+        "legal": [
+          "b8d7",
+          "b8c6",
+          "b8a6",
+          "e8f8",
+          "e8f7",
+          "g8h6",
+          "g8f6",
+          "g8e7",
+          "a7a6",
+          "b7b6",
+          "b7b5",
+          "c7c6",
+          "c7c5",
+          "h7h6",
+          "g6g5",
+          "a5b6",
+          "a5b4",
+          "h5h6",
+          "h5h4",
+          "h5g4",
+          "h5f3",
+          "h5g5",
+          "h5f5",
+          "h5e5",
+          "a4b5",
+          "a4c6",
+          "a4d7",
+          "a4b3",
+          "a4c2",
+          "a4d1"
+        ]
+      }
+    ]
+  },
+  "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+  "browserProcessId": 6152,
+  "controllerSourceSha256": "ad6acbb44d89077621cb5f1d2d4e151b090a47fadf9b0479cc229fdade11e7ec",
+  "javascriptHarnessSourceSha256": "8bf4512a56141dc4563b5e49ed018fe5b7e64117e499ff22de4c75b6482abeee",
+  "controllerReady": {
+    "action": "ready",
+    "rootProcessId": 6152,
+    "controllerProcessId": 34812,
+    "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+    "requestedCpuRatePer10000": 10000,
+    "cpuRatePer10000": 10000,
+    "cpuControlFlags": 5,
+    "logicalCpuCount": 4,
+    "controllerLogicalCpuCount": 4,
+    "nominalLogicalProcessorEquivalents": 4,
+    "processIds": [
+      6152
+    ],
+    "accounting": {
+      "totalUserTime100ns": "1250000",
+      "totalKernelTime100ns": "3125000",
+      "totalProcesses": 1,
+      "activeProcesses": 1,
+      "totalPageFaultCount": 19790,
+      "totalTerminatedProcesses": 0
+    },
+    "monotonic": {
+      "beforeQueryTicks": "4429768100125",
+      "afterQueryTicks": "4429768123827",
+      "frequency": "10000000"
+    }
+  },
+  "probeOnly": false,
+  "probeLegs": [
+    {
+      "profile": "desktop",
+      "repeat": 0,
+      "limited": false,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "5937500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 90601,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429776860958",
+          "afterQueryTicks": "4429776861675",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 102.80000001192093,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 113.10000002384186,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 96.89999997615814,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 102.80000001192093,
+      "summedLoopWallMs": 312.80000001192093,
+      "batchWallMs": 312.80000001192093,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2500000",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.25,
+      "jobCpuPerLoopWall": 0.799232736542431,
+      "nativeMinimumWallMs": 325.2511,
+      "nativeMaximumWallMs": 325.4287,
+      "nativeQueryBeforeSpanMs": 0.07959999999999999,
+      "nativeQueryAfterSpanMs": 0.098,
+      "jobCpuPerNativeWallRange": [
+        0.7682174313451764,
+        0.7686369085300556
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "5937500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 90601,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429776869647",
+          "afterQueryTicks": "4429776870443",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "8437500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91639,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429780122954",
+          "afterQueryTicks": "4429780123934",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 326,
+        "busyFraction": 0.9744204636290967,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 10000,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": null,
+        "withinDutyTolerance": null
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 0,
+      "limited": true,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "8437500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91639,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429780178777",
+          "afterQueryTicks": "4429780179665",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 86.09999996423721,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 612.8000000119209,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 1145.199999988079,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 612.8000000119209,
+      "summedLoopWallMs": 1844.0999999642372,
+      "batchWallMs": 1844.0999999642372,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2500000",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.25,
+      "jobCpuPerLoopWall": 0.13556748549690814,
+      "nativeMinimumWallMs": 4284.0805,
+      "nativeMaximumWallMs": 4284.2737,
+      "nativeQueryBeforeSpanMs": 0.0901,
+      "nativeQueryAfterSpanMs": 0.1031,
+      "jobCpuPerNativeWallRange": [
+        0.05835294789873019,
+        0.058355579452813736
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "8437500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91639,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429780184056",
+          "afterQueryTicks": "4429780184957",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "10937500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91766,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429823025762",
+          "afterQueryTicks": "4429823026793",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 4285,
+        "busyFraction": 0.5221244063477355,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 416,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": 0.2,
+        "withinDutyTolerance": true
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 1,
+      "limited": true,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "10937500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91766,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429823076829",
+          "afterQueryTicks": "4429823077728",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 96.30000001192093,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 1044.6000000238419,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 571,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 571,
+      "summedLoopWallMs": 1711.9000000357628,
+      "batchWallMs": 1711.9000000357628,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2500000",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.25,
+      "jobCpuPerLoopWall": 0.14603656755346536,
+      "nativeMinimumWallMs": 2296.7021999999997,
+      "nativeMaximumWallMs": 2296.8946,
+      "nativeQueryBeforeSpanMs": 0.0833,
+      "nativeQueryAfterSpanMs": 0.1091,
+      "jobCpuPerNativeWallRange": [
+        0.10884260862470573,
+        0.10885172661914984
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "10937500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91766,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429823082093",
+          "afterQueryTicks": "4429823082926",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "13437500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91810,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429846049948",
+          "afterQueryTicks": "4429846051039",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 2298,
+        "busyFraction": 0.1459048027444254,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 416,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": 0.2,
+        "withinDutyTolerance": true
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 1,
+      "limited": false,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "13437500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91810,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429846092003",
+          "afterQueryTicks": "4429846092950",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 76.80000001192093,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 75.89999997615814,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 78.10000002384186,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 76.80000001192093,
+      "summedLoopWallMs": 230.80000001192093,
+      "batchWallMs": 230.9000000357628,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2343750",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.234375,
+      "jobCpuPerLoopWall": 1.0154896013340313,
+      "nativeMinimumWallMs": 239.2927,
+      "nativeMaximumWallMs": 239.4785,
+      "nativeQueryBeforeSpanMs": 0.0811,
+      "nativeQueryAfterSpanMs": 0.1047,
+      "jobCpuPerNativeWallRange": [
+        0.9786891098783399,
+        0.9794490178764333
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "13437500",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91810,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429846096571",
+          "afterQueryTicks": "4429846097382",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "15781250",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91824,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429848490309",
+          "afterQueryTicks": "4429848491356",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 240,
+        "busyFraction": 0.2825159914712153,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 10000,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": null,
+        "withinDutyTolerance": null
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 2,
+      "limited": false,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "15781250",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91824,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429848533818",
+          "afterQueryTicks": "4429848534649",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 75.60000002384186,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 75.5,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 89.60000002384186,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 75.60000002384186,
+      "summedLoopWallMs": 240.70000004768372,
+      "batchWallMs": 240.80000001192093,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2812500",
+      "jobKernelDelta100ns": "1875000",
+      "jobCpuSeconds": 0.46875,
+      "jobCpuPerLoopWall": 1.9474449518368866,
+      "nativeMinimumWallMs": 266.35740000000004,
+      "nativeMaximumWallMs": 266.5594,
+      "nativeQueryBeforeSpanMs": 0.09469999999999999,
+      "nativeQueryAfterSpanMs": 0.1073,
+      "jobCpuPerNativeWallRange": [
+        1.7585198646155416,
+        1.7598534900851261
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "15781250",
+          "totalKernelTime100ns": "7187500",
+          "totalProcesses": 5,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 91824,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429848583593",
+          "afterQueryTicks": "4429848584540",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544,
+          23960
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "18593750",
+          "totalKernelTime100ns": "9062500",
+          "totalProcesses": 6,
+          "activeProcesses": 6,
+          "totalPageFaultCount": 95133,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429851248114",
+          "afterQueryTicks": "4429851249187",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 267,
+        "busyFraction": 0.5827402135231317,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 10000,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": null,
+        "withinDutyTolerance": null
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 2,
+      "limited": true,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544,
+          23960
+        ],
+        "accounting": {
+          "totalUserTime100ns": "18593750",
+          "totalKernelTime100ns": "9218750",
+          "totalProcesses": 6,
+          "activeProcesses": 6,
+          "totalPageFaultCount": 95421,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429851285266",
+          "afterQueryTicks": "4429851286095",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 1197.0999999642372,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 1781.4000000357628,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 619.7999999523163,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 1197.0999999642372,
+      "summedLoopWallMs": 3598.2999999523163,
+      "batchWallMs": 3598.399999976158,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2968750",
+      "jobKernelDelta100ns": "2500000",
+      "jobCpuSeconds": 0.546875,
+      "jobCpuPerLoopWall": 0.15198149126177557,
+      "nativeMinimumWallMs": 8388.847399999999,
+      "nativeMaximumWallMs": 8389.0287,
+      "nativeQueryBeforeSpanMs": 0.07830000000000001,
+      "nativeQueryAfterSpanMs": 0.103,
+      "jobCpuPerNativeWallRange": [
+        0.06518931089125966,
+        0.06519071976443391
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544,
+          23960
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "18593750",
+          "totalKernelTime100ns": "9218750",
+          "totalProcesses": 6,
+          "activeProcesses": 6,
+          "totalPageFaultCount": 95481,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429851289603",
+          "afterQueryTicks": "4429851290386",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "21562500",
+          "totalKernelTime100ns": "11718750",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 103551,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429935178860",
+          "afterQueryTicks": "4429935179890",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 8389,
+        "busyFraction": 0.09092511013215854,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 416,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": 0.2,
+        "withinDutyTolerance": true
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 3,
+      "limited": true,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "21562500",
+          "totalKernelTime100ns": "11718750",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 103658,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429935235552",
+          "afterQueryTicks": "4429935236505",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 588.9000000357628,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 1192.199999988079,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 602.8000000119209,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 602.8000000119209,
+      "summedLoopWallMs": 2383.900000035763,
+      "batchWallMs": 2383.900000035763,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "3281250",
+      "jobKernelDelta100ns": "1093750",
+      "jobCpuSeconds": 0.4375,
+      "jobCpuPerLoopWall": 0.18352279877236324,
+      "nativeMinimumWallMs": 2394.2389999999996,
+      "nativeMaximumWallMs": 2394.4276,
+      "nativeQueryBeforeSpanMs": 0.08650000000000001,
+      "nativeQueryAfterSpanMs": 0.1021,
+      "jobCpuPerNativeWallRange": [
+        0.18271590253971348,
+        0.18273029551352227
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "21562500",
+          "totalKernelTime100ns": "11718750",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 103662,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429935240574",
+          "afterQueryTicks": "4429935241439",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "24843750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116604,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429959183829",
+          "afterQueryTicks": "4429959184850",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 2395,
+        "busyFraction": 0.1245653507874821,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 416,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": 0.2,
+        "withinDutyTolerance": true
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 3,
+      "limited": false,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "24843750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116604,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429959243269",
+          "afterQueryTicks": "4429959244148",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 77.19999998807907,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 73.69999998807907,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 77.19999998807907,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 77.19999998807907,
+      "summedLoopWallMs": 228.0999999642372,
+      "batchWallMs": 228.30000001192093,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2031250",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.203125,
+      "jobCpuPerLoopWall": 0.8905085490216882,
+      "nativeMinimumWallMs": 238.4585,
+      "nativeMaximumWallMs": 238.65800000000002,
+      "nativeQueryBeforeSpanMs": 0.09509999999999999,
+      "nativeQueryAfterSpanMs": 0.1044,
+      "jobCpuPerNativeWallRange": [
+        0.8511133085838313,
+        0.8518253700329408
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "24843750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116604,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429959248693",
+          "afterQueryTicks": "4429959249644",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "26875000",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116615,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429961634229",
+          "afterQueryTicks": "4429961635273",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 239,
+        "busyFraction": 0.2825159914712153,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 10000,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": null,
+        "withinDutyTolerance": null
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 4,
+      "limited": false,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "26875000",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116615,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429961676476",
+          "afterQueryTicks": "4429961677578",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 76.5,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 76.10000002384186,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 76.59999996423721,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 76.5,
+      "summedLoopWallMs": 229.19999998807907,
+      "batchWallMs": 229.19999998807907,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2343750",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.234375,
+      "jobCpuPerLoopWall": 1.022578534084599,
+      "nativeMinimumWallMs": 239.1595,
+      "nativeMaximumWallMs": 239.3431,
+      "nativeQueryBeforeSpanMs": 0.0816,
+      "nativeQueryAfterSpanMs": 0.102,
+      "jobCpuPerNativeWallRange": [
+        0.9792427690624881,
+        0.979994522483949
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "26875000",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116615,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429961681344",
+          "afterQueryTicks": "4429961682160",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 10000,
+        "cpuRatePer10000": 10000,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 4,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "29218750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116788,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429964073755",
+          "afterQueryTicks": "4429964074775",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 240,
+        "busyFraction": 0.28358208955223885,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 10000,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": null,
+        "withinDutyTolerance": null
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    },
+    {
+      "profile": "desktop",
+      "repeat": 4,
+      "limited": true,
+      "quota": {
+        "action": "set",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "accounting": {
+          "totalUserTime100ns": "29218750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116788,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429964124185",
+          "afterQueryTicks": "4429964125155",
+          "frequency": "10000000"
+        }
+      },
+      "protocol": "capacity-v1",
+      "workerProcessId": 17248,
+      "workerThreadId": 39508,
+      "workerMarker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+      "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+      "samples": [
+        {
+          "ms": 86,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 578.2999999523163,
+          "checksum": -732243845,
+          "iterations": 50000000
+        },
+        {
+          "ms": 584.7000000476837,
+          "checksum": -732243845,
+          "iterations": 50000000
+        }
+      ],
+      "medianMs": 578.2999999523163,
+      "summedLoopWallMs": 1249,
+      "batchWallMs": 1249,
+      "totalIterations": 150000000,
+      "jobUserDelta100ns": "2500000",
+      "jobKernelDelta100ns": "0",
+      "jobCpuSeconds": 0.25,
+      "jobCpuPerLoopWall": 0.20016012810248196,
+      "nativeMinimumWallMs": 3692.8905,
+      "nativeMaximumWallMs": 3693.1029,
+      "nativeQueryBeforeSpanMs": 0.1077,
+      "nativeQueryAfterSpanMs": 0.1047,
+      "jobCpuPerNativeWallRange": [
+        0.06769375421410544,
+        0.0676976476827569
+      ],
+      "accountingBefore": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "29218750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116788,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4429964144319",
+          "afterQueryTicks": "4429964145396",
+          "frequency": "10000000"
+        }
+      },
+      "accountingAfter": {
+        "action": "verify",
+        "rootProcessId": 6152,
+        "controllerProcessId": 34812,
+        "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+        "requestedCpuRatePer10000": 416,
+        "cpuRatePer10000": 416,
+        "cpuControlFlags": 5,
+        "logicalCpuCount": 4,
+        "controllerLogicalCpuCount": 4,
+        "nominalLogicalProcessorEquivalents": 0.1664,
+        "processIds": [
+          6152,
+          9580,
+          22048,
+          17248,
+          39544
+        ],
+        "verifiedProcessId": 17248,
+        "verifiedInJob": true,
+        "accounting": {
+          "totalUserTime100ns": "31718750",
+          "totalKernelTime100ns": "12812500",
+          "totalProcesses": 6,
+          "activeProcesses": 5,
+          "totalPageFaultCount": 116807,
+          "totalTerminatedProcesses": 0
+        },
+        "monotonic": {
+          "beforeQueryTicks": "4430001074301",
+          "afterQueryTicks": "4430001075348",
+          "frequency": "10000000"
+        }
+      },
+      "hostLoad": {
+        "wallMs": 3694,
+        "busyFraction": 0.24053781512605044,
+        "logicalCpuCount": 4
+      },
+      "validation": {
+        "queriedHardCapMatches": true,
+        "queriedCpuRatePer10000": 416,
+        "queriedCpuControlFlags": 5,
+        "workerMembershipProven": true,
+        "positiveFiniteAccounting": true,
+        "equalSuccessfulArithmetic": true,
+        "dutyTolerance": 0.2,
+        "withinDutyTolerance": false
+      },
+      "interpretation": "Whole-job scheduled CPU time divided by actual arithmetic-loop wall time. Other browser CPU is included, never subtracted. This is an observed duty estimate, not a frequency, physical-core, relative wall-speed or device-equivalence claim; 100ns counter units do not establish 100ns resolution."
+    }
+  ],
+  "capacityWorkers": [
+    {
+      "profile": "desktop",
+      "identity": {
+        "method": "Unique console.timeStamp executed in the retained Worker, OS pid/tid from a bounded devtools.timeline trace before retained arithmetic.",
+        "marker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425",
+        "event": {
+          "name": "TimeStamp",
+          "cat": "devtools.timeline",
+          "ph": "I",
+          "pid": 17248,
+          "tid": 39508,
+          "ts": 442977630353,
+          "marker": "qcc-chess-capacity-dd8c883e-036c-4555-a424-a1dd47f6f425"
+        },
+        "eventCount": 22,
+        "dataLossOccurred": false,
+        "nativeMembership": {
+          "action": "verify",
+          "rootProcessId": 6152,
+          "controllerProcessId": 34812,
+          "jobName": "qcc-chess-ae793223-47cc-437e-96dd-a9d0ee96d5ae",
+          "requestedCpuRatePer10000": 10000,
+          "cpuRatePer10000": 10000,
+          "cpuControlFlags": 5,
+          "logicalCpuCount": 4,
+          "controllerLogicalCpuCount": 4,
+          "nominalLogicalProcessorEquivalents": 4,
+          "processIds": [
+            6152,
+            9580,
+            22048,
+            17248,
+            39544
+          ],
+          "verifiedProcessId": 17248,
+          "verifiedInJob": true,
+          "accounting": {
+            "totalUserTime100ns": "5937500",
+            "totalKernelTime100ns": "7187500",
+            "totalProcesses": 5,
+            "activeProcesses": 5,
+            "totalPageFaultCount": 90601,
+            "totalTerminatedProcesses": 0
+          },
+          "monotonic": {
+            "beforeQueryTicks": "4429776843670",
+            "afterQueryTicks": "4429776856383",
+            "frequency": "10000000"
+          }
+        },
+        "workerKey": "qcc-chess-capacity-d42f434d-2b2e-4eeb-9145-9c3e19504f86",
+        "workerSourceSha256": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc"
+      },
+      "warmup": {
+        "type": "batch",
+        "samples": [
+          {
+            "ms": 117.5,
+            "checksum": -732243845,
+            "iterations": 50000000
+          }
+        ],
+        "summedLoopWallMs": 117.5,
+        "batchWallMs": 117.59999996423721,
+        "totalIterations": 50000000,
+        "workerCreationAndWarmupWallMs": 212.4395,
+        "excludedFromAccounting": true
+      }
+    }
+  ],
+  "hostLoad": [],
+  "startup": [],
+  "samples": [],
+  "summaries": [
+    {
+      "profile": "desktop",
+      "kind": "capacity-probe",
+      "descriptivePairedWallRatios": [
+        5.9610894935881245,
+        7.4348958321792855,
+        15.83465607918928,
+        7.808290156800557,
+        7.55947712355969
+      ],
+      "medianWallRatio": 7.55947712355969,
+      "minimumWallRatio": 5.9610894935881245,
+      "maximumWallRatio": 15.83465607918928,
+      "limitedJobCpuPerLoopWall": [
+        0.13556748549690814,
+        0.14603656755346536,
+        0.15198149126177557,
+        0.18352279877236324,
+        0.20016012810248196
+      ],
+      "maximumObservedDuty": 0.20016012810248196,
+      "nominalLogicalProcessorEquivalents": 0.1664
+    }
+  ],
+  "serverPreparation": {
+    "method": "Dev-server compilation only, before browser measurements. Client module parsing, Worker startup and first replies remain measured.",
+    "totalMs": 11002,
+    "requests": [
+      {
+        "path": "/@vite/client",
+        "ms": 4383
+      },
+      {
+        "path": "/node_modules/vite/dist/client/env.mjs",
+        "ms": 49
+      },
+      {
+        "path": "/src/chess-ai/types.ts",
+        "ms": 1990
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/index.ts",
+        "ms": 2678
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/manifest.ts",
+        "ms": 595
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/engine.worker.ts",
+        "ms": 759
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/engine.ts",
+        "ms": 51
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/brook.ts",
+        "ms": 189
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/vendor/chess.js",
+        "ms": 181
+      },
+      {
+        "path": "/tests/chess-ai/providers/benchmarks/hillclimb-tiers/baseline/engine.worker.ts?worker_file&type=module",
+        "ms": 47
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/index.ts",
+        "ms": 13
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/manifest.ts",
+        "ms": 4
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/engine.worker.ts",
+        "ms": 7
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/engine.ts",
+        "ms": 10
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/brook.ts",
+        "ms": 13
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/vendor/chess.js",
+        "ms": 19
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/perception.ts",
+        "ms": 2
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/search-rules.ts",
+        "ms": 2
+      },
+      {
+        "path": "/src/chess-ai/providers/beginner/engine.worker.ts?worker_file&type=module",
+        "ms": 7
+      }
+    ]
+  },
+  "harness": {
+    "tests/chess-ai/providers/browser/custom.html": "2449875d7e704868b298ec0b0a48c7e1079aaa443056170b8575cbbb76e64f99",
+    "tests/games/chess/tiers-speed.spec.ts": "3acffd0d1a759a2f7bfb6b2d911ed92a83952091d9d74b7e44bdb2a4618e3968",
+    "tests/chess-ai/providers/browser/prepare.ts": "f1448026ae1d022d56e225b3465265fd465bb30321730bbb81694eedb6343760",
+    "tests/chess-ai/providers/browser/cpu-probe.worker.js": "915d70e4d3b274f839272b217c25730dd435041e9a4b50e6fc2bb4ce26aec0bc",
+    "tests/chess-ai/providers/benchmarks/quota-browser.mjs": "8bf4512a56141dc4563b5e49ed018fe5b7e64117e499ff22de4c75b6482abeee",
+    "tests/chess-ai/providers/benchmarks/browser-cpu-quota.cs": "ad6acbb44d89077621cb5f1d2d4e151b090a47fadf9b0479cc229fdade11e7ec"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+  "error": "Error: desktop: accounting tolerance alongside unchanged416hardcap\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m0.2\u001b[39m\nReceived:    \u001b[31m0.20016012810248196\u001b[39m",
+  "cleanup": {
+    "restored": true,
+    "browserExited": true,
+    "helperExited": true,
+    "errors": []
+  }
+}

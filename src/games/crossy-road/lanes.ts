@@ -25,6 +25,12 @@ export function forEachMover(lane: MovingLane, t: number, xMin: number, xMax: nu
   }
 }
 
+/** A stable number for one physical copy of a mover whose left edge is x0 at time t. It stays the same while
+ * that vehicle or log travels, and it differs between the copies of one pattern. */
+export function moverCopy(lane: MovingLane, mover: Mover, x0: number, t: number): number {
+  return Math.round((x0 - lane.phase - mover.offset - lane.dir * lane.speed * t) / lane.cycle) + 0;
+}
+
 /** D1: does a vehicle's hitbox (its span minus VEHICLE_INSET per end) overlap the player's
  * [x − PLAYER_HALF, x + PLAYER_HALF] at time t? Touching edges do not count. */
 export function vehicleHit(lane: RoadLane, x: number, t: number): boolean {
@@ -101,6 +107,12 @@ export function forEachTrain(lane: RailLane, t: number, xMin: number, xMax: numb
   const front=(lane.dir>0?BAND_MIN:BAND_MAX)+lane.dir*lane.speed*(t-lane.phase);
   const base=mod(lane.dir>0?front-lane.length:front,cycle);
   for(let x0=base+Math.ceil((xMin-lane.length-base)/cycle)*cycle;x0<=xMax;x0+=cycle)fn(x0,x0+lane.length);
+}
+
+/** A stable number for the train whose left edge is x0 at time t (see moverCopy). */
+export function trainCopy(lane: RailLane, x0: number, t: number): number {
+  const front = (lane.dir > 0 ? BAND_MIN : BAND_MAX) + lane.dir * lane.speed * (t - lane.phase);
+  return Math.round((x0 - (lane.dir > 0 ? front - lane.length : front)) / (lane.speed * lane.period)) + 0;
 }
 
 /** Train collisions use the same periodic world coordinates as rendering. */

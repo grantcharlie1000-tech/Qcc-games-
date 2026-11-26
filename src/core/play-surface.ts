@@ -202,7 +202,8 @@ function onFullscreenEvent(){
     intentionalExit=false;
     publish();
     // WebKit consumes Escape to leave fullscreen and never delivers the key. Opening Study keeps that hotkey.
-    if(!fullscreenActive()&&!intentional&&playing)browserExit?.();
+    // On a touch screen the exit is a system gesture (back, swipe), never Escape, so play stays put.
+    if(!fullscreenActive()&&!intentional&&playing&&matchMedia('(pointer:fine)').matches)browserExit?.();
   });
 }
 

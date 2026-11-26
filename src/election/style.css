@@ -236,3 +236,4 @@ body.election-active{background:var(--c-bg)}
 @keyframes el-spin{to{rotate:360deg}}
 @media (prefers-reduced-motion:reduce){.el-status .el-dot,.el-icon{animation:none!important}}
 .reduce-motion .election-page *{animation:none!important}
+@media (pointer:coarse){.el-tabs .ui-pill,.el-auto select{min-height:44px}}

@@ -37,8 +37,11 @@ cushion/ball friction work, integrated with small fixed steps instead of event p
 Lists makeable pots (ghost-ball aim, clear lanes for the cue and object ball, cut angle, pocket entry angle) and plays the
 best ones through the real physics at several speeds and spins, scoring pots, fouls, wins and the next shot left. Without a
 pot it plays the safety that leaves the opponent the least, and kicks off a cushion when hidden. Ball in hand is placed where
-the easiest shot is. Difficulty sets how much it explores and its aim/power error (seeded, so repeatable). Work runs as a
-generator, a few milliseconds per frame.
+the easiest shot is. Easy explores fewer options and has beginner aim/power variation; Medium explores more with smaller
+stroke error (seeded, so repeatable). Hard explores the most options and uses its selected aim and power without adding
+stroke error. Work runs as a generator with a per-frame budget.
+When a simulated shot pots the 8 legally, the computer calls that predicted pocket before striking, including pots
+found by the safety/kick search. A hanging 8 therefore does not get rejected merely because a fallback used another call.
 
 ## Interface
 

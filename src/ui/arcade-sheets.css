@@ -140,9 +140,10 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 @media(max-width:639px){body.in-game .mp-overlay{align-items:end;padding:8px}body.in-game .mp-card{width:100%}.game-view .ff-overlay{align-items:end;padding:8px}.arcade-sheet .ff-close,body.in-game .mp-card .mp-close{top:30px}}
 
 /* Opaque accessibility fallbacks deliberately retain the established dark palette. */
+@media not (forced-colors:active){.reduce-transparency :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:var(--glass-solid);--sheet-optics:none;--sheet-control:var(--glass-solid);--sheet-group:var(--glass-solid)}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-optics:none}}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
-  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){-webkit-text-stroke:0;--sheet-veil:#1c1c20;--sheet-optics:none;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .9);--sheet-control:#ffffff1a;--sheet-group:#ffffff0f;--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark;border:1px solid #ffffffb3}
+  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){-webkit-text-stroke:0;--sheet-veil:var(--glass-solid);--sheet-optics:none;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .9);--sheet-control:var(--glass-solid);--sheet-group:var(--glass-solid);--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark;border:1px solid #ffffffb3}
 }
 @media(prefers-contrast:more){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:#121214;border-width:2px}}
 @media(forced-colors:active){
@@ -169,3 +170,10 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 /* Hide the scrollbar while retaining menu scrolling. */
 .arcade-sheet{scrollbar-width:none}
 .arcade-sheet::-webkit-scrollbar{display:none}
+/* Menu search: the first matches, as rows in the sheet's grouped style. */
+.arcade-sheet .search-results{list-style:none;margin:8px 0 0;padding:4px;border-radius:var(--sheet-group-radius);background:var(--sheet-group)}
+.arcade-sheet .search-result{display:flex;align-items:center;gap:12px;min-height:48px;padding:4px 10px;border-radius:calc(var(--sheet-group-radius) - 4px);color:var(--sheet-ink);font:500 17px/1.25 var(--font-sans);text-decoration:none;-webkit-tap-highlight-color:transparent;transition:background-color 120ms var(--ease-out,ease)}
+.arcade-sheet .search-result img{flex:none;width:32px;height:32px;border-radius:9px;background:var(--card)}
+.arcade-sheet .search-result:active{background:var(--sheet-control)}
+@media (hover:hover) and (pointer:fine){.arcade-sheet .search-result:hover{background:var(--sheet-control)}}
+.arcade-sheet .search-empty{padding:12px 10px;color:var(--sheet-muted);font:400 15px/1.3 var(--font-sans)}

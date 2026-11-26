@@ -8,8 +8,8 @@ export interface LensPreset{radius:number;band:number;bend:number;softness:numbe
 
 /** Research presets (CSS px). Softness is a 5-tap offset, not a Gaussian sigma. */
 export const LENS_PRESETS={
-  button:{radius:24,band:8,bend:4.5,softness:.3,saturation:1.08},
-  dock:{radius:32,band:10,bend:6,softness:.6,saturation:1.08},
+  button:{radius:24,band:8,bend:3.5,softness:.3,saturation:1.08},
+  dock:{radius:32,band:10,bend:3.5,softness:.6,saturation:1.08},
   sheet:{radius:28,band:14,bend:8,softness:.6,saturation:1.08},
 } as const satisfies Record<string,LensPreset>;
 

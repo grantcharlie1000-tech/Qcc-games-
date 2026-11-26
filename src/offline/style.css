@@ -1,0 +1,51 @@
+/* Downloads & Storage page, the library's offline badges and the shell's offline and update pills. */
+.dl-page{max-width:720px;margin:0 auto;padding:max(20px,calc(env(safe-area-inset-top) + 12px)) 16px 24px;color:#fff3df}
+.dl-head h1{margin:0;font-size:clamp(28px,8vw,40px);letter-spacing:.3px;text-transform:uppercase}
+.dl-storage{margin:6px 0 0;font-family:var(--font-sans);font-size:14px;color:var(--c-300);font-variant-numeric:tabular-nums}
+.dl-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 8px}
+.dl-actions .game-button{min-height:44px}
+.dl-note{margin:8px 0 0;font-family:var(--font-sans);font-size:13px;line-height:1.4;color:var(--c-400)}
+.dl-section{margin:24px 0 8px;font-size:15px;letter-spacing:.6px;text-transform:uppercase;color:var(--c-300)}
+.dl-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.dl-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:20px;
+  background:rgb(255 255 255 / .06);border:1px solid var(--line-strong);content-visibility:auto;contain-intrinsic-size:auto 76px}
+.dl-row img{width:48px;height:auto;aspect-ratio:320/410;border-radius:10px;object-fit:cover;display:block}
+.dl-info{display:grid;gap:3px;min-width:0}
+.dl-info strong{font-size:16px;letter-spacing:.2px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-meta{font-family:var(--font-sans);font-size:13px;color:var(--c-300);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dl-meta[data-state=ready]{color:var(--c-green)}
+.dl-meta[data-state=failed],.dl-meta[data-state=update]{color:var(--c-amber)}
+.dl-hint{font-size:12px;color:var(--c-400)}
+.dl-info progress{width:100%;height:6px;appearance:none;-webkit-appearance:none;border:0;border-radius:3px;background:rgb(255 255 255 / .14);overflow:hidden}
+.dl-info progress::-webkit-progress-bar{background:rgb(255 255 255 / .14)}
+.dl-info progress::-webkit-progress-value{background:var(--c-amber);transition:width .2s linear}
+.dl-info progress::-moz-progress-bar{background:var(--c-amber)}
+.dl-buttons{display:flex;gap:6px}
+.dl-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px;padding:0 12px;border-radius:999px;
+  border:1px solid var(--line-strong);background:rgb(255 255 255 / .1);color:#fff;font:600 14px var(--font-sans);touch-action:manipulation;cursor:pointer;
+  transition:transform 120ms var(--ease),background-color 120ms var(--ease)}
+.dl-button.primary{background:#fff3df;color:#1b1a20;border-color:transparent}
+.dl-button:active{transform:scale(.94)}
+.dl-button svg{width:18px;height:18px}
+@media(max-width:430px){.dl-button span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.dl-button{padding:0}}
+.reduce-motion .dl-button{transition:none}
+
+/* Library: a tick on downloaded cards; offline, games that are not downloaded fade and say why. */
+.game-card[data-offline=ready]::after{content:"";position:absolute;right:10px;bottom:10px;width:26px;height:26px;border-radius:50%;
+  background:#fff3df url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231b1a20' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/16px no-repeat;
+  box-shadow:0 2px 6px #0006}
+body.is-offline .game-card:not([data-offline=ready]){opacity:.42;filter:saturate(.5)}
+body.is-offline .game-card:not([data-offline=ready])::after{content:"Needs internet";position:absolute;left:10px;right:10px;bottom:10px;padding:6px 8px;border-radius:12px;
+  background:#000b;color:#fff;font:600 12px var(--font-sans);text-align:center}
+
+/* The Downloads card shares the game cards' look (style.css) and opens the page above. */
+.downloads-card h2{color:#fff3df}
+
+.offline-pill,.update-pill{position:fixed;z-index:60;top:max(10px,calc(env(safe-area-inset-top) + 6px));right:max(12px,env(safe-area-inset-right));
+  display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;font:600 13px var(--font-sans);
+  background:rgb(24 24 27 / .82);color:#fff;border:1px solid var(--line-strong);box-shadow:0 4px 14px #0005}
+.offline-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c-amber)}
+.update-pill{border:0;background:#fff3df;color:#1b1a20;min-height:44px;cursor:pointer;touch-action:manipulation}
+.offline-pill:not([hidden])~.update-pill{top:max(50px,calc(env(safe-area-inset-top) + 46px))}
+/* Nothing covers a game. */
+body.in-game :is(.offline-pill,.update-pill),body.study-active :is(.offline-pill,.update-pill){display:none}

@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-11-16T11:09:07.175Z",
+  "method": "Compare every tuning position and seed against pre-loader-change reports. Moves, nodes and completed depth must be identical. This is setup equivalence, not a browser or performance claim.",
+  "rows": [
+    {
+      "tier": 300,
+      "compared": 320,
+      "changes": 0,
+      "reference": "300-final-tuning-v2.json",
+      "referenceSha256": "be23d04d8c55633df4ba049fe7809dd970bb25122bc6b1f7d374e775b1ada49d",
+      "currentSha256": "21c01be4f1bb72bd880cc7f40a6f05c3c6ae239951cdc5ab80591109dcdb62b1",
+      "sourceSha256": "7863a1631f754104057227b715f11a029ba4e003f498107fd6a4816116f6ca90"
+    },
+    {
+      "tier": 500,
+      "compared": 304,
+      "changes": 0,
+      "reference": "500-final-tuning-v2.json",
+      "referenceSha256": "1b3eb42d252f38d1d0c438416d6a993341504fd225b0a530b02044287914a52a",
+      "currentSha256": "9d177c879ee8f54a2526b9a1d82f93fcd5992a9be70ac0640bab6c079c080a28",
+      "sourceSha256": "7863a1631f754104057227b715f11a029ba4e003f498107fd6a4816116f6ca90"
+    },
+    {
+      "tier": 700,
+      "compared": 336,
+      "changes": 0,
+      "reference": "700-round-10-quality-v2.json",
+      "referenceSha256": "51965a15511fcf391844aaa051c7f3bf19830e320f226cfab8c25aeb3d0d4734",
+      "currentSha256": "1dd0967974ab5a2d67fce958251be50db5431802c703a62770a31746566dc247",
+      "sourceSha256": "7863a1631f754104057227b715f11a029ba4e003f498107fd6a4816116f6ca90"
+    },
+    {
+      "tier": 900,
+      "compared": 288,
+      "changes": 0,
+      "reference": "900-round-10-quality-v2.json",
+      "referenceSha256": "42adae5c27bbade1e864d9aa3596ab60009e5db74411d21217b395354993e635",
+      "currentSha256": "3be6badbbabaee2c85952de89237f49b57e4ef05ffa872104d4828f182264674",
+      "sourceSha256": "7863a1631f754104057227b715f11a029ba4e003f498107fd6a4816116f6ca90"
+    }
+  ]
+}

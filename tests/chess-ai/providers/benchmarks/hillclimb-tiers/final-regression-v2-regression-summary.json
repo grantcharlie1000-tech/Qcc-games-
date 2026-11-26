@@ -1,0 +1,8642 @@
+{
+  "generatedAt": "2026-11-16T11:10:27.713Z",
+  "method": "Same176positions and all eight seeds as prior accepted900validation. Both actual historical accepted moves and current moves use corrected metric2 forced-root anchors. Historical choices are preserved instead of rerunning a time-limited reference under different host contention. This reused regression set is not a fresh validation cohort.",
+  "sourceSha256": "7863a1631f754104057227b715f11a029ba4e003f498107fd6a4816116f6ca90",
+  "acceptedSourceSha256": "d2a1614856f7163c5794ddf78a0223f6cc2f793446e811f655d3a01829b2458b",
+  "acceptedReportSha256": "0e418a6deca73835ecfa7999379284607ba0a8c5381c1534d4de5bf1ab529132",
+  "corpusSha256": "70eac3a46d96dfc0b39c30d48760186a7348e0b529de8dc1b895b8614050ec5b",
+  "summary": {
+    "positions": 176,
+    "seedsPerPosition": 8,
+    "acceptedMeanCpLoss": 76.0546875,
+    "currentMeanCpLoss": 76.63210227272727,
+    "humanMeanCpLoss": 73.5909090909091,
+    "ratio": 1.007592099733856
+  },
+  "rows": [
+    {
+      "id": "game-1-ply-12",
+      "source": "https://www.chess.com/game/live/170144855518",
+      "acceptedLoss": 123,
+      "currentLoss": 124.375,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1052660,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1118197,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1183734,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1249271,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1314808,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1380345,
+          "move": "d3b5",
+          "loss": 123
+        },
+        {
+          "seed": 1445882,
+          "move": "d3b5",
+          "loss": 123
+        }
+      ]
+    },
+    {
+      "id": "game-1-ply-25",
+      "source": "https://www.chess.com/game/live/170144855518",
+      "acceptedLoss": 34.125,
+      "currentLoss": 111.375,
+      "humanLoss": 35,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a5",
+          "loss": 168
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f7f5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b8d7",
+          "loss": 105
+        },
+        {
+          "seed": 1380345,
+          "move": "f7f5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f7f5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-1-ply-38",
+      "source": "https://www.chess.com/game/live/170144855518",
+      "acceptedLoss": 117,
+      "currentLoss": 110.625,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c2c4",
+          "loss": 133
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h4",
+          "loss": 125
+        },
+        {
+          "seed": 1118197,
+          "move": "c2c3",
+          "loss": 111
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h3",
+          "loss": 119
+        },
+        {
+          "seed": 1249271,
+          "move": "c1f4",
+          "loss": 100
+        },
+        {
+          "seed": 1314808,
+          "move": "c1e3",
+          "loss": 82
+        },
+        {
+          "seed": 1380345,
+          "move": "c2c4",
+          "loss": 133
+        },
+        {
+          "seed": 1445882,
+          "move": "c2c4",
+          "loss": 133
+        }
+      ]
+    },
+    {
+      "id": "game-1-ply-49",
+      "source": "https://www.chess.com/game/live/170144855518",
+      "acceptedLoss": 67,
+      "currentLoss": 94.125,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b6",
+          "loss": 196
+        },
+        {
+          "seed": 1118197,
+          "move": "b7b6",
+          "loss": 196
+        },
+        {
+          "seed": 1183734,
+          "move": "d8c8",
+          "loss": 144
+        },
+        {
+          "seed": 1249271,
+          "move": "d8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d8e8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-12",
+      "source": "https://www.chess.com/game/live/170145044418",
+      "acceptedLoss": 30,
+      "currentLoss": 19.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b1d2",
+          "loss": 20
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "loss": 19
+        },
+        {
+          "seed": 1118197,
+          "move": "b1d2",
+          "loss": 20
+        },
+        {
+          "seed": 1183734,
+          "move": "b1c3",
+          "loss": 19
+        },
+        {
+          "seed": 1249271,
+          "move": "c1f4",
+          "loss": 78
+        },
+        {
+          "seed": 1314808,
+          "move": "c1e3",
+          "loss": 16
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a4",
+          "loss": 28
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h4",
+          "loss": 40
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-25",
+      "source": "https://www.chess.com/game/live/170145044418",
+      "acceptedLoss": 69.75,
+      "currentLoss": 0,
+      "humanLoss": 93,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g8g5",
+          "loss": 93
+        },
+        {
+          "seed": 1052660,
+          "move": "g8g5",
+          "loss": 93
+        },
+        {
+          "seed": 1118197,
+          "move": "g8g5",
+          "loss": 93
+        },
+        {
+          "seed": 1183734,
+          "move": "d8g5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g8g5",
+          "loss": 93
+        },
+        {
+          "seed": 1314808,
+          "move": "d8g5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g8g5",
+          "loss": 93
+        },
+        {
+          "seed": 1445882,
+          "move": "g8g5",
+          "loss": 93
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-38",
+      "source": "https://www.chess.com/game/live/170145044418",
+      "acceptedLoss": 66.25,
+      "currentLoss": 85.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a4a5",
+          "loss": 55
+        },
+        {
+          "seed": 1052660,
+          "move": "a1a2",
+          "loss": 138
+        },
+        {
+          "seed": 1118197,
+          "move": "d2f4",
+          "loss": 101
+        },
+        {
+          "seed": 1183734,
+          "move": "d2h6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b3b4",
+          "loss": 181
+        },
+        {
+          "seed": 1314808,
+          "move": "f2f6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "c3e2",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a4a5",
+          "loss": 55
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-49",
+      "source": "https://www.chess.com/game/live/170145044418",
+      "acceptedLoss": 7.375,
+      "currentLoss": 29.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f5e4",
+          "loss": 59
+        },
+        {
+          "seed": 1380345,
+          "move": "d5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d5e4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-3-ply-12",
+      "source": "https://www.chess.com/game/live/170185863128",
+      "acceptedLoss": 200.875,
+      "currentLoss": 220.875,
+      "humanLoss": 441,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g5e6",
+          "loss": 408
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h4",
+          "loss": 141
+        },
+        {
+          "seed": 1118197,
+          "move": "g5e6",
+          "loss": 408
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "loss": 141
+        },
+        {
+          "seed": 1249271,
+          "move": "g5f7",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f3g3",
+          "loss": 227
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h4",
+          "loss": 141
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h4",
+          "loss": 141
+        }
+      ]
+    },
+    {
+      "id": "game-3-ply-25",
+      "source": "https://www.chess.com/game/live/170185863128",
+      "acceptedLoss": 0,
+      "currentLoss": 127.5,
+      "humanLoss": 135,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e7f6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-3-ply-38",
+      "source": "https://www.chess.com/game/live/170185863128",
+      "acceptedLoss": 175.875,
+      "currentLoss": 134.625,
+      "humanLoss": 142,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b1c3",
+          "loss": 89
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "loss": 89
+        },
+        {
+          "seed": 1118197,
+          "move": "b1c3",
+          "loss": 89
+        },
+        {
+          "seed": 1183734,
+          "move": "f1d1",
+          "loss": 289
+        },
+        {
+          "seed": 1249271,
+          "move": "f2f4",
+          "loss": 254
+        },
+        {
+          "seed": 1314808,
+          "move": "f2f4",
+          "loss": 254
+        },
+        {
+          "seed": 1380345,
+          "move": "b1c3",
+          "loss": 89
+        },
+        {
+          "seed": 1445882,
+          "move": "f2f4",
+          "loss": 254
+        }
+      ]
+    },
+    {
+      "id": "game-3-ply-49",
+      "source": "https://www.chess.com/game/live/170185863128",
+      "acceptedLoss": 110.875,
+      "currentLoss": 123.25,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e5d4",
+          "loss": 250
+        },
+        {
+          "seed": 1052660,
+          "move": "d5c4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a8e8",
+          "loss": 175
+        },
+        {
+          "seed": 1183734,
+          "move": "f7e6",
+          "loss": 212
+        },
+        {
+          "seed": 1249271,
+          "move": "d5c4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d5c4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d5c4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e5d4",
+          "loss": 250
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-12",
+      "source": "https://www.chess.com/game/live/170484676078",
+      "acceptedLoss": 0,
+      "currentLoss": 369.75,
+      "humanLoss": 469,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d4e5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-25",
+      "source": "https://www.chess.com/game/live/170484676078",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 97,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d8b6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d8b6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-38",
+      "source": "https://www.chess.com/game/live/170484676078",
+      "acceptedLoss": 138.875,
+      "currentLoss": 160,
+      "humanLoss": 171,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b1c3",
+          "loss": 177
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h4",
+          "loss": 200
+        },
+        {
+          "seed": 1118197,
+          "move": "b1d2",
+          "loss": 160
+        },
+        {
+          "seed": 1183734,
+          "move": "b1d2",
+          "loss": 160
+        },
+        {
+          "seed": 1249271,
+          "move": "d3c3",
+          "loss": 144
+        },
+        {
+          "seed": 1314808,
+          "move": "e3e4",
+          "loss": 110
+        },
+        {
+          "seed": 1380345,
+          "move": "b1d2",
+          "loss": 160
+        },
+        {
+          "seed": 1445882,
+          "move": "d3c4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-49",
+      "source": "https://www.chess.com/game/live/170484676078",
+      "acceptedLoss": 39,
+      "currentLoss": 39,
+      "humanLoss": 39,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1052660,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1118197,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1183734,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1249271,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1314808,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1380345,
+          "move": "c8d8",
+          "loss": 39
+        },
+        {
+          "seed": 1445882,
+          "move": "c8d8",
+          "loss": 39
+        }
+      ]
+    },
+    {
+      "id": "game-5-ply-12",
+      "source": "https://www.chess.com/game/live/168508839768",
+      "acceptedLoss": 162.375,
+      "currentLoss": 141.125,
+      "humanLoss": 77,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f2f4",
+          "loss": 240
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a4",
+          "loss": 134
+        },
+        {
+          "seed": 1118197,
+          "move": "f2f4",
+          "loss": 240
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h3",
+          "loss": 71
+        },
+        {
+          "seed": 1249271,
+          "move": "d2d4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "a2a4",
+          "loss": 134
+        },
+        {
+          "seed": 1380345,
+          "move": "f2f4",
+          "loss": 240
+        },
+        {
+          "seed": 1445882,
+          "move": "f2f4",
+          "loss": 240
+        }
+      ]
+    },
+    {
+      "id": "game-5-ply-25",
+      "source": "https://www.chess.com/game/live/168508839768",
+      "acceptedLoss": 28.125,
+      "currentLoss": 0,
+      "humanLoss": 21,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d5b5",
+          "loss": 25
+        },
+        {
+          "seed": 1052660,
+          "move": "c7c5",
+          "loss": 59
+        },
+        {
+          "seed": 1118197,
+          "move": "a7a6",
+          "loss": 24
+        },
+        {
+          "seed": 1183734,
+          "move": "c7c6",
+          "loss": 64
+        },
+        {
+          "seed": 1249271,
+          "move": "b8c6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b6b5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b8c6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a7a5",
+          "loss": 53
+        }
+      ]
+    },
+    {
+      "id": "game-5-ply-38",
+      "source": "https://www.chess.com/game/live/168508839768",
+      "acceptedLoss": 41.75,
+      "currentLoss": 21.75,
+      "humanLoss": 8,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c3c4",
+          "loss": 8
+        },
+        {
+          "seed": 1052660,
+          "move": "f2h2",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d3d4",
+          "loss": 99
+        },
+        {
+          "seed": 1183734,
+          "move": "f4g2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a4",
+          "loss": 67
+        },
+        {
+          "seed": 1314808,
+          "move": "f2h2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a3",
+          "loss": 61
+        },
+        {
+          "seed": 1445882,
+          "move": "d3d4",
+          "loss": 99
+        }
+      ]
+    },
+    {
+      "id": "game-5-ply-49",
+      "source": "https://www.chess.com/game/live/168508839768",
+      "acceptedLoss": 0,
+      "currentLoss": 157.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f8f4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f8f4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-12",
+      "source": "https://www.chess.com/game/live/168893239296",
+      "acceptedLoss": 37.75,
+      "currentLoss": 37.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g1f3",
+          "loss": 3
+        },
+        {
+          "seed": 1052660,
+          "move": "g1f3",
+          "loss": 3
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a4",
+          "loss": 85
+        },
+        {
+          "seed": 1183734,
+          "move": "b1c3",
+          "loss": 52
+        },
+        {
+          "seed": 1249271,
+          "move": "b1c3",
+          "loss": 52
+        },
+        {
+          "seed": 1314808,
+          "move": "b1c3",
+          "loss": 52
+        },
+        {
+          "seed": 1380345,
+          "move": "b1c3",
+          "loss": 52
+        },
+        {
+          "seed": 1445882,
+          "move": "g1f3",
+          "loss": 3
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-25",
+      "source": "https://www.chess.com/game/live/168893239296",
+      "acceptedLoss": 107.75,
+      "currentLoss": 60.625,
+      "humanLoss": 151,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g7g5",
+          "loss": 566
+        },
+        {
+          "seed": 1052660,
+          "move": "a7a5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c7c6",
+          "loss": 29
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b7b5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d7a4",
+          "loss": 213
+        },
+        {
+          "seed": 1380345,
+          "move": "c7c5",
+          "loss": 27
+        },
+        {
+          "seed": 1445882,
+          "move": "c7c5",
+          "loss": 27
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-38",
+      "source": "https://www.chess.com/game/live/168893239296",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 475,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "c3b5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-49",
+      "source": "https://www.chess.com/game/live/168893239296",
+      "acceptedLoss": 54.5,
+      "currentLoss": 26.375,
+      "humanLoss": 52,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c7c6",
+          "loss": 15
+        },
+        {
+          "seed": 1052660,
+          "move": "d8d7",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f5",
+          "loss": 81
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f5",
+          "loss": 81
+        },
+        {
+          "seed": 1249271,
+          "move": "c7c5",
+          "loss": 80
+        },
+        {
+          "seed": 1314808,
+          "move": "f7f5",
+          "loss": 81
+        },
+        {
+          "seed": 1380345,
+          "move": "f7f5",
+          "loss": 81
+        },
+        {
+          "seed": 1445882,
+          "move": "b7b5",
+          "loss": 17
+        }
+      ]
+    },
+    {
+      "id": "game-7-ply-12",
+      "source": "https://www.chess.com/game/live/29200823639",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 688,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f3f5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f3f5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-7-ply-25",
+      "source": "https://www.chess.com/game/live/29200823639",
+      "acceptedLoss": 81,
+      "currentLoss": 0,
+      "humanLoss": 108,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c6c2",
+          "loss": 108
+        },
+        {
+          "seed": 1052660,
+          "move": "c6d6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c6c2",
+          "loss": 108
+        },
+        {
+          "seed": 1249271,
+          "move": "c6c2",
+          "loss": 108
+        },
+        {
+          "seed": 1314808,
+          "move": "c6c2",
+          "loss": 108
+        },
+        {
+          "seed": 1380345,
+          "move": "c6c2",
+          "loss": 108
+        },
+        {
+          "seed": 1445882,
+          "move": "c6c2",
+          "loss": 108
+        }
+      ]
+    },
+    {
+      "id": "game-7-ply-38",
+      "source": "https://www.chess.com/game/live/29200823639",
+      "acceptedLoss": 0,
+      "currentLoss": 105.25,
+      "humanLoss": 440,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e2e1",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e2e1",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-7-ply-49",
+      "source": "https://www.chess.com/game/live/29200823639",
+      "acceptedLoss": 82.875,
+      "currentLoss": 34.125,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a5",
+          "loss": 172
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c7c6",
+          "loss": 135
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h8f8",
+          "loss": 154
+        },
+        {
+          "seed": 1314808,
+          "move": "h3g5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "c7c5",
+          "loss": 101
+        },
+        {
+          "seed": 1445882,
+          "move": "c7c5",
+          "loss": 101
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-12",
+      "source": "https://www.chess.com/game/live/18067319387",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e5e6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e5e6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-25",
+      "source": "https://www.chess.com/game/live/18067319387",
+      "acceptedLoss": 13.875,
+      "currentLoss": 0,
+      "humanLoss": 14,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c7c6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "a7a5",
+          "loss": 111
+        },
+        {
+          "seed": 1118197,
+          "move": "e7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "a7a6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-38",
+      "source": "https://www.chess.com/game/live/18067319387",
+      "acceptedLoss": 71.375,
+      "currentLoss": 63.875,
+      "humanLoss": 13,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g2g4",
+          "loss": 134
+        },
+        {
+          "seed": 1052660,
+          "move": "c1f4",
+          "loss": 40
+        },
+        {
+          "seed": 1118197,
+          "move": "g5f5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "loss": 31
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a3",
+          "loss": 67
+        },
+        {
+          "seed": 1314808,
+          "move": "g2g4",
+          "loss": 134
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h4",
+          "loss": 31
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 134
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-49",
+      "source": "https://www.chess.com/game/live/18067319387",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "c7d6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-9-ply-12",
+      "source": "https://www.chess.com/game/live/186736196910",
+      "acceptedLoss": 29.25,
+      "currentLoss": 2,
+      "humanLoss": 5,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g2g4",
+          "loss": 67
+        },
+        {
+          "seed": 1052660,
+          "move": "c2c4",
+          "loss": 25
+        },
+        {
+          "seed": 1118197,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b1c3",
+          "loss": 4
+        },
+        {
+          "seed": 1314808,
+          "move": "b1c3",
+          "loss": 4
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "loss": 67
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 67
+        }
+      ]
+    },
+    {
+      "id": "game-9-ply-25",
+      "source": "https://www.chess.com/game/live/186736196910",
+      "acceptedLoss": 50.5,
+      "currentLoss": 50.125,
+      "humanLoss": 24,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a6a5",
+          "loss": 83
+        },
+        {
+          "seed": 1052660,
+          "move": "b6b5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d8e8",
+          "loss": 2
+        },
+        {
+          "seed": 1183734,
+          "move": "d8b8",
+          "loss": 61
+        },
+        {
+          "seed": 1249271,
+          "move": "b6b5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h6",
+          "loss": 149
+        },
+        {
+          "seed": 1380345,
+          "move": "d8c8",
+          "loss": 55
+        },
+        {
+          "seed": 1445882,
+          "move": "b7c6",
+          "loss": 54
+        }
+      ]
+    },
+    {
+      "id": "game-9-ply-38",
+      "source": "https://www.chess.com/game/live/186736196910",
+      "acceptedLoss": 12,
+      "currentLoss": 59,
+      "humanLoss": 105,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2c3",
+          "loss": 24
+        },
+        {
+          "seed": 1052660,
+          "move": "b2d4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a3a4",
+          "loss": 56
+        },
+        {
+          "seed": 1183734,
+          "move": "b3c4",
+          "loss": 8
+        },
+        {
+          "seed": 1249271,
+          "move": "b2d4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b2d4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b3c4",
+          "loss": 8
+        },
+        {
+          "seed": 1445882,
+          "move": "b2d4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-9-ply-49",
+      "source": "https://www.chess.com/game/live/186736196910",
+      "acceptedLoss": 133.5,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b7e4",
+          "loss": 150
+        },
+        {
+          "seed": 1052660,
+          "move": "b7e4",
+          "loss": 150
+        },
+        {
+          "seed": 1118197,
+          "move": "b7e4",
+          "loss": 150
+        },
+        {
+          "seed": 1183734,
+          "move": "b7e4",
+          "loss": 150
+        },
+        {
+          "seed": 1249271,
+          "move": "b7e4",
+          "loss": 150
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h7h3",
+          "loss": 168
+        },
+        {
+          "seed": 1445882,
+          "move": "b7e4",
+          "loss": 150
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-12",
+      "source": "https://www.chess.com/game/live/186910679930",
+      "acceptedLoss": 82.625,
+      "currentLoss": 19.375,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2b3",
+          "loss": 33
+        },
+        {
+          "seed": 1052660,
+          "move": "c1e3",
+          "loss": 8
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b4",
+          "loss": 54
+        },
+        {
+          "seed": 1183734,
+          "move": "f3g5",
+          "loss": 49
+        },
+        {
+          "seed": 1249271,
+          "move": "h2h4",
+          "loss": 77
+        },
+        {
+          "seed": 1314808,
+          "move": "c1e3",
+          "loss": 8
+        },
+        {
+          "seed": 1380345,
+          "move": "c4b3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 432
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-25",
+      "source": "https://www.chess.com/game/live/186910679930",
+      "acceptedLoss": 50.625,
+      "currentLoss": 52.875,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a5",
+          "loss": 34
+        },
+        {
+          "seed": 1052660,
+          "move": "c7c5",
+          "loss": 74
+        },
+        {
+          "seed": 1118197,
+          "move": "a7a6",
+          "loss": 16
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b6",
+          "loss": 53
+        },
+        {
+          "seed": 1249271,
+          "move": "g7g5",
+          "loss": 80
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g5",
+          "loss": 80
+        },
+        {
+          "seed": 1380345,
+          "move": "a7a5",
+          "loss": 34
+        },
+        {
+          "seed": 1445882,
+          "move": "a7a5",
+          "loss": 34
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-38",
+      "source": "https://www.chess.com/game/live/186910679930",
+      "acceptedLoss": 157.625,
+      "currentLoss": 252.25,
+      "humanLoss": 139,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g2g4",
+          "loss": 311
+        },
+        {
+          "seed": 1052660,
+          "move": "d2f3",
+          "loss": 139
+        },
+        {
+          "seed": 1118197,
+          "move": "d3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g1h1",
+          "loss": 230
+        },
+        {
+          "seed": 1249271,
+          "move": "d2f3",
+          "loss": 139
+        },
+        {
+          "seed": 1314808,
+          "move": "d1f3",
+          "loss": 164
+        },
+        {
+          "seed": 1380345,
+          "move": "d2f3",
+          "loss": 139
+        },
+        {
+          "seed": 1445882,
+          "move": "d2f3",
+          "loss": 139
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-49",
+      "source": "https://www.chess.com/game/live/186910679930",
+      "acceptedLoss": 542,
+      "currentLoss": 542,
+      "humanLoss": 542,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1052660,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1118197,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1183734,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1249271,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1380345,
+          "move": "g7g5",
+          "loss": 542
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 542
+        }
+      ]
+    },
+    {
+      "id": "game-11-ply-12",
+      "source": "https://www.chess.com/game/live/185925637946",
+      "acceptedLoss": 58.875,
+      "currentLoss": 25.875,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b1a3",
+          "loss": 72
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d2c3",
+          "loss": 65
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a3",
+          "loss": 121
+        },
+        {
+          "seed": 1249271,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h4",
+          "loss": 213
+        }
+      ]
+    },
+    {
+      "id": "game-11-ply-25",
+      "source": "https://www.chess.com/game/live/185925637946",
+      "acceptedLoss": 264.75,
+      "currentLoss": 134.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g7g5",
+          "loss": 277
+        },
+        {
+          "seed": 1052660,
+          "move": "g7g5",
+          "loss": 277
+        },
+        {
+          "seed": 1118197,
+          "move": "h8h7",
+          "loss": 321
+        },
+        {
+          "seed": 1183734,
+          "move": "h8f8",
+          "loss": 248
+        },
+        {
+          "seed": 1249271,
+          "move": "g7g6",
+          "loss": 319
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g5",
+          "loss": 277
+        },
+        {
+          "seed": 1380345,
+          "move": "h6h5",
+          "loss": 122
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 277
+        }
+      ]
+    },
+    {
+      "id": "game-11-ply-38",
+      "source": "https://www.chess.com/game/live/185925637946",
+      "acceptedLoss": 0,
+      "currentLoss": 271,
+      "humanLoss": 294,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e5f6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-11-ply-49",
+      "source": "https://www.chess.com/game/live/185925637946",
+      "acceptedLoss": 71,
+      "currentLoss": 182,
+      "humanLoss": 331,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1052660,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1118197,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1183734,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1249271,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1314808,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1380345,
+          "move": "e6e5",
+          "loss": 71
+        },
+        {
+          "seed": 1445882,
+          "move": "e6e5",
+          "loss": 71
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-12",
+      "source": "https://www.chess.com/game/live/185933968430",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 371,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h3g4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h3g4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-25",
+      "source": "https://www.chess.com/game/live/185933968430",
+      "acceptedLoss": 247,
+      "currentLoss": 301.75,
+      "humanLoss": 6,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d6d5",
+          "loss": 23
+        },
+        {
+          "seed": 1052660,
+          "move": "c7c5",
+          "loss": 480
+        },
+        {
+          "seed": 1118197,
+          "move": "c7c5",
+          "loss": 480
+        },
+        {
+          "seed": 1183734,
+          "move": "c7c5",
+          "loss": 480
+        },
+        {
+          "seed": 1249271,
+          "move": "f7f5",
+          "loss": 6
+        },
+        {
+          "seed": 1314808,
+          "move": "f7f5",
+          "loss": 6
+        },
+        {
+          "seed": 1380345,
+          "move": "c7c5",
+          "loss": 480
+        },
+        {
+          "seed": 1445882,
+          "move": "d7a4",
+          "loss": 21
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-38",
+      "source": "https://www.chess.com/game/live/185933968430",
+      "acceptedLoss": 0,
+      "currentLoss": 48,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "c1h6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "c1h6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-49",
+      "source": "https://www.chess.com/game/live/185933968430",
+      "acceptedLoss": 99.875,
+      "currentLoss": 81.375,
+      "humanLoss": 137,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d5d7",
+          "loss": 63
+        },
+        {
+          "seed": 1052660,
+          "move": "d5a5",
+          "loss": 134
+        },
+        {
+          "seed": 1118197,
+          "move": "c7c5",
+          "loss": 78
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b5",
+          "loss": 114
+        },
+        {
+          "seed": 1249271,
+          "move": "d5a5",
+          "loss": 134
+        },
+        {
+          "seed": 1314808,
+          "move": "d5a5",
+          "loss": 134
+        },
+        {
+          "seed": 1380345,
+          "move": "b7b6",
+          "loss": 84
+        },
+        {
+          "seed": 1445882,
+          "move": "a7a5",
+          "loss": 58
+        }
+      ]
+    },
+    {
+      "id": "game-13-ply-12",
+      "source": "https://www.chess.com/game/live/186035808596",
+      "acceptedLoss": 5.125,
+      "currentLoss": 4,
+      "humanLoss": 4,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g1e2",
+          "loss": 8
+        },
+        {
+          "seed": 1052660,
+          "move": "g1e2",
+          "loss": 8
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h4",
+          "loss": 17
+        },
+        {
+          "seed": 1183734,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g1e2",
+          "loss": 8
+        },
+        {
+          "seed": 1445882,
+          "move": "g1f3",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-13-ply-25",
+      "source": "https://www.chess.com/game/live/186035808596",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e6d5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e6d5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-13-ply-38",
+      "source": "https://www.chess.com/game/live/186035808596",
+      "acceptedLoss": 77,
+      "currentLoss": 77,
+      "humanLoss": 53,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1052660,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1118197,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1183734,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1249271,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1314808,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1380345,
+          "move": "d1g1",
+          "loss": 77
+        },
+        {
+          "seed": 1445882,
+          "move": "d1g1",
+          "loss": 77
+        }
+      ]
+    },
+    {
+      "id": "game-13-ply-49",
+      "source": "https://www.chess.com/game/live/186035808596",
+      "acceptedLoss": 143.625,
+      "currentLoss": 102.75,
+      "humanLoss": 128,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b7b5",
+          "loss": 139
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b5",
+          "loss": 139
+        },
+        {
+          "seed": 1118197,
+          "move": "a6a5",
+          "loss": 112
+        },
+        {
+          "seed": 1183734,
+          "move": "g5g4",
+          "loss": 214
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "loss": 128
+        },
+        {
+          "seed": 1314808,
+          "move": "b7b5",
+          "loss": 139
+        },
+        {
+          "seed": 1380345,
+          "move": "b7b5",
+          "loss": 139
+        },
+        {
+          "seed": 1445882,
+          "move": "b7b5",
+          "loss": 139
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-12",
+      "source": "https://www.chess.com/game/live/186037035574",
+      "acceptedLoss": 114,
+      "currentLoss": 75.375,
+      "humanLoss": 114,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d1d4",
+          "loss": 114
+        },
+        {
+          "seed": 1052660,
+          "move": "d1d4",
+          "loss": 114
+        },
+        {
+          "seed": 1118197,
+          "move": "d1d4",
+          "loss": 114
+        },
+        {
+          "seed": 1183734,
+          "move": "d1d4",
+          "loss": 114
+        },
+        {
+          "seed": 1249271,
+          "move": "d1d4",
+          "loss": 114
+        },
+        {
+          "seed": 1314808,
+          "move": "d1d4",
+          "loss": 114
+        },
+        {
+          "seed": 1380345,
+          "move": "b5c6",
+          "loss": 114
+        },
+        {
+          "seed": 1445882,
+          "move": "d1d4",
+          "loss": 114
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-25",
+      "source": "https://www.chess.com/game/live/186037035574",
+      "acceptedLoss": 215.5,
+      "currentLoss": 103.75,
+      "humanLoss": 15,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f8d6",
+          "loss": 67
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b5",
+          "loss": 403
+        },
+        {
+          "seed": 1118197,
+          "move": "f8e7",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h5",
+          "loss": 15
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h6",
+          "loss": 90
+        },
+        {
+          "seed": 1314808,
+          "move": "f7f5",
+          "loss": 180
+        },
+        {
+          "seed": 1380345,
+          "move": "d8h4",
+          "loss": 902
+        },
+        {
+          "seed": 1445882,
+          "move": "f8d6",
+          "loss": 67
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-38",
+      "source": "https://www.chess.com/game/live/186037035574",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h8d8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-49",
+      "source": "https://www.chess.com/game/live/186037035574",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e4g5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e4g5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-15-ply-12",
+      "source": "https://www.chess.com/game/live/172389538260",
+      "acceptedLoss": 289,
+      "currentLoss": 289,
+      "humanLoss": 553,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1052660,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1118197,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1183734,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1249271,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1314808,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1380345,
+          "move": "f3e5",
+          "loss": 289
+        },
+        {
+          "seed": 1445882,
+          "move": "f3e5",
+          "loss": 289
+        }
+      ]
+    },
+    {
+      "id": "game-15-ply-25",
+      "source": "https://www.chess.com/game/live/172389538260",
+      "acceptedLoss": 68.125,
+      "currentLoss": 181.625,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d7d6",
+          "loss": 145
+        },
+        {
+          "seed": 1052660,
+          "move": "d7d5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g7g6",
+          "loss": 260
+        },
+        {
+          "seed": 1183734,
+          "move": "d7d5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d7d5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d7d5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h6h5",
+          "loss": 140
+        },
+        {
+          "seed": 1445882,
+          "move": "d7d5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-15-ply-38",
+      "source": "https://www.chess.com/game/live/172389538260",
+      "acceptedLoss": 101.875,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h6g5",
+          "loss": 69
+        },
+        {
+          "seed": 1052660,
+          "move": "h6g5",
+          "loss": 69
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h3",
+          "loss": 401
+        },
+        {
+          "seed": 1183734,
+          "move": "a1a2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h6g5",
+          "loss": 69
+        },
+        {
+          "seed": 1314808,
+          "move": "h6g5",
+          "loss": 69
+        },
+        {
+          "seed": 1380345,
+          "move": "h6g5",
+          "loss": 69
+        },
+        {
+          "seed": 1445882,
+          "move": "h6g5",
+          "loss": 69
+        }
+      ]
+    },
+    {
+      "id": "game-15-ply-49",
+      "source": "https://www.chess.com/game/live/172389538260",
+      "acceptedLoss": 34.5,
+      "currentLoss": 0,
+      "humanLoss": 69,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6b3",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f6",
+          "loss": 69
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "loss": 69
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f6",
+          "loss": 69
+        },
+        {
+          "seed": 1249271,
+          "move": "e6b3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f7f6",
+          "loss": 69
+        },
+        {
+          "seed": 1380345,
+          "move": "e6b3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e6b3",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-12",
+      "source": "https://www.chess.com/game/live/172434906640",
+      "acceptedLoss": 0,
+      "currentLoss": 41.625,
+      "humanLoss": 11,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g1f3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g1f3",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-25",
+      "source": "https://www.chess.com/game/live/172434906640",
+      "acceptedLoss": 66.75,
+      "currentLoss": 73.375,
+      "humanLoss": 86,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a5",
+          "loss": 37
+        },
+        {
+          "seed": 1052660,
+          "move": "a7a6",
+          "loss": 58
+        },
+        {
+          "seed": 1118197,
+          "move": "c8f5",
+          "loss": 27
+        },
+        {
+          "seed": 1183734,
+          "move": "a7a6",
+          "loss": 58
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "loss": 79
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g6",
+          "loss": 84
+        },
+        {
+          "seed": 1380345,
+          "move": "a7a6",
+          "loss": 58
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 133
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-38",
+      "source": "https://www.chess.com/game/live/172434906640",
+      "acceptedLoss": 14.625,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a1a7",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "a1a7",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a1a7",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "a1b1",
+          "loss": 39
+        },
+        {
+          "seed": 1249271,
+          "move": "a1b1",
+          "loss": 39
+        },
+        {
+          "seed": 1314808,
+          "move": "a1b1",
+          "loss": 39
+        },
+        {
+          "seed": 1380345,
+          "move": "a1a7",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a1a7",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-49",
+      "source": "https://www.chess.com/game/live/172434906640",
+      "acceptedLoss": 17.625,
+      "currentLoss": 118,
+      "humanLoss": 118,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h7h5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "a8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "a8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 141
+        }
+      ]
+    },
+    {
+      "id": "game-17-ply-12",
+      "source": "https://www.chess.com/game/live/172481659268",
+      "acceptedLoss": 20.5,
+      "currentLoss": 61.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e4d5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e4d5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c4d5",
+          "loss": 164
+        },
+        {
+          "seed": 1183734,
+          "move": "e4d5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e4d5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e4d5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e4d5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e4d5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-17-ply-25",
+      "source": "https://www.chess.com/game/live/172481659268",
+      "acceptedLoss": 84,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1249271,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1314808,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1380345,
+          "move": "f7f6",
+          "loss": 84
+        },
+        {
+          "seed": 1445882,
+          "move": "f7f6",
+          "loss": 84
+        }
+      ]
+    },
+    {
+      "id": "game-17-ply-38",
+      "source": "https://www.chess.com/game/live/172481659268",
+      "acceptedLoss": 0.125,
+      "currentLoss": 0.125,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2b4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e4e2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b3",
+          "loss": 1
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b2b4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b2b4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-17-ply-49",
+      "source": "https://www.chess.com/game/live/172481659268",
+      "acceptedLoss": 42,
+      "currentLoss": 29.25,
+      "humanLoss": 94,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d8e8",
+          "loss": 33
+        },
+        {
+          "seed": 1118197,
+          "move": "d8e8",
+          "loss": 33
+        },
+        {
+          "seed": 1183734,
+          "move": "f8f5",
+          "loss": 67
+        },
+        {
+          "seed": 1249271,
+          "move": "d8e8",
+          "loss": 33
+        },
+        {
+          "seed": 1314808,
+          "move": "f8f5",
+          "loss": 67
+        },
+        {
+          "seed": 1380345,
+          "move": "d8e8",
+          "loss": 33
+        },
+        {
+          "seed": 1445882,
+          "move": "d7f7",
+          "loss": 70
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-12",
+      "source": "https://www.chess.com/game/live/172514840826",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e3f4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e3f4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-25",
+      "source": "https://www.chess.com/game/live/172514840826",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b6d4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b6d4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-38",
+      "source": "https://www.chess.com/game/live/172514840826",
+      "acceptedLoss": 29.875,
+      "currentLoss": 22.75,
+      "humanLoss": 32,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d4c6",
+          "loss": 32
+        },
+        {
+          "seed": 1052660,
+          "move": "d4c6",
+          "loss": 32
+        },
+        {
+          "seed": 1118197,
+          "move": "d4c6",
+          "loss": 32
+        },
+        {
+          "seed": 1183734,
+          "move": "d4c6",
+          "loss": 32
+        },
+        {
+          "seed": 1249271,
+          "move": "d4c6",
+          "loss": 32
+        },
+        {
+          "seed": 1314808,
+          "move": "d4c6",
+          "loss": 32
+        },
+        {
+          "seed": 1380345,
+          "move": "d4c2",
+          "loss": 15
+        },
+        {
+          "seed": 1445882,
+          "move": "d4c6",
+          "loss": 32
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-49",
+      "source": "https://www.chess.com/game/live/172514840826",
+      "acceptedLoss": 48.75,
+      "currentLoss": 49,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 47
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a1",
+          "loss": 49
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a1",
+          "loss": 49
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a1",
+          "loss": 49
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a1",
+          "loss": 49
+        },
+        {
+          "seed": 1314808,
+          "move": "a2a1",
+          "loss": 49
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a1",
+          "loss": 49
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a1",
+          "loss": 49
+        }
+      ]
+    },
+    {
+      "id": "game-19-ply-12",
+      "source": "https://www.chess.com/game/live/172522580544",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f1b5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f1b5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f1b5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f1b5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f1b5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e1f2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e1f2",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e1f2",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-19-ply-25",
+      "source": "https://www.chess.com/game/live/172522580544",
+      "acceptedLoss": 63.625,
+      "currentLoss": 64.5,
+      "humanLoss": 125,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h7h6",
+          "loss": 26
+        },
+        {
+          "seed": 1052660,
+          "move": "h7h5",
+          "loss": 75
+        },
+        {
+          "seed": 1118197,
+          "move": "h7h6",
+          "loss": 26
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h5",
+          "loss": 75
+        },
+        {
+          "seed": 1249271,
+          "move": "g7g6",
+          "loss": 131
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h5",
+          "loss": 75
+        },
+        {
+          "seed": 1380345,
+          "move": "h7h5",
+          "loss": 75
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h6",
+          "loss": 26
+        }
+      ]
+    },
+    {
+      "id": "game-19-ply-38",
+      "source": "https://www.chess.com/game/live/172522580544",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f3e5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-19-ply-49",
+      "source": "https://www.chess.com/game/live/172522580544",
+      "acceptedLoss": 41.625,
+      "currentLoss": 143.375,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d5c4",
+          "loss": 137
+        },
+        {
+          "seed": 1183734,
+          "move": "a6a5",
+          "loss": 196
+        },
+        {
+          "seed": 1249271,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e6e5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-12",
+      "source": "https://www.chess.com/game/live/172575338834",
+      "acceptedLoss": 26.25,
+      "currentLoss": 9.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c1g5",
+          "loss": 30
+        },
+        {
+          "seed": 1052660,
+          "move": "d3d4",
+          "loss": 30
+        },
+        {
+          "seed": 1118197,
+          "move": "d3d4",
+          "loss": 30
+        },
+        {
+          "seed": 1183734,
+          "move": "c1g5",
+          "loss": 30
+        },
+        {
+          "seed": 1249271,
+          "move": "h2h3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c1g5",
+          "loss": 30
+        },
+        {
+          "seed": 1380345,
+          "move": "c1g5",
+          "loss": 30
+        },
+        {
+          "seed": 1445882,
+          "move": "c1g5",
+          "loss": 30
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-25",
+      "source": "https://www.chess.com/game/live/172575338834",
+      "acceptedLoss": 65.875,
+      "currentLoss": 78.75,
+      "humanLoss": 46,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g7e5",
+          "loss": 83
+        },
+        {
+          "seed": 1052660,
+          "move": "e7e6",
+          "loss": 46
+        },
+        {
+          "seed": 1118197,
+          "move": "e7e5",
+          "loss": 204
+        },
+        {
+          "seed": 1183734,
+          "move": "e7e6",
+          "loss": 46
+        },
+        {
+          "seed": 1249271,
+          "move": "e7e6",
+          "loss": 46
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h5",
+          "loss": 10
+        },
+        {
+          "seed": 1380345,
+          "move": "e7e6",
+          "loss": 46
+        },
+        {
+          "seed": 1445882,
+          "move": "e7e6",
+          "loss": 46
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-38",
+      "source": "https://www.chess.com/game/live/172575338834",
+      "acceptedLoss": 167.5,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b5d3",
+          "loss": 43
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "loss": 209
+        },
+        {
+          "seed": 1118197,
+          "move": "g2g4",
+          "loss": 209
+        },
+        {
+          "seed": 1183734,
+          "move": "g2g4",
+          "loss": 209
+        },
+        {
+          "seed": 1249271,
+          "move": "g2g4",
+          "loss": 209
+        },
+        {
+          "seed": 1314808,
+          "move": "g2g4",
+          "loss": 209
+        },
+        {
+          "seed": 1380345,
+          "move": "b5d3",
+          "loss": 43
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 209
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-49",
+      "source": "https://www.chess.com/game/live/172575338834",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f6e5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-21-ply-12",
+      "source": "https://www.chess.com/game/live/184674487710",
+      "acceptedLoss": 23.5,
+      "currentLoss": 70.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c2e4",
+          "loss": 39
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a4",
+          "loss": 45
+        },
+        {
+          "seed": 1118197,
+          "move": "c3d5",
+          "loss": 33
+        },
+        {
+          "seed": 1183734,
+          "move": "e2e4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e2e4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b3",
+          "loss": 32
+        },
+        {
+          "seed": 1380345,
+          "move": "g5e3",
+          "loss": 39
+        },
+        {
+          "seed": 1445882,
+          "move": "e2e4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-21-ply-25",
+      "source": "https://www.chess.com/game/live/184674487710",
+      "acceptedLoss": 117.125,
+      "currentLoss": 98.875,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b7b5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b6",
+          "loss": 81
+        },
+        {
+          "seed": 1118197,
+          "move": "f8g8",
+          "loss": 99
+        },
+        {
+          "seed": 1183734,
+          "move": "f8f7",
+          "loss": 95
+        },
+        {
+          "seed": 1249271,
+          "move": "g6g5",
+          "loss": 128
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h5",
+          "loss": 93
+        },
+        {
+          "seed": 1380345,
+          "move": "f6f5",
+          "loss": 241
+        },
+        {
+          "seed": 1445882,
+          "move": "a6a5",
+          "loss": 200
+        }
+      ]
+    },
+    {
+      "id": "game-21-ply-38",
+      "source": "https://www.chess.com/game/live/184674487710",
+      "acceptedLoss": 339.25,
+      "currentLoss": 273.5,
+      "humanLoss": 155,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a3",
+          "loss": 355
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a4",
+          "loss": 341
+        },
+        {
+          "seed": 1118197,
+          "move": "h7h4",
+          "loss": 345
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a4",
+          "loss": 341
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a4",
+          "loss": 341
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b3",
+          "loss": 495
+        },
+        {
+          "seed": 1380345,
+          "move": "d2h6",
+          "loss": 155
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a4",
+          "loss": 341
+        }
+      ]
+    },
+    {
+      "id": "game-21-ply-49",
+      "source": "https://www.chess.com/game/live/184674487710",
+      "acceptedLoss": 661.25,
+      "currentLoss": 887.875,
+      "humanLoss": 111,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g6g5",
+          "loss": 963
+        },
+        {
+          "seed": 1052660,
+          "move": "g6g5",
+          "loss": 963
+        },
+        {
+          "seed": 1118197,
+          "move": "b6a7",
+          "loss": 216
+        },
+        {
+          "seed": 1183734,
+          "move": "b6b8",
+          "loss": 554
+        },
+        {
+          "seed": 1249271,
+          "move": "g6g5",
+          "loss": 963
+        },
+        {
+          "seed": 1314808,
+          "move": "b6a5",
+          "loss": 1000
+        },
+        {
+          "seed": 1380345,
+          "move": "e8d8",
+          "loss": 177
+        },
+        {
+          "seed": 1445882,
+          "move": "f6f5",
+          "loss": 454
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-12",
+      "source": "https://www.chess.com/game/live/184706631574",
+      "acceptedLoss": 244.875,
+      "currentLoss": 39.5,
+      "humanLoss": 20,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c1g5",
+          "loss": 277
+        },
+        {
+          "seed": 1052660,
+          "move": "c1g5",
+          "loss": 277
+        },
+        {
+          "seed": 1118197,
+          "move": "c1g5",
+          "loss": 277
+        },
+        {
+          "seed": 1183734,
+          "move": "c1g5",
+          "loss": 277
+        },
+        {
+          "seed": 1249271,
+          "move": "c1g5",
+          "loss": 277
+        },
+        {
+          "seed": 1314808,
+          "move": "b1c3",
+          "loss": 20
+        },
+        {
+          "seed": 1380345,
+          "move": "c1g5",
+          "loss": 277
+        },
+        {
+          "seed": 1445882,
+          "move": "c1g5",
+          "loss": 277
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-25",
+      "source": "https://www.chess.com/game/live/184706631574",
+      "acceptedLoss": 69,
+      "currentLoss": 0,
+      "humanLoss": 95,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d8c8",
+          "loss": 184
+        },
+        {
+          "seed": 1052660,
+          "move": "d8d5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d8d5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d8d5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d8c8",
+          "loss": 184
+        },
+        {
+          "seed": 1314808,
+          "move": "d8d5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d8d5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d8c8",
+          "loss": 184
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-38",
+      "source": "https://www.chess.com/game/live/184706631574",
+      "acceptedLoss": 30.625,
+      "currentLoss": 12.875,
+      "humanLoss": 103,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g2g4",
+          "loss": 35
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "loss": 35
+        },
+        {
+          "seed": 1118197,
+          "move": "g2g4",
+          "loss": 35
+        },
+        {
+          "seed": 1183734,
+          "move": "d8a5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g2g4",
+          "loss": 35
+        },
+        {
+          "seed": 1314808,
+          "move": "g2g4",
+          "loss": 35
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "loss": 35
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 35
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-49",
+      "source": "https://www.chess.com/game/live/184706631574",
+      "acceptedLoss": 169,
+      "currentLoss": 37.875,
+      "humanLoss": 8,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1052660,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1118197,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1183734,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1249271,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1380345,
+          "move": "g7g5",
+          "loss": 169
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 169
+        }
+      ]
+    },
+    {
+      "id": "game-23-ply-12",
+      "source": "https://www.chess.com/game/live/184777761818",
+      "acceptedLoss": 10,
+      "currentLoss": 16,
+      "humanLoss": 10,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1052660,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1118197,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1183734,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1249271,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1314808,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1380345,
+          "move": "f1b5",
+          "loss": 10
+        },
+        {
+          "seed": 1445882,
+          "move": "f1b5",
+          "loss": 10
+        }
+      ]
+    },
+    {
+      "id": "game-23-ply-25",
+      "source": "https://www.chess.com/game/live/184777761818",
+      "acceptedLoss": 393.625,
+      "currentLoss": 509.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6e5",
+          "loss": 509
+        },
+        {
+          "seed": 1052660,
+          "move": "e6e5",
+          "loss": 509
+        },
+        {
+          "seed": 1118197,
+          "move": "c7b8",
+          "loss": 20
+        },
+        {
+          "seed": 1183734,
+          "move": "c7d8",
+          "loss": 75
+        },
+        {
+          "seed": 1249271,
+          "move": "e6e5",
+          "loss": 509
+        },
+        {
+          "seed": 1314808,
+          "move": "e6e5",
+          "loss": 509
+        },
+        {
+          "seed": 1380345,
+          "move": "e6e5",
+          "loss": 509
+        },
+        {
+          "seed": 1445882,
+          "move": "e6e5",
+          "loss": 509
+        }
+      ]
+    },
+    {
+      "id": "game-23-ply-38",
+      "source": "https://www.chess.com/game/live/184777761818",
+      "acceptedLoss": 250,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h2h3",
+          "loss": 1000
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h3",
+          "loss": 1000
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-23-ply-49",
+      "source": "https://www.chess.com/game/live/184777761818",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d3c1",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d3c1",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-12",
+      "source": "https://www.chess.com/game/live/184968102230",
+      "acceptedLoss": 40.375,
+      "currentLoss": 37,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d4e5",
+          "loss": 37
+        },
+        {
+          "seed": 1052660,
+          "move": "d4e5",
+          "loss": 37
+        },
+        {
+          "seed": 1118197,
+          "move": "d4e5",
+          "loss": 37
+        },
+        {
+          "seed": 1183734,
+          "move": "d4e5",
+          "loss": 37
+        },
+        {
+          "seed": 1249271,
+          "move": "d4e5",
+          "loss": 37
+        },
+        {
+          "seed": 1314808,
+          "move": "g1f3",
+          "loss": 48
+        },
+        {
+          "seed": 1380345,
+          "move": "d4e5",
+          "loss": 37
+        },
+        {
+          "seed": 1445882,
+          "move": "g1e2",
+          "loss": 53
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-25",
+      "source": "https://www.chess.com/game/live/184968102230",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f6h5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f6h5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-38",
+      "source": "https://www.chess.com/game/live/184968102230",
+      "acceptedLoss": 278,
+      "currentLoss": 298.25,
+      "humanLoss": 79,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1052660,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1118197,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1183734,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1249271,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1314808,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1380345,
+          "move": "d2c2",
+          "loss": 278
+        },
+        {
+          "seed": 1445882,
+          "move": "d2c2",
+          "loss": 278
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-49",
+      "source": "https://www.chess.com/game/live/184968102230",
+      "acceptedLoss": 185,
+      "currentLoss": 69.375,
+      "humanLoss": 185,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1052660,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1118197,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1183734,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1249271,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1314808,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1380345,
+          "move": "b6e3",
+          "loss": 185
+        },
+        {
+          "seed": 1445882,
+          "move": "b6e3",
+          "loss": 185
+        }
+      ]
+    },
+    {
+      "id": "game-25-ply-12",
+      "source": "https://www.chess.com/game/live/184969215698",
+      "acceptedLoss": 66.125,
+      "currentLoss": 75.25,
+      "humanLoss": 72,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 61
+        },
+        {
+          "seed": 1052660,
+          "move": "e4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a3",
+          "loss": 71
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b3",
+          "loss": 101
+        },
+        {
+          "seed": 1249271,
+          "move": "h2h4",
+          "loss": 92
+        },
+        {
+          "seed": 1314808,
+          "move": "f1d3",
+          "loss": 72
+        },
+        {
+          "seed": 1380345,
+          "move": "f1c4",
+          "loss": 71
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a4",
+          "loss": 61
+        }
+      ]
+    },
+    {
+      "id": "game-25-ply-25",
+      "source": "https://www.chess.com/game/live/184969215698",
+      "acceptedLoss": 135.75,
+      "currentLoss": 1000,
+      "humanLoss": 199,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e8g8",
+          "loss": 199
+        },
+        {
+          "seed": 1052660,
+          "move": "e8g8",
+          "loss": 199
+        },
+        {
+          "seed": 1118197,
+          "move": "e8e7",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c8d7",
+          "loss": 145
+        },
+        {
+          "seed": 1249271,
+          "move": "c8d7",
+          "loss": 145
+        },
+        {
+          "seed": 1314808,
+          "move": "c5a5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e8g8",
+          "loss": 199
+        },
+        {
+          "seed": 1445882,
+          "move": "e8g8",
+          "loss": 199
+        }
+      ]
+    },
+    {
+      "id": "game-25-ply-38",
+      "source": "https://www.chess.com/game/live/184969215698",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c3d1",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c3d1",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c3d1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c3d1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g6h7",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g6h7",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g6h7",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "c3d1",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-25-ply-49",
+      "source": "https://www.chess.com/game/live/184969215698",
+      "acceptedLoss": 202.125,
+      "currentLoss": 231,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g2a2",
+          "loss": 231
+        },
+        {
+          "seed": 1052660,
+          "move": "g2a2",
+          "loss": 231
+        },
+        {
+          "seed": 1118197,
+          "move": "g2a2",
+          "loss": 231
+        },
+        {
+          "seed": 1183734,
+          "move": "g2a2",
+          "loss": 231
+        },
+        {
+          "seed": 1249271,
+          "move": "f8d8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g2a2",
+          "loss": 231
+        },
+        {
+          "seed": 1380345,
+          "move": "g2a2",
+          "loss": 231
+        },
+        {
+          "seed": 1445882,
+          "move": "g2a2",
+          "loss": 231
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-12",
+      "source": "https://www.chess.com/game/live/184970053852",
+      "acceptedLoss": 0,
+      "currentLoss": 4.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-25",
+      "source": "https://www.chess.com/game/live/184970053852",
+      "acceptedLoss": 41.125,
+      "currentLoss": 28.375,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a6",
+          "loss": 28
+        },
+        {
+          "seed": 1052660,
+          "move": "a7a5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "b8d7",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f8d6",
+          "loss": 23
+        },
+        {
+          "seed": 1249271,
+          "move": "b7b5",
+          "loss": 106
+        },
+        {
+          "seed": 1314808,
+          "move": "b7b5",
+          "loss": 106
+        },
+        {
+          "seed": 1380345,
+          "move": "f8e7",
+          "loss": 66
+        },
+        {
+          "seed": 1445882,
+          "move": "a7a5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-38",
+      "source": "https://www.chess.com/game/live/184970053852",
+      "acceptedLoss": 2.75,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c2c4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c2c4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b2a1",
+          "loss": 22
+        },
+        {
+          "seed": 1249271,
+          "move": "h3h4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d1g1",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f3d5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f3e4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-49",
+      "source": "https://www.chess.com/game/live/184970053852",
+      "acceptedLoss": 1.125,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e8e2",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d7b8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e8e4",
+          "loss": 9
+        },
+        {
+          "seed": 1183734,
+          "move": "e8e2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e8e2",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e8e2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e8e2",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e8e2",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-27-ply-12",
+      "source": "https://www.chess.com/game/live/167373916196",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f3d4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f3d4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-27-ply-25",
+      "source": "https://www.chess.com/game/live/167373916196",
+      "acceptedLoss": 34.125,
+      "currentLoss": 0,
+      "humanLoss": 273,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2c4",
+          "loss": 273
+        },
+        {
+          "seed": 1052660,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g8f6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-27-ply-38",
+      "source": "https://www.chess.com/game/live/167373916196",
+      "acceptedLoss": 43,
+      "currentLoss": 44.875,
+      "humanLoss": 37,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1052660,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1118197,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1183734,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1249271,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1314808,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1380345,
+          "move": "c2c4",
+          "loss": 43
+        },
+        {
+          "seed": 1445882,
+          "move": "c2c4",
+          "loss": 43
+        }
+      ]
+    },
+    {
+      "id": "game-27-ply-49",
+      "source": "https://www.chess.com/game/live/167373916196",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "a8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a8h8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-28-ply-12",
+      "source": "https://www.chess.com/game/live/167374236444",
+      "acceptedLoss": 143.125,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d1f3",
+          "loss": 229
+        },
+        {
+          "seed": 1052660,
+          "move": "d1f3",
+          "loss": 229
+        },
+        {
+          "seed": 1118197,
+          "move": "d1f3",
+          "loss": 229
+        },
+        {
+          "seed": 1183734,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c3b5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d1f3",
+          "loss": 229
+        },
+        {
+          "seed": 1380345,
+          "move": "d1f3",
+          "loss": 229
+        },
+        {
+          "seed": 1445882,
+          "move": "c3b5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-28-ply-25",
+      "source": "https://www.chess.com/game/live/167374236444",
+      "acceptedLoss": 68.25,
+      "currentLoss": 107.875,
+      "humanLoss": 111,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h8g8",
+          "loss": 111
+        },
+        {
+          "seed": 1052660,
+          "move": "h6h5",
+          "loss": 22
+        },
+        {
+          "seed": 1118197,
+          "move": "h6h5",
+          "loss": 22
+        },
+        {
+          "seed": 1183734,
+          "move": "h8f8",
+          "loss": 181
+        },
+        {
+          "seed": 1249271,
+          "move": "e8g8",
+          "loss": 55
+        },
+        {
+          "seed": 1314808,
+          "move": "h6h5",
+          "loss": 22
+        },
+        {
+          "seed": 1380345,
+          "move": "h8g8",
+          "loss": 111
+        },
+        {
+          "seed": 1445882,
+          "move": "h6h5",
+          "loss": 22
+        }
+      ]
+    },
+    {
+      "id": "game-28-ply-38",
+      "source": "https://www.chess.com/game/live/167374236444",
+      "acceptedLoss": 9.75,
+      "currentLoss": 16.125,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h3",
+          "loss": 9
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a3",
+          "loss": 60
+        },
+        {
+          "seed": 1314808,
+          "move": "h2h3",
+          "loss": 9
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-28-ply-49",
+      "source": "https://www.chess.com/game/live/167374236444",
+      "acceptedLoss": 28.875,
+      "currentLoss": 24.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c4c3",
+          "loss": 33
+        },
+        {
+          "seed": 1052660,
+          "move": "c4c3",
+          "loss": 33
+        },
+        {
+          "seed": 1118197,
+          "move": "c4c3",
+          "loss": 33
+        },
+        {
+          "seed": 1183734,
+          "move": "c4b3",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c4c3",
+          "loss": 33
+        },
+        {
+          "seed": 1314808,
+          "move": "c4c3",
+          "loss": 33
+        },
+        {
+          "seed": 1380345,
+          "move": "c4c3",
+          "loss": 33
+        },
+        {
+          "seed": 1445882,
+          "move": "c4c3",
+          "loss": 33
+        }
+      ]
+    },
+    {
+      "id": "game-29-ply-12",
+      "source": "https://www.chess.com/game/live/167547867300",
+      "acceptedLoss": 202.25,
+      "currentLoss": 203.25,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b5b3",
+          "loss": 187
+        },
+        {
+          "seed": 1052660,
+          "move": "b5c4",
+          "loss": 197
+        },
+        {
+          "seed": 1118197,
+          "move": "b5a5",
+          "loss": 287
+        },
+        {
+          "seed": 1183734,
+          "move": "b5c4",
+          "loss": 197
+        },
+        {
+          "seed": 1249271,
+          "move": "f1c4",
+          "loss": 179
+        },
+        {
+          "seed": 1314808,
+          "move": "b5c4",
+          "loss": 197
+        },
+        {
+          "seed": 1380345,
+          "move": "b5b3",
+          "loss": 187
+        },
+        {
+          "seed": 1445882,
+          "move": "b5b3",
+          "loss": 187
+        }
+      ]
+    },
+    {
+      "id": "game-29-ply-25",
+      "source": "https://www.chess.com/game/live/167547867300",
+      "acceptedLoss": 100.375,
+      "currentLoss": 102.75,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a8b8",
+          "loss": 80
+        },
+        {
+          "seed": 1052660,
+          "move": "h7h5",
+          "loss": 61
+        },
+        {
+          "seed": 1118197,
+          "move": "a8b8",
+          "loss": 80
+        },
+        {
+          "seed": 1183734,
+          "move": "a8b8",
+          "loss": 80
+        },
+        {
+          "seed": 1249271,
+          "move": "e8e7",
+          "loss": 171
+        },
+        {
+          "seed": 1314808,
+          "move": "a8b8",
+          "loss": 80
+        },
+        {
+          "seed": 1380345,
+          "move": "a8b8",
+          "loss": 80
+        },
+        {
+          "seed": 1445882,
+          "move": "e8e7",
+          "loss": 171
+        }
+      ]
+    },
+    {
+      "id": "game-29-ply-38",
+      "source": "https://www.chess.com/game/live/167547867300",
+      "acceptedLoss": 73,
+      "currentLoss": 73,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f1e1",
+          "loss": 80
+        },
+        {
+          "seed": 1118197,
+          "move": "a1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "a1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b7b4",
+          "loss": 212
+        },
+        {
+          "seed": 1314808,
+          "move": "f1e1",
+          "loss": 80
+        },
+        {
+          "seed": 1380345,
+          "move": "a1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b7b4",
+          "loss": 212
+        }
+      ]
+    },
+    {
+      "id": "game-29-ply-49",
+      "source": "https://www.chess.com/game/live/167547867300",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h5g6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h5g6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-30-ply-12",
+      "source": "https://www.chess.com/game/live/167549085686",
+      "acceptedLoss": 42.625,
+      "currentLoss": 28.875,
+      "humanLoss": 23,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c2c4",
+          "loss": 94
+        },
+        {
+          "seed": 1052660,
+          "move": "b3d5",
+          "loss": 70
+        },
+        {
+          "seed": 1118197,
+          "move": "c2c3",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d2d3",
+          "loss": 37
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b1c3",
+          "loss": 23
+        },
+        {
+          "seed": 1380345,
+          "move": "b1c3",
+          "loss": 23
+        },
+        {
+          "seed": 1445882,
+          "move": "c2c4",
+          "loss": 94
+        }
+      ]
+    },
+    {
+      "id": "game-30-ply-25",
+      "source": "https://www.chess.com/game/live/167549085686",
+      "acceptedLoss": 37,
+      "currentLoss": 37,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1052660,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1118197,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1183734,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1249271,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1314808,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1380345,
+          "move": "g8e7",
+          "loss": 37
+        },
+        {
+          "seed": 1445882,
+          "move": "g8e7",
+          "loss": 37
+        }
+      ]
+    },
+    {
+      "id": "game-30-ply-38",
+      "source": "https://www.chess.com/game/live/167549085686",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 34,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "g5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c2c3",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c2c3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c2c3",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g5f6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g5f6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-30-ply-49",
+      "source": "https://www.chess.com/game/live/167549085686",
+      "acceptedLoss": 17.875,
+      "currentLoss": 19.625,
+      "humanLoss": 59,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b5b4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b5b4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e8d8",
+          "loss": 31
+        },
+        {
+          "seed": 1183734,
+          "move": "a6a5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b5b4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "a6a5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e8g8",
+          "loss": 112
+        },
+        {
+          "seed": 1445882,
+          "move": "a6a5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-31-ply-12",
+      "source": "https://www.chess.com/game/live/167299759608",
+      "acceptedLoss": 14.75,
+      "currentLoss": 16.375,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b1c3",
+          "loss": 14
+        },
+        {
+          "seed": 1052660,
+          "move": "b1c3",
+          "loss": 14
+        },
+        {
+          "seed": 1118197,
+          "move": "g2g4",
+          "loss": 44
+        },
+        {
+          "seed": 1183734,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a4",
+          "loss": 23
+        },
+        {
+          "seed": 1445882,
+          "move": "f1e2",
+          "loss": 23
+        }
+      ]
+    },
+    {
+      "id": "game-31-ply-25",
+      "source": "https://www.chess.com/game/live/167299759608",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b2a1",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b2a1",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-31-ply-38",
+      "source": "https://www.chess.com/game/live/167299759608",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g4f5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g4f5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-31-ply-49",
+      "source": "https://www.chess.com/game/live/167299759608",
+      "acceptedLoss": 142.25,
+      "currentLoss": 117.875,
+      "humanLoss": 141,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a6",
+          "loss": 173
+        },
+        {
+          "seed": 1052660,
+          "move": "c6c5",
+          "loss": 120
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "loss": 371
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h5",
+          "loss": 141
+        },
+        {
+          "seed": 1249271,
+          "move": "a7a5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b4b6",
+          "loss": 192
+        },
+        {
+          "seed": 1380345,
+          "move": "h7h5",
+          "loss": 141
+        },
+        {
+          "seed": 1445882,
+          "move": "a7a5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-32-ply-12",
+      "source": "https://www.chess.com/game/live/167404691818",
+      "acceptedLoss": 23.25,
+      "currentLoss": 5.75,
+      "humanLoss": 34,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f3e5",
+          "loss": 34
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a3",
+          "loss": 22
+        },
+        {
+          "seed": 1183734,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b1a3",
+          "loss": 118
+        },
+        {
+          "seed": 1380345,
+          "move": "b1d2",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b1c3",
+          "loss": 12
+        }
+      ]
+    },
+    {
+      "id": "game-32-ply-25",
+      "source": "https://www.chess.com/game/live/167404691818",
+      "acceptedLoss": 0,
+      "currentLoss": 30,
+      "humanLoss": 30,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e6e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e6e5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-32-ply-38",
+      "source": "https://www.chess.com/game/live/167404691818",
+      "acceptedLoss": 51,
+      "currentLoss": 218.25,
+      "humanLoss": 51,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1314808,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a4",
+          "loss": 51
+        }
+      ]
+    },
+    {
+      "id": "game-32-ply-49",
+      "source": "https://www.chess.com/game/live/167404691818",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d6e6",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d6e6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-33-ply-12",
+      "source": "https://www.chess.com/game/live/121447120864",
+      "acceptedLoss": 38.25,
+      "currentLoss": 45,
+      "humanLoss": 19,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2b4",
+          "loss": 39
+        },
+        {
+          "seed": 1052660,
+          "move": "d2d4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b3",
+          "loss": 50
+        },
+        {
+          "seed": 1183734,
+          "move": "d2d3",
+          "loss": 19
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a4",
+          "loss": 51
+        },
+        {
+          "seed": 1314808,
+          "move": "h2h4",
+          "loss": 69
+        },
+        {
+          "seed": 1380345,
+          "move": "b2b4",
+          "loss": 39
+        },
+        {
+          "seed": 1445882,
+          "move": "b2b4",
+          "loss": 39
+        }
+      ]
+    },
+    {
+      "id": "game-33-ply-25",
+      "source": "https://www.chess.com/game/live/121447120864",
+      "acceptedLoss": 26,
+      "currentLoss": 13,
+      "humanLoss": 32,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1052660,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1118197,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1183734,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1249271,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1314808,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1380345,
+          "move": "b7a6",
+          "loss": 26
+        },
+        {
+          "seed": 1445882,
+          "move": "b7a6",
+          "loss": 26
+        }
+      ]
+    },
+    {
+      "id": "game-33-ply-38",
+      "source": "https://www.chess.com/game/live/121447120864",
+      "acceptedLoss": 72.125,
+      "currentLoss": 71,
+      "humanLoss": 57,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e1e5",
+          "loss": 57
+        },
+        {
+          "seed": 1052660,
+          "move": "e1e5",
+          "loss": 57
+        },
+        {
+          "seed": 1118197,
+          "move": "c2a2",
+          "loss": 118
+        },
+        {
+          "seed": 1183734,
+          "move": "e1e5",
+          "loss": 57
+        },
+        {
+          "seed": 1249271,
+          "move": "e1e5",
+          "loss": 57
+        },
+        {
+          "seed": 1314808,
+          "move": "g1h1",
+          "loss": 117
+        },
+        {
+          "seed": 1380345,
+          "move": "e1e5",
+          "loss": 57
+        },
+        {
+          "seed": 1445882,
+          "move": "e1e5",
+          "loss": 57
+        }
+      ]
+    },
+    {
+      "id": "game-33-ply-49",
+      "source": "https://www.chess.com/game/live/121447120864",
+      "acceptedLoss": 248,
+      "currentLoss": 240,
+      "humanLoss": 174,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e7b7",
+          "loss": 192
+        },
+        {
+          "seed": 1052660,
+          "move": "e7a3",
+          "loss": 304
+        },
+        {
+          "seed": 1118197,
+          "move": "e7a3",
+          "loss": 304
+        },
+        {
+          "seed": 1183734,
+          "move": "e7a3",
+          "loss": 304
+        },
+        {
+          "seed": 1249271,
+          "move": "e7b7",
+          "loss": 192
+        },
+        {
+          "seed": 1314808,
+          "move": "e7a3",
+          "loss": 304
+        },
+        {
+          "seed": 1380345,
+          "move": "e7b7",
+          "loss": 192
+        },
+        {
+          "seed": 1445882,
+          "move": "e7b7",
+          "loss": 192
+        }
+      ]
+    },
+    {
+      "id": "game-34-ply-12",
+      "source": "https://www.chess.com/game/live/121448668710",
+      "acceptedLoss": 2.25,
+      "currentLoss": 29.875,
+      "humanLoss": 73,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a3",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a3",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a3",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b1c3",
+          "loss": 18
+        },
+        {
+          "seed": 1249271,
+          "move": "a2a3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "a2a3",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a3",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-34-ply-25",
+      "source": "https://www.chess.com/game/live/121448668710",
+      "acceptedLoss": 121.375,
+      "currentLoss": 103,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c6e5",
+          "loss": 152
+        },
+        {
+          "seed": 1052660,
+          "move": "d4e5",
+          "loss": 103
+        },
+        {
+          "seed": 1118197,
+          "move": "c6e5",
+          "loss": 152
+        },
+        {
+          "seed": 1183734,
+          "move": "c6e5",
+          "loss": 152
+        },
+        {
+          "seed": 1249271,
+          "move": "d4e5",
+          "loss": 103
+        },
+        {
+          "seed": 1314808,
+          "move": "d4e5",
+          "loss": 103
+        },
+        {
+          "seed": 1380345,
+          "move": "d4e5",
+          "loss": 103
+        },
+        {
+          "seed": 1445882,
+          "move": "d4e5",
+          "loss": 103
+        }
+      ]
+    },
+    {
+      "id": "game-34-ply-38",
+      "source": "https://www.chess.com/game/live/121448668710",
+      "acceptedLoss": 163,
+      "currentLoss": 224,
+      "humanLoss": 135,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 102
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a4",
+          "loss": 102
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a4",
+          "loss": 102
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a4",
+          "loss": 102
+        },
+        {
+          "seed": 1249271,
+          "move": "g1f1",
+          "loss": 224
+        },
+        {
+          "seed": 1314808,
+          "move": "g1f1",
+          "loss": 224
+        },
+        {
+          "seed": 1380345,
+          "move": "g1f1",
+          "loss": 224
+        },
+        {
+          "seed": 1445882,
+          "move": "g1f1",
+          "loss": 224
+        }
+      ]
+    },
+    {
+      "id": "game-34-ply-49",
+      "source": "https://www.chess.com/game/live/121448668710",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g8f7",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-35-ply-12",
+      "source": "https://www.chess.com/game/live/121449116798",
+      "acceptedLoss": 101.75,
+      "currentLoss": 129.75,
+      "humanLoss": 83,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 136
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g3",
+          "loss": 98
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a3",
+          "loss": 117
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b3",
+          "loss": 229
+        },
+        {
+          "seed": 1249271,
+          "move": "g2g3",
+          "loss": 98
+        },
+        {
+          "seed": 1314808,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f3e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a4",
+          "loss": 136
+        }
+      ]
+    },
+    {
+      "id": "game-35-ply-25",
+      "source": "https://www.chess.com/game/live/121449116798",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g8f8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "g8f8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "g8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "g8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "g8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g8f8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "g8h8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "g8f8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-35-ply-38",
+      "source": "https://www.chess.com/game/live/121449116798",
+      "acceptedLoss": 29,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "f4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "f4g3",
+          "loss": 116
+        },
+        {
+          "seed": 1183734,
+          "move": "f4g3",
+          "loss": 116
+        },
+        {
+          "seed": 1249271,
+          "move": "f4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f4e5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "f4e5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-35-ply-49",
+      "source": "https://www.chess.com/game/live/121449116798",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d8d4",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d8d4",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-36-ply-12",
+      "source": "https://www.chess.com/game/live/121449306488",
+      "acceptedLoss": 57.625,
+      "currentLoss": 0,
+      "humanLoss": 165,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d1e2",
+          "loss": 258
+        },
+        {
+          "seed": 1052660,
+          "move": "d4c5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d4c5",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d4c5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d4c5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d4c5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b2b3",
+          "loss": 203
+        },
+        {
+          "seed": 1445882,
+          "move": "d4c5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-36-ply-25",
+      "source": "https://www.chess.com/game/live/121449306488",
+      "acceptedLoss": 22,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e8e1",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e8e1",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "e8e1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "e8e1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e8e1",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "f6d8",
+          "loss": 176
+        },
+        {
+          "seed": 1380345,
+          "move": "e8e1",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e8e1",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-36-ply-38",
+      "source": "https://www.chess.com/game/live/121449306488",
+      "acceptedLoss": 22.125,
+      "currentLoss": 19.5,
+      "humanLoss": 22,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a1c1",
+          "loss": 23
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b3",
+          "loss": 22
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b3",
+          "loss": 22
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b3",
+          "loss": 22
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b3",
+          "loss": 22
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b3",
+          "loss": 22
+        },
+        {
+          "seed": 1380345,
+          "move": "b2b3",
+          "loss": 22
+        },
+        {
+          "seed": 1445882,
+          "move": "b2b3",
+          "loss": 22
+        }
+      ]
+    },
+    {
+      "id": "game-36-ply-49",
+      "source": "https://www.chess.com/game/live/121449306488",
+      "acceptedLoss": 155.125,
+      "currentLoss": 94.875,
+      "humanLoss": 9,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h7h6",
+          "loss": 75
+        },
+        {
+          "seed": 1052660,
+          "move": "e6e5",
+          "loss": 348
+        },
+        {
+          "seed": 1118197,
+          "move": "a6b7",
+          "loss": 9
+        },
+        {
+          "seed": 1183734,
+          "move": "a8h8",
+          "loss": 110
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "loss": 107
+        },
+        {
+          "seed": 1314808,
+          "move": "e6e5",
+          "loss": 348
+        },
+        {
+          "seed": 1380345,
+          "move": "a8g8",
+          "loss": 137
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h5",
+          "loss": 107
+        }
+      ]
+    },
+    {
+      "id": "game-37-ply-12",
+      "source": "https://www.chess.com/game/live/121449587578",
+      "acceptedLoss": 106.25,
+      "currentLoss": 98.375,
+      "humanLoss": 45,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h2h4",
+          "loss": 61
+        },
+        {
+          "seed": 1052660,
+          "move": "f3d4",
+          "loss": 147
+        },
+        {
+          "seed": 1118197,
+          "move": "c3e4",
+          "loss": 97
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b3",
+          "loss": 141
+        },
+        {
+          "seed": 1249271,
+          "move": "f3d4",
+          "loss": 147
+        },
+        {
+          "seed": 1314808,
+          "move": "g2g4",
+          "loss": 112
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h4",
+          "loss": 61
+        },
+        {
+          "seed": 1445882,
+          "move": "a2a4",
+          "loss": 84
+        }
+      ]
+    },
+    {
+      "id": "game-37-ply-25",
+      "source": "https://www.chess.com/game/live/121449587578",
+      "acceptedLoss": 11.875,
+      "currentLoss": 11.875,
+      "humanLoss": 95,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c7d6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b6d6",
+          "loss": 95
+        },
+        {
+          "seed": 1445882,
+          "move": "c7d6",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-37-ply-38",
+      "source": "https://www.chess.com/game/live/121449587578",
+      "acceptedLoss": 0,
+      "currentLoss": 34.25,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d1e2",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d1e2",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "d1e2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d1e1",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d1e2",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-37-ply-49",
+      "source": "https://www.chess.com/game/live/121449587578",
+      "acceptedLoss": 293,
+      "currentLoss": 147,
+      "humanLoss": 196,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d5f5",
+          "loss": 358
+        },
+        {
+          "seed": 1052660,
+          "move": "d5f5",
+          "loss": 358
+        },
+        {
+          "seed": 1118197,
+          "move": "d5f5",
+          "loss": 358
+        },
+        {
+          "seed": 1183734,
+          "move": "e8e7",
+          "loss": 196
+        },
+        {
+          "seed": 1249271,
+          "move": "d5f5",
+          "loss": 358
+        },
+        {
+          "seed": 1314808,
+          "move": "d5f5",
+          "loss": 358
+        },
+        {
+          "seed": 1380345,
+          "move": "e8f7",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d5f5",
+          "loss": 358
+        }
+      ]
+    },
+    {
+      "id": "game-38-ply-12",
+      "source": "https://www.chess.com/game/live/121449654128",
+      "acceptedLoss": 15.125,
+      "currentLoss": 16,
+      "humanLoss": 16,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e4d5",
+          "loss": 16
+        },
+        {
+          "seed": 1052660,
+          "move": "e4d5",
+          "loss": 16
+        },
+        {
+          "seed": 1118197,
+          "move": "c3d5",
+          "loss": 9
+        },
+        {
+          "seed": 1183734,
+          "move": "e4d5",
+          "loss": 16
+        },
+        {
+          "seed": 1249271,
+          "move": "e4d5",
+          "loss": 16
+        },
+        {
+          "seed": 1314808,
+          "move": "e4d5",
+          "loss": 16
+        },
+        {
+          "seed": 1380345,
+          "move": "e4d5",
+          "loss": 16
+        },
+        {
+          "seed": 1445882,
+          "move": "e4d5",
+          "loss": 16
+        }
+      ]
+    },
+    {
+      "id": "game-38-ply-25",
+      "source": "https://www.chess.com/game/live/121449654128",
+      "acceptedLoss": 62.125,
+      "currentLoss": 56.5,
+      "humanLoss": 15,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a7a5",
+          "loss": 76
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f5",
+          "loss": 40
+        },
+        {
+          "seed": 1118197,
+          "move": "b7b5",
+          "loss": 71
+        },
+        {
+          "seed": 1183734,
+          "move": "f7f5",
+          "loss": 40
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "loss": 31
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h5",
+          "loss": 31
+        },
+        {
+          "seed": 1380345,
+          "move": "b7b5",
+          "loss": 71
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 137
+        }
+      ]
+    },
+    {
+      "id": "game-38-ply-38",
+      "source": "https://www.chess.com/game/live/121449654128",
+      "acceptedLoss": 16.625,
+      "currentLoss": 19,
+      "humanLoss": 144,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e1e5",
+          "loss": 11
+        },
+        {
+          "seed": 1052660,
+          "move": "e6g6",
+          "loss": 9
+        },
+        {
+          "seed": 1118197,
+          "move": "e1e5",
+          "loss": 11
+        },
+        {
+          "seed": 1183734,
+          "move": "e1e5",
+          "loss": 11
+        },
+        {
+          "seed": 1249271,
+          "move": "e1e5",
+          "loss": 11
+        },
+        {
+          "seed": 1314808,
+          "move": "e1e5",
+          "loss": 11
+        },
+        {
+          "seed": 1380345,
+          "move": "e6d5",
+          "loss": 58
+        },
+        {
+          "seed": 1445882,
+          "move": "e1e5",
+          "loss": 11
+        }
+      ]
+    },
+    {
+      "id": "game-38-ply-49",
+      "source": "https://www.chess.com/game/live/121449654128",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h8g8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h8g8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-39-ply-12",
+      "source": "https://www.chess.com/game/live/186368694298",
+      "acceptedLoss": 62.125,
+      "currentLoss": 38.125,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c1f4",
+          "loss": 26
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h3",
+          "loss": 83
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h3",
+          "loss": 83
+        },
+        {
+          "seed": 1183734,
+          "move": "a2a3",
+          "loss": 87
+        },
+        {
+          "seed": 1249271,
+          "move": "c1f4",
+          "loss": 26
+        },
+        {
+          "seed": 1314808,
+          "move": "h2h3",
+          "loss": 83
+        },
+        {
+          "seed": 1380345,
+          "move": "c1f4",
+          "loss": 26
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h3",
+          "loss": 83
+        }
+      ]
+    },
+    {
+      "id": "game-39-ply-25",
+      "source": "https://www.chess.com/game/live/186368694298",
+      "acceptedLoss": 36.375,
+      "currentLoss": 117,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a5c7",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "a5c7",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "a5c7",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "a5c7",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "a5b4",
+          "loss": 291
+        },
+        {
+          "seed": 1314808,
+          "move": "a5c7",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "a5c7",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "a5d8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-39-ply-38",
+      "source": "https://www.chess.com/game/live/186368694298",
+      "acceptedLoss": 22.25,
+      "currentLoss": 25.625,
+      "humanLoss": 63,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d1f1",
+          "loss": 23
+        },
+        {
+          "seed": 1052660,
+          "move": "d1f1",
+          "loss": 23
+        },
+        {
+          "seed": 1118197,
+          "move": "d1f1",
+          "loss": 23
+        },
+        {
+          "seed": 1183734,
+          "move": "d1f1",
+          "loss": 23
+        },
+        {
+          "seed": 1249271,
+          "move": "d1f1",
+          "loss": 23
+        },
+        {
+          "seed": 1314808,
+          "move": "d1f1",
+          "loss": 23
+        },
+        {
+          "seed": 1380345,
+          "move": "d1d2",
+          "loss": 17
+        },
+        {
+          "seed": 1445882,
+          "move": "d1f1",
+          "loss": 23
+        }
+      ]
+    },
+    {
+      "id": "game-39-ply-49",
+      "source": "https://www.chess.com/game/live/186368694298",
+      "acceptedLoss": 26.5,
+      "currentLoss": 69,
+      "humanLoss": 45,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a5a4",
+          "loss": 45
+        },
+        {
+          "seed": 1052660,
+          "move": "a5a4",
+          "loss": 45
+        },
+        {
+          "seed": 1118197,
+          "move": "a5a4",
+          "loss": 45
+        },
+        {
+          "seed": 1183734,
+          "move": "a5c3",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "a5c3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "a5a4",
+          "loss": 45
+        },
+        {
+          "seed": 1380345,
+          "move": "a5a3",
+          "loss": 16
+        },
+        {
+          "seed": 1445882,
+          "move": "a5a3",
+          "loss": 16
+        }
+      ]
+    },
+    {
+      "id": "game-40-ply-12",
+      "source": "https://www.chess.com/game/live/187896485653",
+      "acceptedLoss": 59.375,
+      "currentLoss": 35,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c1d2",
+          "loss": 12
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h4",
+          "loss": 21
+        },
+        {
+          "seed": 1118197,
+          "move": "f3g5",
+          "loss": 65
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b4",
+          "loss": 95
+        },
+        {
+          "seed": 1249271,
+          "move": "g2g4",
+          "loss": 80
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b4",
+          "loss": 95
+        },
+        {
+          "seed": 1380345,
+          "move": "c1d2",
+          "loss": 12
+        },
+        {
+          "seed": 1445882,
+          "move": "b2b4",
+          "loss": 95
+        }
+      ]
+    },
+    {
+      "id": "game-40-ply-25",
+      "source": "https://www.chess.com/game/live/187896485653",
+      "acceptedLoss": 215.5,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g7g6",
+          "loss": 157
+        },
+        {
+          "seed": 1052660,
+          "move": "g7g5",
+          "loss": 276
+        },
+        {
+          "seed": 1118197,
+          "move": "g7g5",
+          "loss": 276
+        },
+        {
+          "seed": 1183734,
+          "move": "g7g5",
+          "loss": 276
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "loss": 159
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h5",
+          "loss": 159
+        },
+        {
+          "seed": 1380345,
+          "move": "d8b8",
+          "loss": 145
+        },
+        {
+          "seed": 1445882,
+          "move": "g7g5",
+          "loss": 276
+        }
+      ]
+    },
+    {
+      "id": "game-40-ply-38",
+      "source": "https://www.chess.com/game/live/187896485653",
+      "acceptedLoss": 186.375,
+      "currentLoss": 186.375,
+      "humanLoss": 411,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "d5b3",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d5b3",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d5b3",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "d5b3",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "d5e4",
+          "loss": 497
+        },
+        {
+          "seed": 1314808,
+          "move": "d5e4",
+          "loss": 497
+        },
+        {
+          "seed": 1380345,
+          "move": "d5b3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "d5e4",
+          "loss": 497
+        }
+      ]
+    },
+    {
+      "id": "game-40-ply-49",
+      "source": "https://www.chess.com/game/live/187896485653",
+      "acceptedLoss": 456.5,
+      "currentLoss": 365.875,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h7h5",
+          "loss": 488
+        },
+        {
+          "seed": 1052660,
+          "move": "h7h5",
+          "loss": 488
+        },
+        {
+          "seed": 1118197,
+          "move": "h7h5",
+          "loss": 488
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h5",
+          "loss": 488
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h6",
+          "loss": 606
+        },
+        {
+          "seed": 1314808,
+          "move": "f5e4",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h7h5",
+          "loss": 488
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h6",
+          "loss": 606
+        }
+      ]
+    },
+    {
+      "id": "game-41-ply-12",
+      "source": "https://www.chess.com/game/live/186689867036",
+      "acceptedLoss": 34.125,
+      "currentLoss": 14.125,
+      "humanLoss": 96,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a2a4",
+          "loss": 25
+        },
+        {
+          "seed": 1052660,
+          "move": "b1a3",
+          "loss": 45
+        },
+        {
+          "seed": 1118197,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b4",
+          "loss": 169
+        },
+        {
+          "seed": 1249271,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b1d2",
+          "loss": 34
+        },
+        {
+          "seed": 1380345,
+          "move": "b1c3",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b1c3",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-41-ply-25",
+      "source": "https://www.chess.com/game/live/186689867036",
+      "acceptedLoss": 120.875,
+      "currentLoss": 10,
+      "humanLoss": 797,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "g6g5",
+          "loss": 10
+        },
+        {
+          "seed": 1052660,
+          "move": "g6g5",
+          "loss": 10
+        },
+        {
+          "seed": 1118197,
+          "move": "g6g5",
+          "loss": 10
+        },
+        {
+          "seed": 1183734,
+          "move": "g6g5",
+          "loss": 10
+        },
+        {
+          "seed": 1249271,
+          "move": "a4c6",
+          "loss": 897
+        },
+        {
+          "seed": 1314808,
+          "move": "g6g5",
+          "loss": 10
+        },
+        {
+          "seed": 1380345,
+          "move": "g6g5",
+          "loss": 10
+        },
+        {
+          "seed": 1445882,
+          "move": "g6g5",
+          "loss": 10
+        }
+      ]
+    },
+    {
+      "id": "game-41-ply-38",
+      "source": "https://www.chess.com/game/live/186689867036",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "b7a8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "b7a8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-41-ply-49",
+      "source": "https://www.chess.com/game/live/186689867036",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 1000,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "h8e8",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "h8e8",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-42-ply-12",
+      "source": "https://www.chess.com/game/live/186749080102",
+      "acceptedLoss": 51.125,
+      "currentLoss": 48.875,
+      "humanLoss": 57,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c4e2",
+          "loss": 54
+        },
+        {
+          "seed": 1052660,
+          "move": "c4e2",
+          "loss": 54
+        },
+        {
+          "seed": 1118197,
+          "move": "c4d3",
+          "loss": 45
+        },
+        {
+          "seed": 1183734,
+          "move": "c4b3",
+          "loss": 57
+        },
+        {
+          "seed": 1249271,
+          "move": "c4e2",
+          "loss": 54
+        },
+        {
+          "seed": 1314808,
+          "move": "c4d3",
+          "loss": 45
+        },
+        {
+          "seed": 1380345,
+          "move": "c4f1",
+          "loss": 46
+        },
+        {
+          "seed": 1445882,
+          "move": "c4e2",
+          "loss": 54
+        }
+      ]
+    },
+    {
+      "id": "game-42-ply-25",
+      "source": "https://www.chess.com/game/live/186749080102",
+      "acceptedLoss": 1.75,
+      "currentLoss": 7,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e7c5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "e7c5",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "d5c4",
+          "loss": 7
+        },
+        {
+          "seed": 1183734,
+          "move": "e7c5",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "e7c5",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "e7c5",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "d5c4",
+          "loss": 7
+        },
+        {
+          "seed": 1445882,
+          "move": "e7c5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-42-ply-38",
+      "source": "https://www.chess.com/game/live/186749080102",
+      "acceptedLoss": 120,
+      "currentLoss": 58,
+      "humanLoss": 213,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c2c3",
+          "loss": 213
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b4",
+          "loss": 305
+        },
+        {
+          "seed": 1118197,
+          "move": "f2e4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f2h3",
+          "loss": 51
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b4",
+          "loss": 305
+        },
+        {
+          "seed": 1314808,
+          "move": "h2h4",
+          "loss": 16
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h4",
+          "loss": 16
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h3",
+          "loss": 54
+        }
+      ]
+    },
+    {
+      "id": "game-42-ply-49",
+      "source": "https://www.chess.com/game/live/186749080102",
+      "acceptedLoss": 13.75,
+      "currentLoss": 5.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "e6d5",
+          "loss": 22
+        },
+        {
+          "seed": 1052660,
+          "move": "e6d5",
+          "loss": 22
+        },
+        {
+          "seed": 1118197,
+          "move": "e6d5",
+          "loss": 22
+        },
+        {
+          "seed": 1183734,
+          "move": "e6d5",
+          "loss": 22
+        },
+        {
+          "seed": 1249271,
+          "move": "e6d5",
+          "loss": 22
+        },
+        {
+          "seed": 1314808,
+          "move": "e6c8",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "e6f5",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "e6f5",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-43-ply-12",
+      "source": "https://www.chess.com/game/live/186824206738",
+      "acceptedLoss": 112,
+      "currentLoss": 128,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f1c4",
+          "loss": 128
+        },
+        {
+          "seed": 1052660,
+          "move": "f1c4",
+          "loss": 128
+        },
+        {
+          "seed": 1118197,
+          "move": "d1a4",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "f1c4",
+          "loss": 128
+        },
+        {
+          "seed": 1249271,
+          "move": "f1c4",
+          "loss": 128
+        },
+        {
+          "seed": 1314808,
+          "move": "f1c4",
+          "loss": 128
+        },
+        {
+          "seed": 1380345,
+          "move": "f1c4",
+          "loss": 128
+        },
+        {
+          "seed": 1445882,
+          "move": "f1c4",
+          "loss": 128
+        }
+      ]
+    },
+    {
+      "id": "game-43-ply-25",
+      "source": "https://www.chess.com/game/live/186824206738",
+      "acceptedLoss": 205.625,
+      "currentLoss": 58.25,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "f7f5",
+          "loss": 317
+        },
+        {
+          "seed": 1052660,
+          "move": "h7h5",
+          "loss": 228
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "loss": 312
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h6",
+          "loss": 154
+        },
+        {
+          "seed": 1249271,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "g8f6",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "f7f5",
+          "loss": 317
+        },
+        {
+          "seed": 1445882,
+          "move": "f7f5",
+          "loss": 317
+        }
+      ]
+    },
+    {
+      "id": "game-43-ply-38",
+      "source": "https://www.chess.com/game/live/186824206738",
+      "acceptedLoss": 38,
+      "currentLoss": 28.5,
+      "humanLoss": 38,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1052660,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1118197,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1183734,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1249271,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1314808,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1380345,
+          "move": "a5b4",
+          "loss": 38
+        },
+        {
+          "seed": 1445882,
+          "move": "a5b4",
+          "loss": 38
+        }
+      ]
+    },
+    {
+      "id": "game-43-ply-49",
+      "source": "https://www.chess.com/game/live/186824206738",
+      "acceptedLoss": 0,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1118197,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1183734,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1249271,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1314808,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1380345,
+          "move": "c3c2",
+          "loss": 0
+        },
+        {
+          "seed": 1445882,
+          "move": "c3c2",
+          "loss": 0
+        }
+      ]
+    },
+    {
+      "id": "game-44-ply-12",
+      "source": "https://www.chess.com/game/live/186824881072",
+      "acceptedLoss": 25.5,
+      "currentLoss": 113.125,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2b4",
+          "loss": 15
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b4",
+          "loss": 15
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b4",
+          "loss": 15
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b4",
+          "loss": 15
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b4",
+          "loss": 15
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b4",
+          "loss": 15
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "loss": 57
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "loss": 57
+        }
+      ]
+    },
+    {
+      "id": "game-44-ply-25",
+      "source": "https://www.chess.com/game/live/186824881072",
+      "acceptedLoss": 51.75,
+      "currentLoss": 51.75,
+      "humanLoss": 51,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a8a6",
+          "loss": 51
+        },
+        {
+          "seed": 1052660,
+          "move": "b7a6",
+          "loss": 52
+        },
+        {
+          "seed": 1118197,
+          "move": "a8a6",
+          "loss": 51
+        },
+        {
+          "seed": 1183734,
+          "move": "b7a6",
+          "loss": 52
+        },
+        {
+          "seed": 1249271,
+          "move": "b7a6",
+          "loss": 52
+        },
+        {
+          "seed": 1314808,
+          "move": "b7a6",
+          "loss": 52
+        },
+        {
+          "seed": 1380345,
+          "move": "b7a6",
+          "loss": 52
+        },
+        {
+          "seed": 1445882,
+          "move": "b7a6",
+          "loss": 52
+        }
+      ]
+    },
+    {
+      "id": "game-44-ply-38",
+      "source": "https://www.chess.com/game/live/186824881072",
+      "acceptedLoss": 255.5,
+      "currentLoss": 0,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "a1a5",
+          "loss": 0
+        },
+        {
+          "seed": 1052660,
+          "move": "d1c1",
+          "loss": 292
+        },
+        {
+          "seed": 1118197,
+          "move": "d1c1",
+          "loss": 292
+        },
+        {
+          "seed": 1183734,
+          "move": "d1c1",
+          "loss": 292
+        },
+        {
+          "seed": 1249271,
+          "move": "d1c1",
+          "loss": 292
+        },
+        {
+          "seed": 1314808,
+          "move": "d1c1",
+          "loss": 292
+        },
+        {
+          "seed": 1380345,
+          "move": "d1c1",
+          "loss": 292
+        },
+        {
+          "seed": 1445882,
+          "move": "d1c1",
+          "loss": 292
+        }
+      ]
+    },
+    {
+      "id": "game-44-ply-49",
+      "source": "https://www.chess.com/game/live/186824881072",
+      "acceptedLoss": 36,
+      "currentLoss": 90.5,
+      "humanLoss": 0,
+      "acceptedMoves": [
+        {
+          "seed": 987123,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "b2b4",
+          "loss": 36
+        },
+        {
+          "seed": 1445882,
+          "move": "b2b4",
+          "loss": 36
+        }
+      ]
+    }
+  ]
+}

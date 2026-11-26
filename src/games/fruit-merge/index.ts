@@ -105,7 +105,8 @@ const module:GameModule={
    draw();if(!paused&&!disposed)raf=requestAnimationFrame(frame);
   }
   function doDrop(){if(paused||disposed)return;if(physics.drop()){context.sound('tap');report();context.save(physics.snapshot());draw();}else if(!physics.lost){context.announce('Wait for room at the top of the basket.');}}
-  function aim(event:PointerEvent){if(paused||disposed)return;const box=canvas.getBoundingClientRect();physics.setAim((event.clientX-box.left)*WIDTH/box.width);draw();}
+  // The running loop draws the new aim on its next frame; only draw here when no frame is coming.
+  function aim(event:PointerEvent){if(paused||disposed)return;const box=canvas.getBoundingClientRect();physics.setAim((event.clientX-box.left)*WIDTH/box.width);if(!raf)draw();}
   let pointer:number|undefined;
   const pointerDown=(event:PointerEvent)=>{if(paused||event.button!==0)return;pointer=event.pointerId;canvas.focus({preventScroll:true});canvas.setPointerCapture(event.pointerId);aim(event);event.preventDefault();};
   const pointerMove=(event:PointerEvent)=>aim(event);

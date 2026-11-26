@@ -1,5 +1,6 @@
 import {AccountsClient} from './client';
-import {openSheet} from '../ui/sheet';
+import {openSheet,requestSheetClose} from '../ui/sheet';
+import {uiIcon} from '../ui/icons';
 import './style.css';
 export class AccountsView {
  readonly root=document.createElement('dialog');
@@ -7,7 +8,7 @@ export class AccountsView {
  get isBusy(){return this.busy;}
  constructor(readonly client:AccountsClient,private prepare:()=>void,private done:()=>void){
   this.root.id='accounts-dialog';this.root.classList.add('ui-glass-sheet');this.root.setAttribute('aria-labelledby','accounts-title');
-  this.root.innerHTML=`<h2 id="accounts-title">Play your way</h2><p class="account-intro">Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
+  this.root.innerHTML=`<div class="dialog-head"><h2 id="accounts-title">Play your way</h2><button type="button" class="icon-button account-close" aria-label="Close sign in">${uiIcon('close')}</button></div><p class="account-intro">Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
    <button type="button" class="game-button account-guest">Play as guest</button>
    <div class="account-tabs"><button type="button" class="game-button secondary account-login">Log in</button><button type="button" class="game-button secondary account-signup">Sign up</button></div>
    <form><label for="account-username">Username</label><input id="account-username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.\\-]{3,24}" required spellcheck="false" autocapitalize="none"><p class="muted account-username-help">3–24 letters, digits, underscores, hyphens or dots. Your username is public on leaderboards.</p>
@@ -21,6 +22,8 @@ export class AccountsView {
   this.root.querySelector('.account-signup')!.addEventListener('click',()=>this.mode(true));
   this.root.querySelector('form')!.addEventListener('submit',event=>{event.preventDefault();void this.submit();});
   this.root.querySelector('.account-guest')!.addEventListener('click',()=>this.guest());
+  // Same as Escape: closing keeps or chooses guest play.
+  this.root.querySelector('.account-close')!.addEventListener('click',()=>requestSheetClose(this.root));
   this.root.addEventListener('close',()=>this.clearPasswords());
   this.root.addEventListener('cancel',event=>{event.preventDefault();if(!this.busy)this.guest();});
  }

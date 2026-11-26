@@ -37,8 +37,9 @@
 .nc-stick{position:absolute;left:max(24px,env(safe-area-inset-left));bottom:var(--nc-stick-bottom);width:var(--nc-stick-size,132px);height:var(--nc-stick-size,132px);pointer-events:none;opacity:.62;transition:opacity .18s ease-out}
 .nc-stick[hidden]{display:none}.nc-stick[data-active=true]{opacity:1}
 /* Clear glass: the shared fill, blur and faint rim, no milky body. */
-.nc-stick-ring{position:absolute;inset:0;border-radius:50%;background:var(--glass-clear-fill,rgb(8 12 18 / .2));box-shadow:var(--glass-rim-edge,inset 0 0 0 1px #ffffff30);-webkit-backdrop-filter:var(--glass-clear-blur,blur(1.5px)) saturate(1.08);backdrop-filter:var(--glass-clear-blur,blur(1.5px)) saturate(1.08)}
-.nc-stick-knob{position:absolute;left:50%;top:50%;width:var(--nc-stick-knob,52px);height:var(--nc-stick-knob,52px);margin:calc(var(--nc-stick-knob,52px) / -2);border-radius:50%;background:rgb(255 255 255 / .14);box-shadow:inset 0 0 0 1.5px rgb(255 255 255 / .62),inset 0 1px 0 rgb(255 255 255 / .4),0 2px 10px rgb(0 0 0 / .35);-webkit-backdrop-filter:blur(3px) saturate(1.2);backdrop-filter:blur(3px) saturate(1.2);transition:transform .14s ease-out}
+/* No backdrop blur on the stick: the arena under it repaints every frame, and the blur would too. */
+.nc-stick-ring{position:absolute;inset:0;border-radius:50%;background:var(--glass-clear-fill,rgb(8 12 18 / .2));box-shadow:var(--glass-rim-edge,inset 0 0 0 1px #ffffff30)}
+.nc-stick-knob{position:absolute;left:50%;top:50%;width:var(--nc-stick-knob,52px);height:var(--nc-stick-knob,52px);margin:calc(var(--nc-stick-knob,52px) / -2);border-radius:50%;background:rgb(255 255 255 / .2);box-shadow:inset 0 0 0 1.5px rgb(255 255 255 / .62),inset 0 1px 0 rgb(255 255 255 / .4),0 2px 10px rgb(0 0 0 / .35);transition:transform .14s ease-out}
 .nc-stick[data-active=true] .nc-stick-knob{transition:none}
 @media(prefers-reduced-motion:reduce){.nc-stick,.nc-stick-knob{transition:none}}
 .nc-game[data-reduced-motion=true] .nc-stick,.nc-game[data-reduced-motion=true] .nc-stick-knob{transition:none}

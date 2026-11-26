@@ -47,7 +47,7 @@ export function createSfx(enabled: () => boolean): Sfx {
       const d = noise.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    if (ctx.state !== 'running' && ctx.state !== 'closed') void ctx.resume().catch(() => {});
     return ctx;
   }
   const falloff = (d: number) => 1 / (1 + d * d / 300);

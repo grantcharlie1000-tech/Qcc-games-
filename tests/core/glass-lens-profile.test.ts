@@ -14,9 +14,18 @@ describe('edge-only lens profile',()=>{
     for(let t=0;t<1;t+=.01)expect(edgeFactor(t+.01)).toBeLessThanOrEqual(edgeFactor(t));
   });
 
-  it('research presets keep bend/band within 2/3 (dock: radius 32, band 10, bend 6, softness .6)',()=>{
-    expect(LENS_PRESETS.dock).toEqual({radius:32,band:10,bend:6,softness:.6,saturation:1.08});
+  it('research presets keep bend/band within the non-folding range',()=>{
     for(const preset of Object.values(LENS_PRESETS))expect(preset.bend/preset.band).toBeLessThanOrEqual(MAX_BEND_RATIO+1e-9);
+  });
+
+  it('keeps the button and 240 by 64 dock displacement between 2 and 4 px at the rim',()=>{
+    for(const [width,height,preset] of [[48,48,LENS_PRESETS.button],[240,64,LENS_PRESETS.dock]] as const){
+      const lens=fitPreset(preset,width,height);
+      const rim=lensOffset(0,-height/2+1e-9,width,height,lens);
+      expect(rim.dy).toBeGreaterThanOrEqual(2);
+      expect(rim.dy).toBeLessThanOrEqual(4);
+      expect(Math.abs(lensOffset(0,0,width,height,lens).dy)).toBe(0);
+    }
   });
 
   it('fitPreset clamps radius, band and bend to the surface and the non-folding ratio',()=>{
@@ -38,7 +47,7 @@ describe('edge-only lens profile',()=>{
   it('displaces inward by the full bend at the rim, not at all in the centre or outside',()=>{
     const preset=fitPreset(LENS_PRESETS.dock,200,64);
     const rim=lensOffset(0,-32+1e-9,200,64,preset);
-    expect(rim.inside).toBe(true);expect(rim.dy).toBeCloseTo(6,6);expect(rim.dx).toBeCloseTo(0,10);
+    expect(rim.inside).toBe(true);expect(rim.dy).toBeGreaterThanOrEqual(2);expect(rim.dy).toBeLessThanOrEqual(4);expect(rim.dx).toBeCloseTo(0,10);
     const centre=lensOffset(0,0,200,64,preset);
     expect(Math.abs(centre.dx)+Math.abs(centre.dy)).toBe(0);expect(centre.inside).toBe(true);
     expect(lensOffset(0,-32+10,200,64,preset).dy).toBeCloseTo(0,10);

@@ -1,9 +1,14 @@
-name: Christmas movies regression
+name: Movie release regression
 on:
   pull_request:
     branches: [main]
     paths:
       - 'src/movies/**'
+      - 'src/ui/**'
+      - 'src/core/storage.ts'
+      - 'src/main.ts'
+      - 'src/theme.css'
+      - 'tests/e2e/**'
       - 'src/festive/**'
       - 'server/movies-catalog.ts'
       - 'functions/api/movies.ts'
@@ -21,9 +26,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   christmas:
-    name: Christmas movies (${{ matrix.browser }})
+    name: Movies and navigation (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +44,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Verify movie behavior
-        run: npx vitest run tests/movies --maxWorkers=1
+        run: npx vitest run tests/movies tests/core/storage.test.ts tests/core/glass-lens-profile.test.ts tests/accounts/merge.test.ts tests/accounts/client.test.ts tests/accounts/sync-v2-client.test.ts --maxWorkers=1
       - run: npm run build
       - name: Use Ubuntu archive for browser dependencies
         run: |
@@ -47,8 +52,10 @@ jobs:
             sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
           fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Verify permanent Christmas rail
-        run: xvfb-run -a npx playwright test tests/movies/christmas.spec.ts --project=${{ matrix.browser }} --workers=1
+      # The historical uniform-optics contract measures the previous navigation tint.
+      # It remains in Verify arcade; this gate covers the requested interactions and palette.
+      - name: Verify release behavior
+        run: xvfb-run -a npx playwright test tests/movies/christmas.spec.ts tests/movies/popularity.spec.ts tests/e2e/reduce-transparency.spec.ts tests/e2e/glass-drag-selection.spec.ts tests/e2e/apple-glass.spec.ts --project=${{ matrix.browser }} --workers=1 --grep-invert 'uniform arcade optics'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

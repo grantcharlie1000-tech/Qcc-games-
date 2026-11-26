@@ -87,7 +87,8 @@ function courtPaint(map: MapDef): THREE.BufferGeometry | null {
 export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean; quality?: QualityId }): ClashScene {
   let quality: QualityId=opts.quality??'potato';
   const profile=QUALITY[quality];
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+  // Phones at 2x and above get little from MSAA but pay for it on every pixel of a large buffer.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: (window.devicePixelRatio || 1) < 2, powerPreference: 'high-performance', stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
