@@ -210,7 +210,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     last = now;
     input.frame(dt);
     if (!held && !frozen) advance(dt);
-    // The performance preset draws every other frame on a 60 Hz screen; the simulation and input do not slow down.
+    // Display rate of the selected preset. Performance is 60 Hz with a cheaper picture, not every other frame.
     const period = 1 / QUALITIES[prefs.quality].fps;
     renderCarry += interval;
     if (renderCarry >= period - 0.002 || shown !== null) { draw(Math.min(0.1, renderCarry)); renderCarry = renderCarry >= period * 2 ? 0 : Math.max(0, renderCarry - period); }

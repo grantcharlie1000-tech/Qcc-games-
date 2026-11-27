@@ -1,0 +1,989 @@
+{
+  "schema_version": 1,
+  "captured_utc": "2026-11-17T02:25:44.560603+00:00",
+  "target_root": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hearts of Iron IV",
+  "target_identity": {
+    "game": "Hearts of Iron IV",
+    "steam_app_id": 394360,
+    "steam_build_id": "26479645",
+    "launcher_version": "Operation Postern v1.19.5.0.7c6c (c184)",
+    "launcher_raw_version": "1.19.5.0"
+  },
+  "scope": "Bounded static metadata and selected shipped configuration inspection. Full reverse engineering not completed. No native runtime observed. No proprietary assets or source copied. No decompilation.",
+  "tooling": {
+    "rea_skill_installed": true,
+    "rea_skill_path": "C:\\Users\\charlie\\.codex\\skills\\reverse-engineer-anything\\SKILL.md",
+    "rea_analysis_tools_exposed": false,
+    "rea_evidence_ids": [],
+    "observation_tools": [
+      "PowerShell",
+      "ripgrep",
+      "Python standard library",
+      "web primary publisher page"
+    ]
+  },
+  "inventory_count_rule": "Recursive ordinary files under each explicitly named directory, including documentation. Nested directory counts overlap and must not be summed. Counts do not mean active gameplay entities or enabled DLC.",
+  "directories": [
+    {
+      "path": "common/buildings",
+      "recursive_file_count": 2,
+      "total_bytes": 34274
+    },
+    {
+      "path": "common/ideas",
+      "recursive_file_count": 213,
+      "total_bytes": 2536906
+    },
+    {
+      "path": "common/technologies",
+      "recursive_file_count": 13,
+      "total_bytes": 429752
+    },
+    {
+      "path": "common/national_focus",
+      "recursive_file_count": 81,
+      "total_bytes": 14223186
+    },
+    {
+      "path": "common/units",
+      "recursive_file_count": 297,
+      "total_bytes": 3099780
+    },
+    {
+      "path": "common/units/equipment",
+      "recursive_file_count": 52,
+      "total_bytes": 580814
+    },
+    {
+      "path": "common/doctrines",
+      "recursive_file_count": 27,
+      "total_bytes": 210789
+    },
+    {
+      "path": "common/terrain",
+      "recursive_file_count": 1,
+      "total_bytes": 7470
+    },
+    {
+      "path": "common/wargoals",
+      "recursive_file_count": 1,
+      "total_bytes": 2981
+    },
+    {
+      "path": "common/peace_conference",
+      "recursive_file_count": 37,
+      "total_bytes": 160812
+    },
+    {
+      "path": "common/ai_strategy",
+      "recursive_file_count": 51,
+      "total_bytes": 581932
+    },
+    {
+      "path": "common/ai_strategy_plans",
+      "recursive_file_count": 128,
+      "total_bytes": 819079
+    },
+    {
+      "path": "common/intelligence_agencies",
+      "recursive_file_count": 1,
+      "total_bytes": 15929
+    },
+    {
+      "path": "common/intelligence_agency_upgrades",
+      "recursive_file_count": 2,
+      "total_bytes": 10342
+    },
+    {
+      "path": "common/operations",
+      "recursive_file_count": 7,
+      "total_bytes": 116879
+    },
+    {
+      "path": "common/special_projects",
+      "recursive_file_count": 17,
+      "total_bytes": 331212
+    },
+    {
+      "path": "common/raids",
+      "recursive_file_count": 10,
+      "total_bytes": 268541
+    },
+    {
+      "path": "common/military_industrial_organization",
+      "recursive_file_count": 63,
+      "total_bytes": 978776
+    },
+    {
+      "path": "common/occupation_laws",
+      "recursive_file_count": 1,
+      "total_bytes": 26266
+    },
+    {
+      "path": "common/decisions",
+      "recursive_file_count": 147,
+      "total_bytes": 6913347
+    },
+    {
+      "path": "events",
+      "recursive_file_count": 128,
+      "total_bytes": 8027316
+    },
+    {
+      "path": "history/states",
+      "recursive_file_count": 1081,
+      "total_bytes": 506199
+    },
+    {
+      "path": "history/countries",
+      "recursive_file_count": 364,
+      "total_bytes": 1812068
+    },
+    {
+      "path": "history/units",
+      "recursive_file_count": 609,
+      "total_bytes": 3216410
+    },
+    {
+      "path": "map",
+      "recursive_file_count": 391,
+      "total_bytes": 154915521
+    },
+    {
+      "path": "dlc",
+      "recursive_file_count": 14392,
+      "total_bytes": 4358918552
+    },
+    {
+      "path": "integrated_dlc",
+      "recursive_file_count": 3587,
+      "total_bytes": 667906181
+    },
+    {
+      "path": "dlc_metadata",
+      "recursive_file_count": 1,
+      "total_bytes": 6917
+    }
+  ],
+  "selected_sources": [
+    {
+      "path": "hoi4.exe",
+      "size_bytes": 56535160,
+      "sha256": "709F916AFBEBCFE64A26678702691AEB40945D206074C2A80DE8E9D601FCE148",
+      "line_count": null
+    },
+    {
+      "path": "launcher-settings.json",
+      "size_bytes": 1462,
+      "sha256": "1DC5D1A666B8843268449376B2D6D7A2F70045086C4C02BABD5974847CE133D4",
+      "line_count": 49
+    },
+    {
+      "path": "common/defines/00_defines.lua",
+      "size_bytes": 407753,
+      "sha256": "727AC0522AC7E55313DD249C819F273A248C4A438C5E4CE21C867923F9DD0767",
+      "line_count": 4728
+    },
+    {
+      "path": "common/buildings/00_buildings.txt",
+      "size_bytes": 17038,
+      "sha256": "E94EF4DD06480AE0D34EE52B4ABBA1BBFD163C4A85C6E6E275C85971C8EC1598",
+      "line_count": 787
+    },
+    {
+      "path": "common/ideas/_economic.txt",
+      "size_bytes": 38196,
+      "sha256": "C00FD911C53F10E01AFDDA674E121FB50F2F63DA7DE647B6D39543BFB04EB03C",
+      "line_count": 1835
+    },
+    {
+      "path": "common/ideas/_manpower.txt",
+      "size_bytes": 36642,
+      "sha256": "F27D9BD15B9EE5D699113CD3CF71557DFC58B05F38058EF76EAAF0FF013BB4A8",
+      "line_count": 1672
+    },
+    {
+      "path": "common/technologies/industry.txt",
+      "size_bytes": 31874,
+      "sha256": "06D45F11A0BFDEE35EF72B935B2BEE3B0083A49EB771E5C6B9391C087ED7D94F",
+      "line_count": 2131
+    },
+    {
+      "path": "common/technologies/infantry.txt",
+      "size_bytes": 46578,
+      "sha256": "A131213CF401C9FE2B0F67C446ADBAC8D94D04E147F7491F94DFA29C47930E72",
+      "line_count": 3241
+    },
+    {
+      "path": "common/technologies/bba_air_techs.txt",
+      "size_bytes": 37602,
+      "sha256": "E73159E7412CF65F2131A38D0938FDFE733049382CADB9D9E9523105328D86B6",
+      "line_count": 2161
+    },
+    {
+      "path": "common/national_focus/generic.txt",
+      "size_bytes": 47424,
+      "sha256": "A740B7A1A11DB8972A82D739F8BCE269D8AA0B4FC716DB83475DF157945F38FA",
+      "line_count": 2575
+    },
+    {
+      "path": "common/units/infantry.txt",
+      "size_bytes": 11993,
+      "sha256": "DFC319EC6CA807FDCFFDD6F3555DB0F8C2AA33897706630DAF55339170225A60",
+      "line_count": 758
+    },
+    {
+      "path": "common/units/equipment/infantry.txt",
+      "size_bytes": 1913,
+      "sha256": "0B2B15DF8618B68CEB4892510C965F0D8618B365937FD8E12581A6D512E01CF1",
+      "line_count": 128
+    },
+    {
+      "path": "common/units/equipment/trains.txt",
+      "size_bytes": 1052,
+      "sha256": "CEBDDA7EBE259C806C918D9BBD245AD9EE202672517A8DFD32F65C098DFA80CD",
+      "line_count": 68
+    },
+    {
+      "path": "common/units/equipment/convoys.txt",
+      "size_bytes": 834,
+      "sha256": "28D9AA495FD3E9054F7F7879939F2757A6F8349BB206089CC6AB028F9077C9DD",
+      "line_count": 54
+    },
+    {
+      "path": "common/units/equipment/plane_airframes.txt",
+      "size_bytes": 71032,
+      "sha256": "6BF753C2BD7AC5A79520B43B12331E0E84CD122D997378676D3FACF78FA9B05A",
+      "line_count": 3213
+    },
+    {
+      "path": "common/units/equipment/ship_hull_light.txt",
+      "size_bytes": 11268,
+      "sha256": "A544882655FBB70907DCE347C023085DB49E80DEFE3FBDD1EDD0DAD1686801DA",
+      "line_count": 575
+    },
+    {
+      "path": "common/terrain/00_terrain.txt",
+      "size_bytes": 7470,
+      "sha256": "2BC3931762C4A88F689311803D06C2C2EE50F8FE065743D96115ED7B9315BB91",
+      "line_count": 356
+    },
+    {
+      "path": "common/ideologies/00_ideologies.txt",
+      "size_bytes": 5602,
+      "sha256": "E04353C6B237091F2D12364937861F487A81D444E3BB89B2CE5819518DA7BC83",
+      "line_count": 271
+    },
+    {
+      "path": "common/wargoals/00_invasion.txt",
+      "size_bytes": 2981,
+      "sha256": "CE35AAB00CB0FB92FE0DDF1CADC05A72AEE24E3F9D121DBADEA3C95BEBB211FD",
+      "line_count": 240
+    },
+    {
+      "path": "common/peace_conference/cost_modifiers/00_generic_peace.txt",
+      "size_bytes": 9404,
+      "sha256": "993985F88EEE6BCC0EE8BEE67024B95FF420B81ACAD2CEC19E89AB264066806E",
+      "line_count": 376
+    },
+    {
+      "path": "common/peace_conference/categories/00_peace_action_categories.txt",
+      "size_bytes": 1158,
+      "sha256": "0F43ADA6D227B4B8798B1F31D62782DCAC14FD111167DB4A035AC67260851AF1",
+      "line_count": 51
+    },
+    {
+      "path": "common/ai_strategy_plans/GER_historical_strategy_plan.txt",
+      "size_bytes": 10106,
+      "sha256": "71DCDA22E97DB90D9901DF7865B33D888B849E3E5F079DAFC4CA7DE3A4250F24",
+      "line_count": 375
+    },
+    {
+      "path": "common/intelligence_agency_upgrades/intelligence_agency_upgrades.txt",
+      "size_bytes": 8686,
+      "sha256": "A38DC41A44C89E44C2FB9BEE20DF9B29F86C4384D89303720FB0C5AA87B7530A",
+      "line_count": 563
+    },
+    {
+      "path": "common/operations/00_operations.txt",
+      "size_bytes": 62398,
+      "sha256": "E9D91AC1AF23868D96A91A8DDF0463B769480525407E04BC02EC6EDB4B7A273E",
+      "line_count": 3239
+    },
+    {
+      "path": "common/special_projects/projects/nuclear_projects.txt",
+      "size_bytes": 17447,
+      "sha256": "107D27F4F87C7A40EEF8AB7D090D938545B9CBDA642DFE66E4FC568BE8BD32BF",
+      "line_count": 857
+    },
+    {
+      "path": "common/special_projects/specialization/specializations.txt",
+      "size_bytes": 445,
+      "sha256": "51D265CFE0E31B37F7290E15D591B3B8E6C82C296EBBF503EB40C2EC972773C5",
+      "line_count": 23
+    },
+    {
+      "path": "dlc_metadata/dlc_info/00_dlc_info.txt",
+      "size_bytes": 6917,
+      "sha256": "27C0495A77E4EC196930A8C12D6B6D561EA71F9C027BF42B42EC1B2FBE513420",
+      "line_count": 245
+    },
+    {
+      "path": "map/definition.csv",
+      "size_bytes": 465289,
+      "sha256": "86846BE71198D6772C651638AA22E3656133198DE9B7C49C6234ED48CF33D87B",
+      "line_count": 13414
+    },
+    {
+      "path": "map/railways.txt",
+      "size_bytes": 27762,
+      "sha256": "86CC3FBA40F39442BB4BF883A51740951C09073C5234E6B7B744D966FA2EE455",
+      "line_count": 909
+    },
+    {
+      "path": "map/supply_nodes.txt",
+      "size_bytes": 5941,
+      "sha256": "CF80E9F359676B92F7BB60F00725B5FE3384339269567B461B728F97FD997ABB",
+      "line_count": 727
+    },
+    {
+      "path": "C:\\Program Files (x86)\\Steam\\steamapps\\appmanifest_394360.acf",
+      "size_bytes": 5085,
+      "sha256": "A65930BC9CE80A9737CA79D64DC9D017BC5BAAD44ACBFFBDEB000BEB50240EB1",
+      "line_count": 292,
+      "privacy": "Only build ID and app identity used; no account metadata retained."
+    }
+  ],
+  "static_pe_header": {
+    "evidence_type": "Python standard-library read of PE header, not REA",
+    "pe_offset": 336,
+    "signature_hex": "50450000",
+    "machine_hex": "0x8664",
+    "section_count": 6,
+    "optional_header_magic_hex": "0x20b",
+    "inference": "AMD64 PE32+ image; no decompilation or execution"
+  },
+  "selected_declarations": [
+    {
+      "id": "research-base",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 305,
+      "line_end": 305,
+      "declared_values": {
+        "BASE_RESEARCH_SLOTS": 2
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "factory-base-speeds",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 633,
+      "line_end": 636,
+      "declared_values": {
+        "BASE_FACTORY_SPEED": 4,
+        "BASE_FACTORY_SPEED_MIL": 3.5,
+        "BASE_FACTORY_SPEED_NAV": 2,
+        "BASE_FACTORY_START_EFFICIENCY_FACTOR": 10
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "factory-efficiency-cap",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 640,
+      "line_end": 640,
+      "declared_values": {
+        "BASE_FACTORY_MAX_EFFICIENCY_FACTOR": 50
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "resource-shortage",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 659,
+      "line_end": 659,
+      "declared_values": {
+        "PRODUCTION_RESOURCE_LACK_PENALTY": -0.05
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "research-cost",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 711,
+      "line_end": 713,
+      "declared_values": {
+        "BASE_RESEARCH_POINTS_SAVED": 30,
+        "BASE_YEAR_AHEAD_PENALTY_FACTOR": 2,
+        "BASE_TECH_COST": 110
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "combat-time-and-damage",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 895,
+      "line_end": 914,
+      "declared_values": {
+        "COMBAT_MINIMUM_TIME": 4,
+        "LAND_COMBAT_ORG_DAMAGE_MODIFIER": 0.053
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "supply-grace",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 1004,
+      "line_end": 1005,
+      "declared_values": {
+        "SUPPLY_GRACE": 72
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "focus-point-duration",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 3614,
+      "line_end": 3617,
+      "declared_values": {
+        "FOCUS_POINT_DAYS": 7,
+        "FOCUS_PROGRESS_PEACE": 1,
+        "FOCUS_PROGRESS_WAR": 1
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "capital-supply",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 4281,
+      "line_end": 4286,
+      "declared_values": {
+        "CAPITAL_SUPPLY_BASE": 5,
+        "CAPITAL_SUPPLY_CIVILIAN_FACTORIES": 0.3,
+        "CAPITAL_SUPPLY_MILITARY_FACTORIES": 0.6,
+        "CAPITAL_SUPPLY_DOCKYARDS": 0.4
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "hub-motorization",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 4337,
+      "line_end": 4342,
+      "declared_values": {
+        "SUPPLY_HUB_FULL_MOTORIZATION_BONUS": 2.2,
+        "SUPPLY_HUB_FULL_MOTORIZATION_TRUCK_COST": 60
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "rail-flow",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 4345,
+      "line_end": 4349,
+      "declared_values": {
+        "RAILWAY_BASE_FLOW": 10,
+        "RAILWAY_FLOW_PER_LEVEL": 5,
+        "RAILWAY_FLOW_PENALTY_PER_DAMAGED": 5,
+        "RAILWAY_MIN_FLOW": 5
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "supply-transport",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/defines/00_defines.lua",
+      "line_start": 4365,
+      "line_end": 4373,
+      "declared_values": {
+        "RAILWAY_CONVERSION_COOLDOWN": 10,
+        "SUPPLY_POINTS_PER_TRAIN": 1,
+        "NUM_RAILWAYS_TRAIN_FACTOR": 0.03
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "military-factory",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/buildings/00_buildings.txt",
+      "line_start": 55,
+      "line_end": 67,
+      "declared_values": {
+        "base_cost": 7200,
+        "military_production": 1,
+        "state_max": 20,
+        "shares_slots": true
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "civilian-factory",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/buildings/00_buildings.txt",
+      "line_start": 70,
+      "line_end": 81,
+      "declared_values": {
+        "base_cost": 10800,
+        "general_production": 1,
+        "state_max": 20,
+        "shares_slots": true
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "supply-node-building",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/buildings/00_buildings.txt",
+      "line_start": 98,
+      "line_end": 112,
+      "declared_values": {
+        "base_cost": 20000,
+        "province_max": 1
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "dockyard-building",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/buildings/00_buildings.txt",
+      "line_start": 226,
+      "line_end": 240,
+      "declared_values": {
+        "base_cost": 6400,
+        "naval_production": 1,
+        "coastal": true,
+        "state_max": 20
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "new-infrastructure",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/buildings/00_buildings.txt",
+      "line_start": 715,
+      "line_end": 750,
+      "declared_values": {
+        "energy_infrastructure_base_cost": 12000,
+        "energy_infrastructure_local_factory_energy_consumption_per_infrastructure": -0.075,
+        "industrial_infrastructure_local_resource_gain_efficiency_per_infrastructure": 0.1
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "civilian-economic-law",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideas/_economic.txt",
+      "line_start": 101,
+      "line_end": 113,
+      "declared_values": {
+        "cost": 150,
+        "consumer_goods_expected_value": 0.35,
+        "production_speed_industrial_complex_factor": -0.3,
+        "production_speed_arms_factory_factor": -0.3
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "war-economic-law",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideas/_economic.txt",
+      "line_start": 479,
+      "line_end": 624,
+      "declared_values": {
+        "cost": 150,
+        "consumer_goods_expected_value": 0.2,
+        "production_speed_arms_factory_factor": 0.2,
+        "factory_energy_consumption": 0.25
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "volunteer-law",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideas/_manpower.txt",
+      "line_start": 49,
+      "line_end": 137,
+      "declared_values": {
+        "cost": 150,
+        "conscription": 0.015,
+        "default": true
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "limited-conscription-law",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideas/_manpower.txt",
+      "line_start": 166,
+      "line_end": 322,
+      "declared_values": {
+        "conscription": 0.025
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "extensive-conscription-law",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideas/_manpower.txt",
+      "line_start": 411,
+      "line_end": 701,
+      "declared_values": {
+        "cost": 150,
+        "conscription": 0.05,
+        "training_time_factor": 0.1
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "service-by-requirement-law",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideas/_manpower.txt",
+      "line_start": 732,
+      "line_end": 1011,
+      "declared_values": {
+        "conscription": 0.1,
+        "industrial_capacity_factory": -0.1,
+        "industrial_capacity_dockyard": -0.1,
+        "production_speed_buildings_factor": -0.1,
+        "training_time_factor": 0.2
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "machine-tools",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/technologies/industry.txt",
+      "line_start": 3,
+      "line_end": 24,
+      "declared_values": {
+        "production_factory_max_efficiency_factor": 0.1,
+        "equipment_conversion_speed": 0.2,
+        "research_cost": 1.5,
+        "start_year": 1936,
+        "links": [
+          "improved_machine_tools",
+          "concentrated_industry",
+          "dispersed_industry"
+        ]
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "research-infantry-unlock",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/technologies/infantry.txt",
+      "line_start": 16,
+      "line_end": 38,
+      "declared_values": {
+        "enable_equipments": [
+          "infantry_equipment_0"
+        ],
+        "enable_subunits": [
+          "infantry"
+        ],
+        "leads_to_tech": "infantry_weapons1",
+        "research_cost": 1.5,
+        "start_year": 1918
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "focus-prerequisite",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/national_focus/generic.txt",
+      "line_start": 34,
+      "line_end": 65,
+      "declared_values": {
+        "army_effort_cost": 10,
+        "equipment_effort_prerequisite": "army_effort",
+        "equipment_effort_cost": 10
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "research-slot-focus",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/national_focus/generic.txt",
+      "line_start": 1854,
+      "line_end": 1875,
+      "declared_values": {
+        "id": "extra_tech_slot",
+        "prerequisite": "infrastructure_effort_2",
+        "cost": 10,
+        "add_research_slot": 1
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "infantry-battalion",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/units/infantry.txt",
+      "line_start": 7,
+      "line_end": 49,
+      "declared_values": {
+        "combat_width": 2,
+        "max_strength": 25,
+        "max_organisation": 60,
+        "manpower": 1000,
+        "training_time": 90,
+        "supply_consumption": 0.06,
+        "infantry_equipment_need": 100
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "infantry-equipment-archetype",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/units/equipment/infantry.txt",
+      "line_start": 5,
+      "line_end": 40,
+      "declared_values": {
+        "build_cost_ic": 0.43,
+        "steel": 2,
+        "reliability": 0.9,
+        "maximum_speed": 4
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "infantry-equipment-1936",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/units/equipment/infantry.txt",
+      "line_start": 56,
+      "line_end": 75,
+      "declared_values": {
+        "parent": "infantry_equipment_0",
+        "year": 1936,
+        "defense": 22,
+        "soft_attack": 6,
+        "build_cost_ic": 0.5
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "forest-terrain",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/terrain/00_terrain.txt",
+      "line_start": 29,
+      "line_end": 53,
+      "declared_values": {
+        "movement_cost": 1.5,
+        "combat_width": 60,
+        "combat_support_width": 30,
+        "attack": -0.15,
+        "supply_flow_penalty_factor": 0.08
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "mountain-terrain",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/terrain/00_terrain.txt",
+      "line_start": 80,
+      "line_end": 105,
+      "declared_values": {
+        "movement_cost": 2,
+        "combat_width": 50,
+        "combat_support_width": 25,
+        "attack": -0.5,
+        "supply_flow_penalty_factor": 0.12
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "airframe-design",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/units/equipment/plane_airframes.txt",
+      "line_start": 4,
+      "line_end": 71,
+      "declared_values": {
+        "manpower": 20,
+        "fuel_consumption": 0.05,
+        "build_cost_ic": 4,
+        "aluminium": 2,
+        "rubber": 1,
+        "allowed_types": [
+          "fighter",
+          "interceptor",
+          "cas",
+          "naval_bomber",
+          "suicide"
+        ],
+        "required_weapon_slot": true
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "light-ship-hull",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/units/equipment/ship_hull_light.txt",
+      "line_start": 3,
+      "line_end": 140,
+      "declared_values": {
+        "type": "screen_ship",
+        "alias": "destroyer",
+        "required_battery_and_engine_slots": true,
+        "naval_speed": 32,
+        "naval_range": 2000,
+        "max_strength": 25,
+        "build_cost_ic": 400,
+        "manpower": 250
+      },
+      "qualification": "Base archetype and modular declarations; final designed-ship statistics not established."
+    },
+    {
+      "id": "democratic-diplomacy",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ideologies/00_ideologies.txt",
+      "line_start": 32,
+      "line_end": 53,
+      "declared_values": {
+        "can_declare_war_on_same_ideology": false,
+        "can_only_justify_war_on_threat_country": true,
+        "generate_wargoal_tension": 1,
+        "join_faction_tension": 0.8,
+        "guarantee_tension": 0.25
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "take-state-wargoal",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/wargoals/00_invasion.txt",
+      "line_start": 3,
+      "line_end": 28,
+      "declared_values": {
+        "generate_base_cost": 200,
+        "generate_per_state_cost": 50,
+        "take_states_limit": 5,
+        "expire": 60,
+        "threat": 2
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "core-state-peace-cost",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/peace_conference/cost_modifiers/00_generic_peace.txt",
+      "line_start": 9,
+      "line_end": 21,
+      "declared_values": {
+        "peace_action_type": "take_states",
+        "cost_multiplier": 0.25,
+        "condition": "Taker core and free taker, or subject negotiating for itself"
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "historical-ai",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ai_strategy_plans/GER_historical_strategy_plan.txt",
+      "line_start": 1,
+      "line_end": 27,
+      "declared_values": {
+        "original_tag": "GER",
+        "historical_focus_and_game_rule_or_country_flag_conditions": true
+      },
+      "qualification": "Script activation conditions only, not observed choice execution."
+    },
+    {
+      "id": "historical-ai-preferences",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/ai_strategy_plans/GER_historical_strategy_plan.txt",
+      "line_start": 209,
+      "line_end": 249,
+      "declared_values": {
+        "research_infantry_weapons": 50,
+        "research_artillery": 8,
+        "template_prio_medium_armor": 111,
+        "selected_focus_factors_zero": true
+      },
+      "qualification": "Weights are not probabilities or guaranteed runtime actions."
+    },
+    {
+      "id": "intelligence-upgrade",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/intelligence_agency_upgrades/intelligence_agency_upgrades.txt",
+      "line_start": 6,
+      "line_end": 24,
+      "declared_values": {
+        "civilian_factory_use_during_progress": 5,
+        "civilian_intel_factor": 0.25
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "rescue-operative",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/operations/00_operations.txt",
+      "line_start": 6,
+      "line_end": 55,
+      "declared_values": {
+        "days": 35,
+        "network_strength": 30,
+        "operatives": 1,
+        "risk_chance": 0.1,
+        "outcome": "free captured operative"
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "nuclear-project",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/special_projects/projects/nuclear_projects.txt",
+      "line_start": 1,
+      "line_end": 69,
+      "declared_values": {
+        "specialization": "specialization_nuclear",
+        "available_tech": "atomic_research",
+        "steel": 6,
+        "tungsten": 3,
+        "chromium": 6,
+        "prototype_time": "sp_time.prototype.long",
+        "output": "technology and facility-state building with conditional heavy-water branch"
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    },
+    {
+      "id": "commercial-nuclear-dlc-gate",
+      "evidence_type": "ordinary-shell static configuration observation",
+      "path": "common/special_projects/projects/nuclear_projects.txt",
+      "line_start": 260,
+      "line_end": 288,
+      "declared_values": {
+        "special_project_parent": "sp_nuclear_reactor",
+        "required_dlc": "Gotterdammerung",
+        "available_tech": "construction4"
+      },
+      "qualification": "Shipped declaration only; effective runtime values and overrides not established."
+    }
+  ],
+  "public_sources": [
+    {
+      "url": "https://www.paradoxinteractive.com/games/hearts-of-iron-iv/about",
+      "accessed_date": "2026-11-17",
+      "publisher": "Paradox Interactive",
+      "supports": "High-level description of national industry, diplomacy, division templates, research, factory instructions and political objectives; not scalar formulas."
+    }
+  ],
+  "unknowns": [
+    "Effective load order and later overrides",
+    "Enabled/owned DLC entitlement",
+    "Native engine formulas and update ordering",
+    "Observed native controls and presentation",
+    "Runtime AI decisions and pathfinding",
+    "Save format and deterministic replay/network behavior",
+    "Full country, focus, event, equipment, doctrine and expansion coverage"
+  ]
+}

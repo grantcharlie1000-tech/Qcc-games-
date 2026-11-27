@@ -1,19 +1,23 @@
 import {test,expect} from 'vitest';
 import * as THREE from 'three';
+import {FLOOR_DISPLAY_HZ,FLOOR_PIXEL_CAP} from '../../../src/perf/floor';
 import {QUALITY,RenderPacer,renderRatio,isQuality} from '../../../src/games/quad-clash/performance';
 import {createEffects} from '../../../src/games/quad-clash/effects';
 import {createKit,batchStaticMeshes} from '../../../src/games/quad-clash/models';
 
-test('both presets retain native 1080p and the same bounded high-DPI resolution',()=>{
+test('potato draws a cheaper picture and both presets stay inside their pixel caps',()=>{
  for(const [w,h,dpr] of [[1280,720,1],[1920,1080,1],[2560,1440,2],[3840,2160,3],[390,844,3]]) {
-  const r=renderRatio(w,h,dpr,'potato');
-  expect(w*h*r*r).toBeLessThanOrEqual(QUALITY.potato.maxPixels+1);
-  expect(r).toBeLessThanOrEqual(2);expect(r).toBeGreaterThan(0);
-  expect(r).toBe(renderRatio(w,h,dpr,'balanced'));
+  const potato=renderRatio(w,h,dpr,'potato'),balanced=renderRatio(w,h,dpr,'balanced');
+  expect(potato).toBeLessThanOrEqual(balanced);
+  expect(w*h*potato*potato).toBeLessThanOrEqual(QUALITY.potato.maxPixels+1);
+  expect(w*h*balanced*balanced).toBeLessThanOrEqual(QUALITY.balanced.maxPixels+1);
+  expect(balanced).toBeLessThanOrEqual(2);expect(potato).toBeGreaterThan(0);expect(balanced).toBeGreaterThan(0);
  }
- expect(renderRatio(1920,1080,1,'potato')).toBe(1);
- expect(renderRatio(1440,900,1,'potato')).toBe(1);
- expect(renderRatio(390,844,3,'potato')).toBe(2);
+ expect(renderRatio(1920,1080,1,'balanced')).toBe(1);
+ expect(renderRatio(1920,1080,1,'potato')).toBeLessThan(1);
+ expect(renderRatio(390,844,3,'balanced')).toBe(2);
+ expect(renderRatio(390,844,3,'potato')).toBeLessThanOrEqual(1);
+ expect(QUALITY.potato.pixelCap).toBeLessThanOrEqual(1);
  expect(isQuality('ultra')).toBe(false);expect(isQuality('potato')).toBe(true);
 });
 
@@ -65,9 +69,13 @@ test('jitter and resuming do not cause catch-up render bursts or retain paused v
 });
 
 
-test('Potato changes the render target without cutting texture, lighting or effect quality',()=>{
- const {fps:slow,name:slowName,...potato}=QUALITY.potato;
- const {fps:fast,name:fastName,...balanced}=QUALITY.balanced;
- expect(potato).toEqual(balanced);expect(potato.shadows).toBe(true);expect(potato.effects).toBe(1);
- expect(slow).toBe(30);expect(fast).toBe(60);expect(slowName).not.toBe(fastName);
+test('Potato displays at 60 with a cheaper picture than balanced',()=>{
+ expect(QUALITY.potato.fps).toBe(FLOOR_DISPLAY_HZ);expect(QUALITY.balanced.fps).toBe(FLOOR_DISPLAY_HZ);
+ expect(QUALITY.potato.shadows).toBe(false);expect(QUALITY.balanced.shadows).toBe(true);
+ expect(QUALITY.potato.effects).toBeLessThan(QUALITY.balanced.effects);
+ expect(QUALITY.potato.maxPixels).toBe(FLOOR_PIXEL_CAP);
+ expect(QUALITY.potato.maxPixels).toBeLessThan(QUALITY.balanced.maxPixels);
+ expect(QUALITY.potato.textureSize).toBe(QUALITY.balanced.textureSize);
+ expect(QUALITY.potato.anisotropy).toBe(QUALITY.balanced.anisotropy);
+ expect(QUALITY.potato.name).not.toBe(QUALITY.balanced.name);
 });

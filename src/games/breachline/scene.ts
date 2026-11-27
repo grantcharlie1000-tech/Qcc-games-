@@ -24,11 +24,12 @@ import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { actDuration } from './sim';
 import { MARK, makeSprite, makeTextures, type TexId } from './textures';
 import { PANEL_T, cellCenter, eyeOf, panelPoint, trace, viewDir, type Panel, type World } from './world';
+import { FLOOR_DISPLAY_HZ, floorDpr, floorTierActive } from '../../perf/floor';
 
 export type QualityId = 'auto' | 'low' | 'high';
 export const QUALITIES: Record<QualityId, { name: string; fps: number; min: number; max: number; cap: number; density: number }> = {
   auto: { name: 'Auto', fps: 60, min: 0.5, max: 1, cap: 1.5, density: 1 },
-  low: { name: 'Performance (30 fps)', fps: 30, min: 0.55, max: 0.7, cap: 1, density: 0.5 },
+  low: { name: 'Performance', fps: 60, min: 0.35, max: 0.45, cap: 0.67, density: 0.25 },
   high: { name: 'Sharp', fps: 60, min: 1, max: 1, cap: 2, density: 1 },
 };
 export const isQuality = (v: unknown): v is QualityId => v === 'auto' || v === 'low' || v === 'high';
@@ -79,6 +80,8 @@ function softwareGL(renderer: THREE.WebGLRenderer): boolean {
 
 export function createScene(canvas: HTMLCanvasElement, initial: QualityId): BreachScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: initial === 'high', powerPreference: 'high-performance', stencil: false, alpha: false });
+  renderer.shadowMap.enabled = false;
+  renderer.shadowMap.autoUpdate = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.autoClear = false;
@@ -87,7 +90,15 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   scene.fog = new THREE.Fog(HORIZON, 50, 260);
   const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 600);
   camera.rotation.order = 'YXZ';
-  let quality = initial, scale = QUALITIES[initial].max, width = 1, height = 1, slow = 0, fast = 0, frameMs = 16;
+  let quality = initial, width = 1, height = 1, slow = 0, fast = 0, frameMs = 16;
+  /** Selected preset, clamped to the floor picture while that tier is on. */
+  function picture() {
+    const chosen = QUALITIES[quality];
+    if (!floorTierActive()) return chosen;
+    const low = QUALITIES.low;
+    return { ...chosen, fps: Math.max(chosen.fps, FLOOR_DISPLAY_HZ), min: Math.min(chosen.min, low.min), max: Math.min(chosen.max, low.max), cap: Math.min(chosen.cap, low.cap), density: Math.min(chosen.density, low.density) };
+  }
+  let scale = picture().max;
 
   // ---- Level ----
   const bake: Bake = createBake();
@@ -297,12 +308,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
   // The map-fill set pieces (render/setpieces.ts): modelled in three damage states, from the shot and blast events.
   // They join with the art layer, which leaves their placeholder boxes out.
-  fx.density = QUALITIES[quality].density;
+  fx.density = picture().density;
   scene.add(fx.group);
 
   let exposure = 0;
   // Post-processing by quality: the throttled setting keeps the grade and an edge pass but no bloom.
-  const postTier = (q: QualityId): PostTier => (q === 'low' ? 'low' : q === 'high' ? 'high' : 'medium');
+  const postTier = (q: QualityId): PostTier => (floorTierActive() || q === 'low' ? 'off' : q === 'high' ? 'high' : 'medium');
   const post = createPost(renderer, /[?&]post=off\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'off' : postTier(initial));
   const drawSize = new THREE.Vector2();
 
@@ -312,7 +323,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   const cam = { x: 0, y: 12, z: 30, yaw: 0, pitch: -0.3, set: false };
 
   function applySize() {
-    const q = QUALITIES[quality], ratio = Math.min(window.devicePixelRatio || 1, q.cap) * scale;
+    const q = picture(), device = window.devicePixelRatio || 1;
+    let ratio = Math.min(device, q.cap) * scale;
+    if (floorTierActive()) ratio = Math.min(ratio, floorDpr(width, height, device));
     renderer.setPixelRatio(ratio);
     renderer.setSize(width, height, false);
     renderer.getDrawingBufferSize(drawSize);
@@ -321,7 +334,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   }
   /** Lowers the resolution when frames run long and raises it again when there is headroom. */
   function adapt(dt: number) {
-    const q = QUALITIES[quality];
+    const q = picture();
     if (q.min === q.max) return;
     frameMs += (dt * 1000 - frameMs) * 0.08;
     const budget = 1000 / Math.min(q.fps, 60);
@@ -790,8 +803,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       applySize();
     },
     setQuality(q) {
-      quality = q; const d = QUALITIES[q];
-      scale = Math.max(d.min, Math.min(d.max, q === 'auto' ? scale : d.max)); slow = fast = 0; fx.density = d.density;
+      quality = q; const d = picture();
+      scale = Math.max(d.min, Math.min(d.max, q === 'auto' && !floorTierActive() ? scale : d.max)); slow = fast = 0; fx.density = d.density;
       post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },

@@ -1,3 +1,4 @@
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import { ARENA_RADIUS, bodyRadiusAt, headRadius, hooverRadius, immunityPaleness, radius, wrapAngle, type Arena, type Snake } from './model';
 import { bandIndex, resampleBody, SKINS, skinFor, type StampBuffer } from './skin';
 import { IMMUNE_OPACITY_DROP, IMMUNE_PALE_STRENGTH } from './tuning';
@@ -76,7 +77,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   const view: View = { width: 1, height: 1, zoom: 1, x: 0, y: 0 };
   function resize(width: number, height: number) {
     view.width = Math.max(1,width); view.height = Math.max(1,height);
-    dpr = Math.min(2,window.devicePixelRatio || 1);
+    const device = window.devicePixelRatio || 1;
+    dpr = floorTierActive() ? floorDpr(width, height, device) : Math.min(2, device);
     const w = Math.round(width*dpr), h = Math.round(height*dpr);
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
@@ -95,7 +97,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   function drawBody(g: CanvasRenderingContext2D, snake: Snake, alpha: number, pale: number) {
     interpolate(snake,alpha);
     const r = radius(snake), d = r*2, skin = skinFor(snake.id,snake.color), intensity = boostIntensity.get(snake.id) ?? 0;
-    resampleBody(snake.body,head,d*.25,stamps);
+    // Floor tier keeps the collision radius and draws fewer stamps along the same spine.
+    resampleBody(snake.body,head,floorTierActive() ? d * 1.15 : d * .25,stamps);
     for (let i = stamps.count-1; i >= 0; i--) {
       // Same tapered radius the model collides with at this arc distance.
       const p = stamps.points[i], sr = bodyRadiusAt(r,p.distance,stamps.length);
@@ -177,8 +180,12 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       ctx.beginPath(); ctx.arc(0,0,ARENA_RADIUS,0,TAU); ctx.lineWidth = 4; ctx.strokeStyle = '#180b13'; ctx.stroke();
       ctx.lineWidth = 1.2; ctx.strokeStyle = '#701e30'; ctx.stroke();
     }
+    const floor = floorTierActive();
+    let foodDrawn = 0;
     for (const food of s.food) {
       if (!inView(food.x,food.y,16)) continue;
+      if (floor && (foodDrawn >= 48 || Math.hypot(food.x - view.x, food.y - view.y) > Math.min(halfW, halfH) * 0.55)) continue;
+      foodDrawn++;
       let size = food.trail ? Math.min(18,10+Math.sqrt(food.value)) : Math.min(30,12+Math.sqrt(food.value)*4);
       // A hoovered pellet shrinks as it is drawn into its head.
       const owner = food.owner === undefined ? undefined : s.snakes[food.owner];

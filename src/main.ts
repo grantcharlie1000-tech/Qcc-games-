@@ -24,6 +24,7 @@ import './style.css';
 import './game-viewport.css';
 import './ui/arcade-sheets.css';
 import {games, artUrl, loadGame} from './core/catalog';
+import {libraryMarkup} from './ui/library-markup';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
@@ -132,7 +133,7 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road','quad-clash','femboy-obby','last-light','breachline']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club','chess']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline','drift-club','chess','iron-meridian']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
 const metricText=(id:GameId,score:number)=>id==='claimline'||id==='femboy-obby'?formatScore(id,score):String(Math.floor(score));
 
@@ -213,7 +214,7 @@ function library(){
   const items=matchingGames();
   const filtered=onlyFavourites||search!=='';
   // The notice text is user input, so it is filled in with textContent below, never through this template.
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${items.map((g,index)=>`<a class="game-card" data-game="${g.id}" href="${entryHash(g.id)}" tabindex="0" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" loading="${index<6?'eager':'lazy'}" decoding="async" draggable="false"></a>`).join('')}${filtered?'':`<a class="downloads-card" href="#/downloads" aria-label="Downloads" style="--card:#1f4c21;--ink:#fff3df;--accent:#f7c531"><h2>Downloads</h2><span class="title-line"></span><img src="${import.meta.env.BASE_URL}offline/cover.svg" alt="" width="320" height="400" loading="lazy" decoding="async" draggable="false"></a>`}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=libraryMarkup(items,filtered,onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.',id=>artUrl(id as GameId),id=>entryHash(id as GameId),`${import.meta.env.BASE_URL}offline/cover.svg`);
   // Predictions sits in the middle of the unfiltered library, where the election strip used to be.
   if(!filtered)mountPredictionsStrip(content.querySelector('.game-grid')!);
   // The compact Santa countdown belongs to the seasonal theme and the unfiltered library.

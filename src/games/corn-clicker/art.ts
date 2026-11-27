@@ -4,6 +4,7 @@
  */
 import {COB,SKINS,PRODUCERS,GOLDEN,PEST,SCARECROW,PLANT,VARIETIES,KERNEL,SEED,BUTTER,MOUSE,SPARKLE,type Sprite} from './sprites';
 import {christmas} from '../../festive/festive';
+import {floorTierActive} from '../../perf/floor';
 import {COB_XMAS,GOLDEN_XMAS,festiveSceneUrl} from './christmas-art';
 
 export type ProducerId='farmhand'|'patch'|'field'|'tractor'|'combine'|'greenhouse'|'irrigation'|'factory'|'lab'|'hydroponic'|'robot'|'weather'|'megafarm'|'orbital'|'lunar'|'cloner'|'time'|'dimension'|'singularity'|'corniverse';
@@ -52,10 +53,19 @@ const SCENES:Record<Stage,{sky:string[];far:string;near:string;ground:string[]}>
 function lcg(seed:number){let s=seed>>>0;return ()=>((s=Math.imul(s,1664525)+1013904223>>>0)/4294967296);}
 export function sceneUrl(stage:Stage):string {
   if(christmas())return festiveSceneUrl(stage);
-  const key='scene-'+stage,cached=urls.get(key);if(cached!==undefined)return cached;
+  const floor=floorTierActive();
+  const key='scene-'+stage+(floor?'-f':''),cached=urls.get(key);if(cached!==undefined)return cached;
   const W=192,H=120,made=canvas(W,H);if(!made)return '';
   const [c,ctx]=made,t=SCENES[stage],rand=lcg(stage*977+5);
   const px=(x:number,y:number,col:string,w=1,h=1)=>{ctx.fillStyle=col;ctx.fillRect(x,y,w,h);};
+  // The floor tier bakes the same sky, hills, and field in a handful of bands.
+  if(floor){
+    px(0,0,t.sky[0],W,40);px(0,40,t.sky[t.sky.length-1],W,32);
+    px(0,58,t.far,W,14);px(0,68,t.near,W,8);px(0,72,t.ground[0],W,H-72);
+    px(148,8,stage===1?'#ffb25e':'#ffe45c',20,16);
+    if(stage===0)px(18,50,'#b33a2c',16,22);
+    const url=c.toDataURL('image/png');urls.set(key,url);return url;
+  }
   // Sky in bands, with a checker dither where bands meet.
   const band=Math.ceil(72/t.sky.length);
   t.sky.forEach((col,i)=>{px(0,i*band,col,W,band);if(i>0)for(let x=0;x<W;x+=2)px(x+(i%2),i*band,t.sky[i-1]);});

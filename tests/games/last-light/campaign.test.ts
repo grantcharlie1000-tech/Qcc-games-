@@ -6,7 +6,9 @@ import {onPlatform,idle,routeGraph,reachable} from './routes';
 describe('authored campaign spaces',()=>{
  it('gives all 120 optional memory fragments a distinct narrative payoff',()=>{expect(new Set(LEVELS.flatMap(l=>[0,1,2].map(id=>memoryFor(l.id,id)))).size).toBe(120);});
  it('has forty distinct maps, story beats and chapter outcomes',()=>{expect(new Set(LEVELS.map(l=>JSON.stringify(l.platforms.map(p=>[p.x,p.y,p.w,p.kind])))).size).toBe(40);expect(new Set(CHAPTERS.map(c=>c.after)).size).toBe(40);expect(new Set(LEVELS.map(l=>l.goal)).size).toBe(8);expect(new Set(LEVELS.flatMap(l=>l.sectors?.map(s=>s.name)??[])).size).toBeGreaterThan(100);});
- for(const l of LEVELS)it(`${l.id+1} ${l.name}: both paths, every connection and the exit are reachable`,()=>{
+ for(const l of LEVELS)it(`${l.id+1} ${l.name}: both paths, every connection and the exit are reachable`,async()=>{
+  // The search is synchronous. Yield so Vitest can record the task before the next graph.
+  await new Promise(resolve=>setImmediate(resolve));
   const graph=routeGraph(l),fromStart=reachable(graph,0);
   for(const p of l.platforms){expect(fromStart.has(p.id),`unreachable authored platform ${p.id}`).toBe(true);expect(reachable(graph,p.id).has(l.mainCount-1),`platform ${p.id} has no onward route to the exit`).toBe(true);}
   const optionalPath=l.platforms.slice(0,l.mainCount-1).some(entry=>{

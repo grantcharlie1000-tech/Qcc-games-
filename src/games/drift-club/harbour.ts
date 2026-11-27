@@ -1,4 +1,5 @@
 import type {Projector, Theme, Vec} from './scene';
+import {floorTierActive} from '../../perf/floor';
 const tau=Math.PI*2;
 const noise=(i:number)=>{const n=Math.sin(i*72.37+1.72)*43758.54;return n-Math.floor(n);};
 function tower(p:Projector,x:number,z:number,winter:boolean){
@@ -33,7 +34,26 @@ function sail(p:Projector,x:number,z:number,i:number){
   p.path([[x-.05,1.6,z],[x-.86,-.40,z],[x-.05,-.37,z]],c);
   p.path([[x+.06,1.35,z],[x+.61,-.31,z],[x+.06,-.35,z]],'#fff2d0');
 }
+function harbourFloor(p:Projector,theme:Theme,course:number){
+  const {c,w,h}=p, winter=theme==='noel';
+  const horizon=Math.max(h*.1,Math.min(h*.22,p.point([0,-.9,-8])[1]));
+  c.fillStyle=(winter?['#182c50','#293657','#233451']:['#f3a381','#8fb7c1','#dc926f'])[course%3];
+  c.fillRect(0,0,w,horizon);
+  c.fillStyle=winter?'#fff0be':'#fff2ba';
+  const sun=Math.min(w,h)*.08;
+  c.fillRect(w*.74,horizon*.28,sun,sun);
+  c.fillStyle=(winter?['#8797ab','#607e90','#365c71']:['#d59d96','#b98582','#7c8480'])[course%3];
+  c.fillRect(0,horizon*.7,w,horizon*.3);
+  c.fillStyle=winter?'#366b7c':'#61a8a0';
+  c.fillRect(0,horizon,w,h-horizon);
+  for(const side of [-1,1])p.box(side*4.47,-.69,0,.66,.27,16,winter?'#cadbd3':'#cfa474','#886c56','#9d7b5e');
+  p.box(-6.6,-.2,-7.4,1.3,2.4,1.3,winter?'#d2e6e5':'#fbeace','#c75d4a','#c9b797');
+  p.box(-6.6,2.05,-7.4,.7,.7,.7,'#fff3a1','#f7bf5c','#dd964d');
+  if(winter)p.box(6.6,0,-7,.9,2.4,.9,'#367d66','#236456','#275c56');
+  else p.box(6.8,.1,-6.8,.5,2.3,.35,'#ee805a','#f5ddad','#244e52');
+}
 export function harbour(p:Projector,theme:Theme,course:number){
+  if(floorTierActive()){harbourFloor(p,theme,course);return;}
   const {c,w,h}=p, winter=theme==='noel';
   const port=course%3;
   const horizon=Math.max(h*.075,Math.min(h*.22,p.point([-6.6,-.92,-7.4])[1]-h*.038,p.point([6.15,-.86,-8.2])[1]-h*.035));

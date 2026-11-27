@@ -1,0 +1,92 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+import { describe, expect, it } from 'vitest';
+import { NativeTokenizer } from '../../../src/games/iron-meridian/native/tokenizer';
+import type { TokenizerServices } from '../../../src/games/iron-meridian/native/tokenizer';
+import { NativeKeywordRegistry } from '../../../src/games/iron-meridian/native/keyword-registry';
+import type { CharacterReaderMemory } from '../../../src/games/iron-meridian/native/character-reader';
+
+type Write = { address: string; bytes: string };
+type Allocation = { address: string; bytes: number; live: boolean; phase: string; contents?: string };
+type Call = { role: string; ordinal: number; arguments: string[]; value: string; before?: { sourceWord: string; outputWord: string } };
+type Fixture = { name: string; input: { payload: string; calls: number; capacity?: number; sourceAddress?: string; changes?: Write[]; missing?: [string, number][]; responses?: { role: string; ordinal: number; writes?: Write[]; value?: string }[]; wideReplies?: { output?: number; value?: string; writes?: Write[] }[] }; expected: { results: unknown[]; tokens: unknown[]; calls: Call[]; allocations: Allocation[]; snapshots: Write[]; traceSha256: string; traceCount: number } };
+const reference = JSON.parse(readFileSync(new URL('../../../work/iron-meridian/native-tokenizer/reference.json', import.meta.url), 'utf8')) as { cases: Fixture[] };
+const identity = JSON.parse(readFileSync(new URL('../../../work/iron-meridian/native-tokenizer/instructions.json', import.meta.url), 'utf8')) as { data: Write[] };
+const image = JSON.parse(gunzipSync(readFileSync(new URL('../../../work/iron-meridian/native-keyword-registry/image-inputs.json.gz', import.meta.url))).toString()) as { address: string; bytes: string; virtualBytes: number }[];
+const warm = JSON.parse(gunzipSync(readFileSync(new URL('../../../work/iron-meridian/native-keyword-registry/warm-state.json.gz', import.meta.url))).toString()) as { metadata: { heapNext: string }; regions: Write[]; allocationLedger: Allocation[] };
+const u64 = (v: bigint) => BigInt.asUintN(64, v), hex = (v: bigint) => '0x' + u64(v).toString(16);
+const INPUT = 0x800100n, READER = 0x800300n, VECTOR = 0x800400n, SOURCE = 0x810000n, TOKEN_BYTES = 0x820000n, API = 0x6000100n;
+const ENTRY = 0x73f008n, STACK = ENTRY - 0x1d8n, FRAME = ENTRY - 0xd8n;
+class Memory implements CharacterReaderMemory {
+  readonly pages: Map<number, Uint8Array>; private readonly owned = new Set<number>();
+  active = false; trace: string[] = [];
+  constructor(base?: Memory) { this.pages = base ? new Map(base.pages) : new Map(); }
+  map(address: bigint, count: number, fill = 0) { const first = Math.floor(Number(address) / 4096), end = Math.ceil((Number(address) + count) / 4096); for (let p = first; p < end; p++) if (!this.pages.has(p)) { this.pages.set(p, new Uint8Array(4096).fill(fill)); this.owned.add(p); } }
+  readByte(address: bigint) { const a = Number(u64(address)), page = this.pages.get(Math.floor(a / 4096)); if (!page) throw Error('Unmapped read ' + hex(address)); return page[a % 4096]!; }
+  read(address: bigint, count: number) { return Uint8Array.from({ length: count }, (_, i) => this.readByte(address + BigInt(i))); }
+  readDword(address: bigint) { let v = 0; for (let i = 0; i < 4; i++) v |= this.readByte(address + BigInt(i)) << (i * 8); return v >>> 0; }
+  readQword(address: bigint) { let v = 0n; for (let i = 0; i < 8; i++) v |= BigInt(this.readByte(address + BigInt(i))) << BigInt(i * 8); return v; }
+  semantic(a: bigint) { return !(a >= 0x700000n && a < 0x740000n) || a >= ENTRY + 8n && a < ENTRY + 16n || a >= STACK + 0x30n && a < STACK + 0x7cn || a >= FRAME - 0x80n && a < FRAME - 0x60n || a >= STACK && a < STACK + 2n || a >= STACK + 0x10n && a < STACK + 0x12n; }
+  writeByte(address: bigint, value: number) {
+    address = u64(address); const a = Number(address), p = Math.floor(a / 4096); let page = this.pages.get(p); if (!page) throw Error('Unmapped write ' + hex(address));
+    if (!this.owned.has(p)) { page = page.slice(); this.pages.set(p, page); this.owned.add(p); }
+    page[a % 4096] = value & 255;
+    if (this.active && this.semantic(address)) this.trace.push(`w:${address.toString(16)}:${(value & 255).toString(16).padStart(2, '0')}`);
+  }
+  writeDword(address: bigint, value: number) { for (let i = 0; i < 4; i++) this.writeByte(address + BigInt(i), value >>> (i * 8)); }
+  writeQword(address: bigint, value: bigint) { for (let i = 0; i < 8; i++) this.writeByte(address + BigInt(i), Number(u64(value) >> BigInt(i * 8) & 255n)); }
+  writeBytes(address: bigint, bytes: Uint8Array) { for (let i = 0; i < bytes.length; i++) this.writeByte(address + BigInt(i), bytes[i]!); }
+  apply(writes: readonly Write[]) { for (const w of writes) this.writeBytes(BigInt(w.address), Buffer.from(w.bytes, 'hex')); }
+}
+const base = new Memory();
+for (const section of image) { base.map(BigInt(section.address), section.virtualBytes); base.writeBytes(BigInt(section.address), Buffer.from(section.bytes, 'hex')); }
+for (const [a, n, fill] of [[0x700000n, 0x40000, 0xa7], [0x800000n, 0x200000, 0xa7], [0x20000000n, 0x1000000, 0xb3], [0x100000n, 4096, 0], [0x110000n, 4096, 0], [0x120000n, 0x3000, 0]] as const) base.map(a, n, fill);
+for (const write of [...identity.data, ...warm.regions]) { base.map(BigInt(write.address), write.bytes.length / 2); base.apply([write]); }
+const readerVtable = JSON.parse(readFileSync(new URL('../../../work/iron-meridian/native-reader-lifetime/instructions.json', import.meta.url), 'utf8')) as { data: Write[] };
+base.apply(readerVtable.data.filter(w => w.address === '0x142c06c80'));
+const q = (address: bigint, value: bigint): Write => { const raw = Buffer.alloc(8); raw.writeBigUInt64LE(u64(value)); return { address: hex(address), bytes: raw.toString('hex') }; };
+const d = (address: bigint, value: number): Write => { const raw = Buffer.alloc(4); raw.writeUInt32LE(value >>> 0); return { address: hex(address), bytes: raw.toString('hex') }; };
+
+describe('actual full lexer over original-populated keyword registry memory', () => {
+  for (const fixture of reference.cases) it(fixture.name, async () => {
+    const row = fixture.input, memory = new Memory(base), payload = Buffer.from(row.payload, 'hex'), sourceAddress = BigInt(row.sourceAddress ?? hex(SOURCE));
+    const initial = [{ address: hex(INPUT), bytes: '00'.repeat(104) }, q(INPUT, 0x142c04d80n), q(INPUT + 8n, READER), q(INPUT + 0x20n, TOKEN_BYTES), d(INPUT + 0x28n, row.capacity ?? 256), d(INPUT + 0x2cn, 0), q(INPUT + 0x30n, 0x1430fd000n), { address: hex(READER), bytes: '00'.repeat(88) }, q(READER, 0x142c06c80n), d(READER + 8n, 1), q(READER + 0x38n, VECTOR), q(VECTOR, sourceAddress), d(VECTOR + 8n, payload.length), d(VECTOR + 12n, payload.length), { address: hex(sourceAddress), bytes: row.payload }, q(0x142785228n, API)];
+    memory.apply(initial); memory.apply(row.changes ?? []);
+    let heap = BigInt(warm.metadata.heapNext), apiOrdinal = 0;
+    const allocations = warm.allocationLedger.map(a => ({ ...a })), calls: Call[] = [], counters = new Map<string, number>();
+    allocations.push({ address: hex(TOKEN_BYTES), bytes: 320, live: true, phase: 'supplied-token-buffer' }); const initialCount = allocations.length;
+    const invoke = (role: string, args: bigint[]) => {
+      const ordinal = counters.get(role) ?? 0; counters.set(role, ordinal + 1); let value = 0n;
+      if (role === 'crtAllocate') { const count = args[0]!; expect(count).toBeGreaterThan(0n); expect(count).toBeLessThan(0x800000n); value = heap; heap += BigInt((Number(count) + 31) & ~31); allocations.push({ address: hex(value), bytes: Number(count), live: true, phase: 'complete-tokenizer' }); }
+      if (role === 'crtFree') { const allocation = allocations.find(a => a.address === hex(args[0]!) && a.live); if (!allocation) throw Error('Unknown free ' + hex(args[0]!)); allocation.live = false; }
+      if (role === 'copy') { expect(args[2]!).toBeLessThan(0x800000n); memory.writeBytes(args[0]!, memory.read(args[1]!, Number(args[2]!))); value = args[0]!; }
+      for (const response of row.responses ?? []) if (response.role === role && response.ordinal === ordinal) { memory.apply(response.writes ?? []); if (response.value !== undefined) value = BigInt(response.value); }
+      const call = { role, ordinal, arguments: args.map(hex), value: hex(value) }; calls.push(call); memory.trace.push('c:' + JSON.stringify(call)); return value;
+    };
+    const services: TokenizerServices = {
+      crtAllocate: count => invoke('crtAllocate', [count]), crtFree: pointer => { invoke('crtFree', [pointer]); }, copy: (destination, source, count) => { invoke('copy', [destination, source, count]); },
+      get getStringTypeW() {
+        if (row.missing?.some(([role, index]) => role === 'getStringTypeW' && index === apiOrdinal)) return undefined;
+        return { address: API, call(informationType: number, source: bigint, count: number, output: bigint) {
+          const ordinal = apiOrdinal++, reply = row.wideReplies?.[ordinal]; if (!reply) throw Error('Missing declared wide reply');
+          const before = { sourceWord: Buffer.from(memory.read(source, 2)).toString('hex'), outputWord: Buffer.from(memory.read(output, 2)).toString('hex') };
+          memory.writeByte(output, (reply.output ?? 0) & 255); memory.writeByte(output + 1n, (reply.output ?? 0) >>> 8); memory.apply(reply.writes ?? []);
+          const value = BigInt(reply.value ?? '0x1'), call = { role: 'getStringTypeW', ordinal, arguments: [BigInt(informationType), source, BigInt(count), output].map(hex), value: hex(value), before }; calls.push(call); memory.trace.push('c:' + JSON.stringify(call)); return value;
+        } };
+      },
+    };
+    const registry = new NativeKeywordRegistry(memory, services, 0x100000n), tokenizer = new NativeTokenizer(memory, services, registry), results: unknown[] = [], tokens: unknown[] = [];
+    memory.active = true;
+    for (let i = 0; i < row.calls; i++) {
+      if (i > 0 && i % 250 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+      const result = tokenizer.next(INPUT, ENTRY); results.push(result.kind === 'returned' ? result : { ...result, nativeAddress: hex(result.nativeAddress), callSite: hex(result.callSite) });
+      const count = memory.readDword(INPUT + 0x2cn); expect(count).toBeLessThan(0x100000);
+      tokens.push({ kind: memory.readDword(INPUT + 0x18n), quoted: memory.readByte(INPUT + 0x1cn), count, bytes: Buffer.from(memory.read(memory.readQword(INPUT + 0x20n), count)).toString('hex'), readerLine: memory.readDword(READER + 8n), readerPosition: memory.readDword(READER + 0x4cn), unread: memory.readByte(READER + 0xdn) });
+      if (result.kind !== 'returned') break;
+    }
+    const snapshots = fixture.expected.snapshots.map(w => ({ address: w.address, bytes: Buffer.from(memory.read(BigInt(w.address), w.bytes.length / 2)).toString('hex') }));
+    const newAllocations = allocations.slice(initialCount).map(a => ({ ...a, contents: Buffer.from(memory.read(BigInt(a.address), a.bytes)).toString('hex') }));
+    expect({ results, tokens, calls, allocations: newAllocations, snapshots, traceSha256: createHash('sha256').update(memory.trace.join('\n') + '\n').digest('hex'), traceCount: memory.trace.length }).toEqual(fixture.expected);
+  }, 120000);
+});

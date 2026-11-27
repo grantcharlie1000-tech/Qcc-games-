@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS,BLOCK_COUNT,FACE_TILE,TILE_INDEX,TINTED_TILES,blockDef,BLOCK_BY_NAME} from '../data/blocks';
 import {ITEM_SPRITES,itemDef} from '../data/items';
+import {floorTierActive} from '../../../perf/floor';
 import {CH,quadIndices} from '../engine/constants';
 import {spriteTexturePixels,spriteTextureSize} from '../art/items';
 import {LIGHT_GLSL,type RenderUniforms} from '../render/sky';
@@ -86,6 +87,21 @@ const ORB_ICONS=11;
 const ANIM:AnimationState={time:0,partial:0,limbSwing:0,limbAmount:0,headYaw:0,headPitch:0,attack:0,reducedMotion:false};
 const BASE=mat(),PAINT={tint:-1};
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
+const FLOOR_ENTITIES=64;
+let entityOrder=new Int32Array(0),entityDist=new Float64Array(0);
+function nearestEntities(recs:readonly RenderRec[],x:number,z:number){
+  const n=recs.length;
+  if(entityOrder.length<n){entityOrder=new Int32Array(n);entityDist=new Float64Array(n);}
+  for(let i=0;i<n;i++){
+    entityOrder[i]=i;const e=recs[i].e,dx=e.x-x,dz=e.z-z;entityDist[i]=dx*dx+dz*dz;
+  }
+  for(let i=0;i<FLOOR_ENTITIES;i++){
+    let best=i;
+    for(let j=i+1;j<n;j++)if(entityDist[entityOrder[j]]<entityDist[entityOrder[best]])best=j;
+    const swap=entityOrder[i];entityOrder[i]=entityOrder[best];entityOrder[best]=swap;
+  }
+  return entityOrder;
+}
 const lerpAngle=(a:number,b:number,t:number)=>a+wrapAngle(b-a)*t;
 /** Deterministic small offsets for stacked item copies. */
 const jitter=(id:number,i:number,k:number)=>{let h=Math.imul(id*31+i*7+k,0x9e3779b1)>>>0;h=Math.imul(h^h>>>15,0x85ebca6b)>>>0;return((h>>>8)/16777216-.5);};
@@ -340,7 +356,10 @@ export function createEntityRenderer(game:Game):EntityRenderer{
       entityLayer.writer.begin(ox,oy,oz);blockLayer.writer.begin(ox,oy,oz);
       const far=(shared.fogFar.value||96)+8;
       let drawn=0;
-      for(let i=0;i<recs.length;i++){
+      const nearest=floorTierActive()&&recs.length>FLOOR_ENTITIES?nearestEntities(recs,cp.x,cp.z):null;
+      const total=nearest?FLOOR_ENTITIES:recs.length;
+      for(let n=0;n<total;n++){
+        const i=nearest?nearest[n]:n;
         const r=recs[i],e=r.e;
         if(e.removed||r.frozen)continue;
         const k=r.kind,mode=k.category==='xp'?'orb':k.render??(k.model?'model':'none');

@@ -13,6 +13,7 @@
 // (modelViewMatrix is formed in float64 on the CPU), so nothing jitters far from spawn.
 import * as THREE from 'three';
 import {registerGlassFrameSource,notifyGlassFrame} from '../../../ui/glass-frame-source';
+import {floorDpr,floorTierActive} from '../../../perf/floor';
 import {ATLAS_COLUMNS,ATLAS_ROWS,LIQUID,TILE_INDEX,isLava,isWater} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
 import {CS,SEA_LEVEL,chunkKey,quadIndices,MAX_PART_QUADS,ROOT_FLAGS} from '../engine/constants';
@@ -144,7 +145,12 @@ const OVERLAYS=new Set(['water','lava','hurt','fire','portal']);
 export function createRenderer(game:Game):RenderService{
   const canvas=game.canvas;
   const renderer=new THREE.WebGLRenderer({canvas,antialias:false,alpha:false,stencil:false,powerPreference:'high-performance'});
-  const maxScale=Math.min(window.devicePixelRatio||1,1.5);let scale=maxScale;
+  renderer.shadowMap.enabled=false;
+  const resolutionCap=()=>{
+    const w=canvas.clientWidth||1280,h=canvas.clientHeight||720,device=(typeof window!=='undefined'&&window.devicePixelRatio)||1;
+    return floorTierActive()?floorDpr(w,h,device):Math.min(device,1.5);
+  };
+  let maxScale=resolutionCap();let scale=maxScale;
   renderer.setPixelRatio(scale);
   const scene=new THREE.Scene();
   const camera=new THREE.PerspectiveCamera(70,1,.05,512);camera.rotation.order='YXZ';scene.add(camera);
@@ -195,6 +201,7 @@ export function createRenderer(game:Game):RenderService{
   function govern(){
     const now=performance.now(),dt=last?now-last:16;last=now;frames++;time+=dt;
     if(now-windowStart<1000)return;
+    maxScale=resolutionCap();if(scale>maxScale){scale=maxScale;applySize();}
     if(game.state==='playing'){
       const next=governScale(scale,time/frames,good,maxScale);good=next.good;
       if(next.scale!==scale){scale=next.scale;applySize();}

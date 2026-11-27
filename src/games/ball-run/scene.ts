@@ -4,6 +4,7 @@
  * boxes collision uses. Road pieces retain their transforms as the visible window
  * advances; only entering pieces, LOD changes and moving obstacles are uploaded. */
 import * as THREE from 'three';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
 import { rollAngle } from './roll';
 import { RetainedInstances } from './instances';
@@ -16,7 +17,7 @@ import { BALL, CONFIG, DYING_DURATION, GRAVITY, boxExtents, largestBox, sleighPi
 
 export interface SceneOptions { reducedMotion(): boolean }
 export interface FrameView { run: Run; course: Course; speed: number }
-export interface SceneStats { calls: number; geometries: number; aspect: number; ballScreenX: number; ballScreenY: number }
+export interface SceneStats { calls: number; triangles: number; geometries: number; aspect: number; ballScreenX: number; ballScreenY: number; width: number; height: number }
 export interface BallRunScene {
   resize(width: number, height: number): void;
   setResolutionCap(cap: number): void;
@@ -86,7 +87,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Christmas, read once at mount, keeps the original scene and adds only two things: a little snow
   // on top of each obstacle (one extra instanced pool) and Santa's sleigh in place of the ball.
   const festive = christmas(), body: Body = festive ? SLEIGH_BODY : BALL;
-  let resolutionCap = 1.5, pixelRatio = Math.min(window.devicePixelRatio || 1, resolutionCap), viewWidth = 0, viewHeight = 0;
+  let resolutionCap = 1.5, viewWidth = 0, viewHeight = 0;
+  const deviceDpr = () => window.devicePixelRatio || 1;
+  const ratioFor = (width: number, height: number) => floorTierActive()
+    ? Math.min(floorDpr(Math.max(1, width), Math.max(1, height), deviceDpr()), resolutionCap)
+    : Math.min(deviceDpr(), resolutionCap);
+  let pixelRatio = ratioFor(canvas.clientWidth || 1, canvas.clientHeight || 1);
   renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(PALETTE.void);
   const scene = new THREE.Scene();
@@ -313,7 +319,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     : [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
   const trailColor = new THREE.Color(PALETTE.boost), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
 
-  const stats: SceneStats = { calls: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5 };
+  const stats: SceneStats = { calls: 0, triangles: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5, width: canvas.width, height: canvas.height };
   const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample(), T = blankSample();
   const pose: ObstaclePose = { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 };
   const projection = new THREE.Vector3();
@@ -916,12 +922,15 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     stats.ballScreenX = (1 + projection.x) / 2;
     stats.ballScreenY = (1 - projection.y) / 2;
     stats.calls = renderer.info.render.calls;
+    stats.triangles = renderer.info.render.triangles;
+    stats.width = canvas.width;
+    stats.height = canvas.height;
     stats.geometries = renderer.info.memory.geometries;
   }
 
   function resize(width: number, height: number): void {
     if (disposed || !(width >= 1 && height >= 1)) return;
-    const ratio = Math.min(window.devicePixelRatio || 1, resolutionCap);
+    const ratio = ratioFor(width, height);
     if (ratio !== pixelRatio) { pixelRatio = ratio; renderer.setPixelRatio(ratio); }
     if (width !== viewWidth || height !== viewHeight) {
       viewWidth = width; viewHeight = height;

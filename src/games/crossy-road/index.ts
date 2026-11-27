@@ -10,6 +10,7 @@ import { createScene } from './scene';
 import { attachInput } from './input';
 import { createSfx } from './audio';
 import { installTestHook } from './test-hook';
+import { floorTierActive } from '../../perf/floor';
 import {AdaptiveResolution} from './quality';
 import './style.css';
 
@@ -60,7 +61,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   container.append(root);
   const canvas = root.querySelector<HTMLCanvasElement>('.hw-canvas')!;
   let scene: CrossyRoadScene;
-  try { scene = createScene(canvas, { quality: 'high' }); }
+  const openingQuality: Quality = floorTierActive() ? 'low' : 'high';
+  try { scene = createScene(canvas, { quality: openingQuality }); }
   catch {
     root.innerHTML = '<div class="hw-fallback" role="status"><h2>3D graphics unavailable</h2><p>Crossy Road needs WebGL. Turn on hardware acceleration in the browser settings, or try a recent browser.</p><a class="game-button" href="#/collection">Choose another game</a></div>';
     context.setStatus('This browser could not start the 3D graphics Crossy Road needs.');
@@ -91,7 +93,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let resetInput = () => {};
   let best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best, announcedBest = false, warned = false;
   let reportedScore = -1, reportedRow = -1, nextBell = 0;
-  let quality: Quality = 'high', fpsTime = 0, fpsFrames = 0, fps = 0;
+  let quality: Quality = openingQuality, fpsTime = 0, fpsFrames = 0, fps = 0;
   const resolution = new AdaptiveResolution();
   let appliedResolution = 2;
   let landedThisFrame = false;

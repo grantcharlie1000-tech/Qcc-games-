@@ -1,6 +1,7 @@
 // The engine: creates every service, runs the fixed-tick world and per-frame rendering, owns the
 // state machine (loading → ready → playing ⇄ screen ⇄ paused, dead, lost) and persistence.
 import type {GameContext,GameInstance} from '../../../core/types';
+import {floorTierActive} from '../../../perf/floor';
 import {CH,CS,DAY_TICKS,TPS} from './constants';
 import {FACING_VECTOR,blockDef} from '../data/blocks';
 import {EventBus} from './events';
@@ -9,6 +10,9 @@ import {VIEW_DISTANCES,type AdvancementsService,type BlockEntityService,type Cra
   type RenderService,type SoundService,type SurvivalService,type System,type TerrainService,type UIService,type BlockTickService,type InventoryService,
   type WeatherService} from './contracts';
 import {ChunkStreamer} from './streaming';
+
+/** Chunk radius submitted while the floor tier is on. Shorter than the menu minimum. */
+const FLOOR_VIEW_CHUNKS=2;
 import {bedStandUp,bodyCollides} from './physics';
 import {mulberry32} from '../world/noise';
 import {VoxelWorld} from '../world/world';
@@ -90,7 +94,7 @@ export class Engine implements Game{
   /** Services in creation order (disposed in reverse) and in tick / frame order. */
   private created:[string,System][];private ticked:System[];private framed:System[];
   private seed=DEFAULT_SEED;private rng=mulberry32(DEFAULT_SEED);
-  private frameId=0;private last=0;private tickAcc=0;private paused=false;private disposed=false;
+  private frameId=0;private last=0;private tickAcc=0;private paused=false;private disposed=false;private appliedView=-1;
   private diedAt=0;private spawnPending=true;private respawnPending=false;private bedPending=false;private freshWorld=true;private restored=false;private wasLocked=false;private lastScore=-1;private lastDay=0;
   private abort=new AbortController();
   constructor(container:HTMLElement,readonly context:GameContext){
@@ -196,7 +200,20 @@ export class Engine implements Game{
     if(clean.mode!==undefined){this.root.dataset.mode=this.settings.mode;if(clean.mode==='survival')this.player.state.flying=false;this.events.emit('modeChanged',{mode:clean.mode});}
     this.events.emit('settingsChanged',{settings:this.settings});
   }
-  private setView(index:number){this.settings.view=index;this.render.setViewDistance(VIEW_DISTANCES[index]);this.root.dataset.view=String(VIEW_DISTANCES[index]);this.schedule();}
+  /** Menu radius, shortened on the floor tier. The saved view index is unchanged. */
+  private streamedView(){
+    const chosen=VIEW_DISTANCES[this.settings.view]??VIEW_DISTANCES[1];
+    return floorTierActive()?Math.min(chosen,FLOOR_VIEW_CHUNKS):chosen;
+  }
+  private applyStreamedView(){
+    const view=this.streamedView();
+    if(view===this.appliedView)return;
+    this.appliedView=view;this.render.setViewDistance(view);
+  }
+  private setView(index:number){
+    this.settings.view=index;this.appliedView=-1;this.applyStreamedView();
+    this.root.dataset.view=String(VIEW_DISTANCES[index]);this.schedule();
+  }
   skipTime(dayTime:number){
     const t=this.time,from=t.dayTime,to=((Math.round(dayTime)%DAY_TICKS)+DAY_TICKS)%DAY_TICKS,delta=(to-from+DAY_TICKS)%DAY_TICKS;
     if(!delta)return;
@@ -219,7 +236,8 @@ export class Engine implements Game{
     this.frameId=0;if(this.disposed||this.paused||this.state==='lost')return;
     const dt=Math.min(.1,this.last?(time-this.last)/1000:1/60);this.last=time;
     const p=this.player.state;
-    this.streamer.setCentre(p.x,p.z,VIEW_DISTANCES[this.settings.view]);
+    this.applyStreamedView();
+    this.streamer.setCentre(p.x,p.z,this.appliedView);
     const built=this.streamer.update();
     if(this.spawnPending)this.trySpawn();
     const running=this.state==='playing'||this.state==='screen';
@@ -364,7 +382,7 @@ export class Engine implements Game{
         this.resetWorld(seed);this.hud.showMenu('start');this.schedule();
       },
       loadGuestWorld:w=>this.loadGuestWorld(w),
-      setExtraCentres:points=>{this.streamer.setExtraCentres(points,4);if(points.length)this.schedule();},
+      setExtraCentres:points=>{this.streamer.setExtraCentres(points,floorTierActive()?this.streamedView():4);if(points.length)this.schedule();},
       hold:on=>{
         if(this.netHeld===on)return;
         this.netHeld=on;

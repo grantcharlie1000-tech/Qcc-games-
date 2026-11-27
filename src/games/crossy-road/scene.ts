@@ -11,6 +11,7 @@
  * the zones outside it are darkened. Orthographic camera, pitched 45° and yawed 20° (lanes fall to
  * the right on screen). */
 import * as THREE from 'three';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import {carImpact, ufoFlight} from './motion';
 import {obstacleAt, obstacleVariant, lilyAt} from './terrain';
 import {
@@ -23,6 +24,7 @@ import {
   LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
+import {clipFacing, viewBasis} from './view-clip';
 
 // Camera ---------------------------------------------------------------------
 
@@ -122,6 +124,32 @@ function hash(a: number, b: number): number {
   return (h ^ (h >>> 15)) & 0x3fffffff;
 }
 
+/** Snowflake constants from `hash(i, 9001/9002)`. Built once so a frame only integrates the fall. */
+const FLAKE_SEEDS = Array.from({length: FLAKES_HIGH}, (_, i) => {
+  const h = hash(i, 9001), g = hash(i, 9002);
+  return {
+    u: (h & 1023) / 1024,
+    v: ((h >>> 10) & 1023) / 1024,
+    y0: (((h >>> 20) & 1023) / 1024) * SNOW_H,
+    speed: 0.55 + 0.5 * ((g & 255) / 255),
+    freq: 0.9 + ((g >>> 8) & 7) * 0.1,
+    size: 0.05 + 0.015 * ((g >>> 12) & 3),
+  };
+});
+
+/** One flake in world space, or null once it has passed the ground. `spanX`/`spanZ` are the column
+ * the camera keeps full of snow; the same formulas as the old per-frame hash. */
+export function fallingFlake(i: number, anim: number, spanX: number, spanZ: number, cx: number, cz: number): {x: number; y: number; z: number; size: number} | null {
+  const flake = FLAKE_SEEDS[i];
+  const sway = 0.22 * Math.sin(anim * flake.freq + i);
+  const y = SNOW_H - ((flake.y0 + anim * flake.speed) % SNOW_H) - 0.3;
+  if (y < 0.02) return null;
+  const bx = flake.u * spanX + sway + anim * 0.12, bz = flake.v * spanZ;
+  const x = cx + ((((bx - cx) % spanX) + spanX) % spanX) - spanX / 2;
+  const z = cz + ((((bz - cz) % spanZ) + spanZ) % spanZ) - spanZ / 2;
+  return {x, y, z, size: flake.size};
+}
+
 /** Height of the surface a thing at x stands on in a lane at time t: a log top, a pad top or the water. */
 function surfaceAt(lane: Lane, x: number, t: number): number {
   if (lane.kind === 'river') return platformAt(lane, x, t) ? LOG_TOP : WATER_Y;
@@ -155,7 +183,7 @@ class Pool {
   private readonly rc = { start: 0, count: 0 };
 
   constructor(readonly cap: number, geometry: THREE.BufferGeometry, material: THREE.Material, cast: boolean,
-    shadowMaterial: THREE.ShaderMaterial, floor: number) {
+    shadowMaterial: THREE.ShaderMaterial, floor: number, shadowGeometry: THREE.BufferGeometry | null = null) {
     const mesh = new THREE.InstancedMesh(geometry, material, cap);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3);
@@ -174,16 +202,20 @@ class Pool {
     if (cast) {
       // Project the actual voxel triangles in the main pass. One stencil mark
       // unions overlapping faces/casters, so shadows never darken themselves.
-      const shadow = new THREE.InstancedMesh(geometry, shadowMaterial, cap);
+      const shadow = new THREE.InstancedMesh(shadowGeometry ?? geometry, shadowMaterial, cap);
       shadow.instanceMatrix = mesh.instanceMatrix;
       shadow.frustumCulled = false;
       shadow.matrixAutoUpdate = false;
       shadow.matrixWorldAutoUpdate = false;
       shadow.renderOrder = 1;
       shadow.count = 0;
+      // One material is shared, so a draw uploads the floor and fade only when this caster differs
+      // from the one that just drew. Consecutive trees stay on the ground plane and skip the write.
       shadow.onBeforeRender = () => {
-        shadowMaterial.uniforms.uFloor.value = this.shadowFloor;
-        shadowMaterial.uniforms.uFade.value = this.shadowOpacity;
+        const uniforms = shadowMaterial.uniforms;
+        if (uniforms.uFloor.value === this.shadowFloor && uniforms.uFade.value === this.shadowOpacity) return;
+        uniforms.uFloor.value = this.shadowFloor;
+        uniforms.uFade.value = this.shadowOpacity;
         shadowMaterial.uniformsNeedUpdate = true;
       };
       this.shadow = shadow;
@@ -289,14 +321,30 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     transparent:true,depthWrite:false,side:THREE.FrontSide,
     stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp,
   }));
-  const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, _receive = false, order = 0, floor = 0): Pool => {
-    const p = new Pool(cap, geometry, material, cast, shadowMaterial, floor);
+  const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, _receive = false, order = 0, floor = 0, shadowGeometry: THREE.BufferGeometry | null = null): Pool => {
+    const p = new Pool(cap, geometry, material, cast, shadowMaterial, floor, shadowGeometry);
     p.mesh.renderOrder = order;
     scene.add(p.mesh);
     if(p.shadow)scene.add(p.shadow);
     pools.push(p);
     return p;
   };
+  // Facing clip uses this scene's pitch, yaw and sun. Stretched logs and trains pass the wide
+  // scale range; trees, rocks and posts are drawn at unit scale.
+  const basis = viewBasis(PITCH, YAW, CAMERA_DIST, -SUN_X / SUN_Y);
+  const yaw2 = [0, Math.PI], yaw4 = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+  const lilyYaws = [-3, -2, -1, 0, 1, 2, 3].map(step => step * 0.035);
+  const sxExact: readonly [number, number] = [1, 1], sxStretch: readonly [number, number] = [1e-3, 1e3];
+  function view(source: THREE.BufferGeometry, yaws: readonly number[], cast: boolean, sx: readonly [number, number] = sxExact): {color: THREE.BufferGeometry; shadow: THREE.BufferGeometry | null} {
+    const color = clipFacing(source, basis, yaws, false);
+    const shadow = cast ? clipFacing(source, basis, yaws, true, sx) : null;
+    const used = new Set<THREE.BufferGeometry>([color]);
+    if (shadow) used.add(shadow);
+    if (used.has(source)) geometries.push(source); else source.dispose();
+    if (color !== source) geometries.push(color);
+    if (shadow && shadow !== source && shadow !== color) geometries.push(shadow);
+    return {color, shadow};
+  }
 
   const lit = mat(new THREE.MeshLambertMaterial({ vertexColors: true }));
   const painted = mat(new THREE.MeshLambertMaterial({ vertexColors: true }));
@@ -314,28 +362,34 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const spotMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
   const shadeMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
 
-  const box = geo(unitBoxGeometry());
+  const box = view(unitBoxGeometry(), [0], false).color;
   const carStyles: CarStyle[] = ['compact', 'sedan', 'taxi'];
   const merged = (parts: VehicleParts): THREE.BufferGeometry => {
-    const geometry = geo(mergeVehicle(parts));
+    const geometry = mergeVehicle(parts);
     parts.body.dispose(); parts.detail.dispose();
     return geometry;
   };
-  const train = trainGeometry(), cars = carStyles.map(style => merged(carGeometry(style))), trucks = [merged(truckGeometry(2)), merged(truckGeometry(3))];
+  const trainParts = trainGeometry();
+  const cars = carStyles.map(style => view(merged(carGeometry(style)), yaw2, true, sxStretch));
+  const trucks = ([2, 3] as const).map(len => view(merged(truckGeometry(len)), yaw2, true, sxStretch));
+  const nose = view(merged(trainParts.nose), yaw2, true);
+  const carriage = view(merged(trainParts.carriage), yaw2, true, sxStretch);
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
+  // The bird and the UFO stay on the full mesh: deaths tumble the bird through every face, and the UFO spins freely.
   const ground = pool(box, lit, 6400, false, true);
   const waterFx = pool(box, lit, 640);
-  const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
-  const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
-  const carBody = cars.map(g => pool(g, painted, 160, true));
-  const truckBody = trucks.map(g => pool(g, painted, 96, true));
-  const noseBody = pool(merged(train.nose), painted, 16, true);
-  const carriageBody = pool(merged(train.carriage), painted, 96, true);
+  const trees = [0, 1, 2, 3].map(v => { const seen = view(treeGeometry(v), [0], true); return pool(seen.color, lit, 320, true, false, 0, 0, seen.shadow); });
+  const rocks = [0, 1, 2].map(v => { const seen = view(rockGeometry(v), yaw4, true); return pool(seen.color, lit, 160, true, false, 0, 0, seen.shadow); });
+  const carBody = cars.map(seen => pool(seen.color, painted, 160, true, false, 0, 0, seen.shadow));
+  const truckBody = trucks.map(seen => pool(seen.color, painted, 96, true, false, 0, 0, seen.shadow));
+  const noseBody = pool(nose.color, painted, 16, true, false, 0, 0, nose.shadow);
+  const carriageBody = pool(carriage.color, painted, 96, true, false, 0, 0, carriage.shadow);
   // Logs carry a paint mask: the bark takes the log colour, end grain and snow stay fixed.
-  const logs = ([2, 3, 4] as const).map(len => pool(geo(logGeometry(len)), painted, 192, true, false, 0, WATER_Y));
-  const lilies = pool(geo(lilyGeometry()), lit, 160);
-  const posts = pool(geo(signalPostGeometry()), lit, 48, true);
+  const logs = ([2, 3, 4] as const).map(len => { const seen = view(logGeometry(len), [0], true, sxStretch); return pool(seen.color, painted, 192, true, false, 0, WATER_Y, seen.shadow); });
+  const lilies = pool(view(lilyGeometry(), lilyYaws, false).color, lit, 160);
+  const signalPosts = view(signalPostGeometry(), [0], true);
+  const posts = pool(signalPosts.color, lit, 48, true, false, 0, 0, signalPosts.shadow);
   const lampGeo = geo(lampGeometry());
   const lamps = pool(lampGeo, unlit, 96), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
   // Additive halos make a lit lamp bloom against the scene.
@@ -389,8 +443,11 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Quality ---------------------------------------------------------------------
 
   function applyPixelRatio(): void {
-    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? resolutionCap : Math.min(resolutionCap, 1.5));
+    const device = window.devicePixelRatio || 1;
     const width = cssWidth || 1, height = cssHeight || 1;
+    const ratio = floorTierActive() && quality === 'low'
+      ? floorDpr(width, height, device)
+      : Math.min(device, quality === 'high' ? resolutionCap : Math.min(resolutionCap, 1.5));
     if (renderer.getPixelRatio() === ratio && canvas.width === Math.floor(width * ratio) && canvas.height === Math.floor(height * ratio)) return;
     renderer.setDrawingBufferSize(width, height, ratio);
   }
@@ -829,18 +886,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
    * view, falling and swaying as analytic functions of `anim`. Reduced motion freezes them where they are. */
   function snowfall(): void {
     const count = low ? FLAKES_LOW : FLAKES_HIGH;
-    const W = (2 * fit.halfWidth) / RX + 6 + SNOW_H * Math.abs(FX), D = (2 * fit.halfHeight) / SIN_P + 6 + SNOW_H * -FZ;
+    const spanX = (2 * fit.halfWidth) / RX + 6 + SNOW_H * Math.abs(FX), spanZ = (2 * fit.halfHeight) / SIN_P + 6 + SNOW_H * -FZ;
     // A flake at height y appears y·cot(pitch) further ahead, so the column is centred behind the look point.
     const cx = lookX - FX * SNOW_H * 0.5, cz = lookZ - FZ * SNOW_H * 0.5;
     for (let i = 0; i < count; i++) {
-      const h = hash(i, 9001), g = hash(i, 9002);
-      const speed = 0.55 + 0.5 * ((g & 255) / 255), sway = 0.22 * Math.sin(anim * (0.9 + ((g >>> 8) & 7) * 0.1) + i);
-      const y = SNOW_H - (((((h >>> 20) & 1023) / 1024) * SNOW_H + anim * speed) % SNOW_H) - 0.3;
-      if (y < 0.02) continue;
-      const bx = ((h & 1023) / 1024) * W + sway + anim * 0.12, bz = (((h >>> 10) & 1023) / 1024) * D;
-      const x = cx + ((((bx - cx) % W) + W) % W) - W / 2, z = cz + ((((bz - cz) % D) + D) % D) - D / 2;
-      const size = 0.05 + 0.015 * ((g >>> 12) & 3);
-      flakes.put(x, y, z, size, size, size, 0, C_FLAKE, 1);
+      const flake = fallingFlake(i, anim, spanX, spanZ, cx, cz);
+      if (flake) flakes.put(flake.x, flake.y, flake.z, flake.size, flake.size, flake.size, 0, C_FLAKE, 1);
     }
   }
 

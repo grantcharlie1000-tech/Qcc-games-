@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import { CRUMBLE, PLAYER } from './config';
 import { createAvatar } from './avatar';
@@ -704,20 +705,22 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     valley.position.set(camera.position.x, course.killY[Math.max(0, Math.min(course.killY.length - 1, v.stage))] - 10, camera.position.z);
 
     // Effects.
-    let si = 0;
+    let si = 0, sparkLive = false;
     for (const p of sparkPool) {
-      if (p.life > 0) { p.life -= v.dt; p.vy -= 6 * v.dt; p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; }
+      if (p.life > 0) { sparkLive = true; p.life -= v.dt; p.vy -= 6 * v.dt; p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; }
       m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.life * 8, 0)), s3.setScalar(p.life > 0 ? Math.min(1, p.life * 2) : 0));
       sparks.setMatrixAt(si++, m4);
     }
-    sparks.instanceMatrix.needsUpdate = true;
-    let ci = 0;
+    sparks.visible = sparkLive;
+    sparks.instanceMatrix.needsUpdate = sparkLive;
+    let ci = 0, confettiLive = false;
     for (const p of confettiPool) {
-      if (p.life > 0) { p.life -= v.dt; p.vy = Math.max(-2.5, p.vy - 9 * v.dt); p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; p.spin += v.dt * 6; }
+      if (p.life > 0) { confettiLive = true; p.life -= v.dt; p.vy = Math.max(-2.5, p.vy - 9 * v.dt); p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; p.spin += v.dt * 6; }
       m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.spin * 0.7, 0)), s3.setScalar(p.life > 0 ? 1 : 0));
       confetti.setMatrixAt(ci++, m4);
     }
-    confetti.instanceMatrix.needsUpdate = true;
+    confetti.visible = confettiLive;
+    confetti.instanceMatrix.needsUpdate = confettiLive;
     snow.visible = !v.reduced && !lowQuality;
     if (snow.visible) {
       snow.position.set(Math.round(camera.position.x / 50) * 50, camera.position.y - 10, Math.round(camera.position.z / 50) * 50);
@@ -726,7 +729,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       snowGeo.attributes.position.needsUpdate = true;
     }
 
-    renderer.info.reset();
+    if (typeof renderer.info.reset === 'function') renderer.info.reset();
     renderer.render(scene, camera);
     notifyGlassFrame(canvas);
     stats.calls = renderer.info.render.calls;
@@ -741,8 +744,10 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     stats,
     resize(w, h) {
       aspect = w / Math.max(1, h);
+      const device = window.devicePixelRatio || 1;
       const cap = lowQuality ? 1 : 1.5;
-      const ratio = Math.min(window.devicePixelRatio || 1, cap, 2, Math.sqrt((1920 * 1080) / Math.max(1, w * h)));
+      let ratio = Math.min(device, cap, 2, Math.sqrt((1920 * 1080) / Math.max(1, w * h)));
+      if (floorTierActive()) ratio = Math.min(ratio, floorDpr(w, h, device));
       renderer.setPixelRatio(ratio);
       renderer.setSize(w, h, false);
       camera.aspect = aspect;

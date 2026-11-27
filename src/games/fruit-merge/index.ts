@@ -5,6 +5,7 @@ import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-so
 import './style.css';
 import './christmas.css';
 import {christmas} from '../../festive/festive';
+import {floorTierActive} from '../../perf/floor';
 import {ornamentName,ornamentColor,drawOrnament,drawFestiveRim,drawFestiveFlash,FestiveScene} from './christmas-art';
 // Display names follow the active theme; rules and saves only ever use tier numbers.
 const tierName=(tier:number)=>christmas()?ornamentName(tier):TIERS[tier].name;
@@ -62,7 +63,9 @@ const module:GameModule={
    const ratio=pixelRatio();const w=Math.round(WIDTH*ratio),h=Math.round(HEIGHT*ratio);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,WIDTH,HEIGHT);
    if(scene){drawFestive(ratio,context.settings.reducedMotion);notifyGlassFrame(canvas);return;}
    c.fillStyle='#fff2ca';c.fillRect(0,0,WIDTH,HEIGHT);
-   c.fillStyle='#eed6a842';for(let y=90;y<HEIGHT;y+=32)for(let x=0;x<WIDTH;x+=32)if((x/32+(y-90)/32)%2===0){c.fillRect(x,y,32,32);}
+   c.fillStyle='#eed6a842';
+   if(floorTierActive()){c.beginPath();for(let y=90;y<HEIGHT;y+=32)for(let x=0;x<WIDTH;x+=32)if((x/32+(y-90)/32)%2===0)c.rect(x,y,32,32);c.fill();}
+   else for(let y=90;y<HEIGHT;y+=32)for(let x=0;x<WIDTH;x+=32)if((x/32+(y-90)/32)%2===0)c.fillRect(x,y,32,32);
    // The basket is quiet and light so fruit silhouettes carry the scene.
    c.fillStyle='#fffae9';c.strokeStyle='#cba47b';c.lineWidth=5;c.beginPath();c.roundRect(12,96,336,402,[10,10,23,23]);c.fill();c.stroke();
    c.strokeStyle=[...physics.fruits.values()].some(f=>f.danger>200)?'#db594d':'#d5a08b';c.lineWidth=1.5;c.setLineDash([5,5]);c.beginPath();c.moveTo(LEFT+3,DANGER);c.lineTo(RIGHT-3,DANGER);c.stroke();c.setLineDash([]);
@@ -101,7 +104,7 @@ const module:GameModule={
   const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)draw();});
   function frame(now:number){
    raf=0;if(disposed||paused)return;if(!last)last=now;const elapsed=Math.min(100,Math.max(0,now-last));last=now;
-   if(!paused){accumulator+=elapsed;while(accumulator>=STEP){physics.step();scene?.step(STEP,physics.aim,[...physics.fruits.values()].map(f=>({id:f.id,tier:f.tier,x:f.body.position.x,y:f.body.position.y,r:TIERS[f.tier].r})),context.settings.reducedMotion);for(const p of sparks){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=STEP;}sparks=sparks.filter(p=>p.life>0);if(flash){flash.life-=STEP;flash.y-=.35;if(flash.life<=0)flash=undefined;}accumulator-=STEP;}report();if(dirty){dirty=false;context.save(physics.snapshot());}}
+   if(!paused){accumulator+=elapsed;while(accumulator>=STEP){physics.step();scene?.step(STEP,physics.aim,[...physics.fruits.values()].map(f=>({id:f.id,tier:f.tier,x:f.body.position.x,y:f.body.position.y,r:TIERS[f.tier].r})),context.settings.reducedMotion);for(const p of sparks){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=STEP;}sparks=sparks.filter(p=>p.life>0);if(flash){flash.life-=STEP;flash.y-=.35;if(flash.life<=0)flash=undefined;}accumulator-=STEP;}report();if(dirty){dirty=false;setTimeout(()=>{if(!disposed)context.save(physics.snapshot());},0);}}
    draw();if(!paused&&!disposed)raf=requestAnimationFrame(frame);
   }
   function doDrop(){if(paused||disposed)return;if(physics.drop()){context.sound('tap');report();context.save(physics.snapshot());draw();}else if(!physics.lost){context.announce('Wait for room at the top of the basket.');}}

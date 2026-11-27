@@ -4,6 +4,7 @@ import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-so
 import './style.css';
 import './christmas.css';
 import {christmas} from '../../festive/festive';
+import {floorTierActive} from '../../perf/floor';
 const baseColors:Record<Piece,string>={I:'#53d9ed',O:'#ffd461',T:'#c88cff',S:'#71e8a4',Z:'#ff7e91',J:'#799dff',L:'#ffa35d'};
 /** Christmas wrapping colours for the same seven pieces, each with a ribbon that contrasts with it. */
 const festiveColors:Record<Piece,string>={I:'#8fd6f0',O:'#f4c534',T:'#b35bd6',S:'#3fbf6a',Z:'#e33445',J:'#3a7be0',L:'#f08a2b'};
@@ -26,7 +27,7 @@ const game:GameModule={id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cov
  function block(g:CanvasRenderingContext2D,x:number,y:number,size:number,id:Piece,outline=false,alpha=1){
   const gap=Math.max(1,size*.055),edge=Math.max(1,size*.09),xmas=christmas(),colors=xmas?festiveColors:baseColors;
   if(outline){g.globalAlpha=.2;g.fillStyle=colors[id];g.fillRect(x+gap,y+gap,size-gap*2,size-gap*2);g.globalAlpha=.9;g.strokeStyle=colors[id];g.lineWidth=Math.max(1,size*.045);g.setLineDash([size*.18,size*.11]);g.strokeRect(x+gap+1,y+gap+1,size-gap*2-2,size-gap*2-2);g.setLineDash([]);}
-  else{g.globalAlpha=alpha;g.fillStyle=colors[id];g.fillRect(x+gap,y+gap,size-gap*2,size-gap*2);g.fillStyle='#ffffff66';g.fillRect(x+gap,y+gap,size-gap*2,edge);g.fillStyle='#ffffff22';g.fillRect(x+gap,y+gap,edge,size-gap*2);g.fillStyle='#060b284d';g.fillRect(x+gap,y+size-gap-edge,size-gap*2,edge);
+  else{g.globalAlpha=alpha;g.fillStyle=colors[id];g.fillRect(x+gap,y+gap,size-gap*2,size-gap*2);if(floorTierActive()){g.globalAlpha=1;return;}g.fillStyle='#ffffff66';g.fillRect(x+gap,y+gap,size-gap*2,edge);g.fillStyle='#ffffff22';g.fillRect(x+gap,y+gap,edge,size-gap*2);g.fillStyle='#060b284d';g.fillRect(x+gap,y+size-gap-edge,size-gap*2,edge);
    // A gift ribbon at Christmas; the colour-blind glyph takes its place when patterns are on.
    if(xmas&&!context.settings.colorBlind&&size>=10){const band=Math.max(1,size*.14),mid=size/2-band/2;g.globalAlpha=alpha*.85;g.fillStyle=ribbons[id];g.fillRect(x+mid,y+gap,band,size-gap*2);g.fillRect(x+gap,y+mid,size-gap*2,band);g.globalAlpha=alpha;}
    if(context.settings.colorBlind){g.fillStyle='#101631';g.font=`bold ${Math.max(8,size*.43)}px system-ui`;g.textAlign='center';g.textBaseline='middle';g.fillText(marks[id],x+size/2,y+size*.55);}

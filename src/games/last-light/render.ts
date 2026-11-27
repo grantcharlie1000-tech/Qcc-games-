@@ -16,6 +16,8 @@ import {drawQuarterPickup} from './quarter-place';
 import {quarterSet} from './quarter-sets';
 import {Effects,completionOffset,drawCompletion,drawDawn,drawEndingSky} from './effects';
 import {goalComposition,stationComposition,type GoalComposition,type StationArt} from './composition';
+import {enemyAt} from './enemies';
+import {floorTierActive} from '../../perf/floor';
 type C=CanvasRenderingContext2D;
 function pixel(c:C,color:string,x:number,y:number,w:number,h:number){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);}
 /** Small fixtures are authored at native pixel size, not shrunken scenic art. */
@@ -154,6 +156,7 @@ export class Scene {
   const c=this.ctx,l=LEVELS[s.stage],theme=WORLDS[l.world],w=this.width,h=this.height;
   if(reduced&&!this.death.impact){const target=this.target(s,true);this.cameraX=target.x;this.cameraY=target.y;}
   const cx=Math.floor(this.death.impact?this.death.cameraX:this.cameraX),cy=Math.floor(this.death.impact?this.death.cameraY:this.cameraY),t=reduced?0:s.clock,elapsed=s.phase==='playing'?0:reduced?clearDuration(l):clearDuration(l)-s.cinematic;
+  if(floorTierActive()){this.drawFloor(c,l,s,w,h,cx,cy,theme);return;}
   drawSky(c,l,s,w,h,cx,cy,reduced);
   drawEndingSky(c,w,h,s);
   c.save();c.translate(-cx,-cy);
@@ -220,5 +223,20 @@ export class Scene {
   c.restore();
   this.death.drawBody(c,cx,cy,reduced);this.death.drawTransition(c,w,h,actual,cx,cy,reduced);
   drawDawn(c,w,h,s,reduced);
+ }
+ /** Floor tier keeps every in-view actor and slab, as flat blocks instead of per-pixel portraits. */
+ private drawFloor(c:CanvasRenderingContext2D,l:Level,s:Run,w:number,h:number,cx:number,cy:number,theme:(typeof WORLDS)[number]){
+  c.fillStyle=theme.sky;c.fillRect(0,0,w,h);
+  c.save();c.translate(-cx,-cy);
+  if(l.water!==null){c.fillStyle='#153440';c.fillRect(cx,l.water,w,Math.max(8,cy+h-l.water));}
+  c.fillStyle=theme.near;
+  for(const p of l.platforms){const r=platformAt(p,s.clock);if(r.x+r.w<cx-40||r.x>cx+w+40||r.y>cy+h+40||r.y+Math.max(r.h,8)<cy-40)continue;c.fillRect(r.x,r.y,r.w,Math.max(8,r.h));}
+  for(const hazard of l.hazards){const r=hazardAt(hazard,s.clock);if(r.x+r.w<cx-40||r.x>cx+w+40||r.y>cy+h+40||r.y+r.h<cy-40)continue;c.fillStyle='#c45a4a';c.fillRect(r.x,r.y,Math.max(4,r.w),Math.max(4,r.h));}
+  c.fillStyle=theme.accent;
+  for(const enemy of l.enemies){const at=enemyAt(enemy,s.clock);if(at.x+at.w<cx-20||at.x>cx+w+20)continue;c.fillRect(at.x,at.y,at.w,at.h);}
+  for(const pickup of l.pickups){if(s.collected.includes(pickup.id)||pickup.x<cx-16||pickup.x>cx+w+16)continue;c.fillRect(pickup.x-6,pickup.y-10,12,16);}
+  const departure=s.phase!=='playing'?departurePose(l,s,false,this):null;
+  c.globalAlpha=departure?Math.max(.15,departure.opacity):1;c.fillStyle=theme.edge;c.fillRect(departure?.x??s.x,departure?.y??s.y,16,PLAYER_H);c.globalAlpha=1;
+  c.restore();
  }
 }

@@ -6,6 +6,7 @@ import { buildCourse, ZONES } from './stages';
 import { createRun, step, Stepper } from './sim';
 import { OUTFITS, earnedUnlocks, readSnapshot, writeSnapshot, defaultProgress, type Mode, type Progress } from './progress';
 import { createTrial, encodeTime, finishTrial, formatTime, markCasual, startTrial, trialCheckpoint, trialElapsed, type CasualReason, type Trial } from './trial';
+import { floorTierActive } from '../../perf/floor';
 import { createScene, type FrostScene } from './scene';
 import { createInput, worldMove, PITCH } from './input';
 import type { Run, SimEvent } from './types';
@@ -42,7 +43,7 @@ const TEMPLATE = `<canvas class="fo-canvas" tabindex="0" aria-label="Femboy Fros
   <fieldset class="fo-outfits"><legend>Outfit</legend></fieldset>
   <label class="fo-check"><input type="checkbox" class="fo-bow"> <span>Ribbon bow <small class="fo-bow-note">Reach the first checkpoint</small></span></label>
   <label class="fo-check"><input type="checkbox" class="fo-help"> <span>Gentle help <small>Slows every hazard and moving platform. A timed run with help on is casual (not ranked).</small></span></label>
-  <label class="fo-check"><input type="checkbox" class="fo-low"> <span>Low graphics <small>30 frames a second and a smaller picture. Does not change the game.</small></span></label>
+  <label class="fo-check"><input type="checkbox" class="fo-low"> <span>Low graphics <small>A smaller picture and fewer effects. Does not change the game.</small></span></label>
   <div class="fo-modes"><h3>Play</h3>
     <label class="fo-stage-pick"><span>Go to stage</span><select class="game-select fo-stage-select"></select></label>
     <div class="fo-actions"><button type="button" class="game-button fo-trial">Start a Time Trial</button><button type="button" class="game-button secondary fo-campaign">Back to the campaign</button><button type="button" class="game-button secondary fo-fresh">Replay from stage 1</button></div>
@@ -64,8 +65,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   root.innerHTML = TEMPLATE;
   container.append(root);
   const canvas = root.querySelector<HTMLCanvasElement>('.fo-canvas')!;
+  let lowQuality = floorTierActive();
   let scene: FrostScene;
-  try { scene = createScene(canvas, course); }
+  try { scene = createScene(canvas, course); scene.setQuality(lowQuality); }
   catch {
     root.innerHTML = '<div class="fo-fallback" role="status"><h2>3D graphics unavailable</h2><p>Femboy Frosthop needs WebGL. Turn on hardware acceleration in the browser settings, or try a recent browser.</p><a class="game-button" href="#/collection">Choose another game</a></div>';
     context.setStatus('This browser could not start the 3D graphics Femboy Frosthop needs.');
@@ -81,7 +83,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let run: Run = createRun(course, { stars: progress.stars });
   let trial: Trial | null = null;
   let paused = false, disposed = false, lost = false, finished = false, finalMs: number | null = null;
-  let frameId = 0, last = 0, renderCarry = 0, lowQuality = false;
+  let frameId = 0, last = 0, renderCarry = 0;
   const stepper = new Stepper();
   const prev = { x: 0, y: 0, z: 0 };
   let squash = 0, hudAt = 0, toastTimer = 0, suggestedFor = -1, lastStage = -1, deathAt = 0, respawnAt = 0, jumps = 0;
@@ -344,7 +346,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     });
     squash = Math.max(0, squash - dt * 6);
     renderCarry += dt;
-    const period = lowQuality ? 1 / 30 : 0;
+    const period = 0;
     if (renderCarry >= period - 1e-4) { draw(renderCarry); renderCarry = 0; }
     if (t - hudAt > 100) { hudAt = t; hud(); }
     schedule();
