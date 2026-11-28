@@ -28,7 +28,9 @@ const module:GameModule={
   const rows=Array.from({length:SIZE},()=>{const row=document.createElement('div');row.className='cb-row';row.setAttribute('role','row');board.append(row);return row;});
   const cells=Array.from({length:SIZE*SIZE},(_,i)=>{const c=document.createElement('button');c.className='cb-cell';c.type='button';c.dataset.cell=String(i);c.setAttribute('role','gridcell');c.setAttribute('aria-rowindex',String(Math.floor(i/SIZE)+1));c.setAttribute('aria-colindex',String(i%SIZE+1));c.id=`cb-cell-${i}`;rows[Math.floor(i/SIZE)].append(c);return c;});
   const slots=Array.from({length:3},(_,i)=>{const b=document.createElement('button');b.type='button';b.className='cb-piece';b.dataset.slot=String(i);tray.append(b);return b;});
-  const cellHtml=new Array<string>(SIZE*SIZE).fill('-'),trayHtml=['-','-','-'];
+  const cellHtml=new Array<string>(SIZE*SIZE).fill('-'),cellLabel=new Array<string>(SIZE*SIZE).fill(''),trayHtml=['-','-','-'];
+  const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+  let boardRect=board.getBoundingClientRect();
   let checkedState:typeof state|undefined,canMove=false;
   function movesAvailable(){if(checkedState!==state){checkedState=state;canMove=hasMove(state);}return canMove;}
   function active(){return !paused&&!disposed&&movesAvailable();}
@@ -57,15 +59,16 @@ const module:GameModule={
     cells[i].dataset.value=String(value);cells[i].dataset.ghost=String(ghost);
     const html=shown?blockSvg(shown):'';if(cellHtml[i]!==html){cells[i].innerHTML=html;cellHtml[i]=html;}
     cells[i].tabIndex=selected!==null&&i===Math.max(0,Math.min(SIZE*SIZE-1,cursor.y*SIZE+cursor.x))?0:-1;
-    cells[i].setAttribute('aria-label',`Row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}, ${value?colorName(value):'empty'}${ghost?', placement preview':''}${lit?', will clear':''}`);
+    const label=`Row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}, ${value?colorName(value):'empty'}${ghost?', placement preview':''}${lit?', will clear':''}`;
+    if(cellLabel[i]!==label){cellLabel[i]=label;cells[i].setAttribute('aria-label',label);}
    }
+   const trayCell=(boardRect.width||board.getBoundingClientRect().width)/SIZE*.5;
    for(let i=0;i<3;i++){
     const p=state.tray[i],b=slots[i];b.classList.toggle('cb-dragging',drag?.slot===i);b.disabled=p===null||paused||!movesAvailable();b.setAttribute('aria-pressed',String(selected===i));
     if(p===null){b.innerHTML='';trayHtml[i]='';b.setAttribute('aria-label',`Piece ${i+1} placed`);continue;}
     const cellsOf=SHAPES[p],w=Math.max(...cellsOf.map(c=>c[0]))+1,h=Math.max(...cellsOf.map(c=>c[1]))+1,c=state.colors[i]??1;
     b.setAttribute('aria-label',`Piece ${i+1}: ${NAMES[p]}, ${cellsOf.length} blocks, ${colorName(c)}`);
-    const cell=board.getBoundingClientRect().width/SIZE*.5;
-    const art=`<svg class="cb-piece-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w*32} ${h*32}" width="${w*cell}" height="${h*cell}" aria-hidden="true">${cellsOf.map(([x,y])=>gem(c,x*32,y*32)).join('')}</svg>`;
+    const art=`<svg class="cb-piece-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w*32} ${h*32}" width="${w*trayCell}" height="${h*trayCell}" aria-hidden="true">${cellsOf.map(([x,y])=>gem(c,x*32,y*32)).join('')}</svg>`;
     if(trayHtml[i]!==art){b.innerHTML=art;trayHtml[i]=art;}
    }
    comboChip.hidden=state.combo<1;comboLabel.textContent=`Combo ${state.combo}`;pips.forEach((pip,i)=>pip.classList.toggle('cb-pip-on',i<state.setup));
@@ -101,7 +104,7 @@ const module:GameModule={
    if(animate)celebrate(result,previous.board,label,newBest);
    return true;
   }
-  function reduced(){return context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;}
+  function reduced(){return context.settings.reducedMotion||motionQuery.matches;}
   function motion(el:Element,keyframes:Keyframe[],options:KeyframeAnimationOptions,finish:()=>void){
    const animation=el.animate(keyframes,{easing:EASE_OUT,fill:'forwards',...options});animations.add(animation);
    animation.onfinish=()=>{animations.delete(animation);finish();animation.cancel();};
@@ -180,20 +183,23 @@ const module:GameModule={
    const button=(e.target as Element).closest<HTMLElement>('[data-slot]');if(!button)return;
    const slot=Number(button.dataset.slot),p=state.tray[slot];if(p===null)return;
    hideFloating();ignoreClick=false;
+   boardRect=board.getBoundingClientRect();
    const art=button.querySelector('svg')!,anchor=grabCell(p,art.getBoundingClientRect(),{x:e.clientX,y:e.clientY});
-   choose(slot);drag={id:e.pointerId,slot,anchor,start:{x:e.clientX,y:e.clientY},pointer:{x:e.clientX,y:e.clientY},pointerType:e.pointerType,moved:false,bounds:board.getBoundingClientRect(),viewW:window.innerWidth,viewH:window.innerHeight};
+   choose(slot);drag={id:e.pointerId,slot,anchor,start:{x:e.clientX,y:e.clientY},pointer:{x:e.clientX,y:e.clientY},pointerType:e.pointerType,moved:false,bounds:boardRect,viewW:window.innerWidth,viewH:window.innerHeight};
    floating.setAttribute('viewBox',art.getAttribute('viewBox')!);floating.innerHTML=art.innerHTML;
    root.setPointerCapture(e.pointerId);mapPointer(e);draw();e.preventDefault();
   },{signal});
   root.addEventListener('pointermove',e=>{
    if(!active()||selected===null)return;
+   const prevX=cursor.x,prevY=cursor.y,prevPreview=preview;
    if(drag){if(e.pointerId!==drag.id)return;
     if(Math.hypot(e.clientX-drag.start.x,e.clientY-drag.start.y)>5)drag.moved=true;
     if(!mapPointer(e))return;
    }else{
-    const r=board.getBoundingClientRect();cursor={x:Math.floor((e.clientX-r.left)/r.width*SIZE),y:Math.floor((e.clientY-r.top)/r.height*SIZE)};preview=cursor.x>=0&&cursor.x<SIZE&&cursor.y>=0&&cursor.y<SIZE;
+    const r=boardRect.width?boardRect:(boardRect=board.getBoundingClientRect());
+    cursor={x:Math.floor((e.clientX-r.left)/r.width*SIZE),y:Math.floor((e.clientY-r.top)/r.height*SIZE)};preview=cursor.x>=0&&cursor.x<SIZE&&cursor.y>=0&&cursor.y<SIZE;
    }
-   draw();
+   if(cursor.x!==prevX||cursor.y!==prevY||preview!==prevPreview)draw();
   },{signal});
   root.addEventListener('pointerup',e=>{
    if(!drag||e.pointerId!==drag.id)return;
@@ -222,9 +228,9 @@ const module:GameModule={
    else if((e.key==='Enter'||e.key===' ')&&!(e.target as Element).closest('[data-slot]')){e.preventDefault();if(e.repeat)return;preview=true;commit(false);draw();}
   },{signal});
   window.addEventListener('blur',()=>{cancel();draw();},{signal});
-  window.addEventListener('resize',()=>{cancel();draw();},{signal});
-  let lastWidth=board.getBoundingClientRect().width,lastHeight=root.getBoundingClientRect().height;
-  const resize=new ResizeObserver(()=>{const width=board.getBoundingClientRect().width,height=root.getBoundingClientRect().height;if(width!==lastWidth||height!==lastHeight){lastWidth=width;lastHeight=height;cancel();draw();}});resize.observe(board);resize.observe(root);
+  window.addEventListener('resize',()=>{boardRect=board.getBoundingClientRect();cancel();draw();},{signal});
+  let lastWidth=boardRect.width,lastHeight=root.getBoundingClientRect().height;
+  const resize=new ResizeObserver(()=>{boardRect=board.getBoundingClientRect();const width=boardRect.width,height=root.getBoundingClientRect().height;if(width!==lastWidth||height!==lastHeight){lastWidth=width;lastHeight=height;cancel();draw();}});resize.observe(board);resize.observe(root);
   // Grid owns keyboard focus while aiming; cells expose precise accessible labels.
   board.tabIndex=0;
   draw();

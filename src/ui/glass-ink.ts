@@ -163,9 +163,31 @@ function update(){
   // Native multiplayer and player overlays bypass openSheet. This decorates
   // their existing SVGs without changing any control or dialog lifecycle.
   for(const sheet of document.querySelectorAll<HTMLElement>('.mp-card,.movies-resume-pill,.movies-fullscreen'))syncSheetIconInk(sheet);
-  const {style,rect,sample}=sampler();
+  const stageCanvas=document.querySelector<HTMLCanvasElement>('#game-stage canvas:not(.ui-glass-gl>canvas)');
+  const texturedGame=stageCanvas?.dataset.glassInk==='textured'&&!document.querySelector('dialog[open]');
+  if(texturedGame)syncCanvasInkSource(null);
+  const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
+  let api:ReturnType<typeof sampler>|undefined;
+  const getSampler=()=>api??=sampler();
   const changes:{glyph:HTMLElement;ink:ReturnType<typeof glassInk>|null}[]=[];
   for(const bar of bindings){
+    const fastGameChrome=texturedGame&&!!bar.closest('.game-view')&&!bar.closest('.ui-glass-sheet');
+    if(fastGameChrome){
+      if(bar.hidden)continue;
+      const targets=bar.matches('.ui-tab,.floating-glass-group,.game-hud')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
+      const ink=bar.dataset.glass!=='off'&&!accessible?{color:'#fff',halo:HALO_DARK}:null;
+      for(const target of targets){
+        if(target.hidden)continue;
+        for(const glyph of target.querySelectorAll<HTMLElement>('span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')){
+          if(glyph.querySelector('svg,span,small,strong,kbd')||glyph.closest('.ui-brand-tile,.apps-badge,.nc-chevrons'))continue;
+          if(glyph.closest('.apps-danger,.is-danger')){changes.push({glyph,ink:null});continue;}
+          if(glyph.closest('.game-button:not(.secondary),.ui-btn.primary')&&!glyph.closest('.arcade-glass'))continue;
+          changes.push({glyph,ink});
+        }
+      }
+      continue;
+    }
+    const {style,rect,sample}=getSampler();
     const box=rect(bar);if(!box.width||!box.height||style(bar).visibility==='hidden')continue;
     const mini=bar.parentElement?.querySelector<HTMLElement>('.ui-tabbar-mini');
     const minimized=bar.hasAttribute('data-minimized')&&!bar.parentElement?.matches(':has(:focus-visible)');
@@ -188,7 +210,6 @@ function update(){
       const modal=bar.closest('dialog');
       const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
       const selection=bar.matches('.ui-tabbar,.floating-glass-group');
-      const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
       for(const group of groups.values()){
         const labels=group.filter(glyph=>!glyph.matches('svg,.nc-chevrons'));
         if(!labels.length)continue;
@@ -214,7 +235,7 @@ function update(){
     glyph.querySelector(':scope > .glass-vector-halo')?.remove();
   }
   clearTimeout(liveTimer);
-  if(bindings.size&&!document.hidden&&document.querySelector('#game-stage canvas:not(.ui-glass-gl>canvas)'))liveTimer=setTimeout(schedule,140);
+  if(bindings.size&&!document.hidden&&stageCanvas&&stageCanvas.dataset.glassInk!=='textured')liveTimer=setTimeout(schedule,140);
 }
 const schedule=()=>{if(!frame&&!document.hidden)frame=requestAnimationFrame(update);};
 
@@ -236,7 +257,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
       if(records.some(r=>{
         // Live canvas ink is refreshed by the bounded sampling timer.
         // Ignore simulation-only DOM churn between those samples.
-        if(liveGame&&r.target instanceof Element&&r.target.closest('#game-stage'))return false;
+        if(liveGame&&r.target instanceof Element&&r.target.closest('#game-stage,#game-options,#game-status,#announcer,.santa-banner'))return false;
         // Several games render unchanged HUD text every animation frame. Equal
         // replacements have no new paint to sample. The compositor still reads
         // the live canvas backdrop every frame; this only avoids redundant DOM

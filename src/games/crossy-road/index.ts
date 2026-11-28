@@ -2,8 +2,8 @@
  * game over) and the wiring between the pure rules over the seeded World and the Three.js scene.
  * All gameplay lives in rules.ts; this file decides when to step, draw, report and announce. */
 import type { GameContext, GameInstance, GameModule } from '../../core/types';
-import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, STEP, type DeathCause, type Dir, type CrossyRoadScene, type Quality, type RunState, type SceneFrame, type StepEvents } from './config';
-import { railWarning, trainEntry, trainPass, vehicleAt } from './lanes';
+import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, HOP_HEIGHT, HOP_TIME, STEP, lerp, type DeathCause, type Dir, type CrossyRoadScene, type Quality, type RunState, type SceneFrame, type StepEvents } from './config';
+import { laneVelocity, railWarning, trainEntry, trainPass, vehicleAt } from './lanes';
 import { createRun, input as hop, pose, restore as restoreRun, serialize, step, ufoWarning } from './rules';
 import { World } from './world';
 import { createScene } from './scene';
@@ -11,6 +11,7 @@ import { attachInput } from './input';
 import { createSfx } from './audio';
 import { installTestHook } from './test-hook';
 import { floorTierActive } from '../../perf/floor';
+import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import {AdaptiveResolution} from './quality';
 import './style.css';
 
@@ -22,6 +23,8 @@ const RUN_STATUS = 'Playing';
 const BELL_GAP = 0.45;
 /** Interval for reporting the observed frame rate to the development hook. */
 const FPS_WINDOW = 2;
+/** The dock lens copies the WebGL buffer. A copy every frame stalls the GPU, so the lens trails at 20 Hz. */
+const GLASS_COPY_MS = 50;
 
 const seedFor = (run: number) => ((Date.now() ^ run) >>> 0) || 1;
 /** `#/game/crossy-road?seed=123` picks the first run's seed, in development builds only. */
@@ -105,6 +108,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const frame: SceneFrame = { state: run, pose: pose(run), world, dt: 0, reducedMotion: false, colorBlind: false, ufoWarn: false };
   const data: Record<string, string> = {};
   const setData = (key: string, value: string) => { if (data[key] !== value) { data[key] = value; root.dataset[key] = value; } };
+  let lastPhase = '', lastRow = NaN, lastScore = NaN, lastWarn: boolean | null = null, lastHeld: boolean | null = null, lastPressed: boolean | null = null;
+  let glassAt = -Infinity;
 
   const active = () => !paused && !disposed && !lost && !held;
   function schedule() { if (!frameId && active() && run.phase !== 'over') { last = 0; frameId = requestAnimationFrame(loop); } }
@@ -123,7 +128,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     landedThisFrame=false;
     if (!frozen) advance(dt);
     if(landedThisFrame) applyResolution();
-    draw(dt);
+    draw(dt, !frozen && run.phase !== 'over' ? acc : 0, 'throttle');
     if (import.meta.env.DEV) { const spent = performance.now() - begun; cpuMs = cpuMs ? cpuMs * 0.95 + spent * 0.05 : spent; }
     if (run.phase !== 'over' && active()) frameId = requestAnimationFrame(loop);
   }
@@ -234,23 +239,45 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     canvas.tabIndex = next === null ? 0 : -1;
   }
 
-  function draw(dt: number) {
+  function publishGlass(force: boolean): void {
+    const nowMs = performance.now();
+    if (!force && nowMs - glassAt < GLASS_COPY_MS) return;
+    glassAt = nowMs;
+    notifyGlassFrame(canvas);
+  }
+
+  function draw(dt: number, renderOffset = 0, glass: 'throttle' | 'now' = 'now') {
     if (disposed || lost) return;
     frame.state = run;
     frame.pose = pose(run, frame.pose);
+    if (renderOffset > 0 && run.phase === 'running') {
+      if (run.hop >= 0) {
+        const p = Math.min(1, (run.hop + renderOffset) / HOP_TIME);
+        frame.pose.x = lerp(run.fromX, run.x, p);
+        frame.pose.z = lerp(run.fromRow, run.row, p);
+        frame.pose.lift = Math.sin(p * Math.PI) * HOP_HEIGHT;
+        frame.pose.progress = p;
+      } else {
+        const lane = world.lane(run.row);
+        if (lane.kind === 'river') frame.pose.x = run.x + laneVelocity(lane) * renderOffset;
+      }
+    }
     frame.world = world;
     frame.dt = dt;
+    frame.renderOffset = renderOffset;
     frame.reducedMotion = reduced();
     frame.colorBlind = context.settings.colorBlind;
     frame.ufoWarn = ufoWarning(run);
     scene.render(frame);
+    publishGlass(glass === 'now');
     if (run.row !== reportedRow) { reportedRow = run.row; context.setLevel(`Row ${run.row}`); }
-    setData('phase', run.phase);
-    setData('row', String(run.row));
-    setData('score', String(run.maxRow));
-    setData('warn', String(frame.ufoWarn));
-    setData('held', String(held));
-    setData('pressed', String(Boolean(frame.pressed)));
+    if (run.phase !== lastPhase) { lastPhase = run.phase; setData('phase', run.phase); }
+    if (run.row !== lastRow) { lastRow = run.row; setData('row', String(run.row)); }
+    if (run.maxRow !== lastScore) { lastScore = run.maxRow; setData('score', String(run.maxRow)); }
+    if (frame.ufoWarn !== lastWarn) { lastWarn = frame.ufoWarn; setData('warn', String(frame.ufoWarn)); }
+    if (held !== lastHeld) { lastHeld = held; setData('held', String(held)); }
+    const isPressed = Boolean(frame.pressed);
+    if (isPressed !== lastPressed) { lastPressed = isPressed; setData('pressed', String(isPressed)); }
   }
 
   /** Resolution changes require sustained pressure and recover with hysteresis.
@@ -376,7 +403,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const width = canvas.clientWidth, height = canvas.clientHeight;
     if (width < 1 || height < 1) return;
     scene.resize(width, height);
-    if (!frameId) draw(0);
+    if (!frameId) draw(0, 0, 'now');
   };
   const resize = new ResizeObserver(resizeCanvas);
   resize.observe(canvas);
@@ -422,6 +449,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     looping: () => frameId !== 0,
   });
 
+  const releaseGlass = registerGlassFrameSource(canvas, () => { if (!disposed && !lost) draw(0, 0, 'now'); });
   world.ensure(AHEAD_ROWS);
   show(null);
   setData('quality', quality);
@@ -492,6 +520,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     dispose() {
       if (disposed) return;
       disposed = true;
+      releaseGlass();
       cancel();
       abort.abort();
       resize.disconnect();

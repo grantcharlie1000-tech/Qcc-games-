@@ -124,9 +124,14 @@ export class GameScreen {
     this.el.addEventListener('keydown', this.keys);
     session.onChange = () => this.render();
     this.render(false);
-    this.timer = window.setInterval(() => this.tick(), 100);
     if (review) this.openReview();
     else playChessSound('start', host.sound());
+  }
+
+  private syncTimer(v: SessionView) {
+    const needed = !this.disposed && (!!v.clock?.running || this.session.status().startsWith('Move within') || this.resignArmed > 0);
+    if (needed && !this.timer) this.timer = window.setInterval(() => this.tick(), 100);
+    else if (!needed && this.timer) { clearInterval(this.timer); this.timer = 0; }
   }
 
   applyPrefs() {
@@ -224,6 +229,7 @@ export class GameScreen {
       playChessSound('end', this.host.sound());
       this.host.finished(this.session, v, performance.now() - this.started);
     } else if (!v.outcome) this.lastOutcome = null;
+    this.syncTimer(v);
   }
 
   private moveSound() {
@@ -546,6 +552,7 @@ export class GameScreen {
       if (this.session.status().startsWith('Move within')) this.renderState();
     }
     if (this.resignArmed && now > this.resignArmed) { this.resignArmed = 0; this.renderActions(v); }
+    this.syncTimer(v);
   }
 
   dispose() {

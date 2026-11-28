@@ -352,18 +352,44 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     schedule();
   }
 
+  const starSet = new Set<string>();
+  let starCount = -1, lastStageStr = '', lastModeStr = '', lastCheckpointStr = '';
+  const frameView = {
+    x: 0, y: 0, z: 0, facing: 0, speed: 0, vy: 0, grounded: false, squash: 0,
+    mt: 0, run, stage: 0, reached: 0, stars: starSet as ReadonlySet<string>,
+    yaw: 0, pitch: 0, dt: 0, reduced: false, dead: false,
+  };
   function draw(dt: number) {
     if (disposed || lost) return;
+    if (starCount !== progress.stars.length) {
+      starSet.clear();
+      for (let i = 0; i < progress.stars.length; i++) starSet.add(progress.stars[i]);
+      starCount = progress.stars.length;
+    }
     const a = stepper.alpha, p = run.player;
     const speedScale = run.assist ? 0.65 : 1;
-    scene.render({
-      x: prev.x + (p.x - prev.x) * a, y: prev.y + (p.y - prev.y) * a, z: prev.z + (p.z - prev.z) * a,
-      facing: p.facing, speed: Math.hypot(p.vx, p.vz), vy: p.vy, grounded: p.grounded, squash,
-      mt: run.mt - (1 - a) * STEP * speedScale, run, stage: run.checkpoint, reached: mode === 'campaign' ? Math.max(progress.checkpoint, run.checkpoint) : run.checkpoint,
-      stars: new Set(progress.stars), yaw: input.state.yaw, pitch: input.state.pitch, dt, reduced: reduced(), dead: run.dead > 0,
-    });
-    const st = root.dataset;
-    st.stage = String(stageNo()); st.mode = mode; st.checkpoint = String(run.checkpoint);
+    frameView.x = prev.x + (p.x - prev.x) * a;
+    frameView.y = prev.y + (p.y - prev.y) * a;
+    frameView.z = prev.z + (p.z - prev.z) * a;
+    frameView.facing = p.facing;
+    frameView.speed = Math.hypot(p.vx, p.vz);
+    frameView.vy = p.vy;
+    frameView.grounded = p.grounded;
+    frameView.squash = squash;
+    frameView.mt = run.mt - (1 - a) * STEP * speedScale;
+    frameView.run = run;
+    frameView.stage = run.checkpoint;
+    frameView.reached = mode === 'campaign' ? Math.max(progress.checkpoint, run.checkpoint) : run.checkpoint;
+    frameView.yaw = input.state.yaw;
+    frameView.pitch = input.state.pitch;
+    frameView.dt = dt;
+    frameView.reduced = reduced();
+    frameView.dead = run.dead > 0;
+    scene.render(frameView);
+    const st = root.dataset, stageStr = String(stageNo()), cpStr = String(run.checkpoint);
+    if (lastStageStr !== stageStr) { lastStageStr = stageStr; st.stage = stageStr; }
+    if (lastModeStr !== mode) { lastModeStr = mode; st.mode = mode; }
+    if (lastCheckpointStr !== cpStr) { lastCheckpointStr = cpStr; st.checkpoint = cpStr; }
   }
 
   // ---------- panel ----------

@@ -107,7 +107,9 @@ export function createHud(parent: HTMLElement, signal: AbortSignal): Hud {
       const you = m.fighters[0], mode = modeOf(m), wpn = weaponOf(you);
       set('mode', el.mode, mode.name);
       set('timer', el.timer, fmtTime(mode.duration - m.t));
-      memo('scores', `${m.teamScores[0]}|${m.teamScores[1]}|${you.kills}|${mode.teams ? '' : m.fighters.map(f => f.kills).join(',')}`, () => html('scores', el.scores, scoreLine(m, you)));
+      let ffaKey = '';
+      if (!mode.teams) for (let i = 0; i < m.fighters.length; i++) ffaKey += (i ? ',' : '') + m.fighters[i].kills;
+      memo('scores', `${m.teamScores[0]}|${m.teamScores[1]}|${you.kills}|${ffaKey}`, () => html('scores', el.scores, scoreLine(m, you)));
       if (m.settings.mode === 'quad') {
         const z = mapOf(m).zones[m.zoneIndex];
         const owner = m.zoneOwner >= 0 ? `${HOUSES[m.zoneOwner].mark} ${HOUSES[m.zoneOwner].name} holds it` : m.zoneOwner === -2 ? 'Contested!' : 'Unclaimed';

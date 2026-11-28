@@ -4,7 +4,7 @@ import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-so
 import './style.css';
 import './christmas.css';
 import {christmas} from '../../festive/festive';
-import {floorTierActive} from '../../perf/floor';
+import {floorDpr,floorTierActive} from '../../perf/floor';
 const baseColors:Record<Piece,string>={I:'#53d9ed',O:'#ffd461',T:'#c88cff',S:'#71e8a4',Z:'#ff7e91',J:'#799dff',L:'#ffa35d'};
 /** Christmas wrapping colours for the same seven pieces, each with a ribbon that contrasts with it. */
 const festiveColors:Record<Piece,string>={I:'#8fd6f0',O:'#f4c534',T:'#b35bd6',S:'#3fbf6a',Z:'#e33445',J:'#3a7be0',L:'#f08a2b'};
@@ -15,15 +15,21 @@ const game:GameModule={id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cov
  let state=createState(),paused=false,disposed=false,last:number|null=null,frame:number|null=null,best=context.highScore,flash=0,awaitingContinue=false;let flashBoard:(Piece|null)[][]|null=null,flashRows:number[]=[];const events=new AbortController();let trail:{cells:[number,number][];dy:number;id:Piece;t:number}|null=null;
  container.innerHTML=`<div class="qf-game"><div class="qf-layout">
   <div class="qf-hold qf-panel"><b>HOLD</b><canvas aria-label="Held piece"></canvas><span class="qf-empty">Empty</span></div>
-  <div class="qf-board"><canvas class="qf-canvas" aria-label="Tetris board" tabindex="0"></canvas><div class="qf-card"><strong>Tetris</strong><p hidden></p><button class="game-button" type="button">Start</button></div></div>
+  <div class="qf-board"><canvas class="qf-canvas" data-glass-ink="textured" aria-label="Tetris board" tabindex="0"></canvas><div class="qf-card"><strong>Tetris</strong><p hidden></p><button class="game-button" type="button">Start</button></div></div>
   <div class="qf-side"><div class="qf-panel qf-next"><b>NEXT</b><canvas aria-label="Next pieces"></canvas></div><div class="qf-panel qf-stats"><span class="sr-only">Score <strong data-stat="score">0</strong></span><span><b>LINES</b><strong data-stat="lines">0</strong></span><span class="qf-level"><b>LEVEL</b><strong data-stat="level">1</strong></span></div></div>
  </div><div class="qf-pad" role="group" aria-label="Tetris touch controls">
  <button aria-label="Left" data-action="left"><span aria-hidden="true">←</span><small>Move</small></button><button aria-label="Right" data-action="right"><span aria-hidden="true">→</span><small>Move</small></button><button aria-label="Rotate" data-action="cw"><span aria-hidden="true">↻</span><small>Rotate</small></button><button aria-label="Rotate other way" data-action="ccw"><span aria-hidden="true">↺</span><small>Rotate</small></button><button aria-label="Soft drop" data-action="soft"><span aria-hidden="true">↓</span><small>Soft drop</small></button><button aria-label="Hard drop" data-action="hard"><span aria-hidden="true">⇩</span><small>Hard drop</small></button><button aria-label="Hold" data-action="hold"><span aria-hidden="true">▣</span><small>Hold</small></button>
  </div></div>`;
  const root=container.querySelector<HTMLElement>('.qf-game')!,canvas=root.querySelector<HTMLCanvasElement>('.qf-canvas')!,card=root.querySelector<HTMLElement>('.qf-card')!,button=card.querySelector<HTMLButtonElement>('button')!,holdCanvas=root.querySelector<HTMLCanvasElement>('.qf-hold canvas')!,nextCanvas=root.querySelector<HTMLCanvasElement>('.qf-next canvas')!;
- let reportedScore=-1,reportedLevel=-1,reportedStatus='';
- const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
- function setup(c:HTMLCanvasElement,w:number,h:number){const d=Math.min(2,window.devicePixelRatio||1);if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d);}const g=c.getContext('2d')!;g.setTransform(d,0,0,d,0,0);return g;}
+ let reportedScore=-1,reportedLevel=-1,reportedStatus='',lastPhase='',lastScore=-1,lastLines=-1,lastLevel=-1,lastHold='',lastGhost=-999,lastActive='';
+ const motionQuery=matchMedia('(prefers-reduced-motion: reduce)'),narrowQuery=matchMedia('(max-width: 599px)');
+ const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
+ const emptyEl=root.querySelector<HTMLElement>('.qf-empty')!,statScore=root.querySelector<HTMLElement>('[data-stat=score]')!,statLines=root.querySelector<HTMLElement>('[data-stat=lines]')!,statLevel=root.querySelector<HTMLElement>('[data-stat=level]')!,cardTitle=card.querySelector('strong')!,cardBody=card.querySelector('p')!;
+ let boardW=0,boardH=0,holdW=0,holdH=0,nextW=0,nextH=0;
+ const boardCache=document.createElement('canvas');let boardCacheKey='',holdCacheKey='',nextCacheKey='';
+ function measureSizes(){boardW=canvas.clientWidth;boardH=canvas.clientHeight;holdW=holdCanvas.clientWidth;holdH=holdCanvas.clientHeight;nextW=nextCanvas.clientWidth;nextH=nextCanvas.clientHeight;}
+ function dprFor(w:number,h:number){const raw=Math.min(2,window.devicePixelRatio||1);return floorTierActive()?floorDpr(w,h,raw):raw;}
+ function setup(c:HTMLCanvasElement,w:number,h:number){const d=dprFor(w,h),pw=Math.max(1,Math.round(w*d)),ph=Math.max(1,Math.round(h*d));if(c.width!==pw||c.height!==ph){c.width=pw;c.height=ph;}const g=c.getContext('2d')!;g.setTransform(d,0,0,d,0,0);return g;}
  function block(g:CanvasRenderingContext2D,x:number,y:number,size:number,id:Piece,outline=false,alpha=1){
   const gap=Math.max(1,size*.055),edge=Math.max(1,size*.09),xmas=christmas(),colors=xmas?festiveColors:baseColors;
   if(outline){g.globalAlpha=.2;g.fillStyle=colors[id];g.fillRect(x+gap,y+gap,size-gap*2,size-gap*2);g.globalAlpha=.9;g.strokeStyle=colors[id];g.lineWidth=Math.max(1,size*.045);g.setLineDash([size*.18,size*.11]);g.strokeRect(x+gap+1,y+gap+1,size-gap*2-2,size-gap*2-2);g.setLineDash([]);}
@@ -33,13 +39,20 @@ const game:GameModule={id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cov
    if(context.settings.colorBlind){g.fillStyle='#101631';g.font=`bold ${Math.max(8,size*.43)}px system-ui`;g.textAlign='center';g.textBaseline='middle';g.fillText(marks[id],x+size/2,y+size*.55);}
   }g.globalAlpha=1;
  }
- function mini(c:HTMLCanvasElement,ids:Piece[]){
-  const w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;const g=setup(c,w,h);g.clearRect(0,0,w,h);if(!ids.length)return;
+ function mini(c:HTMLCanvasElement,w:number,h:number,ids:Piece[]){
+  if(!w||!h)return;const g=setup(c,w,h);g.clearRect(0,0,w,h);if(!ids.length)return;
   const across=w>h*1.6,slotW=across?w/ids.length:w,slotH=across?h:h/ids.length,unit=Math.min((slotW-8)/4,(slotH-8)/2);
   ids.forEach((id,i)=>{const shape=cells({id,x:0,y:0,r:0}),xs=shape.map(p=>p[0]),ys=shape.map(p=>p[1]),minX=Math.min(...xs),minY=Math.min(...ys),width=Math.max(...xs)-minX+1,height=Math.max(...ys)-minY+1;
    const left=(across?i*slotW:0)+(slotW-width*unit)/2,top=(across?0:i*slotH)+(slotH-height*unit)/2;
    for(const [x,y] of shape)block(g,left+(x-minX)*unit,top+(y-minY)*unit,unit,id);
   });
+ }
+ function drawGrid(g:CanvasRenderingContext2D,w:number,h:number,size:number,xmas:boolean){
+  g.fillStyle=xmas?'#0c1a33':'#0b1028';g.fillRect(0,0,w,h);
+  g.strokeStyle=xmas?'#bfe3f524':'#86a6d51c';g.lineWidth=1;g.beginPath();
+  for(let x=0;x<=COLUMNS;x++){g.moveTo(x*size,0);g.lineTo(x*size,h);}
+  for(let y=0;y<=VISIBLE_ROWS;y++){g.moveTo(0,y*size);g.lineTo(w,y*size);}
+  g.stroke();
  }
  // Line clear: cleared cells whiten and shrink from the centre outwards, then the rows above ease down into the gap.
  // Reduced motion keeps everything in place and only fades the cleared rows.
@@ -49,10 +62,62 @@ const game:GameModule={id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cov
    const k=still?dissolve:Math.min(1,Math.max(0,(dissolve-Math.abs(x-4.5)/4.5*.45)/.55));if(k>=1)return;
    const scale=still?1:1-k*k,inset=size*(1-scale)/2;block(g,x*size+inset,top+inset,size*scale,id,false,still?1-k:1);
    g.globalAlpha=(still?1-k:1)*Math.min(.85,k*2.2);g.fillStyle='#ffffff';g.fillRect(x*size+inset,top+inset,size*scale,size*scale);g.globalAlpha=1;});});}
- function render(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;const g=setup(canvas,w,h),size=w/COLUMNS,xmas=christmas();g.fillStyle=xmas?'#0c1a33':'#0b1028';g.fillRect(0,0,w,h);g.strokeStyle=xmas?'#bfe3f524':'#86a6d51c';g.lineWidth=1;for(let x=0;x<=COLUMNS;x++){g.beginPath();g.moveTo(x*size,0);g.lineTo(x*size,h);g.stroke();}for(let y=0;y<=VISIBLE_ROWS;y++){g.beginPath();g.moveTo(0,y*size);g.lineTo(w,y*size);g.stroke();}if(flash>0&&flashBoard&&state.phase!=='lost')drawClear(g,size);else state.board.forEach((row,y)=>row.forEach((id,x)=>{if(id&&y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,id);}));if(trail&&trail.t>0){const fade=trail.t/TRAIL_MS;for(const [x,y] of trail.cells){const top=(y-HIDDEN_ROWS)*size,bottom=(y+trail.dy-HIDDEN_ROWS)*size;if(bottom<=0)continue;const grad=g.createLinearGradient(0,top,0,bottom);grad.addColorStop(0,(xmas?festiveColors:baseColors)[trail.id]+'00');grad.addColorStop(1,(xmas?festiveColors:baseColors)[trail.id]+'66');g.globalAlpha=fade;g.fillStyle=grad;g.fillRect(x*size+size*.12,Math.max(0,top),size*.76,bottom-Math.max(0,top));}g.globalAlpha=1;}if(state.phase!=='lost'){const landing=ghost(state),lockFade=landing===state.active.y?1-.4*Math.min(1,state.lock/500):1;if(landing!==state.active.y&&!(flash>0&&flashBoard))for(const [x,y] of cells({...state.active,y:landing}))if(y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,state.active.id,true);for(const [x,y] of cells(state.active))if(y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,state.active.id,false,lockFade);}mini(holdCanvas,state.held?[state.held]:[]);mini(nextCanvas,state.queue.slice(0,matchMedia('(max-width: 599px)').matches?2:3));notifyGlassFrame(canvas);}
+ function render(){
+  // The floor collector pins the board with an inline size after mount. A stylesheet size stays with the resize observer, so a steady frame does not read layout.
+  const styledW=parseFloat(canvas.style.width),styledH=parseFloat(canvas.style.height);
+  if(!boardW||!boardH||(styledW>0&&styledW!==boardW)||(styledH>0&&styledH!==boardH))measureSizes();
+  const w=boardW,h=boardH;if(!w||!h)return;
+  const g=setup(canvas,w,h),size=w/COLUMNS,xmas=christmas(),cb=context.settings.colorBlind?1:0,fl=floorTierActive()?1:0;
+  if(flash>0&&flashBoard&&state.phase!=='lost'){
+   drawGrid(g,w,h,size,xmas);drawClear(g,size);
+  }else{
+   const key=`${canvas.width}x${canvas.height}:${state.locks}:${xmas?1:0}:${cb}:${fl}`;
+   if(boardCacheKey!==key){
+    boardCacheKey=key;boardCache.width=canvas.width;boardCache.height=canvas.height;
+    const bg=boardCache.getContext('2d');
+    if(bg){
+     const d=canvas.width/w;bg.setTransform(d,0,0,d,0,0);
+     drawGrid(bg,w,h,size,xmas);
+     for(let y=HIDDEN_ROWS;y<ROWS;y++){const row=state.board[y];for(let x=0;x<COLUMNS;x++){const id=row[x];if(id)block(bg,x*size,(y-HIDDEN_ROWS)*size,size,id);}}
+    }
+   }
+   g.drawImage(boardCache,0,0,w,h);
+  }
+  if(trail&&trail.t>0){const fade=trail.t/TRAIL_MS,palette=xmas?festiveColors:baseColors;for(const [x,y] of trail.cells){const top=(y-HIDDEN_ROWS)*size,bottom=(y+trail.dy-HIDDEN_ROWS)*size;if(bottom<=0)continue;const grad=g.createLinearGradient(0,top,0,bottom);grad.addColorStop(0,palette[trail.id]+'00');grad.addColorStop(1,palette[trail.id]+'66');g.globalAlpha=fade;g.fillStyle=grad;g.fillRect(x*size+size*.12,Math.max(0,top),size*.76,bottom-Math.max(0,top));}g.globalAlpha=1;}
+  if(state.phase!=='lost'){const landing=ghost(state),lockFade=landing===state.active.y?1-.4*Math.min(1,state.lock/500):1;if(landing!==state.active.y&&!(flash>0&&flashBoard))for(const [x,y] of cells({...state.active,y:landing}))if(y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,state.active.id,true);for(const [x,y] of cells(state.active))if(y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,state.active.id,false,lockFade);}
+  const hk=`${holdW}x${holdH}:${state.held??''}:${xmas?1:0}:${cb}:${fl}`;
+  if(hk!==holdCacheKey){holdCacheKey=hk;mini(holdCanvas,holdW,holdH,state.held?[state.held]:[]);}
+  const nextCount=narrowQuery.matches?2:3,nextIds=state.queue.slice(0,nextCount),nk=`${nextW}x${nextH}:${nextIds.join('')}:${xmas?1:0}:${cb}:${fl}`;
+  if(nk!==nextCacheKey){nextCacheKey=nk;mini(nextCanvas,nextW,nextH,nextIds);}
+  notifyGlassFrame(canvas);
+ }
  // The shared glass lens samples each drawn frame; repaint redraws the current state only.
  const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)render();});
- function update(){root.dataset.phase=state.phase;root.dataset.score=String(state.score);root.dataset.lines=String(state.lines);root.dataset.level=String(level(state));root.dataset.active=JSON.stringify(state.active);root.dataset.hold=state.held??'';root.querySelector<HTMLElement>('.qf-empty')!.hidden=!!state.held;root.dataset.ghost=String(ghost(state));root.querySelector('[data-stat=score]')!.textContent=String(state.score);root.querySelector('[data-stat=lines]')!.textContent=String(state.lines);root.querySelector('[data-stat=level]')!.textContent=String(level(state));best=Math.max(best,state.score);if(reportedScore!==state.score){reportedScore=state.score;context.setScore(state.score);}if(reportedLevel!==level(state)){reportedLevel=level(state);context.setLevel(`Level ${reportedLevel}`);}const status=state.phase==='lost'?'Game over':state.phase==='ready'?'Ready':'Playing';if(status!==reportedStatus){reportedStatus=status;context.setStatus(status);}card.hidden=state.phase==='running'&&!awaitingContinue;card.querySelector('p')!.hidden=state.phase!=='lost';if(awaitingContinue){card.querySelector('strong')!.textContent='Welcome back';card.querySelector('p')!.textContent='';button.textContent='Continue';}else if(state.phase==='lost'){card.querySelector('strong')!.textContent='Game over';card.querySelector('p')!.textContent=`Score ${state.score} · Lines ${state.lines} · Level ${level(state)} · Best ${best}`;button.textContent='Play again';}else{card.querySelector('strong')!.textContent='Tetris';card.querySelector('p')!.textContent='';button.textContent='Start';}render();}
+ function update(){
+  const lvl=level(state),gRow=ghost(state),act=`${state.active.id},${state.active.x},${state.active.y},${state.active.r}`,holdId=state.held??'';
+  if(lastPhase!==state.phase){lastPhase=state.phase;root.dataset.phase=state.phase;}
+  if(lastScore!==state.score){lastScore=state.score;root.dataset.score=String(state.score);statScore.textContent=String(state.score);}
+  if(lastLines!==state.lines){lastLines=state.lines;root.dataset.lines=String(state.lines);statLines.textContent=String(state.lines);}
+  if(lastLevel!==lvl){lastLevel=lvl;root.dataset.level=String(lvl);statLevel.textContent=String(lvl);}
+  if(lastActive!==act){lastActive=act;root.dataset.active=JSON.stringify(state.active);}
+  if(lastHold!==holdId){lastHold=holdId;root.dataset.hold=holdId;emptyEl.hidden=!!state.held;}
+  if(lastGhost!==gRow){lastGhost=gRow;root.dataset.ghost=String(gRow);}
+  best=Math.max(best,state.score);
+  if(reportedScore!==state.score){reportedScore=state.score;context.setScore(state.score);}
+  if(reportedLevel!==lvl){reportedLevel=lvl;context.setLevel(`Level ${reportedLevel}`);}
+  const status=state.phase==='lost'?'Game over':state.phase==='ready'?'Ready':'Playing';
+  if(status!==reportedStatus){reportedStatus=status;context.setStatus(status);}
+  const hideCard=state.phase==='running'&&!awaitingContinue;
+  if(card.hidden!==hideCard)card.hidden=hideCard;
+  const hideBody=state.phase!=='lost';
+  if(cardBody.hidden!==hideBody)cardBody.hidden=hideBody;
+  if(!hideCard){
+   if(awaitingContinue){cardTitle.textContent='Welcome back';cardBody.textContent='';button.textContent='Continue';}
+   else if(state.phase==='lost'){cardTitle.textContent='Game over';cardBody.textContent=`Score ${state.score} · Lines ${state.lines} · Level ${lvl} · Best ${best}`;button.textContent='Play again';}
+   else{cardTitle.textContent='Tetris';cardBody.textContent='';button.textContent='Start';}
+  }
+  render();
+ }
  const NAMES=['','Single','Double','Triple','Quad'];
  function describe(c:Clear){const head=c.spin==='none'?NAMES[c.lines]:`${c.spin==='mini'?'Mini ':''}T-Spin${c.lines?' '+NAMES[c.lines]:''}`;return {head,tags:[c.b2b&&'Back-to-Back',c.combo>0&&`Combo ${c.combo}`,c.perfect&&'Perfect Clear'].filter((t):t is string=>!!t)};}
  // Called after any action or frame: reports the lock that just happened, if any.
@@ -70,6 +135,6 @@ const game:GameModule={id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cov
  // The most recently pressed direction wins; releasing it hands control back to a direction still held.
  window.addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.key,item=held.get(key);if(!item)return;const latest=[...held.values()].filter(i=>horizontal(i.action)).pop();held.delete(key);const rest=[...held.values()].filter(i=>horizontal(i.action)).pop();if(item===latest&&rest&&rest.action!==item.action&&!paused){action(rest.action);rest.next=performance.now()+170;}},{signal:events.signal});window.addEventListener('blur',()=>held.clear(),{signal:events.signal});
  let gesture:{id:number;x:number;y:number;startX:number;startY:number;time:number}|null=null;canvas.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.pointerType==='mouse'||paused||state.phase!=='running')return;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,time:performance.now()};canvas.setPointerCapture(e.pointerId);},{signal:events.signal});canvas.addEventListener('pointermove',e=>{if(!gesture||gesture.id!==e.pointerId)return;const unit=canvas.clientWidth/COLUMNS;while(Math.abs(e.clientX-gesture.x)>=unit){const d=e.clientX>gesture.x?1:-1;action(d>0?'right':'left');gesture.x+=d*unit;}while(e.clientY-gesture.y>=unit){action('soft');gesture.y+=unit;}},{signal:events.signal});canvas.addEventListener('pointerup',e=>{if(!gesture||gesture.id!==e.pointerId)return;const dx=e.clientX-gesture.startX,dy=e.clientY-gesture.startY,dt=performance.now()-gesture.time;gesture=null;if(dy< -40&&dt<350)action('hard');else if(Math.hypot(dx,dy)<10&&dt<250)action('cw');},{signal:events.signal});canvas.addEventListener('pointercancel',()=>{gesture=null;},{signal:events.signal});
- const observer=new ResizeObserver(render);observer.observe(canvas);observer.observe(holdCanvas);observer.observe(nextCanvas);function syncFrame(){if(disposed||paused||awaitingContinue||state.phase!=='running'){if(frame!==null)cancelAnimationFrame(frame);frame=null;}else if(frame===null)frame=requestAnimationFrame(loop);}function loop(now:number){frame=null;if(disposed)return;if(!paused&&!awaitingContinue&&state.phase==='running'){const locks=state.locks,lvl=level(state),phase=state.phase,before=snapshot();if(last!==null)advance(state,Math.min(1000,now-last));const lead=[...held.values()].filter(i=>horizontal(i.action)).pop();for(const item of held.values())if(now>=item.next&&(item===lead||!horizontal(item.action))){action(item.action);item.next=now+50;}if(pointerRepeat&&now>=pointerRepeat.next){action(pointerRepeat.action);pointerRepeat.next=now+50;}if(state.locks!==locks||state.phase!==phase)context.save(state);feedback(before,locks,lvl);if(last!==null){flash=Math.max(0,flash-(now-last));if(trail){trail.t-=now-last;if(trail.t<=0)trail=null;}}update();}last=now;syncFrame();}update();syncFrame();
- return {pause(){paused=true;last=null;held.clear();pointerRepeat=null;gesture=null;syncFrame();},resume(){paused=false;last=null;syncFrame();},restart(){state=createState();trail=null;flash=0;awaitingContinue=false;last=null;held.clear();pointerRepeat=null;context.save(state);update();syncFrame();},serialize(){return JSON.parse(JSON.stringify(state)) as State;},restore(v){const s=restoreState(v);if(s){state=s;awaitingContinue=s.phase==='running';last=null;update();syncFrame();}},dispose(){disposed=true;releaseGlass();events.abort();observer.disconnect();syncFrame();container.replaceChildren();}};
+ const observer=new ResizeObserver(()=>{measureSizes();render();});observer.observe(canvas);observer.observe(holdCanvas);observer.observe(nextCanvas);function syncFrame(){if(disposed||paused||awaitingContinue||state.phase!=='running'){if(frame!==null)cancelAnimationFrame(frame);frame=null;}else if(frame===null)frame=requestAnimationFrame(loop);}function loop(now:number){frame=null;if(disposed)return;if(!paused&&!awaitingContinue&&state.phase==='running'){const locks=state.locks,lvl=level(state),phase=state.phase,dt=last!==null?Math.min(100,Math.max(0,now-last)):0,before=state.lock>0||state.active.y>=ghost(state)?snapshot():null;if(dt>0)advance(state,dt);const lead=[...held.values()].filter(i=>horizontal(i.action)).pop();for(const item of held.values())if(now>=item.next&&(item===lead||!horizontal(item.action))){action(item.action);item.next=now+50;}if(pointerRepeat&&now>=pointerRepeat.next){action(pointerRepeat.action);pointerRepeat.next=now+50;}if(state.locks!==locks||state.phase!==phase)context.save(state);if(before)feedback(before,locks,lvl);if(dt>0){flash=Math.max(0,flash-dt);if(trail){trail.t-=dt;if(trail.t<=0)trail=null;}}update();}last=now;syncFrame();}measureSizes();update();syncFrame();
+ return {pause(){paused=true;last=null;held.clear();pointerRepeat=null;gesture=null;syncFrame();},resume(){paused=false;last=null;syncFrame();},restart(){state=createState();trail=null;flash=0;boardCacheKey='';holdCacheKey='';nextCacheKey='';awaitingContinue=false;last=null;held.clear();pointerRepeat=null;context.save(state);update();syncFrame();},serialize(){return JSON.parse(JSON.stringify(state)) as State;},restore(v){const s=restoreState(v);if(s){state=s;boardCacheKey='';holdCacheKey='';nextCacheKey='';awaitingContinue=s.phase==='running';last=null;update();syncFrame();}},dispose(){disposed=true;releaseGlass();events.abort();observer.disconnect();syncFrame();container.replaceChildren();}};
 }};export default game;

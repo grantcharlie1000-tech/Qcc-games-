@@ -11,7 +11,7 @@ const game:GameModule={
   rules:'Trace one unbroken path from START through every open square exactly once. Move only up, down, left or right: no diagonals, jumps, loops or crossings. Dark crosshatched squares are walls. Drag from the trail head or tap an adjacent square. Trace back one square to undo, or use Undo. With the board focused, use arrow keys to extend, Backspace to undo, H for a hint and Home to reset. Hints search your current trail; if it cannot finish, they tell you how far to backtrack. Cover every square to open the next garden.',
   mount(container,context){
     let state=initialState(), paused=false, disposed=false, selected:number|undefined, recovery=0;
-    let activePointer:number|undefined, previous:Point|undefined;
+    let activePointer:number|undefined, previous:Point|undefined, boardRect:DOMRect|null=null;
     // This mount owns the current deterministic level; callers only read its arrays.
     let cachedLevel={index:state.level,value:generateLevel(state.level)};
     function getLevel(index=state.level){
@@ -28,7 +28,7 @@ const game:GameModule={
     function snapshot(){return {version:1,level:state.level,path:[...state.path],rewarded:state.rewarded,steps:state.steps,hints:state.hints,best:{...state.best}};}
     function stopPointer(){
       if(activePointer!==undefined&&board.hasPointerCapture(activePointer)) board.releasePointerCapture(activePointer);
-      activePointer=undefined;previous=undefined;
+      activePointer=undefined;previous=undefined;boardRect=null;
     }
     function render(note?:string){
       const level=getLevel(),complete=solved(level,state.path),size=level.size*64+24,head=state.path.at(-1)!;
@@ -78,10 +78,10 @@ const game:GameModule={
       if(action==='hint')doHint();
     },options);
     next.addEventListener('click',()=>{if(!paused&&solved(getLevel(),state.path)&&state.level<LEVEL_COUNT-1){state={...state,level:state.level+1,path:[getLevel(state.level+1).start],rewarded:false,steps:0,hints:0};selected=undefined;render();context.save(snapshot());board.focus();}},options);
-    const point=(e:PointerEvent):Point=>{const rect=board.getBoundingClientRect(),s=getLevel().size,logical=s*64+24;return{x:((e.clientX-rect.left)/rect.width*logical-12)/64,y:((e.clientY-rect.top)/rect.height*logical-12)/64};};
+    const point=(e:PointerEvent):Point=>{const rect=boardRect??board.getBoundingClientRect(),s=getLevel().size,logical=s*64+24;return{x:((e.clientX-rect.left)/rect.width*logical-12)/64,y:((e.clientY-rect.top)/rect.height*logical-12)/64};};
     board.addEventListener('pointerdown',e=>{
       if(paused||disposed||activePointer!==undefined||e.button!==0)return;
-      e.preventDefault();board.focus();activePointer=e.pointerId;previous=point(e);board.setPointerCapture(e.pointerId);
+      e.preventDefault();board.focus();activePointer=e.pointerId;boardRect=board.getBoundingClientRect();previous=point(e);board.setPointerCapture(e.pointerId);
       for(const c of sampleSegment(previous,previous,getLevel().size))move(c);
     },options);
     board.addEventListener('pointermove',e=>{

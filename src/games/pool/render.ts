@@ -271,8 +271,9 @@ export interface Scene{
 }
 export class Renderer{
   private bg=document.createElement('canvas');private bgKey='';
+  private cueSprite=document.createElement('canvas');private cueKey='';
   look=new BallLook();
-  constructor(private canvas:HTMLCanvasElement){}
+  constructor(private canvas:HTMLCanvasElement){if(canvas.dataset)canvas.dataset.glassInk='textured';}
   draw(v:View,scene:Scene){
     const cw=Math.round(v.width*v.dpr),ch=Math.round(v.height*v.dpr);
     if(this.canvas.width!==cw||this.canvas.height!==ch){this.canvas.width=cw;this.canvas.height=ch;}
@@ -281,7 +282,7 @@ export class Renderer{
       this.bg.width=cw;this.bg.height=ch;const b=this.bg.getContext('2d')!;b.clearRect(0,0,cw,ch);drawTableArt(b,v);b.setTransform(1,0,0,1,0,0);this.bgKey=key;this.look.last.clear();
     }
     const c=this.canvas.getContext('2d')!;
-    c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cw,ch);c.drawImage(this.bg,0,0);
+    c.setTransform(1,0,0,1,0,0);c.drawImage(this.bg,0,0);
     worldTransform(c,v);
     const px=1/v.scale;
     if(scene.hand?.kitchen){
@@ -353,39 +354,55 @@ export class Renderer{
     }
     c.restore();
   }
+  private ensureCueSprite(scale:number):{canvas:HTMLCanvasElement;len:number;padY:number}{
+    const len=1.42,padY=.022,k=Math.max(80,Math.round(scale));
+    const key=String(k);
+    if(this.cueKey!==key){
+      this.cueKey=key;
+      const cw=Math.max(4,Math.ceil(len*k)+4),ch=Math.max(4,Math.ceil(padY*2*k)+4);
+      this.cueSprite.width=cw;this.cueSprite.height=ch;
+      const g=this.cueSprite.getContext('2d');
+      if(g){
+        g.setTransform(k,0,0,k,2,ch/2);
+        const radius=(d:number)=>.0058+(.0135-.0058)*Math.pow(d/len,1.4);
+        const quad=(d0:number,d1:number,fill:string|CanvasGradient)=>{
+          const r0=radius(d0),r1=radius(d1);
+          g.fillStyle=fill;g.beginPath();g.moveTo(d0,r0);g.lineTo(d1,r1);g.lineTo(d1,-r1);g.lineTo(d0,-r0);g.closePath();g.fill();
+        };
+        const along=(d0:number,d1:number,stops:[number,string][])=>{const gr=g.createLinearGradient(d0,0,d1,0);for(const [o,col] of stops)gr.addColorStop(o,col);return gr;};
+        quad(0,.008,'#2f6db5');
+        quad(.008,.03,'#f2ede0');
+        quad(.03,.74,along(.03,.74,[[0,'#f0dcae'],[1,'#d8b077']]));
+        quad(.74,.752,'#c9ccd2');
+        quad(.752,1.06,along(.752,1.06,[[0,'#3b1f10'],[.5,'#22110a'],[1,'#3b1f10']]));
+        for(const side of [1,-1]){
+          const r=radius(.9)*.8;g.fillStyle='#e0c38c';g.beginPath();g.moveTo(.80,0);g.lineTo(1.0,r*side);g.lineTo(1.0,0);g.closePath();g.fill();
+        }
+        quad(1.06,1.07,'#c9ccd2');
+        quad(1.07,1.3,'#151515');
+        quad(1.3,1.41,along(1.3,1.41,[[0,'#3b1f10'],[1,'#5a2e16']]));
+        quad(1.41,len,'#0c0c0c');
+        const shade=g.createLinearGradient(0,.014,0,-.014);
+        shade.addColorStop(0,'rgba(0,0,0,.35)');shade.addColorStop(.3,'rgba(255,255,255,.28)');shade.addColorStop(.5,'rgba(255,255,255,0)');shade.addColorStop(1,'rgba(0,0,0,.45)');
+        quad(0,len,shade);
+      }
+    }
+    return {canvas:this.cueSprite,len,padY};
+  }
   private drawCue(c:CanvasRenderingContext2D,v:View,scene:Scene){
     const cue=scene.balls[0];if(!cue.on)return;
     const {angle,pull,alpha}=scene.cue!,dx=Math.cos(angle),dy=Math.sin(angle);
+    const {canvas:spr,len,padY}=this.ensureCueSprite(v.scale*v.dpr);
     worldTransform(c,v);
     c.save();c.globalAlpha=alpha;
-    const gap=R+.006+pull,len=1.42;
-    const at=(d:number)=>({x:cue.x-dx*(gap+d),y:cue.y-dy*(gap+d)});
-    const radius=(d:number)=>.0058+(.0135-.0058)*Math.pow(d/len,1.4);
-    const nx=-dy,ny=dx;
-    const quad=(d0:number,d1:number,fill:string|CanvasGradient)=>{
-      const a=at(d0),b=at(d1),r0=radius(d0),r1=radius(d1);
-      c.fillStyle=fill;c.beginPath();c.moveTo(a.x+nx*r0,a.y+ny*r0);c.lineTo(b.x+nx*r1,b.y+ny*r1);c.lineTo(b.x-nx*r1,b.y-ny*r1);c.lineTo(a.x-nx*r0,a.y-ny*r0);c.closePath();c.fill();
-    };
+    const gap=R+.006+pull,nx=-dy,ny=dx;
     // Shadow on the cloth, offset away from the light.
-    c.save();c.translate(.012,.02);quad(0,len,'rgba(0,0,0,.28)');c.restore();
-    const along=(d0:number,d1:number,stops:[number,string][])=>{const a=at(d0),b=at(d1),g=c.createLinearGradient(a.x,a.y,b.x,b.y);for(const [o,col] of stops)g.addColorStop(o,col);return g;};
-    quad(0,.008,'#2f6db5');
-    quad(.008,.03,'#f2ede0');
-    quad(.03,.74,along(.03,.74,[[0,'#f0dcae'],[1,'#d8b077']]));
-    quad(.74,.752,'#c9ccd2');
-    quad(.752,1.06,along(.752,1.06,[[0,'#3b1f10'],[.5,'#22110a'],[1,'#3b1f10']]));
-    // Maple points inlaid in the forearm.
-    for(const side of [1,-1]){
-      const a=at(.80),b=at(1.0),r=radius(.9)*.8;c.fillStyle='#e0c38c';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x+nx*r*side,b.y+ny*r*side);c.lineTo(b.x,b.y);c.closePath();c.fill();
-    }
-    quad(1.06,1.07,'#c9ccd2');
-    quad(1.07,1.3,'#151515');
-    quad(1.3,1.41,along(1.3,1.41,[[0,'#3b1f10'],[1,'#5a2e16']]));
-    quad(1.41,len,'#0c0c0c');
-    // Cylindrical shading across the whole cue.
-    const mid=at(len/2),shade=c.createLinearGradient(mid.x+nx*.014,mid.y+ny*.014,mid.x-nx*.014,mid.y-ny*.014);
-    shade.addColorStop(0,'rgba(0,0,0,.35)');shade.addColorStop(.3,'rgba(255,255,255,.28)');shade.addColorStop(.5,'rgba(255,255,255,0)');shade.addColorStop(1,'rgba(0,0,0,.45)');
-    quad(0,len,shade);
+    c.fillStyle='rgba(0,0,0,.28)';c.beginPath();
+    const sx0=cue.x-dx*gap+.012,sy0=cue.y-dy*gap+.02,sx1=cue.x-dx*(gap+len)+.012,sy1=cue.y-dy*(gap+len)+.02;
+    c.moveTo(sx0+nx*.0058,sy0+ny*.0058);c.lineTo(sx1+nx*.0135,sy1+ny*.0135);c.lineTo(sx1-nx*.0135,sy1-ny*.0135);c.lineTo(sx0-nx*.0058,sy0-ny*.0058);c.closePath();c.fill();
+    c.translate(cue.x-dx*gap,cue.y-dy*gap);
+    c.rotate(angle+Math.PI);
+    c.drawImage(spr,0,-padY,len,padY*2);
     c.restore();
   }
 }

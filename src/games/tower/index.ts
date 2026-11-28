@@ -2,6 +2,7 @@ import type { GameModule } from '../../core/types';
 import { advance, createTower, drop, restoreTower } from './model';
 import { renderTower } from './renderer';
 import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import './style.css';
 import './christmas.css';
 
@@ -9,12 +10,12 @@ const game:GameModule={
   id:'tower',title:'Stack',cover:'game-art/tower/cover.svg',
   rules:'Independent browser adaptation. Click or tap the tower, or press Space/Enter to place the sliding slab. Only the overlap with the previous slab survives: the overhang falls away. A complete miss ends your tower. Near-perfect alignment snaps into place and preserves the full size. Consecutive perfects earn a bonus of up to five points per slab. Travel alternates across the two axes and gradually gets faster. Build as high as you can! Pause freezes the action; restart begins a fresh tower.',
   mount(container,context){
-    container.innerHTML=`<div class="tower-game" data-phase="sliding"><div class="tower-viewport"><canvas class="tower-canvas" tabindex="0" role="button" aria-label="Stack playfield. Tap or press Space to drop the moving block."></canvas><div class="tower-stats"><span>Floors<strong class="tower-height">0</strong></span><span>Perfect streak<strong class="tower-combo">0</strong></span></div><div class="tower-feedback" aria-hidden="true"></div><div class="tower-end" hidden><div class="tower-end-card"><h2>One more floor?</h2><p class="tower-result"></p><button class="game-button tower-again">Build again</button></div></div></div></div>`;
+    container.innerHTML=`<div class="tower-game" data-phase="sliding"><div class="tower-viewport"><canvas class="tower-canvas" data-glass-ink="textured" tabindex="0" role="button" aria-label="Stack playfield. Tap or press Space to drop the moving block."></canvas><div class="tower-stats"><span>Floors<strong class="tower-height">0</strong></span><span>Perfect streak<strong class="tower-combo">0</strong></span></div><div class="tower-feedback" aria-hidden="true"></div><div class="tower-end" hidden><div class="tower-end-card"><h2>One more floor?</h2><p class="tower-result"></p><button class="game-button tower-again">Build again</button></div></div></div></div>`;
     const root=container.querySelector<HTMLElement>('.tower-game')!,canvas=container.querySelector<HTMLCanvasElement>('canvas')!,again=container.querySelector<HTMLButtonElement>('.tower-again')!,end=container.querySelector<HTMLElement>('.tower-end')!,feedback=container.querySelector<HTMLElement>('.tower-feedback')!;
     container.querySelector<HTMLElement>('.tower-viewport')!.style.backgroundImage=`url("${import.meta.env.BASE_URL}game-art/tower/skyline.svg")`;
-    let state=createTower(),paused=false,disposed=false,raf:number|null=null,lastTick=performance.now(),feedbackText='';
+    let state=createTower(),paused=false,disposed=false,raf:number|null=null,lastTick=performance.now(),feedbackText='',lastBanner='';
     function reduced(){return context.settings.reducedMotion;}
-    function draw(){renderTower(canvas,state,reduced(),paused);const fresh=state.last&&state.time-state.last.time<.9;feedback.textContent=fresh&&state.last!.kind==='perfect'?`PERFECT${state.combo>1?' ×'+state.combo:''}`:'';notifyGlassFrame(canvas);}
+    function draw(){renderTower(canvas,state,reduced(),paused);const fresh=state.last&&state.time-state.last.time<.9;const banner=fresh&&state.last!.kind==='perfect'?`PERFECT${state.combo>1?' ×'+state.combo:''}`:'';if(lastBanner!==banner){lastBanner=banner;feedback.textContent=banner;}notifyGlassFrame(canvas);}
     // The shared glass lens samples each drawn frame; repaint redraws the current state only.
     const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)draw();});
     function update(){
@@ -26,7 +27,7 @@ const game:GameModule={
       feedbackText=state.phase==='over'?'No overlap. Your tower is complete.':state.last?.kind==='perfect'?`Perfect${state.combo>1?' ×'+state.combo:''}! Full size preserved.`:state.last?.kind==='cut'?'Overhang trimmed.':'Ready';
       context.setStatus(feedbackText);canvas.setAttribute('aria-label',`Stack playfield, ${state.blocks.length-1} floors. ${state.phase==='over'?'Run finished.':'Tap or press Space to drop the moving block.'}`);draw();
     }
-    function tick(now:number){if(!paused&&!disposed)state=advance(state,Math.max(0,(now-lastTick)/1000));lastTick=now;}
+    function tick(now:number){if(!paused&&!disposed)state=advance(state,Math.min(.1,Math.max(0,(now-lastTick)/1000)));lastTick=now;}
     function frame(now:number){raf=null;if(paused||disposed)return;const previous=state.phase;tick(now);if(previous!==state.phase)update();else draw();schedule();}
     function schedule(){if(!paused&&!disposed&&raf===null&&(state.phase!=='over'||(state.last&&state.time-state.last.time<1.3)))raf=requestAnimationFrame(frame);}
     function stop(){if(raf!==null)cancelAnimationFrame(raf);raf=null;}
@@ -42,7 +43,7 @@ const game:GameModule={
       event.preventDefault();place();
     }
     function restart(){if(disposed)return;state=createTower();lastTick=performance.now();update();context.save(state);schedule();}
-    function resize(){if(disposed)return;const rect=canvas.getBoundingClientRect(),ratio=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(rect.width*ratio));canvas.height=Math.max(1,Math.round(rect.height*ratio));draw();}
+    function resize(){if(disposed)return;const rect=canvas.getBoundingClientRect(),device=window.devicePixelRatio||1,ratio=floorTierActive()?floorDpr(rect.width,rect.height,device):Math.min(device,2);const w=Math.max(1,Math.round(rect.width*ratio)),h=Math.max(1,Math.round(rect.height*ratio));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}draw();}
     const observer=new ResizeObserver(resize);observer.observe(canvas);
     // The whole game area takes the tap, so the space beside the tower works on a wide screen.
     root.addEventListener('pointerdown',pointer);document.addEventListener('keydown',key);again.addEventListener('click',restart);

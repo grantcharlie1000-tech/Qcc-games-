@@ -86,10 +86,11 @@ function courtPaint(map: MapDef): THREE.BufferGeometry | null {
 }
 
 export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean; quality?: QualityId }): ClashScene {
+  if (canvas.dataset) canvas.dataset.glassInk = 'textured';
   let quality: QualityId=opts.quality??'potato';
   const profile=QUALITY[quality];
   // Phones at 2x and above get little from MSAA but pay for it on every pixel of a large buffer.
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: (window.devicePixelRatio || 1) < 2, powerPreference: 'high-performance', stencil: false });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !floorTierActive() && (window.devicePixelRatio || 1) < 2, powerPreference: 'high-performance', stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -193,8 +194,12 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
     const ratio = drawingRatio(lastWidth, lastHeight);
     renderer.setPixelRatio(ratio);
     renderer.setSize(lastWidth, lastHeight, false);
-    camera.aspect = lastWidth / lastHeight;
+    const aspect = lastWidth / lastHeight;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
+    vmCamera.aspect = aspect;
+    vmCamera.fov = aspect >= 1 ? 55 : 70;
+    vmCamera.updateProjectionMatrix();
     api.stats.pixelRatio = ratio; api.stats.width = canvas.width; api.stats.height = canvas.height;
   }
   function beginFrame(): void {
@@ -417,10 +422,12 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
     }
   }
 
+  const seenPickups = new Set<number>();
+  const worldStats = { calls: 0, triangles: 0 };
   function syncPickups(m: Match) {
-    const seen = new Set<number>();
+    seenPickups.clear();
     for (const p of m.pickups) {
-      seen.add(p.id);
+      seenPickups.add(p.id);
       let g = pickupModels.get(p.id);
       if (!g) { g = buildPickup(kit, p.kind); pickupModels.set(p.id, g); pickupRoot.add(g); }
       g.visible = p.active;
@@ -428,7 +435,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
       g.rotation.y = time * 1.6 + p.id;
       if (p.dropped && p.expires - m.t < 4) g.visible = p.active && Math.floor(time * 6) % 2 === 0;
     }
-    for (const [id, g] of pickupModels) if (!seen.has(id)) { pickupRoot.remove(g); pickupModels.delete(id); }
+    for (const [id, g] of pickupModels) if (!seenPickups.has(id)) { pickupRoot.remove(g); pickupModels.delete(id); }
   }
 
   function syncProjectiles(v: SceneView) {
@@ -639,15 +646,13 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
         camera.lookAt(look);
       }
       updateViewmodel(v, you);
-      vmCamera.aspect = aspect;
-      vmCamera.fov = aspect >= 1 ? 55 : 70;
-      vmCamera.updateProjectionMatrix();
       beginFrame();
       renderer.render(scene, camera);
-      const world = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+      worldStats.calls = renderer.info.render.calls;
+      worldStats.triangles = renderer.info.render.triangles;
       if (typeof renderer.clearDepth === 'function') renderer.clearDepth();
       renderer.render(vmScene, vmCamera);
-      noteFrame(world);
+      noteFrame(worldStats);
     },
     resize(width, height) {
       lastWidth = Math.max(1, width); lastHeight = Math.max(1, height);

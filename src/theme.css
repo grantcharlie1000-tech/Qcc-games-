@@ -140,6 +140,7 @@
 .ui-tabbar[data-hidden="true"]~.ui-tabbar-mini{translate:0 0;scale:1;transition:opacity 120ms var(--ease)}
 /* A layout write, from tabbar.ts, sets its transforms with transitions off, so the style it leaves is the one a transition starts from. */
 .ui-tabbar[data-layout],.ui-tabbar-mini[data-layout]{transition:none!important}
+.ui-tabbar[data-glass-dragging]::after{transition:scale 140ms var(--ease-out),opacity 120ms var(--ease)!important}
 /* Fallbacks: no backdrop-filter support, reduced transparency and more contrast. Each bar is opaque there, so the pill keeps its own light fill against the flat bar. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-tabbar{background:rgb(18 18 20 / .96)}.ui-tabbar::after{background:rgb(255 255 255 / .16)}.ui-scroll-edge{display:none}.ui-tabbar-mini{background:rgb(18 18 20 / .96)}}
 @media (prefers-reduced-transparency:reduce){.ui-glass-lens{display:none}.ui-glass-glow{display:none}.ui-scroll-edge{display:none}.ui-tabbar::before{display:none}.ui-tabbar,.ui-tabbar.is-refracting{background:rgb(18 18 20 / .97);box-shadow:var(--glass-rim-edge),var(--glass-lift);-webkit-backdrop-filter:none;backdrop-filter:none}.ui-tabbar::after,.ui-tabbar.is-refracting::after{background:rgb(255 255 255 / .16)}.ui-tabbar[data-glass="frost"]{-webkit-backdrop-filter:none;backdrop-filter:none}.ui-tabbar-mini{background:rgb(18 18 20 / .97);box-shadow:var(--glass-rim-edge),var(--glass-lift);-webkit-backdrop-filter:none;backdrop-filter:none}}
@@ -179,7 +180,7 @@
 .ui-chip.rating{color:var(--c-amber)}
 
 /* Rails */
-.ui-rail{position:relative}
+.ui-rail{position:relative;content-visibility:auto;contain-intrinsic-size:auto 320px}
 .ui-rail-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
 .ui-rail-head h2{margin:0;font-size:18px;line-height:20px;font-weight:700;letter-spacing:-.025em;color:var(--c-100)}
 @media (min-width:640px){.ui-rail-head h2{font-size:20px;line-height:22px}}
@@ -220,15 +221,15 @@
 .ui-card:active{transform:scale(.98)}
 @media (hover:hover) and (pointer:fine){.ui-card:hover .ui-card-poster{border-color:var(--line-strong)}.ui-card:hover .ui-card-img{transform:scale(1.03);filter:brightness(1.05)}.ui-card:hover .ui-card-poster::after{opacity:1}.ui-card:hover .ui-card-play{opacity:1;transform:none}.ui-card:hover .ui-card-title{color:#fff}}
 .ui-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ui-grid>.ui-card{content-visibility:auto;contain-intrinsic-size:auto 260px}
 @media (min-width:640px){.ui-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}
 @media (min-width:768px){.ui-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (min-width:1024px){.ui-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (min-width:1280px){.ui-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
-/* Image states, set by src/ui/images.ts. Pending images are transparent over a pulsing poster, loaded images fade in, and failed images leave the placeholder showing. Without .ui-images, images display normally. */
+/* Image states, set by src/ui/images.ts. Pending images are transparent over a placeholder, loaded images fade in, and failed images leave the placeholder showing. Without .ui-images, images display normally. */
 .ui-images .ui-card-img:not(.is-loaded):not(.is-failed),.ui-images .ui-hero-backdrop:not(.is-loaded):not(.is-failed){opacity:0}
 .ui-images .ui-card-poster:has(.ui-card-img:not(.is-failed)) .ui-card-placeholder>*{visibility:hidden}
-.ui-images .ui-card-poster:has(.ui-card-img:not(.is-loaded):not(.is-failed)) .ui-card-placeholder::before{animation:ui-pulse 2s cubic-bezier(.4,0,.6,1) infinite}
 .ui-images .ui-card-img.is-loaded{animation:ui-fade-in var(--t-slow) var(--ease) both}
 .ui-images .ui-hero-backdrop.is-loaded{animation:ui-fade-backdrop var(--t-slow) var(--ease) both}
 .ui-images .ui-card-img.is-failed,.ui-images .ui-hero-backdrop.is-failed{display:none}

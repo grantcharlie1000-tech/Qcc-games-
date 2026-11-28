@@ -13,7 +13,7 @@ import './style.css';
 type Overlay='intro'|'continue'|'clear'|'complete'|'choice'|'menu'|'help'|'confirm'|'journal'|null;
 function mount(container:HTMLElement,context:GameContext):GameInstance {
  const root=document.createElement('section');root.className='ll-game';root.setAttribute('aria-label','Last Light platformer');
- root.innerHTML=`<canvas class="ll-canvas" tabindex="0" role="application" aria-label="Last Light. Left and Right arrows run, Up jumps, Right Shift dashes, Enter to interact, Delete to pause, End to retry, Page Down for journal." aria-describedby="ll-help"></canvas>
+ root.innerHTML=`<canvas class="ll-canvas" data-glass-ink="textured" tabindex="0" role="application" aria-label="Last Light. Left and Right arrows run, Up jumps, Right Shift dashes, Enter to interact, Delete to pause, End to retry, Page Down for journal." aria-describedby="ll-help"></canvas>
  <div class="ll-hud"><strong class="ll-stage"></strong><div class="ll-stats"><span class="ll-spark-stat" title="Memory sparks">✦ <b class="ll-sparks">0</b></span><span title="Setbacks">↻ <b class="ll-deaths">0</b></span><span class="ll-time">0:00</span></div><span class="ll-task-progress" hidden></span></div>
  <button class="ll-prompt" data-ui="interact" hidden></button><p class="ll-notice" role="status"></p>
  <aside class="ll-dialogue" hidden aria-label="Conversation"><div><strong class="ll-speaker"></strong><button data-ui="dismiss" aria-label="Dismiss conversation">×</button></div><p></p><small class="ll-dialogue-hint">PAUSED · MOVE TO CONTINUE</small></aside>
@@ -26,49 +26,65 @@ function mount(container:HTMLElement,context:GameContext):GameInstance {
  const music=new LanternMusic(),scene=new Scene(canvas),hud=mountCompactHud(container),abort=new AbortController(),{signal}=abort;
  const hudContent=root.querySelector<HTMLElement>('.ll-hud')!,dock=container.closest('.game-view')!.querySelector<HTMLElement>('.game-dock')!;
  const levelLabel=document.createElement('span'),scoreLabel=document.createElement('span');scoreLabel.className='ll-score';hud.element.replaceChildren(levelLabel,scoreLabel);hud.element.after(hudContent);
+ const downBtn=root.querySelector<HTMLButtonElement>('[data-action=down]')!;
+ const stageEl=hudContent.querySelector<HTMLElement>('.ll-stage')!,sparksEl=hudContent.querySelector<HTMLElement>('.ll-sparks')!,deathsEl=hudContent.querySelector<HTMLElement>('.ll-deaths')!;
+ const progressEl=hudContent.querySelector<HTMLElement>('.ll-task-progress')!,timeEl=hudContent.querySelector<HTMLElement>('.ll-time')!;
+ const promptEl=root.querySelector<HTMLButtonElement>('.ll-prompt')!,noticeEl=root.querySelector<HTMLElement>('.ll-notice')!;
+ const dialogueEl=root.querySelector<HTMLElement>('.ll-dialogue')!,dialogueHintEl=dialogueEl.querySelector<HTMLElement>('.ll-dialogue-hint')!;
+ const speakerEl=dialogueEl.querySelector<HTMLElement>('.ll-speaker')!,dialogueTextEl=dialogueEl.querySelector<HTMLElement>('p')!;
+ const cinematicEl=root.querySelector<HTMLElement>('.ll-cinematic')!,cinematicSmallEl=cinematicEl.querySelector<HTMLElement>('small')!;
  const text=(el:HTMLElement,value:string)=>{if(el.textContent!==value)el.textContent=value;};
  const data=(key:string,value:string)=>{if(root.dataset[key]!==value)root.dataset[key]=value;};
- let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,dialogueArmed=false,dialogueShown=0,previousHud='',previousSecond=-1,previousSector='';
+ let run=createRun(),overlay:Overlay='intro',paused=false,disposed=false,frame=0,last=0,acc=0,noticeUntil=0,dialogueUntil=0,dialogueBlocking=false,dialogueArmed=false,dialogueShown=0,previousHud='',previousSecond=-1,previousSector='',lastAccent='';
  const keys=new Set<string>(),touches=new Map<number,string>();let jumpQueued=false,dashQueued=false,interactQueued=false,dropQueued=false;
- const touchMode=()=>matchMedia('(any-pointer: coarse)').matches;
+ const coarseQuery=matchMedia('(any-pointer: coarse)'),reducedQuery=matchMedia('(prefers-reduced-motion: reduce)');
+ const touchMode=()=>coarseQuery.matches;
  const instructions=(text:string)=>touchMode()?text.replace(/Arrows move; hold Up to jump/g,'Hold ← or → to run; hold JUMP to jump').replace(/Tap Up/g,'Tap JUMP').replace(/Right Shift/g,'DASH').replace(/A \/ D runs/g,'Hold ← or → to run').replace(/hold Space to jump/g,'hold JUMP to jump').replace(/\bE\b/g,'Tap').replace(/\bSpace\b/g,'JUMP').replace(/\bShift\b/g,'DASH').replace(/\bX\b/g,'DASH'):text.replace(/\bSpace\b/g,'↑').replace(/\bX\b/g,'Right Shift').replace(/\bE\b/g,'Enter');
- const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const reduced=()=>context.settings.reducedMotion||reducedQuery.matches;
  const resetInput=()=>{keys.clear();touches.clear();jumpQueued=false;dashQueued=false;interactQueued=false;dropQueued=false;root.querySelectorAll('[data-held]').forEach(b=>b.removeAttribute('data-held'));run.previousJump=false;run.previousDash=false;run.previousInteract=false;};
+ const inputObj:Input={move:0,jump:false,drop:false,dash:false,interact:false};
  const input=():Input=>{
-  const actions=new Set(touches.values()),left=actions.has('left')||keys.has('ArrowLeft')||keys.has('KeyA'),right=actions.has('right')||keys.has('ArrowRight')||keys.has('KeyD');
-  return {move:Number(right)-Number(left),jump:jumpQueued||actions.has('jump')||['Space','ArrowUp','KeyW'].some(k=>keys.has(k)),drop:dropQueued||actions.has('down')||keys.has('ArrowDown'),dash:dashQueued||actions.has('dash')||['ShiftLeft','ShiftRight','KeyX'].some(k=>keys.has(k)),interact:interactQueued||actions.has('interact')||keys.has('KeyE')||keys.has('Enter')};
+  let tLeft=false,tRight=false,tJump=false,tDown=false,tDash=false,tInteract=false;
+  for(const v of touches.values()){if(v==='left')tLeft=true;else if(v==='right')tRight=true;else if(v==='jump')tJump=true;else if(v==='down')tDown=true;else if(v==='dash')tDash=true;else if(v==='interact')tInteract=true;}
+  const left=tLeft||keys.has('ArrowLeft')||keys.has('KeyA'),right=tRight||keys.has('ArrowRight')||keys.has('KeyD');
+  inputObj.move=Number(right)-Number(left);
+  inputObj.jump=jumpQueued||tJump||keys.has('Space')||keys.has('ArrowUp')||keys.has('KeyW');
+  inputObj.drop=dropQueued||tDown||keys.has('ArrowDown');
+  inputObj.dash=dashQueued||tDash||keys.has('ShiftLeft')||keys.has('ShiftRight')||keys.has('KeyX');
+  inputObj.interact=interactQueued||tInteract||keys.has('KeyE')||keys.has('Enter');
+  return inputObj;
  };
  const active=()=>!paused&&!overlay&&!disposed&&!document.hidden;
  function stop(){if(frame)cancelAnimationFrame(frame);frame=0;last=0;acc=0;resetInput();}
  function schedule(){if(!frame&&active())frame=requestAnimationFrame(loop);}
  function save(){context.save(serialize(run));}
- function notice(message:string){q<HTMLElement>('.ll-notice').textContent=instructions(message);noticeUntil=run.clock+7;context.announce(message);}
+ function notice(message:string){noticeEl.textContent=instructions(message);noticeUntil=run.clock+7;context.announce(message);}
  function dialogue(message:string,blocking=false){
-  dialogueBlocking=blocking;dialogueArmed=false;dialogueShown=performance.now();q<HTMLElement>('.ll-dialogue-hint').textContent=blocking?'PAUSED · MOVE TO CONTINUE':'SAVED IN JOURNAL · MOVE TO DISMISS';
-  const colon=message.indexOf(':');q<HTMLElement>('.ll-speaker').textContent=colon>0&&colon<28?message.slice(0,colon):'A memory of Mira';
-  q<HTMLElement>('.ll-dialogue p').textContent=colon>0&&colon<28?message.slice(colon+1).trim():message;
-  q<HTMLElement>('.ll-dialogue').hidden=false;dialogueUntil=run.clock+Math.max(12,message.length/12);context.announce(message);
+  dialogueBlocking=blocking;dialogueArmed=false;dialogueShown=performance.now();dialogueHintEl.textContent=blocking?'PAUSED · MOVE TO CONTINUE':'SAVED IN JOURNAL · MOVE TO DISMISS';
+  const colon=message.indexOf(':');speakerEl.textContent=colon>0&&colon<28?message.slice(0,colon):'A memory of Mira';
+  dialogueTextEl.textContent=colon>0&&colon<28?message.slice(colon+1).trim():message;
+  dialogueEl.hidden=false;dialogueUntil=run.clock+Math.max(12,message.length/12);context.announce(message);
  }
  function paint(){
   if(disposed)return;scene.draw(run,reduced());music.sync(active()&&run.phase==='playing',context.settings.sound&&!christmas());
   data('reducedMotion',String(reduced()));data('phase',run.phase);data('stage',String(run.stage+1));data('overlay',overlay??'none');data('paused',String(paused));data('cinematic',String(run.cinematic>0));data('death',String(scene.dying));data('deathCause',scene.deathCause);data('petting',String(!!run.pet));
   if(import.meta.env.DEV){data('x',run.x.toFixed(2));data('y',run.y.toFixed(2));data('ground',String(run.ground));data('dash',String(run.dashReady));data('elapsed',String(Math.floor(run.time)));data('activated',run.activated.join(','));}
-  const down=q<HTMLButtonElement>('[data-action=down]'),canDrop=run.grounded&&LEVELS[run.stage].platforms[run.ground]?.kind==='grate';if(down.hidden===canDrop)down.hidden=!canDrop;
-  const level=LEVELS[run.stage],theme=WORLDS[level.world];if(root.style.getPropertyValue('--ll-accent')!==theme.accent){root.style.setProperty('--ll-accent',theme.accent);hudContent.style.setProperty('--ll-accent',theme.accent);}
+  const canDrop=run.grounded&&LEVELS[run.stage].platforms[run.ground]?.kind==='grate';if(downBtn.hidden===canDrop)downBtn.hidden=!canDrop;
+  const level=LEVELS[run.stage],theme=WORLDS[level.world];if(lastAccent!==theme.accent){lastAccent=theme.accent;root.style.setProperty('--ll-accent',theme.accent);hudContent.style.setProperty('--ll-accent',theme.accent);}
   const label=`${run.stage+1} / ${LEVEL_COUNT} · ${run.best.toLocaleString()} pts`;
   if(label!==previousHud){previousHud=label;text(levelLabel,`${run.stage+1} / ${LEVEL_COUNT}`);text(scoreLabel,` · ${run.best.toLocaleString()} pts`);hud.element.setAttribute('aria-label',`Level ${run.stage+1} of ${LEVEL_COUNT}. ${run.best} points`);}
-  text(q<HTMLElement>('.ll-stage'),level.name);
-  text(q<HTMLElement>('.ll-sparks'),String(run.sparks));text(q<HTMLElement>('.ll-deaths'),String(run.deaths));
-  const progress=q<HTMLElement>('.ll-task-progress'),chase=level.goal==='escape'&&run.phase==='playing',lead=escapeLead(run);
-  if(progress.hidden===chase)progress.hidden=!chase;text(progress,run.chasing?`The black · ${Math.ceil(lead/10)} m behind`:'Stay ahead of the black');
-  const danger=String(chase&&run.chasing&&lead<250);if(progress.dataset.danger!==danger)progress.dataset.danger=danger;
+  text(stageEl,level.name);
+  text(sparksEl,String(run.sparks));text(deathsEl,String(run.deaths));
+  const chase=level.goal==='escape'&&run.phase==='playing',lead=escapeLead(run);
+  if(progressEl.hidden===chase)progressEl.hidden=!chase;text(progressEl,run.chasing?`The black · ${Math.ceil(lead/10)} m behind`:'Stay ahead of the black');
+  const danger=String(chase&&run.chasing&&lead<250);if(progressEl.dataset.danger!==danger)progressEl.dataset.danger=danger;
   data('chase',String(chase));hudContent.hidden=!!overlay;
-  const prompt=q<HTMLButtonElement>('.ll-prompt');text(prompt,run.phase==='playing'?instructions(nearby(run)):'');if(prompt.hidden!==!prompt.textContent)prompt.hidden=!prompt.textContent;
-  const second=Math.floor(run.time/1000);if(second!==previousSecond){previousSecond=second;text(q<HTMLElement>('.ll-time'),formatTime(run.time));}
-  if(noticeUntil&&run.clock>noticeUntil){q<HTMLElement>('.ll-notice').textContent='';noticeUntil=0;}
-  if(dialogueUntil&&run.clock>dialogueUntil){q<HTMLElement>('.ll-dialogue').hidden=true;dialogueUntil=0;}
-  const cinematic=q<HTMLElement>('.ll-cinematic');if(cinematic.hidden!==(run.cinematic<=0))cinematic.hidden=run.cinematic<=0;
-  text(q<HTMLElement>('.ll-cinematic small'),touchMode()?'TAP AN ACTION · SKIP':'ENTER · SKIP');
+  text(promptEl,run.phase==='playing'?instructions(nearby(run)):'');if(promptEl.hidden!==!promptEl.textContent)promptEl.hidden=!promptEl.textContent;
+  const second=Math.floor(run.time/1000);if(second!==previousSecond){previousSecond=second;text(timeEl,formatTime(run.time));}
+  if(noticeUntil&&run.clock>noticeUntil){noticeEl.textContent='';noticeUntil=0;}
+  if(dialogueUntil&&run.clock>dialogueUntil){dialogueEl.hidden=true;dialogueUntil=0;}
+  if(cinematicEl.hidden!==(run.cinematic<=0))cinematicEl.hidden=run.cinematic<=0;
+  text(cinematicSmallEl,touchMode()?'TAP AN ACTION · SKIP':'ENTER · SKIP');
  }
  const button=(action:string,label:string,secondary=false)=>`<button class="ll-button${secondary?' ll-secondary':''}" data-do="${action}">${label}</button>`;
  const eyebrow=(text:string)=>`<p class="ll-eyebrow">${text}</p>`;

@@ -32,7 +32,7 @@ function mount(container:HTMLElement,ctx:GameContext){
   let winter=christmas(),match=fresh(),localMode:Mode='solo',savedLocal={solo:fresh('solo'),duel:fresh('duel'),rival:fresh('rival'),master:fresh('master')},book=newBook();
   const journal=el<HTMLDialogElement>('.dc-book');
   let settled:Puck[]=[],carried:[number,number]=[0,0],frames:Puck[][]|null=null,elapsed=0,stamp=0,raf=0;
-  let aim:Shot={...DEFAULT_SHOT},paused=false,disposed=false,feedback='',roundId=0,awaiting=false;
+  let aim:Shot={...DEFAULT_SHOT},paused=false,disposed=false,feedback='',roundId=0,awaiting=false,lastStopsEnd=-1;
   let room:Room|null=null,unsubscribe:(()=>void)|null=null,hostMoving=false,lastPublished=-1;
   let rivalTimer:ReturnType<typeof setTimeout>|undefined;
   const court=new Court(canvas,winter?'noel':'pier',harbour);
@@ -82,7 +82,7 @@ function mount(container:HTMLElement,ctx:GameContext){
     root.dataset.theme=winter?'noel':'pier';root.dataset.end=String(match.end+1);root.dataset.throws=String(match.shots.length);
     el('.dc-tour-label').textContent=(match.mode==='master'?'Master · ':'')+'Court 0'+(match.end+1)+' / 03';
     el('.dc-course').textContent=course.names[winter?1:0];el('.dc-tip').textContent=course.tip;
-    el('.dc-stops').innerHTML=COURSES.slice(0,3).map((_,i)=>'<i class="'+(i<=match.end?'dc-lit':'')+'"></i>').join('');
+    if(lastStopsEnd!==match.end){lastStopsEnd=match.end;el('.dc-stops').innerHTML=COURSES.slice(0,3).map((_,i)=>'<i class="'+(i<=match.end?'dc-lit':'')+'"></i>').join('');}
     el('.dc-venue span').textContent=winter?'Christmas harbour':'Pacific coast';
     el('.dc-delivery').textContent=over?'Court complete':frames?'Puck in motion':'Delivery '+Math.min(4,Math.floor(count/(singles(match.mode)?1:2))+1)+' / 4';
     el('.dc-player').textContent=over?'Scorecard ready':room&&room.players.length<2?'Waiting for opponent':frames?'Sliding…':hostMoving?'Waiting for puck':rivalTurn()?'Pilot is lining up':singles(match.mode)||match.mode==='rival'?'Your shot':player(seat())+' to shoot';
@@ -134,7 +134,7 @@ function mount(container:HTMLElement,ctx:GameContext){
   }
   function frame(now:number){
     raf=0;if(!frames||paused||room?.paused||disposed)return;
-    if(stamp)elapsed+=(now-stamp)/1000;stamp=now;
+    if(stamp)elapsed+=Math.min(0.1,(now-stamp)/1000);stamp=now;
     if(elapsed*FPS>=frames.length-1){finish();return;}
     draw();raf=requestAnimationFrame(frame);
   }
@@ -233,13 +233,13 @@ function mount(container:HTMLElement,ctx:GameContext){
     else aim.power=Math.max(10,Math.min(100,aim.power+(e.key==='ArrowUp'?1:-1)));
     update();
   },on);
-  let drag:{id:number;x:number;y:number}|null=null;
-  canvas.addEventListener('pointerdown',e=>{if(!canAct()||drag||e.button!==0)return;canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};},on);
+  let drag:{id:number;x:number;y:number;scale:number}|null=null;
+  canvas.addEventListener('pointerdown',e=>{if(!canAct()||drag||e.button!==0)return;canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY,scale:Math.min(170,Math.max(1,canvas.clientHeight*.35))};},on);
   function dragAim(e:PointerEvent){
     if(!drag||drag.id!==e.pointerId||!canAct())return false;
     const dx=drag.x-e.clientX,dy=e.clientY-drag.y;if(dy<10)return false;
     aim.angle=Math.max(-46,Math.min(46,Math.round(Math.atan2(dx,dy)*180/Math.PI)));
-    aim.power=Math.max(10,Math.min(100,Math.round(100*Math.hypot(dx,dy)/Math.min(170,canvas.clientHeight*.35))));
+    aim.power=Math.max(10,Math.min(100,Math.round(100*Math.hypot(dx,dy)/drag.scale)));
     update();return true;
   }
   canvas.addEventListener('pointermove',dragAim,on);

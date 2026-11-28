@@ -87,7 +87,7 @@ interface Lens{
 }
 // opaqueKey/opaque: a rare probe (only when the crop geometry changes) of whether the
 // source covers the crop with opaque pixels; transparent areas keep the CSS blur.
-interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;lastFrame:number;opaqueKey:string;opaque:boolean}
+interface Group{lenses:Set<Lens>;off:()=>void;lost:boolean;lastFrame:number;opaqueKey:string;opaque:boolean;geomDirty:boolean;geomAt:number;cachedBack:DOMRect|null;cachedPlans:Plan[]}
 interface Plan{lens:Lens;x:number;y:number;w:number;h:number;outW:number;outH:number;density:number;preset:LensPreset;slot:number;inside:boolean}
 interface Gpu{
   canvas:HTMLCanvasElement;gl:WebGL2RenderingContext;program:WebGLProgram;vao:WebGLVertexArrayObject;
@@ -192,26 +192,41 @@ function radiusOf(surface:HTMLElement,width:number,height:number):number{
 function render(source:HTMLCanvasElement,group:Group){
   const started=performance.now();group.lastFrame=started;
   if(document.hidden||group.lost||!allowed()){deactivate(group);return;}
-  const back=source.getBoundingClientRect();
-  if(!back.width||!back.height||!source.width||!source.height||!visible(source)){deactivate(group);return;}
-  const plans:Plan[]=[];
-  for(const lens of group.lenses){
-    if(!lens.enabled||!lens.surface.isConnected||!visible(lens.surface)){setActive(lens,false);continue;}
-    // A re-render may replace the surface's children; restore the lens layer.
-    if(lens.wrapper.parentElement!==lens.surface)lens.attach();
-    const box=lens.wrapper.getBoundingClientRect();
-    const width=lens.wrapper.offsetWidth,height=lens.wrapper.offsetHeight;
-    const overlaps=box.right>back.left&&box.left<back.right&&box.bottom>back.top&&box.top<back.bottom;
-    if(!width||!height||!box.width||!box.height||!overlaps){setActive(lens,false);continue;}
-    // 1-1.5 px per CSS px; very large sheets settle at 1.
-    const density=Math.max(1,Math.min(glassDensity(devicePixelRatio),Math.sqrt(MAX_LENS_PIXELS/(width*height))));
-    // The surface may be scaled by a press or an opening transition; sample where it is on screen.
-    const scale=box.width/width;
-    const preset=fitPreset(LENS_PRESETS[lens.kind],box.width,box.height,radiusOf(lens.surface,width,height)*scale);
-    const inside=box.left>=back.left-.5&&box.top>=back.top-.5&&box.right<=back.right+.5&&box.bottom<=back.bottom+.5;
-    plans.push({lens,x:box.left-back.left,y:box.top-back.top,w:box.width,h:box.height,outW:Math.max(1,Math.round(width*density)),outH:Math.max(1,Math.round(height*density)),density,preset,slot:0,inside});
+  let back:DOMRect|null=null;
+  let plans:Plan[]=[];
+  if(!group.geomDirty&&group.cachedBack&&started-group.geomAt<1000&&source.width&&source.height){
+    back=group.cachedBack;
+    plans=group.cachedPlans;
+    let valid=true;
+    for(const p of plans)if(!p.lens.enabled||!p.lens.surface.isConnected||p.lens.wrapper.parentElement!==p.lens.surface){valid=false;break;}
+    if(!valid)group.geomDirty=true;
   }
-  if(!plans.length){webglGlassStats.skipped++;return;}
+  if(group.geomDirty||!group.cachedBack||started-group.geomAt>=1000){
+    back=source.getBoundingClientRect();
+    if(!back.width||!back.height||!source.width||!source.height||!visible(source)){group.cachedBack=null;group.cachedPlans=[];deactivate(group);return;}
+    plans=[];
+    for(const lens of group.lenses){
+      if(!lens.enabled||!lens.surface.isConnected||!visible(lens.surface)){setActive(lens,false);continue;}
+      // A re-render may replace the surface's children; restore the lens layer.
+      if(lens.wrapper.parentElement!==lens.surface)lens.attach();
+      const box=lens.wrapper.getBoundingClientRect();
+      const width=lens.wrapper.offsetWidth,height=lens.wrapper.offsetHeight;
+      const overlaps=box.right>back.left&&box.left<back.right&&box.bottom>back.top&&box.top<back.bottom;
+      if(!width||!height||!box.width||!box.height||!overlaps){setActive(lens,false);continue;}
+      // 1-1.5 px per CSS px; very large sheets settle at 1.
+      const density=Math.max(1,Math.min(glassDensity(devicePixelRatio),Math.sqrt(MAX_LENS_PIXELS/(width*height))));
+      // The surface may be scaled by a press or an opening transition; sample where it is on screen.
+      const scale=box.width/width;
+      const preset=fitPreset(LENS_PRESETS[lens.kind],box.width,box.height,radiusOf(lens.surface,width,height)*scale);
+      const inside=box.left>=back.left-.5&&box.top>=back.top-.5&&box.right<=back.right+.5&&box.bottom<=back.bottom+.5;
+      plans.push({lens,x:box.left-back.left,y:box.top-back.top,w:box.width,h:box.height,outW:Math.max(1,Math.round(width*density)),outH:Math.max(1,Math.round(height*density)),density,preset,slot:0,inside});
+    }
+    group.cachedBack=back;
+    group.cachedPlans=plans;
+    group.geomDirty=false;
+    group.geomAt=started;
+  }
+  if(!back||!plans.length){webglGlassStats.skipped++;return;}
   const g=ensureGpu();if(!g){deactivate(group);return;}
   const {gl}=g;
   // One bounded crop around all lenses, padded by the furthest sample.
@@ -313,9 +328,10 @@ function join(lens:Lens,source:HTMLCanvasElement|null){
     const restored=()=>{const g=groups.get(current);if(g){g.lost=false;schedule(current);}};
     current.addEventListener('webglcontextlost',lost);current.addEventListener('webglcontextrestored',restored);
     const offFrame=onGlassFrame(current,()=>{const g=groups.get(current);if(g)render(current,g);});
-    const created:Group={lenses:new Set(),lost:false,lastFrame:-Infinity,opaqueKey:'',opaque:false,off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
+    const created:Group={lenses:new Set(),lost:false,lastFrame:-Infinity,opaqueKey:'',opaque:false,geomDirty:true,geomAt:0,cachedBack:null,cachedPlans:[],off:()=>{offFrame();current.removeEventListener('webglcontextlost',lost);current.removeEventListener('webglcontextrestored',restored);}};
     group=created;groups.set(source,group);
   }
+  group.geomDirty=true;
   group.lenses.add(lens);schedule(source);
 }
 function leave(lens:Lens){
@@ -324,6 +340,7 @@ function leave(lens:Lens){
   lens.detach();
   const group=groups.get(source);if(!group)return;
   group.lenses.delete(lens);
+  group.geomDirty=true;
   if(!group.lenses.size){group.off();groups.delete(source);}
 }
 function resolveAll(){refreshPolicy();for(const lens of lenses)join(lens,lens.enabled&&allowed()?sourceFor(lens.surface):null);}
@@ -334,11 +351,11 @@ function startWatching(){
   const sync=()=>{resolveAll();if(!allowed())deactivateAll();};
   for(const q of queries)q.addEventListener('change',sync);
   classes.observe(document.documentElement,{attributes:true,attributeFilter:['class']});
-  const resize=()=>{for(const source of groups.keys())schedule(source);};
+  const resize=()=>{for(const [source,group] of groups){group.geomDirty=true;schedule(source);}};
   const visibility=()=>{if(document.hidden)deactivateAll();else resize();};
   // A paused game draws nothing while a sheet or its ancestors settle, so redraw
   // once when any transition or animation ends, or a page/sheet scrolls.
-  const moved=['transitionend','transitioncancel','animationend','animationcancel','scroll'] as const;
+  const moved=['transitionstart','transitionend','transitioncancel','animationstart','animationend','animationcancel','scroll'] as const;
   window.addEventListener('resize',resize);document.addEventListener('visibilitychange',visibility);
   for(const name of moved)document.addEventListener(name,resize,{capture:true,passive:true});
   unwatchPreferences=()=>{for(const q of queries)q.removeEventListener('change',sync);classes.disconnect();window.removeEventListener('resize',resize);document.removeEventListener('visibilitychange',visibility);for(const name of moved)document.removeEventListener(name,resize,true);};
@@ -363,6 +380,7 @@ export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean)=>voi
     if(!lens.enabled)return;
     const top=surface.scrollTop,left=surface.scrollLeft;
     wrapper.style.translate=top||left?`${left}px ${top}px`:'';
+    if(lens.source){const g=groups.get(lens.source);if(g)g.geomDirty=true;}
     schedule(lens.source);
   };
   const resize=typeof ResizeObserver==='function'?new ResizeObserver(refresh):undefined;
@@ -372,7 +390,7 @@ export function bindWebglLens(surface:HTMLElement,onActive:(active:boolean)=>voi
     lens.kind=kind??kindFor(surface);lens.ctx??=output.getContext('2d');
     if(wrapper.parentElement!==surface)surface.prepend(wrapper);
     resize?.observe(wrapper);surface.addEventListener('scroll',refresh,{passive:true});
-    moved.observe(surface,{attributes:true,attributeFilter:['style','class']});
+    moved.observe(surface,{attributes:true,attributeFilter:['style','class','data-pressing','data-minimized','hidden']});
   };
   lens.detach=()=>{resize?.disconnect();moved.disconnect();surface.removeEventListener('scroll',refresh);wrapper.remove();};
   return{

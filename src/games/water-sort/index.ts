@@ -32,7 +32,9 @@ const module:GameModule={
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
     let message='',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
-    const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+    const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
+    let pourCache:{move:NonNullable<Session['pending']>['move'];from:HTMLElement;to:HTMLElement;glass:SVGSVGElement;fromLiquid:Element;toLiquid:Element;fromBox:DOMRect;toBox:DOMRect;box:DOMRect;artWidth:number}|null=null;
     const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard),best:{...session.state.best}});
     function tell(text:string){message=text;context.announce(text);}
     function clearPointer(suppress=false){
@@ -51,6 +53,7 @@ const module:GameModule={
       const columns=Math.ceil(count/2);
       const width=single?Math.min(144,(rect.width-32-(count-1)*40)/count,rect.height*.9/3.2):Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.9-16)/6.4));
       root.style.setProperty('--ws-tube-width',`${width}px`);
+      pourCache=null;
       if(session.pending)paintPour();
     }
     function render(save=false){
@@ -84,22 +87,25 @@ const module:GameModule={
       fit();if(save)context.save(snapshot());
     }
     function clearAnimation(){
-      cancelAnimationFrame(raf);raf=0;stream.style.opacity='0';
+      cancelAnimationFrame(raf);raf=0;pourCache=null;stream.style.opacity='0';
       root.removeAttribute('data-pour-phase');root.removeAttribute('data-transfer');
       tubes.querySelectorAll<HTMLElement>('.ws-glass').forEach(el=>el.style.removeProperty('transform'));
     }
     function paintPour(){
       const pending=session.pending;if(!pending)return;
-      const {move}=pending,from=tubes.querySelector<HTMLElement>(`[data-tube="${move.from}"]`),to=tubes.querySelector<HTMLElement>(`[data-tube="${move.to}"]`);
-      if(!from||!to)return;
+      const {move}=pending;
+      if(!pourCache||pourCache.move!==move||!pourCache.from.isConnected||!pourCache.to.isConnected){
+        const from=tubes.querySelector<HTMLElement>(`[data-tube="${move.from}"]`),to=tubes.querySelector<HTMLElement>(`[data-tube="${move.to}"]`);
+        if(!from||!to)return;
+        pourCache={move,from,to,glass:from.querySelector<SVGSVGElement>('.ws-glass')!,fromLiquid:from.querySelector('.ws-liquid')!,toLiquid:to.querySelector('.ws-liquid')!,fromBox:from.getBoundingClientRect(),toBox:to.getBoundingClientRect(),box:field.getBoundingClientRect(),artWidth:Number.parseFloat(root.style.getPropertyValue('--ws-tube-width'))};
+      }
+      const {from,glass,fromLiquid,toLiquid,fromBox,toBox,box,artWidth}=pourCache;
       const progress=pending.duration?Math.min(1,pending.elapsed/pending.duration):1,f=pourFrame(progress),gentle=reduced()||pending.duration<=160;
       root.dataset.pourPhase=f.phase;root.dataset.transfer=f.transfer.toFixed(4);
       const source=bandsFor(session.state.tubes[move.from]),target=bandsFor(session.state.tubes[move.to]);
       let drain=move.amount*f.transfer;
       for(let i=source.length-1;i>=0&&drain>0;i--){const part=Math.min(source[i].units,drain);source[i].units-=part;drain-=part;}
       target.push({colour:move.colour,units:move.amount*f.transfer});
-      const fromBox=from.getBoundingClientRect(),toBox=to.getBoundingClientRect(),box=field.getBoundingClientRect();
-      const artWidth=Number.parseFloat(root.style.getPropertyValue('--ws-tube-width'));
       const a={x:fromBox.x+(fromBox.width-artWidth)/2,y:fromBox.y,width:artWidth};
       const b={x:toBox.x+(toBox.width-artWidth)/2,y:toBox.y,width:artWidth},scale=artWidth/80;
       // Lean inward at the destination so the travelling glass stays in scene.
@@ -114,11 +120,10 @@ const module:GameModule={
       const dx=(desiredX-(a.x-box.x+40*scale))*f.travel;
       const lift=f.phase==='travel'?Math.sin(Math.min(1,progress/.18)*Math.PI)*48*scale:0;
       const dy=Math.max(safeTop+30*scale-(a.y+24*scale),(desiredY-(a.y-box.y+24*scale))*f.travel-lift);
-      const glass=from.querySelector<SVGSVGElement>('.ws-glass')!;
       glass.style.transform=gentle?'none':`translate(${dx}px, ${dy}px) rotate(${angle}deg)`;
       glass.dataset.angle=String(angle);from.style.zIndex='4';
-      from.querySelector('.ws-liquid')!.innerHTML=liquidArt(source,angle);
-      to.querySelector('.ws-liquid')!.innerHTML=liquidArt(target);
+      fromLiquid.innerHTML=liquidArt(source,angle);
+      toLiquid.innerHTML=liquidArt(target);
       const x1=a.x-box.x+dx+lip.x*scale,y1=a.y-box.y+dy+lip.y*scale;
       const targetSurface=liquidLayers(target,0).at(-1)?.surface??236;
       const x2=b.x-box.x+40*scale,y2=b.y-box.y+targetSurface*scale;
@@ -131,7 +136,7 @@ const module:GameModule={
     }
     function frame(now:number){
       raf=0;if(disposed||session.paused||!session.pending)return;
-      const destination=session.pending.move.to,committed=session.advance(now-lastFrame);lastFrame=now;
+      const destination=session.pending.move.to,committed=session.advance(Math.min(100,Math.max(0,now-lastFrame)));lastFrame=now;
       if(committed){
         clearAnimation();const values=session.state.tubes[destination];celebrate=values.length&&values.every(c=>c===values[0])?destination:null;
         if(won(session.state.tubes)){tell('Beautifully sorted! Every colour has a home.');context.sound('success');}

@@ -193,11 +193,19 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     if (human) { ctx.lineWidth = 0.95; ctx.strokeStyle = INK; ctx.stroke(); }
     ctx.lineWidth = human ? 0.6 : 0.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
     ctx.lineWidth = 0.3; ctx.strokeStyle = look.palette[p.id]; ctx.fillStyle = look.palette[p.id]; ctx.stroke(); ctx.fill();
-    // Eyes look forward.
+    // Eyes look forward (batched: 2 draws instead of 4).
     ctx.fillStyle = '#ffffff';
-    for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(s * 0.2, side * 0.3, 0.19, 0, Math.PI * 2); ctx.fill(); }
+    ctx.beginPath();
+    ctx.arc(s * 0.2, -0.3, 0.19, 0, Math.PI * 2);
+    ctx.moveTo(s * 0.2 + 0.19, 0.3);
+    ctx.arc(s * 0.2, 0.3, 0.19, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = INK;
-    for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(s * 0.27, side * 0.3, 0.09, 0, Math.PI * 2); ctx.fill(); }
+    ctx.beginPath();
+    ctx.arc(s * 0.27, -0.3, 0.09, 0, Math.PI * 2);
+    ctx.moveTo(s * 0.27 + 0.09, 0.3);
+    ctx.arc(s * 0.27, 0.3, 0.09, 0, Math.PI * 2);
+    ctx.fill();
     // Shape mark so players differ without colour.
     const mark = markPaths[p.id];
     if (mark) {
@@ -277,15 +285,19 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     ctx.stroke();
     }
 
-    // Arena floor with a faint dot grid.
+    // Arena floor with a faint dot grid (batched into one path fill).
     ctx.fillStyle = look.inside;
     ctx.beginPath(); ctx.arc(CENTER, CENTER, ARENA_R, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = look.dots;
+    ctx.beginPath();
+    const dotLimitSq = (ARENA_R - 1) * (ARENA_R - 1);
     for (let gy = Math.ceil(vy0 / 4) * 4; gy <= vy1; gy += 4) {
+      const dy2 = (gy - CENTER) * (gy - CENTER);
       for (let gx = Math.ceil(vx0 / 4) * 4; gx <= vx1; gx += 4) {
-        if (Math.hypot(gx - CENTER, gy - CENTER) < ARENA_R - 1) ctx.fillRect(gx - 0.08, gy - 0.08, 0.16, 0.16);
+        if ((gx - CENTER) * (gx - CENTER) + dy2 < dotLimitSq) ctx.rect(gx - 0.08, gy - 0.08, 0.16, 0.16);
       }
     }
+    ctx.fill();
 
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     if (cache) ctx.drawImage(cache, 0, 0, GRID, GRID);

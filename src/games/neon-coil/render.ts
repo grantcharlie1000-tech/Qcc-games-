@@ -133,7 +133,14 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const snake of group) {
       const pad = spriteSize(headRadius(snake))/2+2;
-      for (const p of [snake.previous,...snake.body]) { minX = Math.min(minX,p.x-pad); maxX = Math.max(maxX,p.x+pad); minY = Math.min(minY,p.y-pad); maxY = Math.max(maxY,p.y+pad); }
+      const prev = snake.previous;
+      if (prev.x-pad < minX) minX = prev.x-pad; if (prev.x+pad > maxX) maxX = prev.x+pad;
+      if (prev.y-pad < minY) minY = prev.y-pad; if (prev.y+pad > maxY) maxY = prev.y+pad;
+      for (let i = 0; i < snake.body.length; i++) {
+        const p = snake.body[i];
+        if (p.x-pad < minX) minX = p.x-pad; if (p.x+pad > maxX) maxX = p.x+pad;
+        if (p.y-pad < minY) minY = p.y-pad; if (p.y+pad > maxY) maxY = p.y+pad;
+      }
     }
     const k = dpr*view.zoom, ox = dpr*(view.width/2-view.x*view.zoom), oy = dpr*(view.height/2-view.y*view.zoom);
     const x0 = Math.max(0,Math.floor(minX*k+ox)), y0 = Math.max(0,Math.floor(minY*k+oy));
@@ -209,9 +216,16 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       const mx = 54, my = view.height-minimapLift, r = 27;
       ctx.beginPath(); ctx.arc(mx,my,r+5,0,TAU); ctx.fillStyle = '#0b101a80'; ctx.fill();
       ctx.beginPath(); ctx.arc(mx,my,r,0,TAU); ctx.lineWidth = 1; ctx.strokeStyle = '#6c7a8a55'; ctx.stroke();
-      for (const snake of s.snakes) if (snake.alive) {
-        ctx.beginPath(); ctx.arc(mx+snake.x/ARENA_RADIUS*r,my+snake.y/ARENA_RADIUS*r,snake.id === 0 ? 2.5 : 1.1,0,TAU);
-        ctx.fillStyle = snake.id === 0 ? '#22d3ee' : '#7e91a899'; ctx.fill();
+      ctx.beginPath();
+      let botCount = 0;
+      for (const snake of s.snakes) if (snake.alive && snake.id !== 0) {
+        const sx = mx+snake.x/ARENA_RADIUS*r, sy = my+snake.y/ARENA_RADIUS*r;
+        ctx.moveTo(sx+1.1, sy); ctx.arc(sx, sy, 1.1, 0, TAU); botCount++;
+      }
+      if (botCount) { ctx.fillStyle = '#7e91a899'; ctx.fill(); }
+      if (player.alive) {
+        ctx.beginPath(); ctx.arc(mx+player.x/ARENA_RADIUS*r, my+player.y/ARENA_RADIUS*r, 2.5, 0, TAU);
+        ctx.fillStyle = '#22d3ee'; ctx.fill();
       }
     }
   }

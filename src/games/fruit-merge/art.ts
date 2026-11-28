@@ -6,20 +6,20 @@ const fruitSprites=new Map<string,HTMLCanvasElement>();
 /** Original vector-like fruit portraits. No downloaded images or emoji. */
 export function drawFruit(c:CanvasRenderingContext2D,tier:number,x:number,y:number,r:number,angle=0,number=false){
  if(christmas()){drawOrnament(c,tier,x,y,r,angle,number);return;}
- if(floorTierActive()){
-  const key=`${tier}:${number?1:0}`;
-  let sprite=fruitSprites.get(key);
-  if(!sprite){
-   sprite=document.createElement('canvas');sprite.width=sprite.height=128;
-   const baked=sprite.getContext('2d');
-   if(baked)drawFruitMark(baked,tier,64,64,40,0,number);
-   fruitSprites.set(key,sprite);
+ const spriteSize=floorTierActive()?128:192;
+ const key=`${tier}:${number?1:0}:${spriteSize}`;
+ let sprite=fruitSprites.get(key);
+ if(!sprite){
+  sprite=document.createElement('canvas');sprite.width=sprite.height=spriteSize;
+  const baked=sprite.getContext('2d');
+  if(baked){
+   const s=spriteSize/128;baked.setTransform(s,0,0,s,0,0);
+   drawFruitMark(baked,tier,64,64,40,0,number);
   }
-  c.save();c.translate(x,y);c.rotate(angle);
-  const d=r/40*128;c.drawImage(sprite,-d/2,-d/2,d,d);c.restore();
-  return;
+  fruitSprites.set(key,sprite);
  }
- drawFruitMark(c,tier,x,y,r,angle,number);
+ c.save();c.translate(x,y);c.rotate(angle);
+ const d=r/40*128;c.drawImage(sprite,-d/2,-d/2,d,d);c.restore();
 }
 function drawFruitMark(c:CanvasRenderingContext2D,tier:number,x:number,y:number,r:number,angle=0,number=false){
  const t=TIERS[tier];c.save();c.translate(x,y);c.rotate(angle);c.scale(r/40,r/40);

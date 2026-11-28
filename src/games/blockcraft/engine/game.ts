@@ -258,16 +258,18 @@ export class Engine implements Game{
     const authority=this.net.authority;
     for(const s of this.ticked)if(authority||!this.hostOnly.has(s))s.tick?.();
   }
+  private readonly dataCache:Record<string,string>={};
+  private setData(key:string,value:string){if(this.dataCache[key]!==value){this.dataCache[key]=value;this.root.dataset[key]=value;}}
   private report(built:number){
-    const d=this.root.dataset,p=this.player.state;
-    d.x=p.x.toFixed(2);d.y=p.y.toFixed(2);d.z=p.z.toFixed(2);d.yaw=p.yaw.toFixed(3);d.grounded=String(p.onGround);
-    d.chunks=String(this.world.chunks.size);d.meshes=String(this.streamer.meshedCount);d.ready=String(!this.spawnPending);
-    d.mined=String(this.stats.mined);d.placed=String(this.stats.placed);d.slot=String(this.inventory.selected);d.mode=this.settings.mode;
-    d.health=String(this.survival.health);d.food=String(this.survival.food);d.dayTime=String(this.time.dayTime);d.weather=this.weather.state;
-    d.entities=String(this.entities.all().length);
-    const t=this.interaction.target;d.target=t?`${t.x},${t.y},${t.z}`:'';
-    const e=this.interaction.entityTarget;d.entityTarget=e?e.kind:'';
-    if(built||this.state==='playing'){const r=this.render.info();d.drawCalls=String(r.drawCalls);d.triangles=String(r.triangles);d.scale=this.render.resolutionScale.toFixed(2);}
+    const p=this.player.state;
+    this.setData('x',p.x.toFixed(2));this.setData('y',p.y.toFixed(2));this.setData('z',p.z.toFixed(2));this.setData('yaw',p.yaw.toFixed(3));this.setData('grounded',String(p.onGround));
+    this.setData('chunks',String(this.world.chunks.size));this.setData('meshes',String(this.streamer.meshedCount));this.setData('ready',String(!this.spawnPending));
+    this.setData('mined',String(this.stats.mined));this.setData('placed',String(this.stats.placed));this.setData('slot',String(this.inventory.selected));this.setData('mode',this.settings.mode);
+    this.setData('health',String(this.survival.health));this.setData('food',String(this.survival.food));this.setData('dayTime',String(this.time.dayTime));this.setData('weather',this.weather.state);
+    this.setData('entities',String(this.entities.all().length));
+    const t=this.interaction.target;this.setData('target',t?`${t.x},${t.y},${t.z}`:'');
+    const e=this.interaction.entityTarget;this.setData('entityTarget',e?e.kind:'');
+    if(built||this.state==='playing'){const r=this.render.info();this.setData('drawCalls',String(r.drawCalls));this.setData('triangles',String(r.triangles));this.setData('scale',this.render.resolutionScale.toFixed(2));}
     if(this.stats.mined!==this.lastScore){this.lastScore=this.stats.mined;this.context.setScore(this.stats.mined);}
     if(this.time.day!==this.lastDay){this.lastDay=this.time.day;this.context.setLevel(`Day ${this.time.day}`);}
   }

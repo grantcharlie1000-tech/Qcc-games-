@@ -42,6 +42,7 @@ const game: GameModule = {
   const hud=mountCompactHud(container);
   LEVELS.forEach((level,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=`${i+1} / ${LEVELS.length} · ${level.size}×${level.size}`;picker.append(option)});
   let buttons:HTMLButtonElement[]=[];
+  let staticArtKey='',dynLayer:SVGGElement|null=null,gridRect:DOMRect|null=null;
   const level=()=>LEVELS[state.level];
   function snapshot():Snapshot {
    const saved:Snapshot={...state,paths:copyPaths(state.paths),completed:[...state.completed],history:state.history.map(copyPaths),best:{...state.best}};
@@ -95,11 +96,20 @@ const game: GameModule = {
     button.setAttribute('aria-selected',String(color!==-1&&color===selected));
    });
    const point=(cell:number)=>`${cell%n*100+50},${Math.floor(cell/n)*100+50}`;
-   let drawing=`<defs><linearGradient id="cc-well" x2="0" y2="1"><stop stop-color="#0d203a"/><stop offset="1" stop-color="#1c3451"/></linearGradient><radialGradient id="cc-field" cx=".4" cy="0" r="1"><stop stop-color="#304560"/><stop offset="1" stop-color="#101c33"/></radialGradient>`;
-   palette.forEach((p,i)=>drawing+=`<linearGradient id="cc-peg-${i}" x1="0" y1="0" x2=".35" y2="1"><stop stop-color="${p.light}"/><stop offset=".45" stop-color="${p.color}"/><stop offset="1" stop-color="${p.dark}"/></linearGradient>`);
-   if(xmas)palette.forEach((p,i)=>drawing+=`<radialGradient id="cc-bulb-${i}" cx=".38" cy=".35" r=".75"><stop stop-color="${p.light}"/><stop offset=".5" stop-color="${p.color}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>`);
-   drawing+=`</defs><rect width="${n*100}" height="${n*100}" rx="15" fill="url(#cc-field)"/>`;
-   for(let cell=0;cell<n*n;cell++){const x=cell%n*100,y=Math.floor(cell/n)*100;drawing+=`<rect x="${x+3}" y="${y+4}" width="94" height="94" rx="13" fill="url(#cc-well)" stroke="#40516a" stroke-opacity=".55" stroke-width="1.5"/><circle cx="${x+50}" cy="${y+50}" r="3" fill="#40516a"/>`;}
+   const artKey=`${n}:${xmas?1:0}`;
+   if(staticArtKey!==artKey||!dynLayer){
+    staticArtKey=artKey;
+    let base=`<defs><linearGradient id="${svgPrefix}-well" x2="0" y2="1"><stop stop-color="#0d203a"/><stop offset="1" stop-color="#1c3451"/></linearGradient><radialGradient id="${svgPrefix}-field" cx=".4" cy="0" r="1"><stop stop-color="#304560"/><stop offset="1" stop-color="#101c33"/></radialGradient>`;
+    palette.forEach((p,i)=>base+=`<linearGradient id="${svgPrefix}-peg-${i}" x1="0" y1="0" x2=".35" y2="1"><stop stop-color="${p.light}"/><stop offset=".45" stop-color="${p.color}"/><stop offset="1" stop-color="${p.dark}"/></linearGradient>`);
+    if(xmas)palette.forEach((p,i)=>base+=`<radialGradient id="${svgPrefix}-bulb-${i}" cx=".38" cy=".35" r=".75"><stop stop-color="${p.light}"/><stop offset=".5" stop-color="${p.color}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>`);
+    base+=`</defs><rect width="${n*100}" height="${n*100}" rx="15" fill="url(#${svgPrefix}-field)"/>`;
+    for(let cell=0;cell<n*n;cell++){const x=cell%n*100,y=Math.floor(cell/n)*100;base+=`<rect x="${x+3}" y="${y+4}" width="94" height="94" rx="13" fill="url(#${svgPrefix}-well)" stroke="#40516a" stroke-opacity=".55" stroke-width="1.5"/><circle cx="${x+50}" cy="${y+50}" r="3" fill="#40516a"/>`;}
+    base+=`<g class="cc-dyn"></g>`;
+    art.setAttribute('viewBox',`0 0 ${n*100} ${n*100}`);
+    art.innerHTML=base;
+    dynLayer=art.querySelector<SVGGElement>('.cc-dyn');
+   }
+   let drawing='';
    state.paths.forEach((path,color)=>{
     if(path.length<2)return;
     const points=path.map(point).join(' '),p=palette[color];
@@ -110,11 +120,11 @@ const game: GameModule = {
    current.pairs.forEach((pair,color)=>pair.forEach(cell=>{
     const x=cell%n*100+50,y=Math.floor(cell/n)*100+50,p=palette[color];
     // Christmas: a light bulb whose glass is the pair's own shape (the colour-blind mark), capped by a socket, with the letter inside.
-    if(xmas)drawing+=`<circle cx="${x}" cy="${y}" r="40" fill="${p.color}" opacity=".2"/><g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><rect x="${x-11}" y="${y-44}" width="22" height="18" rx="3.5" fill="#2c6b45" stroke="#07172b" stroke-width="2.5"/><path d="M${x-8} ${y-38}h16M${x-8} ${y-32}h16" stroke="#8fd3a8" stroke-width="1.6" stroke-linecap="round"/><g fill="url(#cc-bulb-${color})" stroke="#07172b" stroke-width="4">${shape(color,x,y)}</g><g fill="none" stroke="${p.light}" stroke-width="2" stroke-opacity=".85" transform="translate(${x} ${y}) scale(.82) translate(${-x} ${-y})">${shape(color,x,y)}</g><path d="M${x-13} ${y-14}q7-8 17-6" fill="none" stroke="white" stroke-width="4.5" opacity=".7" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
-    else drawing+=`<g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><g fill="url(#cc-peg-${color})" stroke="#07172b" stroke-width="5">${shape(color,x,y)}</g><path d="M${x-12} ${y-17}q10-9 22-3" fill="none" stroke="white" stroke-width="5" opacity=".6" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
+    if(xmas)drawing+=`<circle cx="${x}" cy="${y}" r="40" fill="${p.color}" opacity=".2"/><g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><rect x="${x-11}" y="${y-44}" width="22" height="18" rx="3.5" fill="#2c6b45" stroke="#07172b" stroke-width="2.5"/><path d="M${x-8} ${y-38}h16M${x-8} ${y-32}h16" stroke="#8fd3a8" stroke-width="1.6" stroke-linecap="round"/><g fill="url(#${svgPrefix}-bulb-${color})" stroke="#07172b" stroke-width="4">${shape(color,x,y)}</g><g fill="none" stroke="${p.light}" stroke-width="2" stroke-opacity=".85" transform="translate(${x} ${y}) scale(.82) translate(${-x} ${-y})">${shape(color,x,y)}</g><path d="M${x-13} ${y-14}q7-8 17-6" fill="none" stroke="white" stroke-width="4.5" opacity=".7" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
+    else drawing+=`<g transform="translate(0 5)" fill="#060d1c" opacity=".65">${shape(color,x,y)}</g><g fill="url(#${svgPrefix}-peg-${color})" stroke="#07172b" stroke-width="5">${shape(color,x,y)}</g><path d="M${x-12} ${y-17}q10-9 22-3" fill="none" stroke="white" stroke-width="5" opacity=".6" stroke-linecap="round"/><text x="${x}" y="${y+9}" text-anchor="middle" fill="#10213a" font-family="system-ui,sans-serif" font-weight="900" font-size="25">${p.letter}</text>`;
     if(connected(current,state.paths[color],color))drawing+=`<circle cx="${x+24}" cy="${y-24}" r="10" fill="#f2ffe7" stroke="#10213a" stroke-width="2"/><path d="m${x+19} ${y-24} 4 4 7-8" fill="none" stroke="#20633c" stroke-width="3"/>`;
    }));
-   art.setAttribute('viewBox',`0 0 ${n*100} ${n*100}`);art.innerHTML=drawing.replaceAll('id="cc-',`id="${svgPrefix}-`).replaceAll('url(#cc-',`url(#${svgPrefix}-`);
+   if(dynLayer)dynLayer.innerHTML=drawing;
 
   }
   function record(before:Paths){
@@ -135,7 +145,7 @@ const game: GameModule = {
   function finish(){
    const focusWasInGrid=grid.contains(document.activeElement);
    if(pointerId!==null){try{grid.releasePointerCapture(pointerId)}catch{/* capture may already be released */}}
-   pointerId=null;lastPoint=null;active=-1;keyboardDrawing=false;
+   pointerId=null;lastPoint=null;gridRect=null;active=-1;keyboardDrawing=false;
    const before=gesture;gesture=null;if(before)record(before);else render();
    // Pointer traversal updates the roving origin; keep actual focus in sync,
    // but never pull focus back from a toolbar, picker or dialog.
@@ -152,7 +162,7 @@ const game: GameModule = {
    const nextPaths=extend(level(),state.paths,active,cell);
    if(nextPaths!==state.paths){state.paths=nextPaths;focusCell=cell;render()}
   }
-  function logical(event:PointerEvent):Point{const rect=grid.getBoundingClientRect(),n=level().size;return {x:(event.clientX-rect.left)/rect.width*n,y:(event.clientY-rect.top)/rect.height*n}}
+  function logical(event:PointerEvent):Point{const rect=gridRect??grid.getBoundingClientRect(),n=level().size;return {x:(event.clientX-rect.left)/rect.width*n,y:(event.clientY-rect.top)/rect.height*n}}
   function pointerMove(event:PointerEvent){
    // Showing victory can refit the stage while the pointer is still held.
    // A completed gesture must survive release at those old screen coordinates.
@@ -163,9 +173,11 @@ const game: GameModule = {
   }
   grid.addEventListener('pointerdown',event=>{
    if(paused||pointerId!==null||!event.isPrimary||event.button!==0)return;
-   if(keyboardDrawing)finish();const point=logical(event),n=level().size;
+   if(keyboardDrawing)finish();
+   gridRect=grid.getBoundingClientRect();
+   const point=logical(event),n=level().size;
    const cell=Math.floor(point.y)*n+Math.floor(point.x);
-   if(point.x<0||point.y<0||point.x>=n||point.y>=n||!start(cell))return;
+   if(point.x<0||point.y<0||point.x>=n||point.y>=n||!start(cell)){gridRect=null;return;}
    event.preventDefault();pointerId=event.pointerId;lastPoint=point;grid.setPointerCapture(pointerId);buttons[cell].focus({preventScroll:true});
   },{signal});
   grid.addEventListener('pointermove',pointerMove,{signal});

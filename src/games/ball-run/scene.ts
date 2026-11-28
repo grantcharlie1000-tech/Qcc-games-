@@ -83,6 +83,7 @@ export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose,
 
 /** Throws when a WebGL 2 renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): BallRunScene {
+  if (canvas.dataset) canvas.dataset.glassInk = 'textured';
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
   // Christmas, read once at mount, keeps the original scene and adds only two things: a little snow
   // on top of each obstacle (one extra instanced pool) and Santa's sleigh in place of the ball.
@@ -254,7 +255,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       place(towers, index++);
       // Lines only on the faces seen from the road: the inner face and the near (+z) face.
       const xi = side * inner, xo = side * (inner + w), z0 = z - depth / 2, z1 = z + depth / 2;
-      for (let y = lo; y <= hi; y += 1.1) { line(xi, y, z0, xi, y, z1); line(xi, y, z1, xo, y, z1); }
+      const floorStep = floorTierActive() ? 2.8 : 1.1;
+      for (let y = lo; y <= hi; y += floorStep) { line(xi, y, z0, xi, y, z1); line(xi, y, z1, xo, y, z1); }
       for (let k = 0; k <= 4; k++) line(xi, lo, z0 + depth * k / 4, xi, hi, z0 + depth * k / 4);
       for (let k = 1; k <= w; k++) line(xi + side * k, lo, z1, xi + side * k, hi, z1);
     }

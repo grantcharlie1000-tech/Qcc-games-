@@ -43,16 +43,23 @@ export function bindRails(root:HTMLElement,reduced:()=>boolean):()=>void{
     row.scrollBy({left:scrollStep(row,Number(arrow.dataset.scroll)),behavior:reduced()?'auto':'smooth'});
   };
   // Scroll events do not bubble, so the listener is attached in the capture phase.
+  const pending=new Set<HTMLElement>();
+  let raf=0;
+  const flush=()=>{
+    raf=0;
+    for(const row of pending){const rail=row.closest<HTMLElement>('.ui-rail');if(rail)setFlags(rail,row);}
+    pending.clear();
+  };
   const onScroll=(event:Event)=>{
     const row=event.target;
     if(!(row instanceof HTMLElement)||!row.matches('.ui-rail-row'))return;
-    const rail=row.closest<HTMLElement>('.ui-rail');
-    if(rail)setFlags(rail,row);
+    pending.add(row);
+    if(!raf)raf=requestAnimationFrame(flush);
   };
   // Resizing, or a hidden library becoming visible again, changes the edges without a scroll event.
   const resize=typeof ResizeObserver==='function'?new ResizeObserver(()=>updateRails(root)):undefined;
   resize?.observe(root);
   root.addEventListener('click',onClick);
-  root.addEventListener('scroll',onScroll,true);
-  return()=>{root.removeEventListener('click',onClick);root.removeEventListener('scroll',onScroll,true);resize?.disconnect();};
+  root.addEventListener('scroll',onScroll,{capture:true,passive:true});
+  return()=>{if(raf){cancelAnimationFrame(raf);raf=0;}pending.clear();root.removeEventListener('click',onClick);root.removeEventListener('scroll',onScroll,true);resize?.disconnect();};
 }

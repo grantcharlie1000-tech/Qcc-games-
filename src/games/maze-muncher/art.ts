@@ -110,18 +110,26 @@ function nibMarkup(prefix: string) {
 <ellipse cx="-3.4" cy="-.4" rx="1.3" ry=".8" fill="#ff8fb0" opacity=".7"/>`;
 }
 
+interface NibParts {
+  head: Element;
+  jaw: Element;
+  mouth: Element;
+  tooth: Element;
+}
+
 /** The mouth opens by rotating the lower jaw about a hinge behind the eye. */
-function setNibMouth(root: SVGGElement, open: number) {
+function setNibMouth(parts: NibParts, open: number) {
   const angle = open * .95, R = 6.4;
   const hx = -1.2, hy = .9;
   const upperEnd = [R * Math.cos(-.08), R * Math.sin(-.08) + .2];
   const head = `M${f(upperEnd[0])} ${f(upperEnd[1])}A${R} ${R} 0 1 0 ${f(-R * .2)} ${f(R * .98)}L${hx} ${hy}Z`;
-  const rot = (x: number, y: number) => [hx + (x - hx) * Math.cos(angle) - (y - hy) * Math.sin(angle), hy + (x - hx) * Math.sin(angle) + (y - hy) * Math.cos(angle)];
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const rot = (x: number, y: number) => [hx + (x - hx) * cos - (y - hy) * sin, hy + (x - hx) * sin + (y - hy) * cos];
   const j1 = rot(6.2, 1.2), j2 = rot(4.6, 4.6), j3 = rot(1, 6.3), t1 = rot(4.4, 1.4), t2 = rot(5.2, 1.4), t3 = rot(4.8, .4);
-  root.querySelector('.mm-nib-head')!.setAttribute('d', head);
-  root.querySelector('.mm-nib-jaw')!.setAttribute('d', `M${hx} ${hy}L${f(j1[0])} ${f(j1[1])}Q${f(j2[0])} ${f(j2[1])} ${f(j3[0])} ${f(j3[1])}Q-1.6 5.6 ${hx} ${hy}Z`);
-  root.querySelector('.mm-nib-mouth')!.setAttribute('d', `M${hx} ${hy}L${f(upperEnd[0])} ${f(upperEnd[1])}L${f(j1[0])} ${f(j1[1])}Z`);
-  root.querySelector('.mm-nib-tooth')!.setAttribute('d', open > .15 ? `M${f(t1[0])} ${f(t1[1])}L${f(t2[0])} ${f(t2[1])}L${f(t3[0])} ${f(t3[1])}Z` : '');
+  parts.head.setAttribute('d', head);
+  parts.jaw.setAttribute('d', `M${hx} ${hy}L${f(j1[0])} ${f(j1[1])}Q${f(j2[0])} ${f(j2[1])} ${f(j3[0])} ${f(j3[1])}Q-1.6 5.6 ${hx} ${hy}Z`);
+  parts.mouth.setAttribute('d', `M${hx} ${hy}L${f(upperEnd[0])} ${f(upperEnd[1])}L${f(j1[0])} ${f(j1[1])}Z`);
+  parts.tooth.setAttribute('d', open > .15 ? `M${f(t1[0])} ${f(t1[1])}L${f(t2[0])} ${f(t2[1])}L${f(t3[0])} ${f(t3[1])}Z` : '');
 }
 
 /** A chaser: a flame-shaped wisp with one eye and a marking that tells each apart without colour. */
@@ -186,13 +194,19 @@ export function createBoard(prefix = 'mm'): Board {
   nibPose.innerHTML = xmas
     ? nibMarkup(prefix) + hatMarkup(-.9, -5, 6.6, -.2, -.75)
     : nibMarkup(prefix);
+  const nibParts: NibParts = {
+    head: nibPose.querySelector('.mm-nib-head')!,
+    jaw: nibPose.querySelector('.mm-nib-jaw')!,
+    mouth: nibPose.querySelector('.mm-nib-mouth')!,
+    tooth: nibPose.querySelector('.mm-nib-tooth')!,
+  };
   const burst = el('g', {class: 'mm-burst'}, player);
   for (let i = 0; i < 8; i++) el('line', {x1: 0, y1: -3, x2: 0, y2: -7, transform: `rotate(${i * 45})`}, burst);
   const ghostLayer = svg.querySelector('.mm-ghosts')!;
   const wisps = GHOSTS.map(name => {
     const g = el('g', {class: `mm-wisp mm-wisp-${name}`, style: `--mm-wisp:${GHOST_COLORS[name]}`}, ghostLayer);
     g.innerHTML = xmas ? snowmanMarkup(name) : wispMarkup(name);
-    return g;
+    return {node: g, flame: g.querySelector('.mm-wisp-flame'), pupils: Array.from(g.querySelectorAll('.mm-wisp-pupil')), lastDir: ''};
   });
   const banner = svg.querySelector<SVGTextElement>('.mm-banner')!, popup = svg.querySelector<SVGTextElement>('.mm-popup')!;
   const lives = svg.querySelector<SVGGElement>('.mm-lives')!, levels = svg.querySelector<SVGGElement>('.mm-levels')!;
@@ -224,7 +238,7 @@ export function createBoard(prefix = 'mm'): Board {
       const squash = reduced ? 1 : Math.max(0, 1 - t * 1.25);
       nibPose.setAttribute('transform', `${ROTATE[p.dir]} scale(${f(1 + (1 - squash) * .25)} ${f(squash)})`.trim());
       nibPose.style.opacity = String(reduced ? f(1 - t) : t > .8 ? 0 : 1);
-      setNibMouth(nibPose, Math.min(1, t * 2));
+      setNibMouth(nibParts, Math.min(1, t * 2));
       burst.style.display = !reduced && t > .78 ? '' : 'none';
       burst.setAttribute('transform', `scale(${f(.6 + (t - .78) * 3)})`);
       burst.style.opacity = String(f(Math.max(0, 1 - (t - .78) * 4)));
@@ -234,7 +248,7 @@ export function createBoard(prefix = 'mm'): Board {
       nibPose.setAttribute('transform', ROTATE[p.dir].trim());
       // One chomp per tile travelled; a stopped muncher keeps its mouth half open.
       const travel = p.x + p.y, chomp = s.phase === 'ready' || s.phase === 'intro' ? .35 : reduced ? .45 : Math.abs(Math.sin(travel * Math.PI * 1.5));
-      setNibMouth(nibPose, chomp);
+      setNibMouth(nibParts, chomp);
       nibPose.classList.toggle('mm-step', Math.floor(travel * 2) % 2 === 0);
     }
 
@@ -242,7 +256,7 @@ export function createBoard(prefix = 'mm'): Board {
     const spec = levelSpec(s.level);
     const flashing = s.fright > 0 && s.fright <= spec.flashes * 28 && Math.floor(s.fright / 14) % 2 === 0;
     s.ghosts.forEach((g, i) => {
-      const node = wisps[i];
+      const wisp = wisps[i], node = wisp.node;
       const gone = s.phase === 'over' || dying || (s.phase === 'cleared' && s.timer >= 60);
       node.style.display = gone ? 'none' : '';
       if (gone) return;
@@ -254,9 +268,12 @@ export function createBoard(prefix = 'mm'): Board {
       node.classList.toggle('mm-ending', g.frightened && !eyes && flashing && !reduced);
       node.classList.toggle('mm-ending-calm', g.frightened && !eyes && s.fright <= spec.flashes * 28 && reduced);
       const sway = reduced ? 0 : Math.sin((s.tick + i * 7) / 6) * 1.2;
-      if (!xmas) node.querySelector('.mm-wisp-flame')!.setAttribute('d', flamePath(sway));
-      const look = {up: [0, -1.4], down: [0, 1.4], left: [-1.4, 0], right: [1.4, 0]}[g.dir];
-      node.querySelectorAll('.mm-wisp-pupil').forEach(pupil => pupil.setAttribute('transform', `translate(${look[0]} ${look[1]})`));
+      if (!xmas && wisp.flame) wisp.flame.setAttribute('d', flamePath(sway));
+      if (wisp.lastDir !== g.dir) {
+        wisp.lastDir = g.dir;
+        const look = g.dir === 'up' ? 'translate(0 -1.4)' : g.dir === 'down' ? 'translate(0 1.4)' : g.dir === 'left' ? 'translate(-1.4 0)' : 'translate(1.4 0)';
+        for (const pupil of wisp.pupils) pupil.setAttribute('transform', look);
+      }
     });
 
     // Text

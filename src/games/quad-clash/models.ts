@@ -245,7 +245,7 @@ export function buildFighter(kit: ModelKit, color: number, flashMat: THREE.Sprit
   const body = new THREE.Group();
   body.position.y = 0.84;
   const eggGeometry = (thetaStart = 0, thetaLength = Math.PI, outset = 0) => {
-    const geo = new THREE.SphereGeometry(1, 32, thetaLength < Math.PI ? 2 : 24, 0, Math.PI * 2, thetaStart, thetaLength);
+    const geo = new THREE.SphereGeometry(1, 16, thetaLength < Math.PI ? 2 : 12, 0, Math.PI * 2, thetaStart, thetaLength);
     const p = geo.getAttribute('position');
     for (let i = 0; i < p.count; i++) {
       const y = p.getY(i), taper = 1 - 0.12 * y;
@@ -262,7 +262,7 @@ export function buildFighter(kit: ModelKit, color: number, flashMat: THREE.Sprit
   // Shallow dark eyes follow the shell instead of protruding white eyeballs.
   const faceY = BODY.eye - body.position.y;
   for (const x of [-0.115, 0.115]) {
-    const eye = new THREE.Mesh(kit.geo('egg-eye', () => new THREE.SphereGeometry(1, 16, 12)), kit.mat(0x192738, { rough: 0.25 }));
+    const eye = new THREE.Mesh(kit.geo('egg-eye', () => new THREE.SphereGeometry(1, 8, 6)), kit.mat(0x192738, { rough: 0.25 }));
     eye.name = 'egg-eye';
     eye.position.set(x, faceY, -0.224); eye.scale.set(0.027, 0.046, 0.014);
     eye.rotation.y = x < 0 ? 0.15 : -0.15;

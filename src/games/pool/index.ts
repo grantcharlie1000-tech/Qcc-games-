@@ -9,6 +9,7 @@ import {POOL_ONLINE_VERSION,PoolGuest,PoolHost,parseCommand,parseHostMessage,typ
 import {RoomDialog,inviteCodeFromHash,relayOnlyFromHash} from '../../multiplayer/panel';
 import type {Room} from '../../multiplayer/room';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
+import {floorDpr,floorTierActive} from '../../perf/floor';
 import './style.css';
 import './christmas.css';
 
@@ -118,7 +119,10 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     const portrait=stage.width<stage.height*.95;
     if(root.dataset.orient!==(portrait?'portrait':'landscape'))root.dataset.orient=portrait?'portrait':'landscape';
     const r=box.getBoundingClientRect();
-    view=fitView(Math.max(50,r.width),Math.max(50,r.height),Math.min(2,window.devicePixelRatio||1),portrait);
+    const bw=Math.max(50,r.width),bh=Math.max(50,r.height);
+    const device=window.devicePixelRatio||1;
+    const dpr=floorTierActive()?floorDpr(bw,bh,device):Math.min(2,device);
+    view=fitView(bw,bh,dpr,portrait);
     canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;
     if(powerDrag)cancelPower();
     paint();
@@ -239,6 +243,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     }
     context.setLevel(state.breakShot&&!state.shots||over?`Rack ${state.rack}`:`Rack ${state.rack} · Shot ${state.shots+(state.phase==='moving'?0:1)}`);
     paint();
+    ensureLoop();
   }
   function stateChanged(announce=true){updateSuggestion();refresh(announce);save();}
 
@@ -542,7 +547,14 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     }
   }
   function nearestPocket(x:number,y:number){let best=0,d=Infinity;POCKETS.forEach((p,i)=>{const e=Math.hypot(p.x-x,p.y-y);if(e<d){d=e;best=i;}});return best;}
+  function needsLoop(){
+    return state.phase==='moving'||!!strikeAnim||sinking.length>0||(state.phase==='aim'&&!isHuman(state.turn)&&!online)||(state.phase==='aim'&&!!state.hand&&(canAct()||!!online?.guest?.hand));
+  }
+  function ensureLoop(){
+    if(!frame&&!paused&&!disposed&&needsLoop())frame=requestAnimationFrame(tick);
+  }
   function tick(now:number){
+    frame=0;
     if(paused||disposed)return;
     const elapsed=last?Math.min(.1,(now-last)/1000):0;last=now;
     if(strikeAnim&&now-strikeAnim.t>260)strikeAnim=null;
@@ -563,13 +575,14 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
       if(state.phase!=='moving')settled();
     }else aiTurn(now);
     paint();
-    frame=requestAnimationFrame(tick);
+    if(needsLoop())frame=requestAnimationFrame(tick);
+    else last=0;
   }
 
   const instance={
     dismissMenu(){return closeSpin();},
-    pause(){if(paused||disposed)return;cancelAll();closeSpin();paused=true;cancelAnimationFrame(frame);last=0;if(online?.host){online.host.paused=true;online.room.setPaused(true);online.roomPaused=true;}refresh();},
-    resume(){if(!paused||disposed)return;paused=false;last=0;if(online?.host){online.host.paused=false;online.roomPaused=false;online.room.setPaused(false);if(online.guestId)online.host.sync(1);}else if(online?.guest)online.room.send({t:'sync'});refresh();frame=requestAnimationFrame(tick);},
+    pause(){if(paused||disposed)return;cancelAll();closeSpin();paused=true;cancelAnimationFrame(frame);frame=0;last=0;if(online?.host){online.host.paused=true;online.room.setPaused(true);online.roomPaused=true;}refresh();},
+    resume(){if(!paused||disposed)return;paused=false;last=0;if(online?.host){online.host.paused=false;online.roomPaused=false;online.room.setPaused(false);if(online.guestId)online.host.sync(1);}else if(online?.guest)online.room.send({t:'sync'});refresh();ensureLoop();},
     restart(){
       if(online?.host){cancelAll();if(online.host.opponent){online.host.newRack();state=online.host.state;renderer.look.reset();refresh(true);}return;}
       if(online){context.setStatus('Only the host can start a new online rack.');return;}
@@ -600,7 +613,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     place(x:number,y:number){if(!state.hand||!canAct())return false;placeAt(x,y);return true;},
     raw(c:Action){return online?.guest?online.guest.command(c):false;}
   };
-  setPower(0);setSpin(0,0);layout();refresh();frame=requestAnimationFrame(tick);
+  setPower(0);setSpin(0,0);layout();refresh();ensureLoop();
   return instance;
 }};
 export default module;
