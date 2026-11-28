@@ -327,8 +327,9 @@ function keepRange(attribute: THREE.BufferAttribute, range: { start: number; cou
 
 /** Throws when a WebGL renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: { quality?: Quality } = {}): CrossyRoadScene {
-  const initialQuality: Quality = options.quality ?? 'high';
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !(floorTierActive() && initialQuality === 'low'), stencil: true, powerPreference: 'high-performance' });
+  // Antialiasing is chosen when the context is created. The floor opens on the low
+  // detail path, and switching to High cannot turn smoothing on after that.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true, powerPreference: 'high-performance' });
   renderer.setClearColor(CLEAR_COLOR);
   renderer.shadowMap.enabled = false;
   const scene = new THREE.Scene();

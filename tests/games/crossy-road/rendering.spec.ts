@@ -1,5 +1,6 @@
 import {test, expect, seedStudyTopic} from '../../fixtures';
 import {gameAction, openGameMenu} from '../../game-menu';
+import {floorBufferSize} from '../../../src/perf/floor';
 import {advance, carDeath, expectDeathCard, hook, openGame} from './helpers';
 
 test('a DSF3 phone fills the viewport and renders at a DPR-2-capped buffer with antialiasing', async ({browser}) => {
@@ -27,7 +28,9 @@ test('a DSF3 phone fills the viewport and renders at a DPR-2-capped buffer with 
     await page.setViewportSize({width: 844, height: 390});
     await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([1688, 780]);
     await hook(page).setQuality('low');
-    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([1266, 585]);
+    // Low quality on the floor stays inside the pixel cap. This layout fits at DPR 1.
+    const low = floorBufferSize(844, 390);
+    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([low.width, low.height]);
     await hook(page).setQuality('high');
     await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([1688, 780]);
     expect(errors).toEqual([]);

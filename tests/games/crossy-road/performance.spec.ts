@@ -99,7 +99,9 @@ test('HUD preserves its sampled appearance without copying or reading the Crossy
     const original=CanvasRenderingContext2D.prototype.drawImage;
     (window as unknown as {crossyHudCopies:number}).crossyHudCopies=0;
     CanvasRenderingContext2D.prototype.drawImage=(function(this:CanvasRenderingContext2D,...args:Parameters<typeof original>){
-      if(args[0] instanceof HTMLCanvasElement && args[0].matches('.hw-canvas'))
+      // The dock lens may upload a cropped 9-argument frame. The copy this test
+      // forbids is the full-canvas ink sample, which has no source rectangle.
+      if(args[0] instanceof HTMLCanvasElement && args[0].matches('.hw-canvas') && args.length<9)
         (window as unknown as {crossyHudCopies:number}).crossyHudCopies++;
       return original.apply(this,args);
     }) as typeof original;

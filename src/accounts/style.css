@@ -2,7 +2,7 @@
 #accounts-dialog{contain:paint}
 /* Entry can spring, but a logically closed account sheet must stop painting
    before guest/identity entry replaces the page underneath its exit layer. */
-#accounts-dialog:not([open]),#accounts-dialog:not([open])::backdrop{visibility:hidden;pointer-events:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:transparent;box-shadow:none}
+#accounts-dialog:not([open]),#accounts-dialog:not([open])::backdrop{display:none;overlay:none;transition:none;visibility:hidden;pointer-events:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:transparent;box-shadow:none}
 
 #accounts-dialog input:focus-visible{outline:2px solid #fff;outline-offset:2px}
 #accounts-dialog .account-local[hidden]{display:none}
