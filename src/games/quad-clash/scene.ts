@@ -9,6 +9,7 @@ import { createEffects } from './effects';
 import { applyGroundDetail, crestTexture, dotTexture, flashTexture, groundTexture, gunTexture, materialTexture, MATERIAL_SCALE, signTexture, skyTexture } from './textures';
 import { modeOf, mapOf } from './sim';
 import { weaponOf, type Fighter, type Match, type SimEvent } from './state';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import { QUALITY, renderRatio, type QualityId } from './performance';
 
 export interface SceneView {
@@ -87,7 +88,8 @@ function courtPaint(map: MapDef): THREE.BufferGeometry | null {
 export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean; quality?: QualityId }): ClashScene {
   let quality: QualityId=opts.quality??'potato';
   const profile=QUALITY[quality];
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+  // Phones at 2x and above get little from MSAA but pay for it on every pixel of a large buffer.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: (window.devicePixelRatio || 1) < 2, powerPreference: 'high-performance', stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -181,7 +183,34 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
   vmFlash.visible = false;
   vmRoot.add(vmFlash);
   let vmGunId: WeaponId | null = null, vmKick = 0, vmFlashT = 0, vmBob = 0, vmSwayX = 0, vmSwayY = 0, vmRaise = 0;
-  let shake = 0, lastWidth = 1, lastHeight = 1;
+  let shake = 0, lastWidth = 1, lastHeight = 1, laidOut = false;
+  function drawingRatio(width: number, height: number): number {
+    const device = window.devicePixelRatio || 1;
+    const picture = renderRatio(width, height, device, quality);
+    return floorTierActive() ? Math.min(picture, floorDpr(width, height, device)) : picture;
+  }
+  function applySize(): void {
+    const ratio = drawingRatio(lastWidth, lastHeight);
+    renderer.setPixelRatio(ratio);
+    renderer.setSize(lastWidth, lastHeight, false);
+    camera.aspect = lastWidth / lastHeight;
+    camera.updateProjectionMatrix();
+    api.stats.pixelRatio = ratio; api.stats.width = canvas.width; api.stats.height = canvas.height;
+  }
+  function beginFrame(): void {
+    if (typeof renderer.info.reset === 'function') renderer.info.reset();
+    if (typeof renderer.clear === 'function') renderer.clear();
+  }
+  function noteFrame(world: { calls: number; triangles: number } | null): void {
+    const calls = renderer.info.render.calls, triangles = renderer.info.render.triangles;
+    if (world && calls < world.calls) {
+      api.stats.calls = world.calls + calls;
+      api.stats.triangles = world.triangles + triangles;
+    } else {
+      api.stats.calls = calls;
+      api.stats.triangles = triangles;
+    }
+  }
   let deathCam = { active: false, t: 0, x: 0, y: 0, z: 0, killer: -1 };
 
   function vmGun(id: WeaponId) {
@@ -507,11 +536,9 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
     if (camera.fov !== fov) camera.fov = fov;
     if (wide) camera.setViewOffset(lastWidth, lastHeight, lastWidth * (lastWidth > 900 ? 0.2 : 0.12), 0, lastWidth, lastHeight);
     else camera.setViewOffset(lastWidth, lastHeight, 0, lastHeight * 0.25, lastWidth, lastHeight);
-    renderer.info.reset();
-    renderer.clear();
+    beginFrame();
     renderer.render(scene, camera);
-    api.stats.calls = renderer.info.render.calls;
-    api.stats.triangles = renderer.info.render.triangles;
+    noteFrame(null);
   }
 
   /** World position of the local player's muzzle, for tracer starts. */
@@ -615,29 +642,29 @@ export function createScene(canvas: HTMLCanvasElement, opts: { shadows: boolean;
       vmCamera.aspect = aspect;
       vmCamera.fov = aspect >= 1 ? 55 : 70;
       vmCamera.updateProjectionMatrix();
-      renderer.info.reset();
-      renderer.clear();
+      beginFrame();
       renderer.render(scene, camera);
-      renderer.clearDepth();
+      const world = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+      if (typeof renderer.clearDepth === 'function') renderer.clearDepth();
       renderer.render(vmScene, vmCamera);
-      api.stats.calls = renderer.info.render.calls;
-      api.stats.triangles = renderer.info.render.triangles;
+      noteFrame(world);
     },
     resize(width, height) {
       lastWidth = Math.max(1, width); lastHeight = Math.max(1, height);
-      const ratio = renderRatio(lastWidth,lastHeight,window.devicePixelRatio||1,quality);
-      renderer.setPixelRatio(ratio);
-      renderer.setSize(lastWidth, lastHeight, false);
-      camera.aspect = lastWidth / lastHeight;
-      camera.updateProjectionMatrix();
-      api.stats.pixelRatio = ratio;api.stats.width=canvas.width;api.stats.height=canvas.height;
+      laidOut = true;
+      applySize();
     },
     setQuality(next) {
       if(quality===next)return;
-      // Presets share textures, lighting, geometry and effects. Switching only changes pacing,
-      // so retain the arena's GPU resources instead of rebuilding them.
       quality=next;
+      const picture=QUALITY[quality];
+      const shadows=opts.shadows&&picture.shadows;
+      renderer.shadowMap.enabled=shadows;
+      sun.castShadow=shadows;
+      effects.setBudget(picture.effects);
       api.stats.quality=quality;
+      api.stats.shadows=shadows;
+      if(laidOut)applySize();
     },
     dispose() {
       clearDynamic();

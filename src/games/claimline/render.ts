@@ -3,6 +3,7 @@ import { ownerLoops } from './outline';
 import { christmas } from '../../festive/festive';
 import { FESTIVE_LOOK, bulbSprite, snowPattern, drawLightTrail, drawCandyRing } from './christmas-render';
 import { drawSantaHat } from '../../festive/art';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 
 /** Owner colours by player id (index 0 is unused). */
 export const PALETTE = ['#000000', '#ff4d6a', '#4b8dff', '#23b67f', '#ffad1f', '#9a5cff', '#00b3d6', '#ff7a3d'];
@@ -112,7 +113,8 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
 
   function resize(width: number, height: number) {
     view.width = Math.max(1, width); view.height = Math.max(1, height);
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const device = window.devicePixelRatio || 1;
+    dpr = floorTierActive() ? floorDpr(view.width, view.height, device) : Math.min(device, 2);
     canvas.width = Math.max(1, Math.round(view.width * dpr));
     canvas.height = Math.max(1, Math.round(view.height * dpr));
     view.headScreen = { x: view.width / 2, y: view.height / 2 };

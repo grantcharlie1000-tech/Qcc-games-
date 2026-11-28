@@ -26,6 +26,7 @@ import { ACT, shotDirs, weaponIdOf, type Match, type SimEvent } from './state';
 import { actDuration } from './sim';
 import { MARK, makeSprite, makeTextures, type TexId } from './textures';
 import { PANEL_T, cellCenter, eyeOf, panelPoint, trace, viewDir, type Panel, type World } from './world';
+import { FLOOR_DISPLAY_HZ, floorDpr, floorTierActive } from '../../perf/floor';
 
 export type QualityId = 'auto' | 'low' | 'high';
 export const QUALITIES: Record<QualityId, { name: string; fps: number; min: number; max: number; cap: number; density: number }> = {
@@ -94,6 +95,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   canvas.dataset.glassInk = 'textured';
   // No antialias buffer on the canvas: the post chain multisamples its own target, and the canvas only takes the composite.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, alpha: false });
+  renderer.shadowMap.enabled = false;
+  renderer.shadowMap.autoUpdate = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.autoClear = false;
@@ -102,7 +105,15 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   scene.fog = new THREE.Fog(HORIZON, 50, 260);
   const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 600);
   camera.rotation.order = 'YXZ';
-  let quality = initial, scale = QUALITIES[initial].max, width = 1, height = 1, slow = 0, fast = 0, frameMs = 16;
+  let quality = initial, width = 1, height = 1, slow = 0, fast = 0, frameMs = 16;
+  /** Selected preset. While the floor tier is on, every preset draws at 60 Hz inside the small picture. */
+  const FLOOR_PICTURE = { fps: FLOOR_DISPLAY_HZ, min: 0.35, max: 0.45, cap: 0.67, density: 0.25 };
+  function picture() {
+    const chosen = QUALITIES[quality];
+    if (!floorTierActive()) return chosen;
+    return { ...chosen, fps: Math.max(chosen.fps, FLOOR_PICTURE.fps), min: Math.min(chosen.min, FLOOR_PICTURE.min), max: Math.min(chosen.max, FLOOR_PICTURE.max), cap: Math.min(chosen.cap, FLOOR_PICTURE.cap), density: Math.min(chosen.density, FLOOR_PICTURE.density) };
+  }
+  let scale = picture().max;
 
   // ---- Level ----
   const bake: Bake = createBake();
@@ -361,12 +372,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   glass.onEvent = (stage, x, y, z) => { if (!cosmetic.size) return; evGlass.stage = stage; evGlass.x = x; evGlass.y = y; evGlass.z = z; emit(evGlass); };
   // The map-fill set pieces (render/setpieces.ts): modelled in three damage states, from the shot and blast events.
   // They join with the art layer, which leaves their placeholder boxes out.
-  fx.density = QUALITIES[quality].density;
+  fx.density = picture().density;
   scene.add(fx.group);
 
   let exposure = 0;
   // Post-processing by quality: the throttled setting keeps the grade and an edge pass but no bloom.
-  const postTier = (q: QualityId): PostTier => (q === 'low' ? 'low' : q === 'high' ? 'high' : 'medium');
+  const postTier = (q: QualityId): PostTier => (floorTierActive() || q === 'low' ? 'off' : q === 'high' ? 'high' : 'medium');
   const post = createPost(renderer, /[?&]post=off\b/.test(typeof location !== 'undefined' ? location.search : '') ? 'off' : postTier(initial));
   const drawSize = new THREE.Vector2();
 
@@ -384,7 +395,10 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // is resized, and adapt() does that at most once every few seconds.
   let sized = '';
   function applySize() {
-    const q = QUALITIES[quality], graded = post.tier !== 'off', ratio = Math.min(window.devicePixelRatio || 1, q.cap) * (graded ? 1 : scale), key = `${width}x${height}@${ratio}`;
+    const q = picture(), device = window.devicePixelRatio || 1, graded = post.tier !== 'off';
+    let ratio = Math.min(device, q.cap) * (graded ? 1 : scale);
+    if (floorTierActive()) ratio = Math.min(ratio, floorDpr(width, height, device));
+    const key = `${width}x${height}@${ratio}`;
     if (key !== sized) { sized = key; renderer.setPixelRatio(ratio); renderer.setSize(width, height, false); }
     renderer.getDrawingBufferSize(drawSize);
     const rw = Math.max(1, Math.round(drawSize.x * (graded ? scale : 1))), rh = Math.max(1, Math.round(drawSize.y * (graded ? scale : 1)));
@@ -611,9 +625,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
     else if (sharpFast > 6 && scale < q.max - 1e-3) { scale = Math.min(q.max, Math.round((scale + 0.1) * 100) / 100); sharpSlow = sharpFast = 0; applySize(); }
   }
   function adapt(dt: number) {
-    if (quality === 'auto') { autoLadder(dt); return; }
-    if (quality === 'high') { sharpGuard(dt); return; }
-    const q = QUALITIES[quality];
+    if (!floorTierActive() && quality === 'auto') { autoLadder(dt); return; }
+    if (!floorTierActive() && quality === 'high') { sharpGuard(dt); return; }
+    const q = picture();
     if (q.min === q.max) return;
     frameMs += (dt * 1000 - frameMs) * 0.08;
     const budget = 1000 / Math.min(q.fps, 60);
@@ -1104,10 +1118,12 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       applySize();
     },
     setQuality(q) {
-      quality = q; const d = QUALITIES[q];
+      quality = q;
+      if (!floorTierActive() && q === 'auto') { stats.auto = undefined; setStep(stats.software ? 0 : 1); return; }
+      const d = picture();
       stats.auto = undefined;
-      if (q === 'auto') { setStep(stats.software ? 0 : 1); return; }
-      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = sharpSlow = sharpFast = 0; fx.density = d.density; setCheap(q === 'low');
+      scale = Math.max(d.min, Math.min(d.max, d.max)); slow = fast = sharpSlow = sharpFast = 0; fx.density = d.density;
+      if (!floorTierActive()) setCheap(q === 'low');
       post.setTier(/[?&]post=off\b/.test(location.search) ? 'off' : postTier(q));
       applySize();
     },
@@ -1130,6 +1146,8 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       for (const m of [lambert, led, kitMat, ...kitMats, devMat, devScreen, devBar, ...devLeds, devGlow.material, devPool.material]) m.dispose();
       screenTex.dispose(); (devGlow.material as THREE.SpriteMaterial).map?.dispose(); (devPool.material as THREE.MeshBasicMaterial).map?.dispose();
       renderer.dispose();
+      // iOS keeps only a few live WebGL contexts; release this one now rather than at garbage collection.
+      renderer.forceContextLoss();
     },
   };
 }

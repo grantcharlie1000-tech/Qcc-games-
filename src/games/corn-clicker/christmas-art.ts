@@ -5,6 +5,7 @@
  * Presentation only: nothing here reads or changes game state.
  */
 import {COB,GOLDEN,type Sprite} from './sprites';
+import {floorTierActive} from '../../perf/floor';
 
 /** Overlays rows of `patch` onto `rows` at (x,y); '.' in the patch keeps the original pixel. */
 function stamp(rows:string[],x:number,y:number,patch:string[]){
@@ -47,11 +48,19 @@ const BULBS=['#ff4a5a','#ffd23c','#4ad06a','#4aa8ff'];
 const urls=new Map<string,string>();
 function lcg(seed:number){let s=seed>>>0;return ()=>((s=Math.imul(s,1664525)+1013904223>>>0)/4294967296);}
 export function festiveSceneUrl(stage:Stage):string {
- const key='xmas-scene-'+stage,cached=urls.get(key);if(cached!==undefined)return cached;
+ const floor=floorTierActive();
+ const key='xmas-scene-'+stage+(floor?'-f':''),cached=urls.get(key);if(cached!==undefined)return cached;
  if(typeof document==='undefined')return '';
  const W=192,H=120,c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');if(!ctx)return '';
  const t=SCENES[stage],rand=lcg(stage*977+5);
  const px=(x:number,y:number,col:string,w=1,h=1)=>{ctx.fillStyle=col;ctx.fillRect(x,y,w,h);};
+ if(floor){
+  px(0,0,t.sky[0]!,W,40);px(0,40,t.sky[t.sky.length-1]!,W,32);
+  px(0,58,t.far,W,14);px(0,68,t.near,W,8);px(0,72,t.ground[0]!,W,H-72);
+  px(148,8,'#fff4c2',20,16);
+  if(stage===0)px(18,50,'#b33a2c',16,22);
+  const url=c.toDataURL('image/png');urls.set(key,url);return url;
+ }
  const band=Math.ceil(72/t.sky.length);
  t.sky.forEach((col,i)=>{px(0,i*band,col,W,band);if(i>0)for(let x=0;x<W;x+=2)px(x+(i%2),i*band,t.sky[i-1]!);});
  if(stage>=2)for(let i=0;i<60;i++)px(Math.floor(rand()*W),Math.floor(rand()*60),rand()<.2?'#ffe9a8':'#ffffff');

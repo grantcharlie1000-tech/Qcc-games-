@@ -1,4 +1,5 @@
 import {COURSES,WIDTH,LENGTH,RADIUS,START,TARGET,type Puck,type Shot} from './model';
+import {floorDpr,floorTierActive} from '../../perf/floor';
 export type Vec = [number,number,number];
 export type Theme = 'pier'|'noel';
 export type PaintWorld = (p: Projector, theme: Theme,course:number) => void;
@@ -54,7 +55,8 @@ export class Court {
     this.last={pucks,seat,shot,tail};
     const {canvas}=this,w=canvas.clientWidth,h=canvas.clientHeight;
     if(!w||!h)return;
-    const dpr=Math.min(devicePixelRatio||1,2),key=[w,h,dpr,this.theme].join('/');
+    const raw=Math.min(devicePixelRatio||1,2);
+    const dpr=floorTierActive()?floorDpr(w,h,raw):raw,key=[w,h,dpr,this.theme,floorTierActive()?1:0].join('/');
     const ctx=canvas.getContext('2d')!;
     if(key!==this.sizeKey){
       this.sizeKey=key;canvas.width=this.cache.width=Math.round(w*dpr);canvas.height=this.cache.height=Math.round(h*dpr);
@@ -77,6 +79,7 @@ export class Court {
     visible.sort((a,b)=>a.z-b.z).forEach(puck=>this.puck(p,puck));
   }
   private board(p:Projector){
+    if(floorTierActive()){this.boardFloor(p);return;}
     const winter=this.theme==='noel',rail=winter?'#d94747':'#148b86';
     p.box(0,-.93,0,8.32,.77,18.64,rail,'#173e46','#28545a');
     p.box(0,-.61,0,8.34,.055,18.66,'#d2ad6c','#e1bb7e','#b5956a');
@@ -128,8 +131,28 @@ export class Court {
     p.c.fillStyle=winter?'#3b636b':'#795f40';p.c.textAlign='center';p.c.font='bold '+Math.max(8,p.scale*.22)+'px Georgia';
     p.c.fillText('D R I F T   C L U B',0,0);p.c.restore();
   }
+  /** Deck, rails, rings, pegs, and the gate. One solid deck instead of plank-by-plank grain. */
+  private boardFloor(p:Projector){
+    const winter=this.theme==='noel',rail=winter?'#d94747':'#148b86';
+    p.box(0,-.61,0,8.34,.2,18.66,'#d2ad6c','#e1bb7e','#b5956a');
+    for(const side of [-1,1])p.box(side*(WIDTH+.15),.003,0,.3,.17,18.52,rail,'#214e53','#1c6062');
+    const course=COURSES[this.course],cx=course.targetX;
+    p.disc(cx,.016,TARGET,3.25,'#22585a');
+    p.disc(cx,.02,TARGET,.72,'#ffc456');
+    for(const [x,z] of course.pegs)p.disc(x,.2,z,.34,'#e5a848');
+    if(course.gate){const [x,z]=course.gate;p.box(x,.2,z,1.6,.5,.1,'#fff4c9','#a37022','#c48826');}
+    if(course.current){
+      const dir=Math.sign(course.current);
+      for(let i=0;i<4;i++)p.line([-2+i*1.3,.022,0],[-2+i*1.3+dir*.45,.022,.55],'#538c936b',2);
+    }
+  }
   private puck(p:Projector,b:Puck){
     const {x,z,seat}=b;
+    if(floorTierActive()){
+      p.disc(x+.06,.02,z+.08,RADIUS,'#24494d55');
+      p.disc(x,.3,z,RADIUS,seat?'#57b8dc':'#fa7754');
+      return;
+    }
     p.disc(x+.08,.02,z+.11,RADIUS*1.08,'#24494d66');
     const rim=seat?'#144b62':'#9e4132',top=seat?'#57b8dc':'#fa7754';
     const sides=Array.from({length:15},(_,i)=>Math.PI*(i/14));

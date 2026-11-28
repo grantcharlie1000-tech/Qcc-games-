@@ -1,0 +1,8157 @@
+{
+  "generatedAt": "2026-11-16T07:04:22.700Z",
+  "label": "baseline-validation",
+  "sourceSha256": "a2331ac5ceb1f4bd4ce8f1bda08fc2c1381ad1448a21204b9346f3c3117ef606",
+  "corpusSha256": "198c434a4cdb7d041d212817a98203bcf4cebf20d29a8eadc71c26120bb6bf80",
+  "oracle": {
+    "name": "Stockfish 19 Lite",
+    "depth": 10,
+    "hashMiB": 16,
+    "threads": 1,
+    "jsSha256": "ccb130d7ff29408531c47d859a49f91d59d4f482d05a53eb1a3231a4f624c91a",
+    "wasmSha256": "ee4f115bdb2d32cadf96cada104a05b5ec257d7ad6f57582190b49bc71f096de"
+  },
+  "method": "Paired same-position comparison with actual Chess.com rapid 800-1000 human moves. Eight fixed bot seeds, normal 75ms worker compute budget, Stockfish 19 Lite depth 10 independent unrestricted/forced root searches, cleared hash each search. Loss capped at 1000cp including mate transitions. Games split before tuning. This measures move quality on this corpus, not a competitive platform rating. No skipped positions or failures.",
+  "environment": {
+    "node": "v24.17.0",
+    "cpu": "Intel(R) Core(TM) i5-7300HQ CPU @ 2.50GHz",
+    "logicalCpus": 4,
+    "loadavg": [
+      0,
+      0,
+      0
+    ]
+  },
+  "elapsedMs": 39751.28569999999,
+  "failures": 0,
+  "summary": {
+    "validation": {
+      "positions": 52,
+      "humanMeanCappedCpLoss": 71.48076923076923,
+      "botMeanCappedCpLoss": 213.65384615384616,
+      "ratio": 2.9889695991390908,
+      "humanBlunderFraction": 0.11538461538461539,
+      "botBlunderFraction": 0.3125
+    }
+  },
+  "timing": {
+    "moves": 416,
+    "p50Ms": 75.67099999999846,
+    "p95Ms": 78.9403999999995,
+    "maxMs": 85.28839999999764
+  },
+  "rows": [
+    {
+      "id": "game-2-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/163925342538",
+      "whiteRating": 934,
+      "blackRating": 913,
+      "rating": 934,
+      "timeControl": "900+10",
+      "fen": "rn2kbnr/pp3ppp/2pp1q2/4p3/4PP2/2N2Q1P/PPPP2P1/R1B1KB1R w KQkq - 1 7",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "b1c3",
+        "c7c6",
+        "f2f4",
+        "d7d6",
+        "g1f3",
+        "c8g4",
+        "h2h3",
+        "g4f3",
+        "d1f3",
+        "d8f6"
+      ],
+      "humanMove": "f1c4",
+      "best": {
+        "kind": "cp",
+        "value": 106,
+        "depth": 10,
+        "bestmove": "g2g3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 53,
+        "depth": 10,
+        "bestmove": "f1c4"
+      },
+      "humanLoss": 53,
+      "botLoss": 125.625,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d2d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 60,
+            "depth": 10,
+            "bestmove": "d2d4"
+          },
+          "loss": 46,
+          "nodes": 16
+        },
+        {
+          "seed": 1052660,
+          "move": "f1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 86,
+            "depth": 10,
+            "bestmove": "f1e2"
+          },
+          "loss": 20,
+          "nodes": 115
+        },
+        {
+          "seed": 1118197,
+          "move": "f4f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 97,
+            "depth": 10,
+            "bestmove": "f4f5"
+          },
+          "loss": 9,
+          "nodes": 165
+        },
+        {
+          "seed": 1183734,
+          "move": "a1b1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 32,
+            "depth": 10,
+            "bestmove": "a1b1"
+          },
+          "loss": 74,
+          "nodes": 180
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 31,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 75,
+          "nodes": 180
+        },
+        {
+          "seed": 1314808,
+          "move": "f1a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -575,
+            "depth": 10,
+            "bestmove": "f1a6"
+          },
+          "loss": 681,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "f4f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 97,
+            "depth": 10,
+            "bestmove": "f4f5"
+          },
+          "loss": 9,
+          "nodes": 180
+        },
+        {
+          "seed": 1445882,
+          "move": "f1d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 15,
+            "depth": 10,
+            "bestmove": "f1d3"
+          },
+          "loss": 91,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/163925342538",
+      "whiteRating": 934,
+      "blackRating": 913,
+      "rating": 913,
+      "timeControl": "900+10",
+      "fen": "r3kbnr/pp1n1p1p/3p1q2/2p3p1/2BPPp2/2P2Q1P/PP2N1P1/R1B2R1K b kq - 0 13",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "b1c3",
+        "c7c6",
+        "f2f4",
+        "d7d6",
+        "g1f3",
+        "c8g4",
+        "h2h3",
+        "g4f3",
+        "d1f3",
+        "d8f6",
+        "f1c4",
+        "e5f4",
+        "e1g1",
+        "g7g5",
+        "d2d3",
+        "f6d4",
+        "g1h1",
+        "b8d7",
+        "c3e2",
+        "d4f6",
+        "d3d4",
+        "c6c5",
+        "c2c3"
+      ],
+      "humanMove": "e8c8",
+      "best": {
+        "kind": "cp",
+        "value": -184,
+        "depth": 10,
+        "bestmove": "f6g6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -177,
+        "depth": 10,
+        "bestmove": "e8c8"
+      },
+      "humanLoss": 0,
+      "botLoss": 159.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -249,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 65,
+          "nodes": 110
+        },
+        {
+          "seed": 1052660,
+          "move": "f6e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -172,
+            "depth": 10,
+            "bestmove": "f6e7"
+          },
+          "loss": 0,
+          "nodes": 125
+        },
+        {
+          "seed": 1118197,
+          "move": "d6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -471,
+            "depth": 10,
+            "bestmove": "d6d5"
+          },
+          "loss": 287,
+          "nodes": 32
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -602,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 418,
+          "nodes": 125
+        },
+        {
+          "seed": 1249271,
+          "move": "a8d8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -262,
+            "depth": 10,
+            "bestmove": "a8d8"
+          },
+          "loss": 78,
+          "nodes": 130
+        },
+        {
+          "seed": 1314808,
+          "move": "c5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -249,
+            "depth": 10,
+            "bestmove": "c5d4"
+          },
+          "loss": 65,
+          "nodes": 24
+        },
+        {
+          "seed": 1380345,
+          "move": "d6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -471,
+            "depth": 10,
+            "bestmove": "d6d5"
+          },
+          "loss": 287,
+          "nodes": 13
+        },
+        {
+          "seed": 1445882,
+          "move": "f8h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -260,
+            "depth": 10,
+            "bestmove": "f8h6"
+          },
+          "loss": 76,
+          "nodes": 90
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/163925342538",
+      "whiteRating": 934,
+      "blackRating": 913,
+      "rating": 934,
+      "timeControl": "900+10",
+      "fen": "3r1b1r/2k1np1p/1p1p1q2/pB1Pn1p1/PPp1Pp2/2P4P/4NQP1/R1B2R1K w - - 0 20",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "b1c3",
+        "c7c6",
+        "f2f4",
+        "d7d6",
+        "g1f3",
+        "c8g4",
+        "h2h3",
+        "g4f3",
+        "d1f3",
+        "d8f6",
+        "f1c4",
+        "e5f4",
+        "e1g1",
+        "g7g5",
+        "d2d3",
+        "f6d4",
+        "g1h1",
+        "b8d7",
+        "c3e2",
+        "d4f6",
+        "d3d4",
+        "c6c5",
+        "c2c3",
+        "e8c8",
+        "a2a4",
+        "a7a5",
+        "f3f2",
+        "b7b6",
+        "c4a6",
+        "c8c7",
+        "a6b5",
+        "g8e7",
+        "d4d5",
+        "d7e5",
+        "b2b4",
+        "c5c4"
+      ],
+      "humanMove": "f1d1",
+      "best": {
+        "kind": "cp",
+        "value": 450,
+        "depth": 10,
+        "bestmove": "b4a5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 204,
+        "depth": 10,
+        "bestmove": "f1d1"
+      },
+      "humanLoss": 246,
+      "botLoss": 343.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b5c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 21,
+            "depth": 10,
+            "bestmove": "b5c4"
+          },
+          "loss": 429,
+          "nodes": 30
+        },
+        {
+          "seed": 1052660,
+          "move": "f2e1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 169,
+            "depth": 10,
+            "bestmove": "f2e1"
+          },
+          "loss": 281,
+          "nodes": 138
+        },
+        {
+          "seed": 1118197,
+          "move": "a1a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 209,
+            "depth": 10,
+            "bestmove": "a1a3"
+          },
+          "loss": 241,
+          "nodes": 113
+        },
+        {
+          "seed": 1183734,
+          "move": "a1b1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 283,
+            "depth": 10,
+            "bestmove": "a1b1"
+          },
+          "loss": 167,
+          "nodes": 123
+        },
+        {
+          "seed": 1249271,
+          "move": "f1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 168,
+            "depth": 10,
+            "bestmove": "f1g1"
+          },
+          "loss": 282,
+          "nodes": 120
+        },
+        {
+          "seed": 1314808,
+          "move": "e2f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 180,
+            "depth": 10,
+            "bestmove": "e2f4"
+          },
+          "loss": 270,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "h3h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 155,
+            "depth": 10,
+            "bestmove": "h3h4"
+          },
+          "loss": 295,
+          "nodes": 123
+        },
+        {
+          "seed": 1445882,
+          "move": "f2b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -336,
+            "depth": 10,
+            "bestmove": "f2b6"
+          },
+          "loss": 786,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-2-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/163925342538",
+      "whiteRating": 934,
+      "blackRating": 913,
+      "rating": 913,
+      "timeControl": "900+10",
+      "fen": "3r3r/2k1npb1/3pNq1p/p2P2p1/P1n1P3/2P2p1P/5QP1/1RBR3K b - - 1 25",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "b1c3",
+        "c7c6",
+        "f2f4",
+        "d7d6",
+        "g1f3",
+        "c8g4",
+        "h2h3",
+        "g4f3",
+        "d1f3",
+        "d8f6",
+        "f1c4",
+        "e5f4",
+        "e1g1",
+        "g7g5",
+        "d2d3",
+        "f6d4",
+        "g1h1",
+        "b8d7",
+        "c3e2",
+        "d4f6",
+        "d3d4",
+        "c6c5",
+        "c2c3",
+        "e8c8",
+        "a2a4",
+        "a7a5",
+        "f3f2",
+        "b7b6",
+        "c4a6",
+        "c8c7",
+        "a6b5",
+        "g8e7",
+        "d4d5",
+        "d7e5",
+        "b2b4",
+        "c5c4",
+        "f1d1",
+        "f8g7",
+        "e2d4",
+        "h7h6",
+        "b4a5",
+        "b6a5",
+        "a1b1",
+        "f4f3",
+        "b5c4",
+        "e5c4",
+        "d4e6"
+      ],
+      "humanMove": "c7d7",
+      "best": {
+        "kind": "cp",
+        "value": -133,
+        "depth": 10,
+        "bestmove": "c7d7"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -98,
+        "depth": 10,
+        "bestmove": "c7d7"
+      },
+      "humanLoss": 0,
+      "botLoss": 1000,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c7c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1535,
+            "depth": 10,
+            "bestmove": "c7c8"
+          },
+          "loss": 1000,
+          "nodes": 4
+        },
+        {
+          "seed": 1052660,
+          "move": "f7e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f7e6"
+          },
+          "loss": 1000,
+          "nodes": 20
+        },
+        {
+          "seed": 1118197,
+          "move": "f7e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f7e6"
+          },
+          "loss": 1000,
+          "nodes": 4
+        },
+        {
+          "seed": 1183734,
+          "move": "f6e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f6e6"
+          },
+          "loss": 1000,
+          "nodes": 4
+        },
+        {
+          "seed": 1249271,
+          "move": "f7e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f7e6"
+          },
+          "loss": 1000,
+          "nodes": 20
+        },
+        {
+          "seed": 1314808,
+          "move": "f6e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f6e6"
+          },
+          "loss": 1000,
+          "nodes": 4
+        },
+        {
+          "seed": 1380345,
+          "move": "f7e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f7e6"
+          },
+          "loss": 1000,
+          "nodes": 20
+        },
+        {
+          "seed": 1445882,
+          "move": "f7e6",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f7e6"
+          },
+          "loss": 1000,
+          "nodes": 20
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/144604479696",
+      "whiteRating": 976,
+      "blackRating": 972,
+      "rating": 976,
+      "timeControl": "900+10",
+      "fen": "r2qkbnr/pp3ppp/2n1p3/1BppPb2/3P4/2P2N2/PP3PPP/RNBQK2R w KQkq - 0 7",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "c6c5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "f1b5",
+        "e7e6"
+      ],
+      "humanMove": "e1g1",
+      "best": {
+        "kind": "cp",
+        "value": 18,
+        "depth": 10,
+        "bestmove": "e1g1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 21,
+        "depth": 10,
+        "bestmove": "e1g1"
+      },
+      "humanLoss": 0,
+      "botLoss": 35.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b5d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -29,
+            "depth": 10,
+            "bestmove": "b5d3"
+          },
+          "loss": 47,
+          "nodes": 80
+        },
+        {
+          "seed": 1052660,
+          "move": "c1e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 24,
+            "depth": 10,
+            "bestmove": "c1e3"
+          },
+          "loss": 0,
+          "nodes": 90
+        },
+        {
+          "seed": 1118197,
+          "move": "c1g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -39,
+            "depth": 10,
+            "bestmove": "c1g5"
+          },
+          "loss": 57,
+          "nodes": 89
+        },
+        {
+          "seed": 1183734,
+          "move": "h1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -70,
+            "depth": 10,
+            "bestmove": "h1g1"
+          },
+          "loss": 88,
+          "nodes": 94
+        },
+        {
+          "seed": 1249271,
+          "move": "c1e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 24,
+            "depth": 10,
+            "bestmove": "c1e3"
+          },
+          "loss": 0,
+          "nodes": 89
+        },
+        {
+          "seed": 1314808,
+          "move": "b5c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1,
+            "depth": 10,
+            "bestmove": "b5c6"
+          },
+          "loss": 19,
+          "nodes": 40
+        },
+        {
+          "seed": 1380345,
+          "move": "b1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 0,
+            "depth": 10,
+            "bestmove": "b1d2"
+          },
+          "loss": 18,
+          "nodes": 90
+        },
+        {
+          "seed": 1445882,
+          "move": "c1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -40,
+            "depth": 10,
+            "bestmove": "c1d2"
+          },
+          "loss": 58,
+          "nodes": 40
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/144604479696",
+      "whiteRating": 976,
+      "blackRating": 972,
+      "rating": 972,
+      "timeControl": "900+10",
+      "fen": "r2q1rk1/1p2bppp/p1n1p1n1/3pPb2/B2P4/5NNP/PP3PP1/R1BQ1RK1 b - - 1 13",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "c6c5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "f1b5",
+        "e7e6",
+        "e1g1",
+        "c5d4",
+        "c3d4",
+        "g8e7",
+        "b1c3",
+        "e7g6",
+        "h2h3",
+        "f8e7",
+        "c3e2",
+        "e8g8",
+        "e2g3",
+        "a7a6",
+        "b5a4"
+      ],
+      "humanMove": "b7b5",
+      "best": {
+        "kind": "cp",
+        "value": -8,
+        "depth": 10,
+        "bestmove": "f5e4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -73,
+        "depth": 10,
+        "bestmove": "b7b5"
+      },
+      "humanLoss": 65,
+      "botLoss": 223.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c6b8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -206,
+            "depth": 10,
+            "bestmove": "c6b8"
+          },
+          "loss": 198,
+          "nodes": 125
+        },
+        {
+          "seed": 1052660,
+          "move": "f5g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -738,
+            "depth": 10,
+            "bestmove": "f5g4"
+          },
+          "loss": 730,
+          "nodes": 26
+        },
+        {
+          "seed": 1118197,
+          "move": "g6h8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -158,
+            "depth": 10,
+            "bestmove": "g6h8"
+          },
+          "loss": 150,
+          "nodes": 125
+        },
+        {
+          "seed": 1183734,
+          "move": "a8a7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -167,
+            "depth": 10,
+            "bestmove": "a8a7"
+          },
+          "loss": 159,
+          "nodes": 125
+        },
+        {
+          "seed": 1249271,
+          "move": "e7b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -165,
+            "depth": 10,
+            "bestmove": "e7b4"
+          },
+          "loss": 157,
+          "nodes": 125
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -147,
+            "depth": 10,
+            "bestmove": "h7h6"
+          },
+          "loss": 139,
+          "nodes": 125
+        },
+        {
+          "seed": 1380345,
+          "move": "h7h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -147,
+            "depth": 10,
+            "bestmove": "h7h6"
+          },
+          "loss": 139,
+          "nodes": 130
+        },
+        {
+          "seed": 1445882,
+          "move": "f8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -124,
+            "depth": 10,
+            "bestmove": "f8e8"
+          },
+          "loss": 116,
+          "nodes": 140
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/144604479696",
+      "whiteRating": 976,
+      "blackRating": 972,
+      "rating": 976,
+      "timeControl": "900+10",
+      "fen": "2r2rk1/3qbppp/2n5/p2pPp2/1p1P3n/PB1Q1N1P/1P3PP1/R1B2RK1 w - - 2 20",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "c6c5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "f1b5",
+        "e7e6",
+        "e1g1",
+        "c5d4",
+        "c3d4",
+        "g8e7",
+        "b1c3",
+        "e7g6",
+        "h2h3",
+        "f8e7",
+        "c3e2",
+        "e8g8",
+        "e2g3",
+        "a7a6",
+        "b5a4",
+        "b7b5",
+        "a4b3",
+        "a8c8",
+        "g3f5",
+        "e6f5",
+        "b3c2",
+        "d8d7",
+        "a2a3",
+        "a6a5",
+        "d1d3",
+        "b5b4",
+        "c2b3",
+        "g6h4"
+      ],
+      "humanMove": "f3h4",
+      "best": {
+        "kind": "cp",
+        "value": 205,
+        "depth": 10,
+        "bestmove": "f3h4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 217,
+        "depth": 10,
+        "bestmove": "f3h4"
+      },
+      "humanLoss": 0,
+      "botLoss": 378.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d3e4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -746,
+            "depth": 10,
+            "bestmove": "d3e4"
+          },
+          "loss": 951,
+          "nodes": 27
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -163,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 368,
+          "nodes": 140
+        },
+        {
+          "seed": 1118197,
+          "move": "a3b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -17,
+            "depth": 10,
+            "bestmove": "a3b4"
+          },
+          "loss": 222,
+          "nodes": 140
+        },
+        {
+          "seed": 1183734,
+          "move": "d3b1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -308,
+            "depth": 10,
+            "bestmove": "d3b1"
+          },
+          "loss": 513,
+          "nodes": 140
+        },
+        {
+          "seed": 1249271,
+          "move": "d3d1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -33,
+            "depth": 10,
+            "bestmove": "d3d1"
+          },
+          "loss": 238,
+          "nodes": 140
+        },
+        {
+          "seed": 1314808,
+          "move": "f3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 18,
+            "depth": 10,
+            "bestmove": "f3d2"
+          },
+          "loss": 187,
+          "nodes": 135
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -163,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 368,
+          "nodes": 135
+        },
+        {
+          "seed": 1445882,
+          "move": "c1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 25,
+            "depth": 10,
+            "bestmove": "c1d2"
+          },
+          "loss": 180,
+          "nodes": 135
+        }
+      ]
+    },
+    {
+      "id": "game-4-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/144604479696",
+      "whiteRating": 976,
+      "blackRating": 972,
+      "rating": 972,
+      "timeControl": "900+10",
+      "fen": "2r2rk1/3qnp2/7p/p2pPpp1/1p1P3P/PB2Q1P1/1P4P1/R4RK1 b - - 0 25",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "c6c5",
+        "c2c3",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "f1b5",
+        "e7e6",
+        "e1g1",
+        "c5d4",
+        "c3d4",
+        "g8e7",
+        "b1c3",
+        "e7g6",
+        "h2h3",
+        "f8e7",
+        "c3e2",
+        "e8g8",
+        "e2g3",
+        "a7a6",
+        "b5a4",
+        "b7b5",
+        "a4b3",
+        "a8c8",
+        "g3f5",
+        "e6f5",
+        "b3c2",
+        "d8d7",
+        "a2a3",
+        "a6a5",
+        "d1d3",
+        "b5b4",
+        "c2b3",
+        "g6h4",
+        "f3h4",
+        "e7h4",
+        "c1f4",
+        "g7g5",
+        "f4g3",
+        "h4g3",
+        "f2g3",
+        "c6e7",
+        "d3e3",
+        "h7h6",
+        "h3h4"
+      ],
+      "humanMove": "a5a4",
+      "best": {
+        "kind": "cp",
+        "value": -169,
+        "depth": 10,
+        "bestmove": "a5a4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -217,
+        "depth": 10,
+        "bestmove": "a5a4"
+      },
+      "humanLoss": 48,
+      "botLoss": 132.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f5f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -176,
+            "depth": 10,
+            "bestmove": "f5f4"
+          },
+          "loss": 7,
+          "nodes": 135
+        },
+        {
+          "seed": 1052660,
+          "move": "f8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -390,
+            "depth": 10,
+            "bestmove": "f8e8"
+          },
+          "loss": 221,
+          "nodes": 135
+        },
+        {
+          "seed": 1118197,
+          "move": "c8c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -321,
+            "depth": 10,
+            "bestmove": "c8c7"
+          },
+          "loss": 152,
+          "nodes": 135
+        },
+        {
+          "seed": 1183734,
+          "move": "g8h7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -302,
+            "depth": 10,
+            "bestmove": "g8h7"
+          },
+          "loss": 133,
+          "nodes": 130
+        },
+        {
+          "seed": 1249271,
+          "move": "c8c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -313,
+            "depth": 10,
+            "bestmove": "c8c6"
+          },
+          "loss": 144,
+          "nodes": 135
+        },
+        {
+          "seed": 1314808,
+          "move": "d7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -252,
+            "depth": 10,
+            "bestmove": "d7b5"
+          },
+          "loss": 83,
+          "nodes": 130
+        },
+        {
+          "seed": 1380345,
+          "move": "e7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -359,
+            "depth": 10,
+            "bestmove": "e7g6"
+          },
+          "loss": 190,
+          "nodes": 135
+        },
+        {
+          "seed": 1445882,
+          "move": "g8h7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -302,
+            "depth": 10,
+            "bestmove": "g8h7"
+          },
+          "loss": 133,
+          "nodes": 130
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186418522252",
+      "whiteRating": 893,
+      "blackRating": 924,
+      "rating": 893,
+      "timeControl": "600",
+      "fen": "rnb1k1nr/pp1p1p1p/2pb2q1/4p1B1/3PP3/2N2N2/PPP1BPPP/R2QK2R w KQkq - 1 7",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1e2",
+        "g7g5",
+        "d2d4",
+        "f8d6",
+        "c1g5",
+        "f6g6"
+      ],
+      "humanMove": "d4d5",
+      "best": {
+        "kind": "cp",
+        "value": 664,
+        "depth": 10,
+        "bestmove": "d4e5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 394,
+        "depth": 10,
+        "bestmove": "d4d5"
+      },
+      "humanLoss": 270,
+      "botLoss": 136.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -59,
+            "depth": 10,
+            "bestmove": "f3d2"
+          },
+          "loss": 723,
+          "nodes": 165
+        },
+        {
+          "seed": 1052660,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 605,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 59,
+          "nodes": 165
+        },
+        {
+          "seed": 1118197,
+          "move": "d4e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 643,
+            "depth": 10,
+            "bestmove": "d4e5"
+          },
+          "loss": 21,
+          "nodes": 165
+        },
+        {
+          "seed": 1183734,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 628,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 36,
+          "nodes": 165
+        },
+        {
+          "seed": 1249271,
+          "move": "d4e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 643,
+            "depth": 10,
+            "bestmove": "d4e5"
+          },
+          "loss": 21,
+          "nodes": 165
+        },
+        {
+          "seed": 1314808,
+          "move": "d4e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 643,
+            "depth": 10,
+            "bestmove": "d4e5"
+          },
+          "loss": 21,
+          "nodes": 34
+        },
+        {
+          "seed": 1380345,
+          "move": "c3a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 454,
+            "depth": 10,
+            "bestmove": "c3a4"
+          },
+          "loss": 210,
+          "nodes": 160
+        },
+        {
+          "seed": 1445882,
+          "move": "e1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 740,
+            "depth": 10,
+            "bestmove": "e1g1"
+          },
+          "loss": 0,
+          "nodes": 165
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186418522252",
+      "whiteRating": 893,
+      "blackRating": 924,
+      "rating": 924,
+      "timeControl": "600",
+      "fen": "rnb1k1R1/pp1p1p2/2pb1n1p/3Pp2q/4P2P/2N2N2/PPPBBP2/R2QK3 b Qq - 0 13",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1e2",
+        "g7g5",
+        "d2d4",
+        "f8d6",
+        "c1g5",
+        "f6g6",
+        "d4d5",
+        "h7h6",
+        "g5d2",
+        "g6g2",
+        "h1f1",
+        "g8f6",
+        "f1g1",
+        "g2h3",
+        "g1g3",
+        "h3h5",
+        "h2h4",
+        "h8g8",
+        "g3g8"
+      ],
+      "humanMove": "f6g8",
+      "best": {
+        "kind": "cp",
+        "value": -319,
+        "depth": 10,
+        "bestmove": "f6g8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -289,
+        "depth": 10,
+        "bestmove": "f6g8"
+      },
+      "humanLoss": 0,
+      "botLoss": 178.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f6g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -289,
+            "depth": 10,
+            "bestmove": "f6g8"
+          },
+          "loss": 0,
+          "nodes": 3
+        },
+        {
+          "seed": 1052660,
+          "move": "f6g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -289,
+            "depth": 10,
+            "bestmove": "f6g8"
+          },
+          "loss": 0,
+          "nodes": 15
+        },
+        {
+          "seed": 1118197,
+          "move": "d6f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1034,
+            "depth": 10,
+            "bestmove": "d6f8"
+          },
+          "loss": 715,
+          "nodes": 15
+        },
+        {
+          "seed": 1183734,
+          "move": "d6f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1034,
+            "depth": 10,
+            "bestmove": "d6f8"
+          },
+          "loss": 715,
+          "nodes": 15
+        },
+        {
+          "seed": 1249271,
+          "move": "f6g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -289,
+            "depth": 10,
+            "bestmove": "f6g8"
+          },
+          "loss": 0,
+          "nodes": 15
+        },
+        {
+          "seed": 1314808,
+          "move": "f6g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -289,
+            "depth": 10,
+            "bestmove": "f6g8"
+          },
+          "loss": 0,
+          "nodes": 15
+        },
+        {
+          "seed": 1380345,
+          "move": "f6g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -289,
+            "depth": 10,
+            "bestmove": "f6g8"
+          },
+          "loss": 0,
+          "nodes": 15
+        },
+        {
+          "seed": 1445882,
+          "move": "f6g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -289,
+            "depth": 10,
+            "bestmove": "f6g8"
+          },
+          "loss": 0,
+          "nodes": 15
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186418522252",
+      "whiteRating": 893,
+      "blackRating": 924,
+      "rating": 893,
+      "timeControl": "600",
+      "fen": "rnb1k3/p2pbp2/2p2n1p/4p3/4P3/2N1B3/PPPQBP1q/2K1N1R1 w q - 6 20",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1e2",
+        "g7g5",
+        "d2d4",
+        "f8d6",
+        "c1g5",
+        "f6g6",
+        "d4d5",
+        "h7h6",
+        "g5d2",
+        "g6g2",
+        "h1f1",
+        "g8f6",
+        "f1g1",
+        "g2h3",
+        "g1g3",
+        "h3h5",
+        "h2h4",
+        "h8g8",
+        "g3g8",
+        "f6g8",
+        "d5c6",
+        "b7c6",
+        "d2e3",
+        "d6e7",
+        "d1d2",
+        "e7h4",
+        "e1c1",
+        "h4e7",
+        "d1g1",
+        "g8f6",
+        "f3e1",
+        "h5h2"
+      ],
+      "humanMove": "g1g2",
+      "best": {
+        "kind": "cp",
+        "value": 310,
+        "depth": 10,
+        "bestmove": "e1f3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 259,
+        "depth": 10,
+        "bestmove": "g1g2"
+      },
+      "humanLoss": 51,
+      "botLoss": 216.625,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g1g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 183,
+            "depth": 10,
+            "bestmove": "g1g3"
+          },
+          "loss": 127,
+          "nodes": 163
+        },
+        {
+          "seed": 1052660,
+          "move": "e3a7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -503,
+            "depth": 10,
+            "bestmove": "e3a7"
+          },
+          "loss": 813,
+          "nodes": 47
+        },
+        {
+          "seed": 1118197,
+          "move": "f2f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 415,
+            "depth": 10,
+            "bestmove": "f2f4"
+          },
+          "loss": 0,
+          "nodes": 163
+        },
+        {
+          "seed": 1183734,
+          "move": "g1f1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 152,
+            "depth": 10,
+            "bestmove": "g1f1"
+          },
+          "loss": 158,
+          "nodes": 160
+        },
+        {
+          "seed": 1249271,
+          "move": "f2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 214,
+            "depth": 10,
+            "bestmove": "f2f3"
+          },
+          "loss": 96,
+          "nodes": 158
+        },
+        {
+          "seed": 1314808,
+          "move": "g1g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 259,
+            "depth": 10,
+            "bestmove": "g1g2"
+          },
+          "loss": 51,
+          "nodes": 163
+        },
+        {
+          "seed": 1380345,
+          "move": "c3d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -51,
+            "depth": 10,
+            "bestmove": "c3d5"
+          },
+          "loss": 361,
+          "nodes": 32
+        },
+        {
+          "seed": 1445882,
+          "move": "g1g3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 183,
+            "depth": 10,
+            "bestmove": "g1g3"
+          },
+          "loss": 127,
+          "nodes": 158
+        }
+      ]
+    },
+    {
+      "id": "game-6-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186418522252",
+      "whiteRating": 893,
+      "blackRating": 924,
+      "rating": 924,
+      "timeControl": "600",
+      "fen": "2kr4/p2pbp1n/n1p5/4P3/4P3/2N1B2q/PPPQ2R1/2K1N3 b - - 2 25",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1e2",
+        "g7g5",
+        "d2d4",
+        "f8d6",
+        "c1g5",
+        "f6g6",
+        "d4d5",
+        "h7h6",
+        "g5d2",
+        "g6g2",
+        "h1f1",
+        "g8f6",
+        "f1g1",
+        "g2h3",
+        "g1g3",
+        "h3h5",
+        "h2h4",
+        "h8g8",
+        "g3g8",
+        "f6g8",
+        "d5c6",
+        "b7c6",
+        "d2e3",
+        "d6e7",
+        "d1d2",
+        "e7h4",
+        "e1c1",
+        "h4e7",
+        "d1g1",
+        "g8f6",
+        "f3e1",
+        "h5h2",
+        "g1g2",
+        "h2h3",
+        "f2f4",
+        "c8a6",
+        "f4e5",
+        "f6h7",
+        "e2a6",
+        "b8a6",
+        "e3h6",
+        "e8c8",
+        "h6e3"
+      ],
+      "humanMove": "c8b7",
+      "best": {
+        "kind": "cp",
+        "value": -227,
+        "depth": 10,
+        "bestmove": "a6c5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -515,
+        "depth": 10,
+        "bestmove": "c8b7"
+      },
+      "humanLoss": 288,
+      "botLoss": 332.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e7h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -396,
+            "depth": 10,
+            "bestmove": "e7h4"
+          },
+          "loss": 169,
+          "nodes": 20
+        },
+        {
+          "seed": 1052660,
+          "move": "c6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -610,
+            "depth": 10,
+            "bestmove": "c6c5"
+          },
+          "loss": 383,
+          "nodes": 100
+        },
+        {
+          "seed": 1118197,
+          "move": "c8b8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -640,
+            "depth": 10,
+            "bestmove": "c8b8"
+          },
+          "loss": 413,
+          "nodes": 90
+        },
+        {
+          "seed": 1183734,
+          "move": "c8b8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -640,
+            "depth": 10,
+            "bestmove": "c8b8"
+          },
+          "loss": 413,
+          "nodes": 100
+        },
+        {
+          "seed": 1249271,
+          "move": "e7c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -434,
+            "depth": 10,
+            "bestmove": "e7c5"
+          },
+          "loss": 207,
+          "nodes": 95
+        },
+        {
+          "seed": 1314808,
+          "move": "f7f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -505,
+            "depth": 10,
+            "bestmove": "f7f5"
+          },
+          "loss": 278,
+          "nodes": 95
+        },
+        {
+          "seed": 1380345,
+          "move": "c6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -610,
+            "depth": 10,
+            "bestmove": "c6c5"
+          },
+          "loss": 383,
+          "nodes": 100
+        },
+        {
+          "seed": 1445882,
+          "move": "c8b8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -640,
+            "depth": 10,
+            "bestmove": "c8b8"
+          },
+          "loss": 413,
+          "nodes": 45
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563306714",
+      "whiteRating": 891,
+      "blackRating": 894,
+      "rating": 891,
+      "timeControl": "600",
+      "fen": "r2qkb1r/pppnn1pp/3p1p2/4p3/3PPPb1/2N2N2/PPP1B1PP/R1BQK2R w KQkq - 6 7",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "d2d4",
+        "e7e5",
+        "f2f4",
+        "f7f6",
+        "g1f3",
+        "c8g4",
+        "f1e2",
+        "b8d7",
+        "b1c3",
+        "g8e7"
+      ],
+      "humanMove": "f4e5",
+      "best": {
+        "kind": "cp",
+        "value": 220,
+        "depth": 10,
+        "bestmove": "e1g1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 112,
+        "depth": 10,
+        "bestmove": "f4e5"
+      },
+      "humanLoss": 108,
+      "botLoss": 107.125,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b2b3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 150,
+            "depth": 10,
+            "bestmove": "b2b3"
+          },
+          "loss": 70,
+          "nodes": 23
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 150,
+            "depth": 10,
+            "bestmove": "b2b3"
+          },
+          "loss": 70,
+          "nodes": 115
+        },
+        {
+          "seed": 1118197,
+          "move": "e1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 227,
+            "depth": 10,
+            "bestmove": "e1g1"
+          },
+          "loss": 0,
+          "nodes": 120
+        },
+        {
+          "seed": 1183734,
+          "move": "d4e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 142,
+            "depth": 10,
+            "bestmove": "d4e5"
+          },
+          "loss": 78,
+          "nodes": 120
+        },
+        {
+          "seed": 1249271,
+          "move": "b2b3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 150,
+            "depth": 10,
+            "bestmove": "b2b3"
+          },
+          "loss": 70,
+          "nodes": 115
+        },
+        {
+          "seed": 1314808,
+          "move": "f3e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -117,
+            "depth": 10,
+            "bestmove": "f3e5"
+          },
+          "loss": 337,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "d4e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 142,
+            "depth": 10,
+            "bestmove": "d4e5"
+          },
+          "loss": 78,
+          "nodes": 120
+        },
+        {
+          "seed": 1445882,
+          "move": "e2b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 66,
+            "depth": 10,
+            "bestmove": "e2b5"
+          },
+          "loss": 154,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563306714",
+      "whiteRating": 891,
+      "blackRating": 894,
+      "rating": 894,
+      "timeControl": "600",
+      "fen": "r3kb1r/ppp3pp/2n5/4p1B1/4P3/8/PPP1N1PP/R2R2K1 b kq - 2 13",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "d2d4",
+        "e7e5",
+        "f2f4",
+        "f7f6",
+        "g1f3",
+        "c8g4",
+        "f1e2",
+        "b8d7",
+        "b1c3",
+        "g8e7",
+        "f4e5",
+        "f6e5",
+        "d4e5",
+        "d7e5",
+        "f3e5",
+        "g4e2",
+        "c3e2",
+        "d6e5",
+        "e1g1",
+        "d8d1",
+        "f1d1",
+        "e7c6",
+        "c1g5"
+      ],
+      "humanMove": "f8e7",
+      "best": {
+        "kind": "cp",
+        "value": 54,
+        "depth": 10,
+        "bestmove": "f8c5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -23,
+        "depth": 10,
+        "bestmove": "f8e7"
+      },
+      "humanLoss": 77,
+      "botLoss": 63.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -14,
+            "depth": 10,
+            "bestmove": "g7g6"
+          },
+          "loss": 68,
+          "nodes": 105
+        },
+        {
+          "seed": 1052660,
+          "move": "h8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -8,
+            "depth": 10,
+            "bestmove": "h8g8"
+          },
+          "loss": 62,
+          "nodes": 110
+        },
+        {
+          "seed": 1118197,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 0,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 54,
+          "nodes": 110
+        },
+        {
+          "seed": 1183734,
+          "move": "f8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -23,
+            "depth": 10,
+            "bestmove": "f8e7"
+          },
+          "loss": 77,
+          "nodes": 110
+        },
+        {
+          "seed": 1249271,
+          "move": "a8c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -16,
+            "depth": 10,
+            "bestmove": "a8c8"
+          },
+          "loss": 70,
+          "nodes": 110
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -14,
+            "depth": 10,
+            "bestmove": "g7g6"
+          },
+          "loss": 68,
+          "nodes": 22
+        },
+        {
+          "seed": 1380345,
+          "move": "g7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -14,
+            "depth": 10,
+            "bestmove": "g7g6"
+          },
+          "loss": 68,
+          "nodes": 110
+        },
+        {
+          "seed": 1445882,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 14,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 40,
+          "nodes": 110
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563306714",
+      "whiteRating": 891,
+      "blackRating": 894,
+      "rating": 891,
+      "timeControl": "600",
+      "fen": "5rk1/ppp3pp/8/4p3/1PPnP3/P5N1/6PP/3R2K1 w - - 1 20",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "d2d4",
+        "e7e5",
+        "f2f4",
+        "f7f6",
+        "g1f3",
+        "c8g4",
+        "f1e2",
+        "b8d7",
+        "b1c3",
+        "g8e7",
+        "f4e5",
+        "f6e5",
+        "d4e5",
+        "d7e5",
+        "f3e5",
+        "g4e2",
+        "c3e2",
+        "d6e5",
+        "e1g1",
+        "d8d1",
+        "f1d1",
+        "e7c6",
+        "c1g5",
+        "f8e7",
+        "g5e7",
+        "c6e7",
+        "c2c4",
+        "e7c6",
+        "a2a3",
+        "e8g8",
+        "e2g3",
+        "a8d8",
+        "b2b4",
+        "d8d1",
+        "a1d1",
+        "c6d4"
+      ],
+      "humanMove": "c4c5",
+      "best": {
+        "kind": "cp",
+        "value": -24,
+        "depth": 10,
+        "bestmove": "g3f5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -84,
+        "depth": 10,
+        "bestmove": "c4c5"
+      },
+      "humanLoss": 60,
+      "botLoss": 107.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "g3f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -39,
+            "depth": 10,
+            "bestmove": "g3f5"
+          },
+          "loss": 15,
+          "nodes": 95
+        },
+        {
+          "seed": 1052660,
+          "move": "b4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -97,
+            "depth": 10,
+            "bestmove": "b4b5"
+          },
+          "loss": 73,
+          "nodes": 95
+        },
+        {
+          "seed": 1118197,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -64,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 40,
+          "nodes": 95
+        },
+        {
+          "seed": 1183734,
+          "move": "g3f1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -99,
+            "depth": 10,
+            "bestmove": "g3f1"
+          },
+          "loss": 75,
+          "nodes": 95
+        },
+        {
+          "seed": 1249271,
+          "move": "b4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -97,
+            "depth": 10,
+            "bestmove": "b4b5"
+          },
+          "loss": 73,
+          "nodes": 95
+        },
+        {
+          "seed": 1314808,
+          "move": "b4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -97,
+            "depth": 10,
+            "bestmove": "b4b5"
+          },
+          "loss": 73,
+          "nodes": 19
+        },
+        {
+          "seed": 1380345,
+          "move": "d1d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -497,
+            "depth": 10,
+            "bestmove": "d1d4"
+          },
+          "loss": 473,
+          "nodes": 19
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -64,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 40,
+          "nodes": 95
+        }
+      ]
+    },
+    {
+      "id": "game-8-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186563306714",
+      "whiteRating": 891,
+      "blackRating": 894,
+      "rating": 894,
+      "timeControl": "600",
+      "fen": "6k1/1p5p/p1p3p1/P1P1p3/1P1nP2P/6NK/r5P1/3R4 b - - 0 25",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "d2d4",
+        "e7e5",
+        "f2f4",
+        "f7f6",
+        "g1f3",
+        "c8g4",
+        "f1e2",
+        "b8d7",
+        "b1c3",
+        "g8e7",
+        "f4e5",
+        "f6e5",
+        "d4e5",
+        "d7e5",
+        "f3e5",
+        "g4e2",
+        "c3e2",
+        "d6e5",
+        "e1g1",
+        "d8d1",
+        "f1d1",
+        "e7c6",
+        "c1g5",
+        "f8e7",
+        "g5e7",
+        "c6e7",
+        "c2c4",
+        "e7c6",
+        "a2a3",
+        "e8g8",
+        "e2g3",
+        "a8d8",
+        "b2b4",
+        "d8d1",
+        "a1d1",
+        "c6d4",
+        "c4c5",
+        "a7a6",
+        "h2h4",
+        "g7g6",
+        "g1h2",
+        "c7c6",
+        "h2h3",
+        "f8f2",
+        "a3a4",
+        "f2a2",
+        "a4a5"
+      ],
+      "humanMove": "a2b2",
+      "best": {
+        "kind": "cp",
+        "value": 247,
+        "depth": 10,
+        "bestmove": "a2b2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 218,
+        "depth": 10,
+        "bestmove": "a2b2"
+      },
+      "humanLoss": 29,
+      "botLoss": 165,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -139,
+            "depth": 10,
+            "bestmove": "d4e2"
+          },
+          "loss": 386,
+          "nodes": 130
+        },
+        {
+          "seed": 1052660,
+          "move": "g8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 171,
+            "depth": 10,
+            "bestmove": "g8f8"
+          },
+          "loss": 76,
+          "nodes": 130
+        },
+        {
+          "seed": 1118197,
+          "move": "d4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -139,
+            "depth": 10,
+            "bestmove": "d4e2"
+          },
+          "loss": 386,
+          "nodes": 130
+        },
+        {
+          "seed": 1183734,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 215,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 32,
+          "nodes": 130
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 215,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 32,
+          "nodes": 26
+        },
+        {
+          "seed": 1314808,
+          "move": "d4e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 73,
+            "depth": 10,
+            "bestmove": "d4e6"
+          },
+          "loss": 174,
+          "nodes": 26
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 156,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 91,
+          "nodes": 130
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 104,
+            "depth": 10,
+            "bestmove": "h7h6"
+          },
+          "loss": 143,
+          "nodes": 130
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186633022142",
+      "whiteRating": 891,
+      "blackRating": 872,
+      "rating": 891,
+      "timeControl": "600",
+      "fen": "rnb1kbnr/pp1pqp1p/2p5/4P3/2B1P1p1/2N2N2/PPP2PPP/R1BQK2R w KQkq - 1 7",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1c4",
+        "g7g5",
+        "d2d4",
+        "g5g4",
+        "d4e5",
+        "f6e7"
+      ],
+      "humanMove": "f3g5",
+      "best": {
+        "kind": "cp",
+        "value": 507,
+        "depth": 10,
+        "bestmove": "f3g5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 497,
+        "depth": 10,
+        "bestmove": "f3g5"
+      },
+      "humanLoss": 10,
+      "botLoss": 403.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 390,
+            "depth": 10,
+            "bestmove": "f3d2"
+          },
+          "loss": 117,
+          "nodes": 174
+        },
+        {
+          "seed": 1052660,
+          "move": "f3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 390,
+            "depth": 10,
+            "bestmove": "f3d2"
+          },
+          "loss": 117,
+          "nodes": 169
+        },
+        {
+          "seed": 1118197,
+          "move": "c1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 24,
+            "depth": 10,
+            "bestmove": "c1d2"
+          },
+          "loss": 483,
+          "nodes": 165
+        },
+        {
+          "seed": 1183734,
+          "move": "c4e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -87,
+            "depth": 10,
+            "bestmove": "c4e2"
+          },
+          "loss": 594,
+          "nodes": 170
+        },
+        {
+          "seed": 1249271,
+          "move": "c3e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -256,
+            "depth": 10,
+            "bestmove": "c3e2"
+          },
+          "loss": 763,
+          "nodes": 179
+        },
+        {
+          "seed": 1314808,
+          "move": "f3g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 312,
+            "depth": 10,
+            "bestmove": "f3g1"
+          },
+          "loss": 195,
+          "nodes": 174
+        },
+        {
+          "seed": 1380345,
+          "move": "f3g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 312,
+            "depth": 10,
+            "bestmove": "f3g1"
+          },
+          "loss": 195,
+          "nodes": 174
+        },
+        {
+          "seed": 1445882,
+          "move": "c3e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -256,
+            "depth": 10,
+            "bestmove": "c3e2"
+          },
+          "loss": 763,
+          "nodes": 174
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186633022142",
+      "whiteRating": 891,
+      "blackRating": 872,
+      "rating": 872,
+      "timeControl": "600",
+      "fen": "rnb2b1r/pp1p1k1p/2p5/8/4PB2/2N5/PPP2PPP/R4RK1 b - - 1 13",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1c4",
+        "g7g5",
+        "d2d4",
+        "g5g4",
+        "d4e5",
+        "f6e7",
+        "f3g5",
+        "e7e5",
+        "c4f7",
+        "e8e7",
+        "d1g4",
+        "g8h6",
+        "g4f4",
+        "e5f4",
+        "c1f4",
+        "h6f7",
+        "g5f7",
+        "e7f7",
+        "e1g1"
+      ],
+      "humanMove": "f8b4",
+      "best": {
+        "kind": "cp",
+        "value": 182,
+        "depth": 10,
+        "bestmove": "h8g8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 112,
+        "depth": 10,
+        "bestmove": "f8b4"
+      },
+      "humanLoss": 70,
+      "botLoss": 155.125,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d7d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 117,
+            "depth": 10,
+            "bestmove": "d7d5"
+          },
+          "loss": 65,
+          "nodes": 25
+        },
+        {
+          "seed": 1052660,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 119,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 63,
+          "nodes": 125
+        },
+        {
+          "seed": 1118197,
+          "move": "f7e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 109,
+            "depth": 10,
+            "bestmove": "f7e8"
+          },
+          "loss": 73,
+          "nodes": 125
+        },
+        {
+          "seed": 1183734,
+          "move": "f8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 116,
+            "depth": 10,
+            "bestmove": "f8e7"
+          },
+          "loss": 66,
+          "nodes": 125
+        },
+        {
+          "seed": 1249271,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -634,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 816,
+          "nodes": 25
+        },
+        {
+          "seed": 1314808,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 158,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 24,
+          "nodes": 125
+        },
+        {
+          "seed": 1380345,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 119,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 63,
+          "nodes": 25
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 111,
+            "depth": 10,
+            "bestmove": "h7h6"
+          },
+          "loss": 71,
+          "nodes": 125
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186633022142",
+      "whiteRating": 891,
+      "blackRating": 872,
+      "rating": 891,
+      "timeControl": "600",
+      "fen": "rn6/pp3k1p/3p4/2p2b2/4rP2/2P1B3/P1P3PP/4RRK1 w - - 2 20",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1c4",
+        "g7g5",
+        "d2d4",
+        "g5g4",
+        "d4e5",
+        "f6e7",
+        "f3g5",
+        "e7e5",
+        "c4f7",
+        "e8e7",
+        "d1g4",
+        "g8h6",
+        "g4f4",
+        "e5f4",
+        "c1f4",
+        "h6f7",
+        "g5f7",
+        "e7f7",
+        "e1g1",
+        "f8b4",
+        "f4e5",
+        "h8e8",
+        "f2f4",
+        "d7d6",
+        "e5d4",
+        "c6c5",
+        "d4e3",
+        "b4c3",
+        "b2c3",
+        "e8e4",
+        "a1e1",
+        "c8f5"
+      ],
+      "humanMove": "h2h3",
+      "best": {
+        "kind": "cp",
+        "value": -439,
+        "depth": 10,
+        "bestmove": "h2h3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -415,
+        "depth": 10,
+        "bestmove": "h2h3"
+      },
+      "humanLoss": 0,
+      "botLoss": 54.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -436,
+            "depth": 10,
+            "bestmove": "e1e2"
+          },
+          "loss": 0,
+          "nodes": 21
+        },
+        {
+          "seed": 1052660,
+          "move": "e3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -449,
+            "depth": 10,
+            "bestmove": "e3d2"
+          },
+          "loss": 10,
+          "nodes": 105
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -559,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 120,
+          "nodes": 105
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -595,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 156,
+          "nodes": 105
+        },
+        {
+          "seed": 1249271,
+          "move": "e3f2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -461,
+            "depth": 10,
+            "bestmove": "e3f2"
+          },
+          "loss": 22,
+          "nodes": 105
+        },
+        {
+          "seed": 1314808,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -545,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 106,
+          "nodes": 21
+        },
+        {
+          "seed": 1380345,
+          "move": "h2h3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -415,
+            "depth": 10,
+            "bestmove": "h2h3"
+          },
+          "loss": 0,
+          "nodes": 105
+        },
+        {
+          "seed": 1445882,
+          "move": "e3f2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -461,
+            "depth": 10,
+            "bestmove": "e3f2"
+          },
+          "loss": 22,
+          "nodes": 21
+        }
+      ]
+    },
+    {
+      "id": "game-10-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/186633022142",
+      "whiteRating": 891,
+      "blackRating": 872,
+      "rating": 872,
+      "timeControl": "600",
+      "fen": "4r3/pp5p/3p2k1/2p1n3/4r1P1/2P1B1RP/P1P5/4R1K1 b - - 3 25",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d8f6",
+        "b1c3",
+        "c7c6",
+        "f1c4",
+        "g7g5",
+        "d2d4",
+        "g5g4",
+        "d4e5",
+        "f6e7",
+        "f3g5",
+        "e7e5",
+        "c4f7",
+        "e8e7",
+        "d1g4",
+        "g8h6",
+        "g4f4",
+        "e5f4",
+        "c1f4",
+        "h6f7",
+        "g5f7",
+        "e7f7",
+        "e1g1",
+        "f8b4",
+        "f4e5",
+        "h8e8",
+        "f2f4",
+        "d7d6",
+        "e5d4",
+        "c6c5",
+        "d4e3",
+        "b4c3",
+        "b2c3",
+        "e8e4",
+        "a1e1",
+        "c8f5",
+        "h2h3",
+        "b8c6",
+        "g2g4",
+        "f5g6",
+        "f4f5",
+        "a8e8",
+        "f5g6",
+        "f7g6",
+        "f1f3",
+        "c6e5",
+        "f3g3"
+      ],
+      "humanMove": "e5c4",
+      "best": {
+        "kind": "cp",
+        "value": 252,
+        "depth": 10,
+        "bestmove": "e5c4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 303,
+        "depth": 10,
+        "bestmove": "e5c4"
+      },
+      "humanLoss": 0,
+      "botLoss": 336.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e8a8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 37,
+            "depth": 10,
+            "bestmove": "e8a8"
+          },
+          "loss": 215,
+          "nodes": 170
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 118,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 134,
+          "nodes": 170
+        },
+        {
+          "seed": 1118197,
+          "move": "e4e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -384,
+            "depth": 10,
+            "bestmove": "e4e3"
+          },
+          "loss": 636,
+          "nodes": 34
+        },
+        {
+          "seed": 1183734,
+          "move": "e4e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -384,
+            "depth": 10,
+            "bestmove": "e4e3"
+          },
+          "loss": 636,
+          "nodes": 34
+        },
+        {
+          "seed": 1249271,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 139,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 113,
+          "nodes": 170
+        },
+        {
+          "seed": 1314808,
+          "move": "g6g7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -421,
+            "depth": 10,
+            "bestmove": "g6g7"
+          },
+          "loss": 673,
+          "nodes": 170
+        },
+        {
+          "seed": 1380345,
+          "move": "e4c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 82,
+            "depth": 10,
+            "bestmove": "e4c4"
+          },
+          "loss": 170,
+          "nodes": 170
+        },
+        {
+          "seed": 1445882,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 139,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 113,
+          "nodes": 170
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/167470324922",
+      "whiteRating": 915,
+      "blackRating": 829,
+      "rating": 915,
+      "timeControl": "900+10",
+      "fen": "2kr1bnr/ppp1qppp/2n1p3/3p1b2/3P1B1P/2P1PN2/PP3PP1/RN1QKB1R w KQ - 1 7",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "c2c3",
+        "e7e6",
+        "e2e3",
+        "d8e7",
+        "h2h4",
+        "e8c8"
+      ],
+      "humanMove": "h4h5",
+      "best": {
+        "kind": "cp",
+        "value": 103,
+        "depth": 10,
+        "bestmove": "b1d2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 82,
+        "depth": 10,
+        "bestmove": "h4h5"
+      },
+      "humanLoss": 21,
+      "botLoss": 150.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 62,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 41,
+          "nodes": 125
+        },
+        {
+          "seed": 1052660,
+          "move": "d1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -16,
+            "depth": 10,
+            "bestmove": "d1e2"
+          },
+          "loss": 119,
+          "nodes": 125
+        },
+        {
+          "seed": 1118197,
+          "move": "h1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -11,
+            "depth": 10,
+            "bestmove": "h1g1"
+          },
+          "loss": 114,
+          "nodes": 120
+        },
+        {
+          "seed": 1183734,
+          "move": "f3g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -12,
+            "depth": 10,
+            "bestmove": "f3g5"
+          },
+          "loss": 115,
+          "nodes": 120
+        },
+        {
+          "seed": 1249271,
+          "move": "h1h2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -4,
+            "depth": 10,
+            "bestmove": "h1h2"
+          },
+          "loss": 107,
+          "nodes": 125
+        },
+        {
+          "seed": 1314808,
+          "move": "f4c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -451,
+            "depth": 10,
+            "bestmove": "f4c7"
+          },
+          "loss": 554,
+          "nodes": 40
+        },
+        {
+          "seed": 1380345,
+          "move": "h4h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 82,
+            "depth": 10,
+            "bestmove": "h4h5"
+          },
+          "loss": 21,
+          "nodes": 125
+        },
+        {
+          "seed": 1445882,
+          "move": "f3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -30,
+            "depth": 10,
+            "bestmove": "f3d2"
+          },
+          "loss": 133,
+          "nodes": 40
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/167470324922",
+      "whiteRating": 915,
+      "blackRating": 829,
+      "rating": 829,
+      "timeControl": "900+10",
+      "fen": "2kr1bnr/ppp1q1pb/2n4p/4p2P/3pP1PN/2P3B1/PP1N1P2/R2QKB1R b KQ - 0 13",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "c2c3",
+        "e7e6",
+        "e2e3",
+        "d8e7",
+        "h2h4",
+        "e8c8",
+        "h4h5",
+        "h7h6",
+        "f3h4",
+        "f7f6",
+        "b1d2",
+        "e6e5",
+        "g2g4",
+        "f5h7",
+        "d4e5",
+        "f6e5",
+        "f4g3",
+        "d5d4",
+        "e3e4"
+      ],
+      "humanMove": "e7c5",
+      "best": {
+        "kind": "cp",
+        "value": 123,
+        "depth": 10,
+        "bestmove": "g8f6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 42,
+        "depth": 10,
+        "bestmove": "e7c5"
+      },
+      "humanLoss": 81,
+      "botLoss": 239,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e7f7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -9,
+            "depth": 10,
+            "bestmove": "e7f7"
+          },
+          "loss": 132,
+          "nodes": 115
+        },
+        {
+          "seed": 1052660,
+          "move": "e7g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -20,
+            "depth": 10,
+            "bestmove": "e7g5"
+          },
+          "loss": 143,
+          "nodes": 120
+        },
+        {
+          "seed": 1118197,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -437,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 560,
+          "nodes": 32
+        },
+        {
+          "seed": 1183734,
+          "move": "g7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -292,
+            "depth": 10,
+            "bestmove": "g7g6"
+          },
+          "loss": 415,
+          "nodes": 115
+        },
+        {
+          "seed": 1249271,
+          "move": "g8f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 110,
+            "depth": 10,
+            "bestmove": "g8f6"
+          },
+          "loss": 13,
+          "nodes": 115
+        },
+        {
+          "seed": 1314808,
+          "move": "e7h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -513,
+            "depth": 10,
+            "bestmove": "e7h4"
+          },
+          "loss": 636,
+          "nodes": 19
+        },
+        {
+          "seed": 1380345,
+          "move": "d4c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 156,
+            "depth": 10,
+            "bestmove": "d4c3"
+          },
+          "loss": 0,
+          "nodes": 19
+        },
+        {
+          "seed": 1445882,
+          "move": "g8f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 110,
+            "depth": 10,
+            "bestmove": "g8f6"
+          },
+          "loss": 13,
+          "nodes": 90
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/167470324922",
+      "whiteRating": 915,
+      "blackRating": 829,
+      "rating": 915,
+      "timeControl": "900+10",
+      "fen": "1k1r3r/ppp3pb/5n1p/4p2P/1n1qP1P1/5NBB/PPQb1P2/3R1RK1 w - - 4 20",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "c2c3",
+        "e7e6",
+        "e2e3",
+        "d8e7",
+        "h2h4",
+        "e8c8",
+        "h4h5",
+        "h7h6",
+        "f3h4",
+        "f7f6",
+        "b1d2",
+        "e6e5",
+        "g2g4",
+        "f5h7",
+        "d4e5",
+        "f6e5",
+        "f4g3",
+        "d5d4",
+        "e3e4",
+        "e7c5",
+        "f1h3",
+        "c8b8",
+        "c3d4",
+        "c5d4",
+        "d1c2",
+        "f8b4",
+        "e1g1",
+        "b4d2",
+        "a1d1",
+        "g8f6",
+        "h4f3",
+        "c6b4"
+      ],
+      "humanMove": "f3d4",
+      "best": {
+        "kind": "cp",
+        "value": 4,
+        "depth": 10,
+        "bestmove": "c2d2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -367,
+        "depth": 10,
+        "bestmove": "f3d4"
+      },
+      "humanLoss": 371,
+      "botLoss": 320.625,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -832,
+            "depth": 10,
+            "bestmove": "f3d2"
+          },
+          "loss": 836,
+          "nodes": 12
+        },
+        {
+          "seed": 1052660,
+          "move": "c2b3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -84,
+            "depth": 10,
+            "bestmove": "c2b3"
+          },
+          "loss": 88,
+          "nodes": 55
+        },
+        {
+          "seed": 1118197,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -367,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 371,
+          "nodes": 58
+        },
+        {
+          "seed": 1183734,
+          "move": "c2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 2,
+            "depth": 10,
+            "bestmove": "c2d2"
+          },
+          "loss": 2,
+          "nodes": 43
+        },
+        {
+          "seed": 1249271,
+          "move": "d1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -520,
+            "depth": 10,
+            "bestmove": "d1d2"
+          },
+          "loss": 524,
+          "nodes": 58
+        },
+        {
+          "seed": 1314808,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -367,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 371,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "c2d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 2,
+            "depth": 10,
+            "bestmove": "c2d2"
+          },
+          "loss": 2,
+          "nodes": 50
+        },
+        {
+          "seed": 1445882,
+          "move": "f3d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -367,
+            "depth": 10,
+            "bestmove": "f3d4"
+          },
+          "loss": 371,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-12-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/167470324922",
+      "whiteRating": 915,
+      "blackRating": 829,
+      "rating": 829,
+      "timeControl": "900+10",
+      "fen": "1k1r3r/ppp3pb/7p/4p2P/6P1/6P1/PP2n1BK/3R1R2 b - - 2 25",
+      "history": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "b8c6",
+        "g1f3",
+        "c8f5",
+        "c2c3",
+        "e7e6",
+        "e2e3",
+        "d8e7",
+        "h2h4",
+        "e8c8",
+        "h4h5",
+        "h7h6",
+        "f3h4",
+        "f7f6",
+        "b1d2",
+        "e6e5",
+        "g2g4",
+        "f5h7",
+        "d4e5",
+        "f6e5",
+        "f4g3",
+        "d5d4",
+        "e3e4",
+        "e7c5",
+        "f1h3",
+        "c8b8",
+        "c3d4",
+        "c5d4",
+        "d1c2",
+        "f8b4",
+        "e1g1",
+        "b4d2",
+        "a1d1",
+        "g8f6",
+        "h4f3",
+        "c6b4",
+        "f3d4",
+        "b4c2",
+        "d1d2",
+        "c2d4",
+        "d2d1",
+        "f6e4",
+        "h3g2",
+        "e4g3",
+        "f2g3",
+        "d4e2",
+        "g1h2"
+      ],
+      "humanMove": "d8d1",
+      "best": {
+        "kind": "cp",
+        "value": 523,
+        "depth": 10,
+        "bestmove": "d8d1"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 561,
+        "depth": 10,
+        "bestmove": "d8d1"
+      },
+      "humanLoss": 0,
+      "botLoss": 79.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h7d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 522,
+            "depth": 10,
+            "bestmove": "h7d3"
+          },
+          "loss": 1,
+          "nodes": 125
+        },
+        {
+          "seed": 1052660,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 483,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 40,
+          "nodes": 115
+        },
+        {
+          "seed": 1118197,
+          "move": "d8d1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 561,
+            "depth": 10,
+            "bestmove": "d8d1"
+          },
+          "loss": 0,
+          "nodes": 21
+        },
+        {
+          "seed": 1183734,
+          "move": "d8d1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 561,
+            "depth": 10,
+            "bestmove": "d8d1"
+          },
+          "loss": 0,
+          "nodes": 15
+        },
+        {
+          "seed": 1249271,
+          "move": "a7a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 385,
+            "depth": 10,
+            "bestmove": "a7a6"
+          },
+          "loss": 138,
+          "nodes": 85
+        },
+        {
+          "seed": 1314808,
+          "move": "g7g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 336,
+            "depth": 10,
+            "bestmove": "g7g6"
+          },
+          "loss": 187,
+          "nodes": 130
+        },
+        {
+          "seed": 1380345,
+          "move": "c7c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 349,
+            "depth": 10,
+            "bestmove": "c7c5"
+          },
+          "loss": 174,
+          "nodes": 26
+        },
+        {
+          "seed": 1445882,
+          "move": "d8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 425,
+            "depth": 10,
+            "bestmove": "d8g8"
+          },
+          "loss": 98,
+          "nodes": 125
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164655144566",
+      "whiteRating": 944,
+      "blackRating": 870,
+      "rating": 944,
+      "timeControl": "900+10",
+      "fen": "rnbqkb1r/pp3pp1/2p1p2p/3pPn2/3P1P2/2NB4/PPP3PP/R1BQK1NR w KQkq - 3 7",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "e7e6",
+        "b1c3",
+        "h7h6",
+        "f2f4",
+        "g8e7",
+        "f1d3",
+        "e7f5"
+      ],
+      "humanMove": "g1f3",
+      "best": {
+        "kind": "cp",
+        "value": 70,
+        "depth": 10,
+        "bestmove": "g1f3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 77,
+        "depth": 10,
+        "bestmove": "g1f3"
+      },
+      "humanLoss": 0,
+      "botLoss": 34,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c3e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 52,
+            "depth": 10,
+            "bestmove": "c3e2"
+          },
+          "loss": 18,
+          "nodes": 21
+        },
+        {
+          "seed": 1052660,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 77,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 0,
+          "nodes": 90
+        },
+        {
+          "seed": 1118197,
+          "move": "g1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 39,
+            "depth": 10,
+            "bestmove": "g1e2"
+          },
+          "loss": 31,
+          "nodes": 85
+        },
+        {
+          "seed": 1183734,
+          "move": "c3e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 52,
+            "depth": 10,
+            "bestmove": "c3e2"
+          },
+          "loss": 18,
+          "nodes": 100
+        },
+        {
+          "seed": 1249271,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 77,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 0,
+          "nodes": 75
+        },
+        {
+          "seed": 1314808,
+          "move": "c1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -58,
+            "depth": 10,
+            "bestmove": "c1d2"
+          },
+          "loss": 128,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "c3e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 52,
+            "depth": 10,
+            "bestmove": "c3e2"
+          },
+          "loss": 18,
+          "nodes": 95
+        },
+        {
+          "seed": 1445882,
+          "move": "d3f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 11,
+            "depth": 10,
+            "bestmove": "d3f5"
+          },
+          "loss": 59,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164655144566",
+      "whiteRating": 944,
+      "blackRating": 870,
+      "rating": 870,
+      "timeControl": "900+10",
+      "fen": "rnb1k2r/1p3pp1/2p1P2p/p2pq3/1b6/2NB4/PPPB2PP/R2Q1R1K b kq - 0 13",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "e7e6",
+        "b1c3",
+        "h7h6",
+        "f2f4",
+        "g8e7",
+        "f1d3",
+        "e7f5",
+        "g1f3",
+        "f8b4",
+        "e1g1",
+        "f5h4",
+        "c1d2",
+        "a7a5",
+        "f3h4",
+        "d8h4",
+        "f4f5",
+        "h4d4",
+        "g1h1",
+        "d4e5",
+        "f5e6"
+      ],
+      "humanMove": "c8e6",
+      "best": {
+        "kind": "cp",
+        "value": -337,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -247,
+        "depth": 10,
+        "bestmove": "c8e6"
+      },
+      "humanLoss": 0,
+      "botLoss": 170.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e5e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -640,
+            "depth": 10,
+            "bestmove": "e5e6"
+          },
+          "loss": 303,
+          "nodes": 60
+        },
+        {
+          "seed": 1052660,
+          "move": "e5e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -640,
+            "depth": 10,
+            "bestmove": "e5e6"
+          },
+          "loss": 303,
+          "nodes": 65
+        },
+        {
+          "seed": 1118197,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -533,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 196,
+          "nodes": 50
+        },
+        {
+          "seed": 1183734,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -284,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 0,
+          "nodes": 70
+        },
+        {
+          "seed": 1249271,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -284,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 0,
+          "nodes": 65
+        },
+        {
+          "seed": 1314808,
+          "move": "b4e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -438,
+            "depth": 10,
+            "bestmove": "b4e7"
+          },
+          "loss": 101,
+          "nodes": 45
+        },
+        {
+          "seed": 1380345,
+          "move": "g7g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -495,
+            "depth": 10,
+            "bestmove": "g7g5"
+          },
+          "loss": 158,
+          "nodes": 67
+        },
+        {
+          "seed": 1445882,
+          "move": "e5e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -640,
+            "depth": 10,
+            "bestmove": "e5e6"
+          },
+          "loss": 303,
+          "nodes": 65
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164655144566",
+      "whiteRating": 944,
+      "blackRating": 870,
+      "rating": 944,
+      "timeControl": "900+10",
+      "fen": "rn1r2k1/1p3pp1/2pB3p/p2p4/5Rb1/2NB2P1/PPP4P/R6K w - - 1 20",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "e7e6",
+        "b1c3",
+        "h7h6",
+        "f2f4",
+        "g8e7",
+        "f1d3",
+        "e7f5",
+        "g1f3",
+        "f8b4",
+        "e1g1",
+        "f5h4",
+        "c1d2",
+        "a7a5",
+        "f3h4",
+        "d8h4",
+        "f4f5",
+        "h4d4",
+        "g1h1",
+        "d4e5",
+        "f5e6",
+        "c8e6",
+        "d1f3",
+        "b4d6",
+        "g2g3",
+        "e8g8",
+        "d2f4",
+        "e5d4",
+        "f4d6",
+        "e6g4",
+        "f3f4",
+        "d4f4",
+        "f1f4",
+        "f8d8"
+      ],
+      "humanMove": "d6e5",
+      "best": {
+        "kind": "cp",
+        "value": 517,
+        "depth": 10,
+        "bestmove": "d6b8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 423,
+        "depth": 10,
+        "bestmove": "d6e5"
+      },
+      "humanLoss": 94,
+      "botLoss": 199.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c3d1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 162,
+            "depth": 10,
+            "bestmove": "c3d1"
+          },
+          "loss": 355,
+          "nodes": 138
+        },
+        {
+          "seed": 1052660,
+          "move": "d6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 423,
+            "depth": 10,
+            "bestmove": "d6e5"
+          },
+          "loss": 94,
+          "nodes": 143
+        },
+        {
+          "seed": 1118197,
+          "move": "f4g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 318,
+            "depth": 10,
+            "bestmove": "f4g4"
+          },
+          "loss": 199,
+          "nodes": 24
+        },
+        {
+          "seed": 1183734,
+          "move": "f4g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 318,
+            "depth": 10,
+            "bestmove": "f4g4"
+          },
+          "loss": 199,
+          "nodes": 143
+        },
+        {
+          "seed": 1249271,
+          "move": "d6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 435,
+            "depth": 10,
+            "bestmove": "d6c5"
+          },
+          "loss": 82,
+          "nodes": 103
+        },
+        {
+          "seed": 1314808,
+          "move": "d6c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 479,
+            "depth": 10,
+            "bestmove": "d6c7"
+          },
+          "loss": 38,
+          "nodes": 128
+        },
+        {
+          "seed": 1380345,
+          "move": "d3f5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 89,
+            "depth": 10,
+            "bestmove": "d3f5"
+          },
+          "loss": 428,
+          "nodes": 138
+        },
+        {
+          "seed": 1445882,
+          "move": "f4g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 318,
+            "depth": 10,
+            "bestmove": "f4g4"
+          },
+          "loss": 199,
+          "nodes": 50
+        }
+      ]
+    },
+    {
+      "id": "game-14-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/164655144566",
+      "whiteRating": 944,
+      "blackRating": 870,
+      "rating": 870,
+      "timeControl": "900+10",
+      "fen": "r4rk1/1p4p1/2p1R2p/p2p4/5R2/2N3P1/PPP4P/7K b - - 0 25",
+      "history": [
+        "e2e4",
+        "c7c6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "e7e6",
+        "b1c3",
+        "h7h6",
+        "f2f4",
+        "g8e7",
+        "f1d3",
+        "e7f5",
+        "g1f3",
+        "f8b4",
+        "e1g1",
+        "f5h4",
+        "c1d2",
+        "a7a5",
+        "f3h4",
+        "d8h4",
+        "f4f5",
+        "h4d4",
+        "g1h1",
+        "d4e5",
+        "f5e6",
+        "c8e6",
+        "d1f3",
+        "b4d6",
+        "g2g3",
+        "e8g8",
+        "d2f4",
+        "e5d4",
+        "f4d6",
+        "e6g4",
+        "f3f4",
+        "d4f4",
+        "f1f4",
+        "f8d8",
+        "d6e5",
+        "g4e6",
+        "a1e1",
+        "b8d7",
+        "d3f5",
+        "d7e5",
+        "e1e5",
+        "d8f8",
+        "f5e6",
+        "f7e6",
+        "e5e6"
+      ],
+      "humanMove": "f8f4",
+      "best": {
+        "kind": "cp",
+        "value": -398,
+        "depth": 10,
+        "bestmove": "f8f4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -425,
+        "depth": 10,
+        "bestmove": "f8f4"
+      },
+      "humanLoss": 27,
+      "botLoss": 34,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f8f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -425,
+            "depth": 10,
+            "bestmove": "f8f4"
+          },
+          "loss": 27,
+          "nodes": 24
+        },
+        {
+          "seed": 1052660,
+          "move": "g8h7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -430,
+            "depth": 10,
+            "bestmove": "g8h7"
+          },
+          "loss": 32,
+          "nodes": 100
+        },
+        {
+          "seed": 1118197,
+          "move": "a8b8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -403,
+            "depth": 10,
+            "bestmove": "a8b8"
+          },
+          "loss": 5,
+          "nodes": 95
+        },
+        {
+          "seed": 1183734,
+          "move": "f8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -398,
+            "depth": 10,
+            "bestmove": "f8e8"
+          },
+          "loss": 0,
+          "nodes": 105
+        },
+        {
+          "seed": 1249271,
+          "move": "f8c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -465,
+            "depth": 10,
+            "bestmove": "f8c8"
+          },
+          "loss": 67,
+          "nodes": 105
+        },
+        {
+          "seed": 1314808,
+          "move": "g8h7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -430,
+            "depth": 10,
+            "bestmove": "g8h7"
+          },
+          "loss": 32,
+          "nodes": 105
+        },
+        {
+          "seed": 1380345,
+          "move": "f8f7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -427,
+            "depth": 10,
+            "bestmove": "f8f7"
+          },
+          "loss": 29,
+          "nodes": 90
+        },
+        {
+          "seed": 1445882,
+          "move": "a8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -478,
+            "depth": 10,
+            "bestmove": "a8e8"
+          },
+          "loss": 80,
+          "nodes": 21
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147540935696",
+      "whiteRating": 877,
+      "blackRating": 842,
+      "rating": 877,
+      "timeControl": "600+5",
+      "fen": "r1bqk2r/pp1pppbp/2n2np1/8/4P3/2N5/PPPB1PPP/R2QKBNR w KQkq - 4 7",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4d1",
+        "g7g6",
+        "b1c3",
+        "f8g7",
+        "c1d2",
+        "g8f6"
+      ],
+      "humanMove": "g1f3",
+      "best": {
+        "kind": "cp",
+        "value": -47,
+        "depth": 10,
+        "bestmove": "d2g5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -68,
+        "depth": 10,
+        "bestmove": "g1f3"
+      },
+      "humanLoss": 21,
+      "botLoss": 44.125,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -119,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 72,
+          "nodes": 135
+        },
+        {
+          "seed": 1052660,
+          "move": "f1c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -78,
+            "depth": 10,
+            "bestmove": "f1c4"
+          },
+          "loss": 31,
+          "nodes": 130
+        },
+        {
+          "seed": 1118197,
+          "move": "f1b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -55,
+            "depth": 10,
+            "bestmove": "f1b5"
+          },
+          "loss": 8,
+          "nodes": 27
+        },
+        {
+          "seed": 1183734,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -68,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 21,
+          "nodes": 27
+        },
+        {
+          "seed": 1249271,
+          "move": "f2f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -50,
+            "depth": 10,
+            "bestmove": "f2f4"
+          },
+          "loss": 3,
+          "nodes": 135
+        },
+        {
+          "seed": 1314808,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -68,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 21,
+          "nodes": 135
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -213,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 166,
+          "nodes": 30
+        },
+        {
+          "seed": 1445882,
+          "move": "g1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -78,
+            "depth": 10,
+            "bestmove": "g1e2"
+          },
+          "loss": 31,
+          "nodes": 165
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147540935696",
+      "whiteRating": 877,
+      "blackRating": 842,
+      "rating": 842,
+      "timeControl": "600+5",
+      "fen": "r1bqnrk1/p1bppp1p/1p4p1/8/P1B5/2N5/1PPB1PPP/R2QR1K1 b - - 0 13",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4d1",
+        "g7g6",
+        "b1c3",
+        "f8g7",
+        "c1d2",
+        "g8f6",
+        "g1f3",
+        "e8g8",
+        "e4e5",
+        "f6e8",
+        "f1c4",
+        "c6e5",
+        "f3e5",
+        "g7e5",
+        "e1g1",
+        "b7b6",
+        "f1e1",
+        "e5c7",
+        "a2a4"
+      ],
+      "humanMove": "c8b7",
+      "best": {
+        "kind": "cp",
+        "value": 33,
+        "depth": 10,
+        "bestmove": "e7e6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -48,
+        "depth": 10,
+        "bestmove": "c8b7"
+      },
+      "humanLoss": 81,
+      "botLoss": 192.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c8b7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -48,
+            "depth": 10,
+            "bestmove": "c8b7"
+          },
+          "loss": 81,
+          "nodes": 24
+        },
+        {
+          "seed": 1052660,
+          "move": "e7e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 42,
+            "depth": 10,
+            "bestmove": "e7e6"
+          },
+          "loss": 0,
+          "nodes": 94
+        },
+        {
+          "seed": 1118197,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -200,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 233,
+          "nodes": 94
+        },
+        {
+          "seed": 1183734,
+          "move": "c7b8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -356,
+            "depth": 10,
+            "bestmove": "c7b8"
+          },
+          "loss": 389,
+          "nodes": 94
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -315,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 348,
+          "nodes": 90
+        },
+        {
+          "seed": 1314808,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -315,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 348,
+          "nodes": 94
+        },
+        {
+          "seed": 1380345,
+          "move": "e7e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 42,
+            "depth": 10,
+            "bestmove": "e7e6"
+          },
+          "loss": 0,
+          "nodes": 95
+        },
+        {
+          "seed": 1445882,
+          "move": "e8g7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -108,
+            "depth": 10,
+            "bestmove": "e8g7"
+          },
+          "loss": 141,
+          "nodes": 19
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147540935696",
+      "whiteRating": 877,
+      "blackRating": 842,
+      "rating": 877,
+      "timeControl": "600+5",
+      "fen": "3r1rk1/pQ2ppnp/1p4pB/8/P7/8/1Pq1NPP1/R3R1K1 w - - 0 20",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4d1",
+        "g7g6",
+        "b1c3",
+        "f8g7",
+        "c1d2",
+        "g8f6",
+        "g1f3",
+        "e8g8",
+        "e4e5",
+        "f6e8",
+        "f1c4",
+        "c6e5",
+        "f3e5",
+        "g7e5",
+        "e1g1",
+        "b7b6",
+        "f1e1",
+        "e5c7",
+        "a2a4",
+        "c8b7",
+        "d2h6",
+        "e8g7",
+        "c3e2",
+        "c7h2",
+        "g1h2",
+        "d8c7",
+        "h2g1",
+        "c7c4",
+        "d1d7",
+        "a8d8",
+        "d7b7",
+        "c4c2"
+      ],
+      "humanMove": "b7f3",
+      "best": {
+        "kind": "cp",
+        "value": 480,
+        "depth": 10,
+        "bestmove": "b2b4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 380,
+        "depth": 10,
+        "bestmove": "b7f3"
+      },
+      "humanLoss": 100,
+      "botLoss": 199.625,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b7a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 389,
+            "depth": 10,
+            "bestmove": "b7a6"
+          },
+          "loss": 91,
+          "nodes": 125
+        },
+        {
+          "seed": 1052660,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 331,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 149,
+          "nodes": 125
+        },
+        {
+          "seed": 1118197,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 506,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 0,
+          "nodes": 115
+        },
+        {
+          "seed": 1183734,
+          "move": "b7a7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 455,
+            "depth": 10,
+            "bestmove": "b7a7"
+          },
+          "loss": 25,
+          "nodes": 120
+        },
+        {
+          "seed": 1249271,
+          "move": "h6f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 408,
+            "depth": 10,
+            "bestmove": "h6f4"
+          },
+          "loss": 72,
+          "nodes": 125
+        },
+        {
+          "seed": 1314808,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -495,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 975,
+          "nodes": 25
+        },
+        {
+          "seed": 1380345,
+          "move": "h6e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 344,
+            "depth": 10,
+            "bestmove": "h6e3"
+          },
+          "loss": 136,
+          "nodes": 120
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 331,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 149,
+          "nodes": 125
+        }
+      ]
+    },
+    {
+      "id": "game-16-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147540935696",
+      "whiteRating": 877,
+      "blackRating": 842,
+      "rating": 842,
+      "timeControl": "600+5",
+      "fen": "1q1r1rk1/p3p1np/1p3ppB/8/P2N4/2Q5/5PP1/R1R3K1 b - - 1 25",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4d1",
+        "g7g6",
+        "b1c3",
+        "f8g7",
+        "c1d2",
+        "g8f6",
+        "g1f3",
+        "e8g8",
+        "e4e5",
+        "f6e8",
+        "f1c4",
+        "c6e5",
+        "f3e5",
+        "g7e5",
+        "e1g1",
+        "b7b6",
+        "f1e1",
+        "e5c7",
+        "a2a4",
+        "c8b7",
+        "d2h6",
+        "e8g7",
+        "c3e2",
+        "c7h2",
+        "g1h2",
+        "d8c7",
+        "h2g1",
+        "c7c4",
+        "d1d7",
+        "a8d8",
+        "d7b7",
+        "c4c2",
+        "b7f3",
+        "c2b2",
+        "a1b1",
+        "b2c2",
+        "b1a1",
+        "c2c7",
+        "e1c1",
+        "c7b8",
+        "f3c3",
+        "f7f6",
+        "e2d4"
+      ],
+      "humanMove": "d8c8",
+      "best": {
+        "kind": "cp",
+        "value": -328,
+        "depth": 10,
+        "bestmove": "b8d6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -484,
+        "depth": 10,
+        "bestmove": "d8c8"
+      },
+      "humanLoss": 156,
+      "botLoss": 184.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -378,
+            "depth": 10,
+            "bestmove": "b8d6"
+          },
+          "loss": 50,
+          "nodes": 103
+        },
+        {
+          "seed": 1052660,
+          "move": "f8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -613,
+            "depth": 10,
+            "bestmove": "f8e8"
+          },
+          "loss": 285,
+          "nodes": 105
+        },
+        {
+          "seed": 1118197,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -576,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 248,
+          "nodes": 108
+        },
+        {
+          "seed": 1183734,
+          "move": "d8d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -477,
+            "depth": 10,
+            "bestmove": "d8d5"
+          },
+          "loss": 149,
+          "nodes": 108
+        },
+        {
+          "seed": 1249271,
+          "move": "g6g5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -483,
+            "depth": 10,
+            "bestmove": "g6g5"
+          },
+          "loss": 155,
+          "nodes": 108
+        },
+        {
+          "seed": 1314808,
+          "move": "b6b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -696,
+            "depth": 10,
+            "bestmove": "b6b5"
+          },
+          "loss": 368,
+          "nodes": 103
+        },
+        {
+          "seed": 1380345,
+          "move": "b8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -378,
+            "depth": 10,
+            "bestmove": "b8d6"
+          },
+          "loss": 50,
+          "nodes": 21
+        },
+        {
+          "seed": 1445882,
+          "move": "b8b7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -498,
+            "depth": 10,
+            "bestmove": "b8b7"
+          },
+          "loss": 170,
+          "nodes": 21
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147773849146",
+      "whiteRating": 834,
+      "blackRating": 870,
+      "rating": 834,
+      "timeControl": "900+10",
+      "fen": "r1bqkb1r/pp2pppp/2n5/3n4/2Q5/8/PPPB1PPP/RN2KBNR w KQkq - 0 7",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4c4",
+        "g8f6",
+        "c1d2",
+        "d7d5",
+        "e4d5",
+        "f6d5"
+      ],
+      "humanMove": "b1c3",
+      "best": {
+        "kind": "cp",
+        "value": 20,
+        "depth": 10,
+        "bestmove": "g1f3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 12,
+        "depth": 10,
+        "bestmove": "b1c3"
+      },
+      "humanLoss": 8,
+      "botLoss": 162.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c4a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -75,
+            "depth": 10,
+            "bestmove": "c4a4"
+          },
+          "loss": 95,
+          "nodes": 134
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -215,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 235,
+          "nodes": 134
+        },
+        {
+          "seed": 1118197,
+          "move": "f1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -61,
+            "depth": 10,
+            "bestmove": "f1e2"
+          },
+          "loss": 81,
+          "nodes": 134
+        },
+        {
+          "seed": 1183734,
+          "move": "c4c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -576,
+            "depth": 10,
+            "bestmove": "c4c6"
+          },
+          "loss": 596,
+          "nodes": 27
+        },
+        {
+          "seed": 1249271,
+          "move": "f2f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -170,
+            "depth": 10,
+            "bestmove": "f2f3"
+          },
+          "loss": 190,
+          "nodes": 134
+        },
+        {
+          "seed": 1314808,
+          "move": "f1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -61,
+            "depth": 10,
+            "bestmove": "f1e2"
+          },
+          "loss": 81,
+          "nodes": 135
+        },
+        {
+          "seed": 1380345,
+          "move": "g1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 3,
+            "depth": 10,
+            "bestmove": "g1f3"
+          },
+          "loss": 17,
+          "nodes": 134
+        },
+        {
+          "seed": 1445882,
+          "move": "b1c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 12,
+            "depth": 10,
+            "bestmove": "b1c3"
+          },
+          "loss": 8,
+          "nodes": 124
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147773849146",
+      "whiteRating": 834,
+      "blackRating": 870,
+      "rating": 870,
+      "timeControl": "900+10",
+      "fen": "r1b1k2r/pp2bppp/2n1pn2/q7/2Q4P/2N2N2/PPP1BPP1/1K1R3R b kq - 0 13",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4c4",
+        "g8f6",
+        "c1d2",
+        "d7d5",
+        "e4d5",
+        "f6d5",
+        "b1c3",
+        "d5f6",
+        "e1c1",
+        "e7e6",
+        "d2g5",
+        "d8a5",
+        "c1b1",
+        "a5g5",
+        "g1f3",
+        "g5a5",
+        "f1e2",
+        "f8e7",
+        "h2h4"
+      ],
+      "humanMove": "e8g8",
+      "best": {
+        "kind": "cp",
+        "value": 664,
+        "depth": 10,
+        "bestmove": "a7a6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 626,
+        "depth": 10,
+        "bestmove": "e8g8"
+      },
+      "humanLoss": 38,
+      "botLoss": 268.75,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 412,
+            "depth": 10,
+            "bestmove": "c6e5"
+          },
+          "loss": 252,
+          "nodes": 75
+        },
+        {
+          "seed": 1052660,
+          "move": "a5c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -516,
+            "depth": 10,
+            "bestmove": "a5c3"
+          },
+          "loss": 1000,
+          "nodes": 47
+        },
+        {
+          "seed": 1118197,
+          "move": "a5c7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 467,
+            "depth": 10,
+            "bestmove": "a5c7"
+          },
+          "loss": 197,
+          "nodes": 70
+        },
+        {
+          "seed": 1183734,
+          "move": "a5a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 533,
+            "depth": 10,
+            "bestmove": "a5a6"
+          },
+          "loss": 131,
+          "nodes": 75
+        },
+        {
+          "seed": 1249271,
+          "move": "c8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 543,
+            "depth": 10,
+            "bestmove": "c8d7"
+          },
+          "loss": 121,
+          "nodes": 75
+        },
+        {
+          "seed": 1314808,
+          "move": "e6e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 540,
+            "depth": 10,
+            "bestmove": "e6e5"
+          },
+          "loss": 124,
+          "nodes": 70
+        },
+        {
+          "seed": 1380345,
+          "move": "a5h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 377,
+            "depth": 10,
+            "bestmove": "a5h5"
+          },
+          "loss": 287,
+          "nodes": 15
+        },
+        {
+          "seed": 1445882,
+          "move": "e8g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 626,
+            "depth": 10,
+            "bestmove": "e8g8"
+          },
+          "loss": 38,
+          "nodes": 70
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147773849146",
+      "whiteRating": 834,
+      "blackRating": 870,
+      "rating": 834,
+      "timeControl": "900+10",
+      "fen": "r1b3k1/pp1n1ppp/2n1p3/6P1/1PQ4P/q1N2N2/2P1Bb2/1K1R4 w - - 0 20",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4c4",
+        "g8f6",
+        "c1d2",
+        "d7d5",
+        "e4d5",
+        "f6d5",
+        "b1c3",
+        "d5f6",
+        "e1c1",
+        "e7e6",
+        "d2g5",
+        "d8a5",
+        "c1b1",
+        "a5g5",
+        "g1f3",
+        "g5a5",
+        "f1e2",
+        "f8e7",
+        "h2h4",
+        "e8g8",
+        "g2g4",
+        "f8d8",
+        "d1d8",
+        "e7d8",
+        "h1d1",
+        "d8b6",
+        "g4g5",
+        "f6d7",
+        "a2a3",
+        "b6f2",
+        "b2b4",
+        "a5a3"
+      ],
+      "humanMove": "c3e4",
+      "best": {
+        "kind": "cp",
+        "value": -421,
+        "depth": 10,
+        "bestmove": "b4b5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -480,
+        "depth": 10,
+        "bestmove": "c3e4"
+      },
+      "humanLoss": 59,
+      "botLoss": 311.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h4h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -502,
+            "depth": 10,
+            "bestmove": "h4h5"
+          },
+          "loss": 81,
+          "nodes": 95
+        },
+        {
+          "seed": 1052660,
+          "move": "c3b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -604,
+            "depth": 10,
+            "bestmove": "c3b5"
+          },
+          "loss": 183,
+          "nodes": 85
+        },
+        {
+          "seed": 1118197,
+          "move": "f3e1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -682,
+            "depth": 10,
+            "bestmove": "f3e1"
+          },
+          "loss": 261,
+          "nodes": 95
+        },
+        {
+          "seed": 1183734,
+          "move": "h4h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -502,
+            "depth": 10,
+            "bestmove": "h4h5"
+          },
+          "loss": 81,
+          "nodes": 95
+        },
+        {
+          "seed": 1249271,
+          "move": "c4b3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -638,
+            "depth": 10,
+            "bestmove": "c4b3"
+          },
+          "loss": 217,
+          "nodes": 55
+        },
+        {
+          "seed": 1314808,
+          "move": "c4c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1156,
+            "depth": 10,
+            "bestmove": "c4c6"
+          },
+          "loss": 735,
+          "nodes": 40
+        },
+        {
+          "seed": 1380345,
+          "move": "e2d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -619,
+            "depth": 10,
+            "bestmove": "e2d3"
+          },
+          "loss": 198,
+          "nodes": 95
+        },
+        {
+          "seed": 1445882,
+          "move": "c4c6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1156,
+            "depth": 10,
+            "bestmove": "c4c6"
+          },
+          "loss": 735,
+          "nodes": 40
+        }
+      ]
+    },
+    {
+      "id": "game-18-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/147773849146",
+      "whiteRating": 834,
+      "blackRating": 870,
+      "rating": 870,
+      "timeControl": "900+10",
+      "fen": "r1b3k1/p2n1pp1/3Np1p1/qp6/1n6/1Q3N2/2P1B3/1K1R4 b - - 3 25",
+      "history": [
+        "e2e4",
+        "c7c5",
+        "d2d4",
+        "c5d4",
+        "d1d4",
+        "b8c6",
+        "d4c4",
+        "g8f6",
+        "c1d2",
+        "d7d5",
+        "e4d5",
+        "f6d5",
+        "b1c3",
+        "d5f6",
+        "e1c1",
+        "e7e6",
+        "d2g5",
+        "d8a5",
+        "c1b1",
+        "a5g5",
+        "g1f3",
+        "g5a5",
+        "f1e2",
+        "f8e7",
+        "h2h4",
+        "e8g8",
+        "g2g4",
+        "f8d8",
+        "d1d8",
+        "e7d8",
+        "h1d1",
+        "d8b6",
+        "g4g5",
+        "f6d7",
+        "a2a3",
+        "b6f2",
+        "b2b4",
+        "a5a3",
+        "c3e4",
+        "f2h4",
+        "f3h4",
+        "c6b4",
+        "g5g6",
+        "h7g6",
+        "h4f3",
+        "b7b5",
+        "c4b3",
+        "a3a5",
+        "e4d6"
+      ],
+      "humanMove": "d7c5",
+      "best": {
+        "kind": "cp",
+        "value": 294,
+        "depth": 10,
+        "bestmove": "d7c5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 274,
+        "depth": 10,
+        "bestmove": "d7c5"
+      },
+      "humanLoss": 20,
+      "botLoss": 279.375,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d7c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 274,
+            "depth": 10,
+            "bestmove": "d7c5"
+          },
+          "loss": 20,
+          "nodes": 93
+        },
+        {
+          "seed": 1052660,
+          "move": "d7c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 274,
+            "depth": 10,
+            "bestmove": "d7c5"
+          },
+          "loss": 20,
+          "nodes": 90
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f5",
+          "evaluation": {
+            "kind": "mate",
+            "value": -2,
+            "depth": 10,
+            "bestmove": "f7f5"
+          },
+          "loss": 1000,
+          "nodes": 88
+        },
+        {
+          "seed": 1183734,
+          "move": "g8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 125,
+            "depth": 10,
+            "bestmove": "g8f8"
+          },
+          "loss": 169,
+          "nodes": 83
+        },
+        {
+          "seed": 1249271,
+          "move": "g8h8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 0,
+            "depth": 10,
+            "bestmove": "g8h8"
+          },
+          "loss": 294,
+          "nodes": 88
+        },
+        {
+          "seed": 1314808,
+          "move": "b4a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 0,
+            "depth": 10,
+            "bestmove": "b4a6"
+          },
+          "loss": 294,
+          "nodes": 31
+        },
+        {
+          "seed": 1380345,
+          "move": "a5a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 25,
+            "depth": 10,
+            "bestmove": "a5a4"
+          },
+          "loss": 269,
+          "nodes": 85
+        },
+        {
+          "seed": 1445882,
+          "move": "g8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 125,
+            "depth": 10,
+            "bestmove": "g8f8"
+          },
+          "loss": 169,
+          "nodes": 90
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/174052451324",
+      "whiteRating": 991,
+      "blackRating": 993,
+      "rating": 991,
+      "timeControl": "600",
+      "fen": "r3kbnr/pppq2pp/2np4/4pb2/8/2N2N2/PPPPBPPP/R1BQ1RK1 w kq - 4 7",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "b1c3",
+        "e7e5",
+        "g1f3",
+        "f7f5",
+        "e4f5",
+        "c8f5",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "d8d7"
+      ],
+      "humanMove": "f1e1",
+      "best": {
+        "kind": "cp",
+        "value": 134,
+        "depth": 10,
+        "bestmove": "d2d4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 81,
+        "depth": 10,
+        "bestmove": "f1e1"
+      },
+      "humanLoss": 53,
+      "botLoss": 151.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f1e1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 81,
+            "depth": 10,
+            "bestmove": "f1e1"
+          },
+          "loss": 53,
+          "nodes": 100
+        },
+        {
+          "seed": 1052660,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 49,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 85,
+          "nodes": 100
+        },
+        {
+          "seed": 1118197,
+          "move": "e2c4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 35,
+            "depth": 10,
+            "bestmove": "e2c4"
+          },
+          "loss": 99,
+          "nodes": 105
+        },
+        {
+          "seed": 1183734,
+          "move": "f3h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 36,
+            "depth": 10,
+            "bestmove": "f3h4"
+          },
+          "loss": 98,
+          "nodes": 105
+        },
+        {
+          "seed": 1249271,
+          "move": "f3e5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -488,
+            "depth": 10,
+            "bestmove": "f3e5"
+          },
+          "loss": 622,
+          "nodes": 21
+        },
+        {
+          "seed": 1314808,
+          "move": "f1e1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 81,
+            "depth": 10,
+            "bestmove": "f1e1"
+          },
+          "loss": 53,
+          "nodes": 28
+        },
+        {
+          "seed": 1380345,
+          "move": "f3h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 36,
+            "depth": 10,
+            "bestmove": "f3h4"
+          },
+          "loss": 98,
+          "nodes": 100
+        },
+        {
+          "seed": 1445882,
+          "move": "e2b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 27,
+            "depth": 10,
+            "bestmove": "e2b5"
+          },
+          "loss": 107,
+          "nodes": 100
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/174052451324",
+      "whiteRating": 991,
+      "blackRating": 993,
+      "rating": 993,
+      "timeControl": "600",
+      "fen": "2kr2nr/pppQb3/7p/4pbp1/8/2N1B3/PPP1BPPP/R3R1K1 b - - 0 13",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "b1c3",
+        "e7e5",
+        "g1f3",
+        "f7f5",
+        "e4f5",
+        "c8f5",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "d8d7",
+        "f1e1",
+        "f8e7",
+        "d2d3",
+        "h7h6",
+        "c1e3",
+        "g7g5",
+        "d3d4",
+        "e8c8",
+        "d4e5",
+        "c6e5",
+        "f3e5",
+        "d6e5",
+        "d1d7"
+      ],
+      "humanMove": "d8d7",
+      "best": {
+        "kind": "cp",
+        "value": -131,
+        "depth": 10,
+        "bestmove": "d8d7"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -126,
+        "depth": 10,
+        "bestmove": "d8d7"
+      },
+      "humanLoss": 0,
+      "botLoss": 9,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -126,
+            "depth": 10,
+            "bestmove": "d8d7"
+          },
+          "loss": 0,
+          "nodes": 4
+        },
+        {
+          "seed": 1052660,
+          "move": "f5d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -149,
+            "depth": 10,
+            "bestmove": "f5d7"
+          },
+          "loss": 18,
+          "nodes": 20
+        },
+        {
+          "seed": 1118197,
+          "move": "f5d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -149,
+            "depth": 10,
+            "bestmove": "f5d7"
+          },
+          "loss": 18,
+          "nodes": 4
+        },
+        {
+          "seed": 1183734,
+          "move": "f5d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -149,
+            "depth": 10,
+            "bestmove": "f5d7"
+          },
+          "loss": 18,
+          "nodes": 4
+        },
+        {
+          "seed": 1249271,
+          "move": "f5d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -149,
+            "depth": 10,
+            "bestmove": "f5d7"
+          },
+          "loss": 18,
+          "nodes": 20
+        },
+        {
+          "seed": 1314808,
+          "move": "d8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -126,
+            "depth": 10,
+            "bestmove": "d8d7"
+          },
+          "loss": 0,
+          "nodes": 4
+        },
+        {
+          "seed": 1380345,
+          "move": "d8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -126,
+            "depth": 10,
+            "bestmove": "d8d7"
+          },
+          "loss": 0,
+          "nodes": 20
+        },
+        {
+          "seed": 1445882,
+          "move": "d8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": -126,
+            "depth": 10,
+            "bestmove": "d8d7"
+          },
+          "loss": 0,
+          "nodes": 20
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/174052451324",
+      "whiteRating": 991,
+      "blackRating": 993,
+      "rating": 991,
+      "timeControl": "600",
+      "fen": "6nr/1k1r4/1pp2b2/1N3bpp/4p3/4B2P/PPP1BPP1/R3R1K1 w - - 0 20",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "b1c3",
+        "e7e5",
+        "g1f3",
+        "f7f5",
+        "e4f5",
+        "c8f5",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "d8d7",
+        "f1e1",
+        "f8e7",
+        "d2d3",
+        "h7h6",
+        "c1e3",
+        "g7g5",
+        "d3d4",
+        "e8c8",
+        "d4e5",
+        "c6e5",
+        "f3e5",
+        "d6e5",
+        "d1d7",
+        "d8d7",
+        "c3b5",
+        "b7b6",
+        "h2h3",
+        "h6h5",
+        "b5a7",
+        "c8b7",
+        "a7b5",
+        "e7f6",
+        "e2f3",
+        "e5e4",
+        "f3e2",
+        "c7c6"
+      ],
+      "humanMove": "b5c3",
+      "best": {
+        "kind": "cp",
+        "value": 79,
+        "depth": 10,
+        "bestmove": "b5c3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 82,
+        "depth": 10,
+        "bestmove": "b5c3"
+      },
+      "humanLoss": 0,
+      "botLoss": 282,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e2f1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -133,
+            "depth": 10,
+            "bestmove": "e2f1"
+          },
+          "loss": 212,
+          "nodes": 100
+        },
+        {
+          "seed": 1052660,
+          "move": "b5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -332,
+            "depth": 10,
+            "bestmove": "b5d4"
+          },
+          "loss": 411,
+          "nodes": 115
+        },
+        {
+          "seed": 1118197,
+          "move": "b5d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -332,
+            "depth": 10,
+            "bestmove": "b5d4"
+          },
+          "loss": 411,
+          "nodes": 115
+        },
+        {
+          "seed": 1183734,
+          "move": "g1h1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -200,
+            "depth": 10,
+            "bestmove": "g1h1"
+          },
+          "loss": 279,
+          "nodes": 105
+        },
+        {
+          "seed": 1249271,
+          "move": "b5c3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 82,
+            "depth": 10,
+            "bestmove": "b5c3"
+          },
+          "loss": 0,
+          "nodes": 110
+        },
+        {
+          "seed": 1314808,
+          "move": "e2h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -386,
+            "depth": 10,
+            "bestmove": "e2h5"
+          },
+          "loss": 465,
+          "nodes": 20
+        },
+        {
+          "seed": 1380345,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -160,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 239,
+          "nodes": 100
+        },
+        {
+          "seed": 1445882,
+          "move": "g2g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -160,
+            "depth": 10,
+            "bestmove": "g2g4"
+          },
+          "loss": 239,
+          "nodes": 22
+        }
+      ]
+    },
+    {
+      "id": "game-20-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/174052451324",
+      "whiteRating": 991,
+      "blackRating": 993,
+      "rating": 993,
+      "timeControl": "600",
+      "fen": "7r/1k6/1pp5/3B1bpp/P3p3/4B2P/2P2PP1/R5K1 b - - 0 25",
+      "history": [
+        "e2e4",
+        "d7d6",
+        "b1c3",
+        "e7e5",
+        "g1f3",
+        "f7f5",
+        "e4f5",
+        "c8f5",
+        "f1e2",
+        "b8c6",
+        "e1g1",
+        "d8d7",
+        "f1e1",
+        "f8e7",
+        "d2d3",
+        "h7h6",
+        "c1e3",
+        "g7g5",
+        "d3d4",
+        "e8c8",
+        "d4e5",
+        "c6e5",
+        "f3e5",
+        "d6e5",
+        "d1d7",
+        "d8d7",
+        "c3b5",
+        "b7b6",
+        "h2h3",
+        "h6h5",
+        "b5a7",
+        "c8b7",
+        "a7b5",
+        "e7f6",
+        "e2f3",
+        "e5e4",
+        "f3e2",
+        "c7c6",
+        "b5c3",
+        "g8e7",
+        "a2a4",
+        "d7d5",
+        "c3d5",
+        "e7d5",
+        "e2c4",
+        "f6b2",
+        "c4d5",
+        "b2a1",
+        "e1a1"
+      ],
+      "humanMove": "c6d5",
+      "best": {
+        "kind": "cp",
+        "value": -127,
+        "depth": 10,
+        "bestmove": "c6d5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -134,
+        "depth": 10,
+        "bestmove": "c6d5"
+      },
+      "humanLoss": 7,
+      "botLoss": 153,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f5g6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -614,
+            "depth": 10,
+            "bestmove": "f5g6"
+          },
+          "loss": 487,
+          "nodes": 130
+        },
+        {
+          "seed": 1052660,
+          "move": "c6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -134,
+            "depth": 10,
+            "bestmove": "c6d5"
+          },
+          "loss": 7,
+          "nodes": 130
+        },
+        {
+          "seed": 1118197,
+          "move": "c6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -134,
+            "depth": 10,
+            "bestmove": "c6d5"
+          },
+          "loss": 7,
+          "nodes": 130
+        },
+        {
+          "seed": 1183734,
+          "move": "g5g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -478,
+            "depth": 10,
+            "bestmove": "g5g4"
+          },
+          "loss": 351,
+          "nodes": 130
+        },
+        {
+          "seed": 1249271,
+          "move": "g5g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -478,
+            "depth": 10,
+            "bestmove": "g5g4"
+          },
+          "loss": 351,
+          "nodes": 26
+        },
+        {
+          "seed": 1314808,
+          "move": "c6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -134,
+            "depth": 10,
+            "bestmove": "c6d5"
+          },
+          "loss": 7,
+          "nodes": 26
+        },
+        {
+          "seed": 1380345,
+          "move": "c6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -134,
+            "depth": 10,
+            "bestmove": "c6d5"
+          },
+          "loss": 7,
+          "nodes": 130
+        },
+        {
+          "seed": 1445882,
+          "move": "c6d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -134,
+            "depth": 10,
+            "bestmove": "c6d5"
+          },
+          "loss": 7,
+          "nodes": 130
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40003781927",
+      "whiteRating": 980,
+      "blackRating": 992,
+      "rating": 980,
+      "timeControl": "600",
+      "fen": "r1bqkbnr/ppp2ppp/2n5/3p4/5P2/2N5/PPP3PP/R1BQKBNR w KQkq - 0 7",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4d5",
+        "d8d5",
+        "b1c3",
+        "d5d8",
+        "f2f4",
+        "b8c6",
+        "d4d5",
+        "e6d5"
+      ],
+      "humanMove": "d1d5",
+      "best": {
+        "kind": "cp",
+        "value": -159,
+        "depth": 10,
+        "bestmove": "d1d5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -173,
+        "depth": 10,
+        "bestmove": "d1d5"
+      },
+      "humanLoss": 14,
+      "botLoss": 146.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -262,
+            "depth": 10,
+            "bestmove": "c1d2"
+          },
+          "loss": 103,
+          "nodes": 120
+        },
+        {
+          "seed": 1052660,
+          "move": "f1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -292,
+            "depth": 10,
+            "bestmove": "f1e2"
+          },
+          "loss": 133,
+          "nodes": 125
+        },
+        {
+          "seed": 1118197,
+          "move": "g1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -319,
+            "depth": 10,
+            "bestmove": "g1e2"
+          },
+          "loss": 160,
+          "nodes": 125
+        },
+        {
+          "seed": 1183734,
+          "move": "a1b1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -375,
+            "depth": 10,
+            "bestmove": "a1b1"
+          },
+          "loss": 216,
+          "nodes": 120
+        },
+        {
+          "seed": 1249271,
+          "move": "d1f3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -346,
+            "depth": 10,
+            "bestmove": "d1f3"
+          },
+          "loss": 187,
+          "nodes": 120
+        },
+        {
+          "seed": 1314808,
+          "move": "c3d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -162,
+            "depth": 10,
+            "bestmove": "c3d5"
+          },
+          "loss": 3,
+          "nodes": 37
+        },
+        {
+          "seed": 1380345,
+          "move": "f1e2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -292,
+            "depth": 10,
+            "bestmove": "f1e2"
+          },
+          "loss": 133,
+          "nodes": 120
+        },
+        {
+          "seed": 1445882,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -396,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 237,
+          "nodes": 25
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40003781927",
+      "whiteRating": 980,
+      "blackRating": 992,
+      "rating": 992,
+      "timeControl": "600",
+      "fen": "r3k1nr/ppp2ppp/3b4/5P2/8/2N5/PPP1N2P/R1B1K2b b Qkq - 1 13",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4d5",
+        "d8d5",
+        "b1c3",
+        "d5d8",
+        "f2f4",
+        "b8c6",
+        "d4d5",
+        "e6d5",
+        "d1d5",
+        "d8d5",
+        "c3d5",
+        "f8d6",
+        "f1b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "d5c3",
+        "c6g2",
+        "f4f5",
+        "g2h1",
+        "g1e2"
+      ],
+      "humanMove": "e8c8",
+      "best": {
+        "kind": "cp",
+        "value": 692,
+        "depth": 10,
+        "bestmove": "e8f8"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 599,
+        "depth": 10,
+        "bestmove": "e8c8"
+      },
+      "humanLoss": 93,
+      "botLoss": 125.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h1d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 505,
+            "depth": 10,
+            "bestmove": "h1d5"
+          },
+          "loss": 187,
+          "nodes": 36
+        },
+        {
+          "seed": 1052660,
+          "move": "e8c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 599,
+            "depth": 10,
+            "bestmove": "e8c8"
+          },
+          "loss": 93,
+          "nodes": 180
+        },
+        {
+          "seed": 1118197,
+          "move": "d6c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 602,
+            "depth": 10,
+            "bestmove": "d6c5"
+          },
+          "loss": 90,
+          "nodes": 180
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 590,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 102,
+          "nodes": 180
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 550,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 142,
+          "nodes": 180
+        },
+        {
+          "seed": 1314808,
+          "move": "h1d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 505,
+            "depth": 10,
+            "bestmove": "h1d5"
+          },
+          "loss": 187,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "d6f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 523,
+            "depth": 10,
+            "bestmove": "d6f8"
+          },
+          "loss": 169,
+          "nodes": 180
+        },
+        {
+          "seed": 1445882,
+          "move": "g8e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 655,
+            "depth": 10,
+            "bestmove": "g8e7"
+          },
+          "loss": 37,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40003781927",
+      "whiteRating": 980,
+      "blackRating": 992,
+      "rating": 980,
+      "timeControl": "600",
+      "fen": "2k1r1nr/ppp2ppp/2b5/5P2/8/2N5/PPP4P/2KR4 w - - 4 20",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4d5",
+        "d8d5",
+        "b1c3",
+        "d5d8",
+        "f2f4",
+        "b8c6",
+        "d4d5",
+        "e6d5",
+        "d1d5",
+        "d8d5",
+        "c3d5",
+        "f8d6",
+        "f1b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "d5c3",
+        "c6g2",
+        "f4f5",
+        "g2h1",
+        "g1e2",
+        "e8c8",
+        "c1f4",
+        "d6f4",
+        "e2f4",
+        "d8e8",
+        "f4e2",
+        "h1f3",
+        "e1c1",
+        "f3e2",
+        "d1e1",
+        "e2b5",
+        "e1d1",
+        "b5c6"
+      ],
+      "humanMove": "b2b4",
+      "best": {
+        "kind": "cp",
+        "value": -899,
+        "depth": 10,
+        "bestmove": "a2a4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -994,
+        "depth": 10,
+        "bestmove": "b2b4"
+      },
+      "humanLoss": 95,
+      "botLoss": 113.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "d1d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1064,
+            "depth": 10,
+            "bestmove": "d1d4"
+          },
+          "loss": 165,
+          "nodes": 128
+        },
+        {
+          "seed": 1052660,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -994,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 95,
+          "nodes": 128
+        },
+        {
+          "seed": 1118197,
+          "move": "a2a4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -905,
+            "depth": 10,
+            "bestmove": "a2a4"
+          },
+          "loss": 6,
+          "nodes": 128
+        },
+        {
+          "seed": 1183734,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -994,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 95,
+          "nodes": 128
+        },
+        {
+          "seed": 1249271,
+          "move": "c3d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -927,
+            "depth": 10,
+            "bestmove": "c3d5"
+          },
+          "loss": 28,
+          "nodes": 26
+        },
+        {
+          "seed": 1314808,
+          "move": "b2b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -994,
+            "depth": 10,
+            "bestmove": "b2b4"
+          },
+          "loss": 95,
+          "nodes": 26
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1158,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 259,
+          "nodes": 128
+        },
+        {
+          "seed": 1445882,
+          "move": "d1d4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1064,
+            "depth": 10,
+            "bestmove": "d1d4"
+          },
+          "loss": 165,
+          "nodes": 128
+        }
+      ]
+    },
+    {
+      "id": "game-22-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40003781927",
+      "whiteRating": 980,
+      "blackRating": 992,
+      "rating": 992,
+      "timeControl": "600",
+      "fen": "2kr4/ppp2ppp/5n2/1P3P2/4b3/1KN5/P1P2R1P/4r3 b - - 8 25",
+      "history": [
+        "d2d4",
+        "e7e6",
+        "e2e4",
+        "d7d5",
+        "e4d5",
+        "d8d5",
+        "b1c3",
+        "d5d8",
+        "f2f4",
+        "b8c6",
+        "d4d5",
+        "e6d5",
+        "d1d5",
+        "d8d5",
+        "c3d5",
+        "f8d6",
+        "f1b5",
+        "c8d7",
+        "b5c6",
+        "d7c6",
+        "d5c3",
+        "c6g2",
+        "f4f5",
+        "g2h1",
+        "g1e2",
+        "e8c8",
+        "c1f4",
+        "d6f4",
+        "e2f4",
+        "d8e8",
+        "f4e2",
+        "h1f3",
+        "e1c1",
+        "f3e2",
+        "d1e1",
+        "e2b5",
+        "e1d1",
+        "b5c6",
+        "b2b4",
+        "g8f6",
+        "b4b5",
+        "c6f3",
+        "d1d2",
+        "e8e1",
+        "c1b2",
+        "h8d8",
+        "d2f2",
+        "f3e4",
+        "b2b3"
+      ],
+      "humanMove": "e4d5",
+      "best": {
+        "kind": "cp",
+        "value": 1033,
+        "depth": 10,
+        "bestmove": "e1e3"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 933,
+        "depth": 10,
+        "bestmove": "e4d5"
+      },
+      "humanLoss": 100,
+      "botLoss": 113.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c7c5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 993,
+            "depth": 10,
+            "bestmove": "c7c5"
+          },
+          "loss": 40,
+          "nodes": 225
+        },
+        {
+          "seed": 1052660,
+          "move": "c8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 860,
+            "depth": 10,
+            "bestmove": "c8d7"
+          },
+          "loss": 173,
+          "nodes": 225
+        },
+        {
+          "seed": 1118197,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 970,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 63,
+          "nodes": 225
+        },
+        {
+          "seed": 1183734,
+          "move": "d8e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 916,
+            "depth": 10,
+            "bestmove": "d8e8"
+          },
+          "loss": 117,
+          "nodes": 225
+        },
+        {
+          "seed": 1249271,
+          "move": "h7h6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 968,
+            "depth": 10,
+            "bestmove": "h7h6"
+          },
+          "loss": 65,
+          "nodes": 225
+        },
+        {
+          "seed": 1314808,
+          "move": "e1e3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 956,
+            "depth": 10,
+            "bestmove": "e1e3"
+          },
+          "loss": 77,
+          "nodes": 225
+        },
+        {
+          "seed": 1380345,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 860,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 173,
+          "nodes": 225
+        },
+        {
+          "seed": 1445882,
+          "move": "e1a1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 835,
+            "depth": 10,
+            "bestmove": "e1a1"
+          },
+          "loss": 198,
+          "nodes": 45
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40005579925",
+      "whiteRating": 828,
+      "blackRating": 970,
+      "rating": 828,
+      "timeControl": "600",
+      "fen": "rnbqkbnr/p4ppp/3p4/1pp5/3NP3/1B6/PPP2PPP/RNBQK2R w KQkq - 0 7",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d7d6",
+        "f1c4",
+        "c7c6",
+        "d2d4",
+        "b7b5",
+        "c4b3",
+        "e5d4",
+        "f3d4",
+        "c6c5"
+      ],
+      "humanMove": "d4f3",
+      "best": {
+        "kind": "cp",
+        "value": 303,
+        "depth": 10,
+        "bestmove": "d4b5"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 59,
+        "depth": 10,
+        "bestmove": "d4f3"
+      },
+      "humanLoss": 244,
+      "botLoss": 123.625,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c1f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 178,
+            "depth": 10,
+            "bestmove": "c1f4"
+          },
+          "loss": 125,
+          "nodes": 129
+        },
+        {
+          "seed": 1052660,
+          "move": "c1d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 6,
+            "depth": 10,
+            "bestmove": "c1d2"
+          },
+          "loss": 297,
+          "nodes": 27
+        },
+        {
+          "seed": 1118197,
+          "move": "d4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 358,
+            "depth": 10,
+            "bestmove": "d4b5"
+          },
+          "loss": 0,
+          "nodes": 129
+        },
+        {
+          "seed": 1183734,
+          "move": "d4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 358,
+            "depth": 10,
+            "bestmove": "d4b5"
+          },
+          "loss": 0,
+          "nodes": 130
+        },
+        {
+          "seed": 1249271,
+          "move": "e1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 143,
+            "depth": 10,
+            "bestmove": "e1g1"
+          },
+          "loss": 160,
+          "nodes": 104
+        },
+        {
+          "seed": 1314808,
+          "move": "d4b5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 358,
+            "depth": 10,
+            "bestmove": "d4b5"
+          },
+          "loss": 0,
+          "nodes": 125
+        },
+        {
+          "seed": 1380345,
+          "move": "c1f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 178,
+            "depth": 10,
+            "bestmove": "c1f4"
+          },
+          "loss": 125,
+          "nodes": 130
+        },
+        {
+          "seed": 1445882,
+          "move": "b1a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": 21,
+            "depth": 10,
+            "bestmove": "b1a3"
+          },
+          "loss": 282,
+          "nodes": 99
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40005579925",
+      "whiteRating": 828,
+      "blackRating": 970,
+      "rating": 970,
+      "timeControl": "600",
+      "fen": "rnb1kb1r/p4ppp/8/4N3/2p1nBP1/8/PPP2P1P/RN1K3R b kq - 0 13",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d7d6",
+        "f1c4",
+        "c7c6",
+        "d2d4",
+        "b7b5",
+        "c4b3",
+        "e5d4",
+        "f3d4",
+        "c6c5",
+        "d4f3",
+        "c5c4",
+        "b3c4",
+        "b5c4",
+        "c1f4",
+        "g8f6",
+        "e4e5",
+        "d6e5",
+        "f3e5",
+        "d8d1",
+        "e1d1",
+        "f6e4",
+        "g2g4"
+      ],
+      "humanMove": "e4f2",
+      "best": {
+        "kind": "cp",
+        "value": 618,
+        "depth": 10,
+        "bestmove": "e4f2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 595,
+        "depth": 10,
+        "bestmove": "e4f2"
+      },
+      "humanLoss": 23,
+      "botLoss": 243,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c8a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 336,
+            "depth": 10,
+            "bestmove": "c8a6"
+          },
+          "loss": 282,
+          "nodes": 170
+        },
+        {
+          "seed": 1052660,
+          "move": "c8a6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 336,
+            "depth": 10,
+            "bestmove": "c8a6"
+          },
+          "loss": 282,
+          "nodes": 170
+        },
+        {
+          "seed": 1118197,
+          "move": "c8g4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 95,
+            "depth": 10,
+            "bestmove": "c8g4"
+          },
+          "loss": 523,
+          "nodes": 34
+        },
+        {
+          "seed": 1183734,
+          "move": "c8d7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 367,
+            "depth": 10,
+            "bestmove": "c8d7"
+          },
+          "loss": 251,
+          "nodes": 34
+        },
+        {
+          "seed": 1249271,
+          "move": "c8e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 485,
+            "depth": 10,
+            "bestmove": "c8e6"
+          },
+          "loss": 133,
+          "nodes": 170
+        },
+        {
+          "seed": 1314808,
+          "move": "c8e6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 485,
+            "depth": 10,
+            "bestmove": "c8e6"
+          },
+          "loss": 133,
+          "nodes": 170
+        },
+        {
+          "seed": 1380345,
+          "move": "f8d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 501,
+            "depth": 10,
+            "bestmove": "f8d6"
+          },
+          "loss": 117,
+          "nodes": 170
+        },
+        {
+          "seed": 1445882,
+          "move": "a7a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 395,
+            "depth": 10,
+            "bestmove": "a7a5"
+          },
+          "loss": 223,
+          "nodes": 170
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40005579925",
+      "whiteRating": 828,
+      "blackRating": 970,
+      "rating": 828,
+      "timeControl": "600",
+      "fen": "r3k2r/p1Bn2pp/8/2b5/2p3b1/2N1K3/PPP4P/7R w kq - 4 20",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d7d6",
+        "f1c4",
+        "c7c6",
+        "d2d4",
+        "b7b5",
+        "c4b3",
+        "e5d4",
+        "f3d4",
+        "c6c5",
+        "d4f3",
+        "c5c4",
+        "b3c4",
+        "b5c4",
+        "c1f4",
+        "g8f6",
+        "e4e5",
+        "d6e5",
+        "f3e5",
+        "d8d1",
+        "e1d1",
+        "f6e4",
+        "g2g4",
+        "e4f2",
+        "d1e2",
+        "f2h1",
+        "b1c3",
+        "f7f6",
+        "a1h1",
+        "f6e5",
+        "f4e5",
+        "c8g4",
+        "e2e3",
+        "b8d7",
+        "e5c7",
+        "f8c5"
+      ],
+      "humanMove": "e3e4",
+      "best": {
+        "kind": "cp",
+        "value": -869,
+        "depth": 10,
+        "bestmove": "e3d2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -1442,
+        "depth": 10,
+        "bestmove": "e3e4"
+      },
+      "humanLoss": 573,
+      "botLoss": 317.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "e3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1021,
+            "depth": 10,
+            "bestmove": "e3d2"
+          },
+          "loss": 152,
+          "nodes": 3
+        },
+        {
+          "seed": 1052660,
+          "move": "e3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1021,
+            "depth": 10,
+            "bestmove": "e3d2"
+          },
+          "loss": 152,
+          "nodes": 15
+        },
+        {
+          "seed": 1118197,
+          "move": "e3f4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1085,
+            "depth": 10,
+            "bestmove": "e3f4"
+          },
+          "loss": 216,
+          "nodes": 15
+        },
+        {
+          "seed": 1183734,
+          "move": "e3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1021,
+            "depth": 10,
+            "bestmove": "e3d2"
+          },
+          "loss": 152,
+          "nodes": 15
+        },
+        {
+          "seed": 1249271,
+          "move": "e3d2",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1021,
+            "depth": 10,
+            "bestmove": "e3d2"
+          },
+          "loss": 152,
+          "nodes": 15
+        },
+        {
+          "seed": 1314808,
+          "move": "e3e4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1442,
+            "depth": 10,
+            "bestmove": "e3e4"
+          },
+          "loss": 573,
+          "nodes": 15
+        },
+        {
+          "seed": 1380345,
+          "move": "e3e4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1442,
+            "depth": 10,
+            "bestmove": "e3e4"
+          },
+          "loss": 573,
+          "nodes": 15
+        },
+        {
+          "seed": 1445882,
+          "move": "e3e4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -1442,
+            "depth": 10,
+            "bestmove": "e3e4"
+          },
+          "loss": 573,
+          "nodes": 15
+        }
+      ]
+    },
+    {
+      "id": "game-24-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40005579925",
+      "whiteRating": 828,
+      "blackRating": 970,
+      "rating": 970,
+      "timeControl": "600",
+      "fen": "r3r3/2Bn1k1p/p2N2p1/2bK1b2/2p5/8/PPP4P/5R2 b - - 1 25",
+      "history": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d7d6",
+        "f1c4",
+        "c7c6",
+        "d2d4",
+        "b7b5",
+        "c4b3",
+        "e5d4",
+        "f3d4",
+        "c6c5",
+        "d4f3",
+        "c5c4",
+        "b3c4",
+        "b5c4",
+        "c1f4",
+        "g8f6",
+        "e4e5",
+        "d6e5",
+        "f3e5",
+        "d8d1",
+        "e1d1",
+        "f6e4",
+        "g2g4",
+        "e4f2",
+        "d1e2",
+        "f2h1",
+        "b1c3",
+        "f7f6",
+        "a1h1",
+        "f6e5",
+        "f4e5",
+        "c8g4",
+        "e2e3",
+        "b8d7",
+        "e5c7",
+        "f8c5",
+        "e3e4",
+        "g7g6",
+        "h1e1",
+        "g4f5",
+        "e4d5",
+        "e8f7",
+        "c3b5",
+        "h8e8",
+        "e1f1",
+        "a7a6",
+        "b5d6"
+      ],
+      "humanMove": "c5d6",
+      "best": {
+        "kind": "cp",
+        "value": 809,
+        "depth": 10,
+        "bestmove": "c5d6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 809,
+        "depth": 10,
+        "bestmove": "c5d6"
+      },
+      "humanLoss": 0,
+      "botLoss": 106.25,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "f7f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 672,
+            "depth": 10,
+            "bestmove": "f7f8"
+          },
+          "loss": 137,
+          "nodes": 6
+        },
+        {
+          "seed": 1052660,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 664,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 145,
+          "nodes": 30
+        },
+        {
+          "seed": 1118197,
+          "move": "f7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 664,
+            "depth": 10,
+            "bestmove": "f7f6"
+          },
+          "loss": 145,
+          "nodes": 30
+        },
+        {
+          "seed": 1183734,
+          "move": "f7g8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 752,
+            "depth": 10,
+            "bestmove": "f7g8"
+          },
+          "loss": 57,
+          "nodes": 30
+        },
+        {
+          "seed": 1249271,
+          "move": "f7f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 672,
+            "depth": 10,
+            "bestmove": "f7f8"
+          },
+          "loss": 137,
+          "nodes": 30
+        },
+        {
+          "seed": 1314808,
+          "move": "f7e7",
+          "evaluation": {
+            "kind": "cp",
+            "value": 580,
+            "depth": 10,
+            "bestmove": "f7e7"
+          },
+          "loss": 229,
+          "nodes": 30
+        },
+        {
+          "seed": 1380345,
+          "move": "c5d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 809,
+            "depth": 10,
+            "bestmove": "c5d6"
+          },
+          "loss": 0,
+          "nodes": 6
+        },
+        {
+          "seed": 1445882,
+          "move": "c5d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 809,
+            "depth": 10,
+            "bestmove": "c5d6"
+          },
+          "loss": 0,
+          "nodes": 30
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-12",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40090780139",
+      "whiteRating": 936,
+      "blackRating": 961,
+      "rating": 936,
+      "timeControl": "600",
+      "fen": "r2qkb1r/pppbpp1p/3p1np1/3P4/QnP2P2/5N2/PP2P1PP/RNB1KB1R w KQkq - 3 7",
+      "history": [
+        "d2d4",
+        "d7d6",
+        "f2f4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "c2c4",
+        "g7g6",
+        "d4d5",
+        "c6b4",
+        "d1a4",
+        "c8d7"
+      ],
+      "humanMove": "a4b4",
+      "best": {
+        "kind": "cp",
+        "value": 522,
+        "depth": 10,
+        "bestmove": "a4b4"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 492,
+        "depth": 10,
+        "bestmove": "a4b4"
+      },
+      "humanLoss": 30,
+      "botLoss": 515,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "a4b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 492,
+            "depth": 10,
+            "bestmove": "a4b4"
+          },
+          "loss": 30,
+          "nodes": 23
+        },
+        {
+          "seed": 1052660,
+          "move": "a4a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -878,
+            "depth": 10,
+            "bestmove": "a4a3"
+          },
+          "loss": 1000,
+          "nodes": 110
+        },
+        {
+          "seed": 1118197,
+          "move": "a4a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -651,
+            "depth": 10,
+            "bestmove": "a4a5"
+          },
+          "loss": 1000,
+          "nodes": 109
+        },
+        {
+          "seed": 1183734,
+          "move": "a4a5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -651,
+            "depth": 10,
+            "bestmove": "a4a5"
+          },
+          "loss": 1000,
+          "nodes": 114
+        },
+        {
+          "seed": 1249271,
+          "move": "a4b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 492,
+            "depth": 10,
+            "bestmove": "a4b4"
+          },
+          "loss": 30,
+          "nodes": 114
+        },
+        {
+          "seed": 1314808,
+          "move": "e2e4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -856,
+            "depth": 10,
+            "bestmove": "e2e4"
+          },
+          "loss": 1000,
+          "nodes": 36
+        },
+        {
+          "seed": 1380345,
+          "move": "a4b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 492,
+            "depth": 10,
+            "bestmove": "a4b4"
+          },
+          "loss": 30,
+          "nodes": 114
+        },
+        {
+          "seed": 1445882,
+          "move": "a4b4",
+          "evaluation": {
+            "kind": "cp",
+            "value": 492,
+            "depth": 10,
+            "bestmove": "a4b4"
+          },
+          "loss": 30,
+          "nodes": 36
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-25",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40090780139",
+      "whiteRating": 936,
+      "blackRating": 961,
+      "rating": 961,
+      "timeControl": "600",
+      "fen": "1r1q1rk1/1ppbppbp/p2p2p1/3P4/1QP1PP2/BPNBn3/P2N2PP/R3K2R b KQ - 3 13",
+      "history": [
+        "d2d4",
+        "d7d6",
+        "f2f4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "c2c4",
+        "g7g6",
+        "d4d5",
+        "c6b4",
+        "d1a4",
+        "c8d7",
+        "a4b4",
+        "a8b8",
+        "f3d2",
+        "f8g7",
+        "e2e4",
+        "e8g8",
+        "b2b3",
+        "f6g4",
+        "b1c3",
+        "a7a6",
+        "c1a3",
+        "g4e3",
+        "f1d3"
+      ],
+      "humanMove": "e3g2",
+      "best": {
+        "kind": "cp",
+        "value": 684,
+        "depth": 10,
+        "bestmove": "e3g2"
+      },
+      "human": {
+        "kind": "cp",
+        "value": 679,
+        "depth": 10,
+        "bestmove": "e3g2"
+      },
+      "humanLoss": 5,
+      "botLoss": 618.5,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 60,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 624,
+          "nodes": 95
+        },
+        {
+          "seed": 1052660,
+          "move": "e3g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 679,
+            "depth": 10,
+            "bestmove": "e3g2"
+          },
+          "loss": 5,
+          "nodes": 105
+        },
+        {
+          "seed": 1118197,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 60,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 624,
+          "nodes": 100
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 43,
+            "depth": 10,
+            "bestmove": "b7b6"
+          },
+          "loss": 641,
+          "nodes": 100
+        },
+        {
+          "seed": 1249271,
+          "move": "d8c8",
+          "evaluation": {
+            "kind": "cp",
+            "value": -64,
+            "depth": 10,
+            "bestmove": "d8c8"
+          },
+          "loss": 748,
+          "nodes": 105
+        },
+        {
+          "seed": 1314808,
+          "move": "e3d5",
+          "evaluation": {
+            "kind": "cp",
+            "value": -362,
+            "depth": 10,
+            "bestmove": "e3d5"
+          },
+          "loss": 1000,
+          "nodes": 21
+        },
+        {
+          "seed": 1380345,
+          "move": "g7f6",
+          "evaluation": {
+            "kind": "cp",
+            "value": 2,
+            "depth": 10,
+            "bestmove": "g7f6"
+          },
+          "loss": 682,
+          "nodes": 105
+        },
+        {
+          "seed": 1445882,
+          "move": "h7h5",
+          "evaluation": {
+            "kind": "cp",
+            "value": 60,
+            "depth": 10,
+            "bestmove": "h7h5"
+          },
+          "loss": 624,
+          "nodes": 20
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-38",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40090780139",
+      "whiteRating": 936,
+      "blackRating": 961,
+      "rating": 936,
+      "timeControl": "600",
+      "fen": "1r1q1rk1/1p1bpp1p/p1pp2p1/2PP4/1B2P3/1PN5/P2K3P/R6R w - - 0 20",
+      "history": [
+        "d2d4",
+        "d7d6",
+        "f2f4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "c2c4",
+        "g7g6",
+        "d4d5",
+        "c6b4",
+        "d1a4",
+        "c8d7",
+        "a4b4",
+        "a8b8",
+        "f3d2",
+        "f8g7",
+        "e2e4",
+        "e8g8",
+        "b2b3",
+        "f6g4",
+        "b1c3",
+        "a7a6",
+        "c1a3",
+        "g4e3",
+        "f1d3",
+        "e3g2",
+        "e1f2",
+        "g2f4",
+        "c4c5",
+        "f4d3",
+        "f2e3",
+        "d3b4",
+        "a3b4",
+        "g7h6",
+        "e3e2",
+        "h6d2",
+        "e2d2",
+        "c7c6"
+      ],
+      "humanMove": "c5d6",
+      "best": {
+        "kind": "cp",
+        "value": -649,
+        "depth": 10,
+        "bestmove": "d5c6"
+      },
+      "human": {
+        "kind": "cp",
+        "value": -677,
+        "depth": 10,
+        "bestmove": "c5d6"
+      },
+      "humanLoss": 28,
+      "botLoss": 63.875,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "c5d6",
+          "evaluation": {
+            "kind": "cp",
+            "value": -677,
+            "depth": 10,
+            "bestmove": "c5d6"
+          },
+          "loss": 28,
+          "nodes": 165
+        },
+        {
+          "seed": 1052660,
+          "move": "h1f1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -635,
+            "depth": 10,
+            "bestmove": "h1f1"
+          },
+          "loss": 0,
+          "nodes": 165
+        },
+        {
+          "seed": 1118197,
+          "move": "a1g1",
+          "evaluation": {
+            "kind": "cp",
+            "value": -712,
+            "depth": 10,
+            "bestmove": "a1g1"
+          },
+          "loss": 63,
+          "nodes": 33
+        },
+        {
+          "seed": 1183734,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -689,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 40,
+          "nodes": 165
+        },
+        {
+          "seed": 1249271,
+          "move": "h2h4",
+          "evaluation": {
+            "kind": "cp",
+            "value": -689,
+            "depth": 10,
+            "bestmove": "h2h4"
+          },
+          "loss": 40,
+          "nodes": 150
+        },
+        {
+          "seed": 1314808,
+          "move": "d2d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -677,
+            "depth": 10,
+            "bestmove": "d2d3"
+          },
+          "loss": 28,
+          "nodes": 165
+        },
+        {
+          "seed": 1380345,
+          "move": "a2a3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -933,
+            "depth": 10,
+            "bestmove": "a2a3"
+          },
+          "loss": 284,
+          "nodes": 165
+        },
+        {
+          "seed": 1445882,
+          "move": "d2d3",
+          "evaluation": {
+            "kind": "cp",
+            "value": -677,
+            "depth": 10,
+            "bestmove": "d2d3"
+          },
+          "loss": 28,
+          "nodes": 33
+        }
+      ]
+    },
+    {
+      "id": "game-26-ply-49",
+      "split": "validation",
+      "source": "https://www.chess.com/game/live/40090780139",
+      "whiteRating": 936,
+      "blackRating": 961,
+      "rating": 961,
+      "timeControl": "600",
+      "fen": "1r4k1/1p1b3p/p1pPp1p1/8/NBK1P3/1P2q3/P4r1P/R6R b - - 7 25",
+      "history": [
+        "d2d4",
+        "d7d6",
+        "f2f4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "c2c4",
+        "g7g6",
+        "d4d5",
+        "c6b4",
+        "d1a4",
+        "c8d7",
+        "a4b4",
+        "a8b8",
+        "f3d2",
+        "f8g7",
+        "e2e4",
+        "e8g8",
+        "b2b3",
+        "f6g4",
+        "b1c3",
+        "a7a6",
+        "c1a3",
+        "g4e3",
+        "f1d3",
+        "e3g2",
+        "e1f2",
+        "g2f4",
+        "c4c5",
+        "f4d3",
+        "f2e3",
+        "d3b4",
+        "a3b4",
+        "g7h6",
+        "e3e2",
+        "h6d2",
+        "e2d2",
+        "c7c6",
+        "c5d6",
+        "e7e6",
+        "d5e6",
+        "f7e6",
+        "c3a4",
+        "d8g5",
+        "d2c2",
+        "f8f2",
+        "c2c3",
+        "g5e3",
+        "c3c4"
+      ],
+      "humanMove": "b7b5",
+      "best": {
+        "kind": "mate",
+        "value": 1,
+        "depth": 10,
+        "bestmove": "b7b5"
+      },
+      "human": {
+        "kind": "mate",
+        "value": 1,
+        "depth": 10,
+        "bestmove": "b7b5"
+      },
+      "humanLoss": 0,
+      "botLoss": 500,
+      "moves": [
+        {
+          "seed": 987123,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "mate",
+            "value": 1,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 0,
+          "nodes": 29
+        },
+        {
+          "seed": 1052660,
+          "move": "b8f8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 1091,
+            "depth": 10,
+            "bestmove": "b8f8"
+          },
+          "loss": 1000,
+          "nodes": 129
+        },
+        {
+          "seed": 1118197,
+          "move": "f2g2",
+          "evaluation": {
+            "kind": "cp",
+            "value": 1429,
+            "depth": 10,
+            "bestmove": "f2g2"
+          },
+          "loss": 1000,
+          "nodes": 124
+        },
+        {
+          "seed": 1183734,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "mate",
+            "value": 1,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 0,
+          "nodes": 135
+        },
+        {
+          "seed": 1249271,
+          "move": "e3e4",
+          "evaluation": {
+            "kind": "mate",
+            "value": 3,
+            "depth": 10,
+            "bestmove": "e3e4"
+          },
+          "loss": 0,
+          "nodes": 135
+        },
+        {
+          "seed": 1314808,
+          "move": "b7b5",
+          "evaluation": {
+            "kind": "mate",
+            "value": 1,
+            "depth": 10,
+            "bestmove": "b7b5"
+          },
+          "loss": 0,
+          "nodes": 135
+        },
+        {
+          "seed": 1380345,
+          "move": "d7e8",
+          "evaluation": {
+            "kind": "cp",
+            "value": 1738,
+            "depth": 10,
+            "bestmove": "d7e8"
+          },
+          "loss": 1000,
+          "nodes": 129
+        },
+        {
+          "seed": 1445882,
+          "move": "f2f1",
+          "evaluation": {
+            "kind": "cp",
+            "value": 1111,
+            "depth": 10,
+            "bestmove": "f2f1"
+          },
+          "loss": 1000,
+          "nodes": 29
+        }
+      ]
+    }
+  ]
+}

@@ -13,11 +13,14 @@ import {spritePixels} from '../art/items';
 import {liquidHeight} from '../engine/physics';
 import {mulberry32} from '../world/noise';
 import type {BlockId,Game,ParticleKind,ParticleOptions} from '../engine/contracts';
+import {floorTierActive} from '../../../perf/floor';
 import {LIGHT_GLSL,type RenderUniforms} from './sky';
 import {ITEM_SLOTS,ITEM_SLOT_BASE,PARTICLE_SPRITES,SHEET_COLUMNS,SHEET_HEIGHT,SHEET_ROWS,SHEET_WIDTH,paintParticleSheet,type SpriteName} from './particles-art';
 
 /** About 2 000 particles at once; the oldest make room for new ones. */
 export const MAX_PARTICLES=2000;
+/** Instanced quads submitted on the floor tier. The simulation list stays at MAX_PARTICLES. */
+const FLOOR_PARTICLE_DRAWS=256;
 export const PARTICLE_KINDS:readonly ParticleKind[]=['block','item','smoke','large_smoke','explosion','splash','bubble','drip','crit','heart','angry',
   'happy','flame','lava','portal','poof','slime','damage','sweep','note','spell','ink'];
 const KIND_SET=new Set<string>(PARTICLE_KINDS);
@@ -478,7 +481,8 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
 
   // ---- Instances ----------------------------------------------------------------------------------------------------
   function update(partial:number,origin?:{x:number;y:number;z:number}){
-    const t=Math.max(0,Math.min(1,Number.isFinite(partial)?partial:0)),n=live.length;
+    const t=Math.max(0,Math.min(1,Number.isFinite(partial)?partial:0)),liveN=live.length;
+    const n=floorTierActive()?Math.min(liveN,FLOOR_PARTICLE_DRAWS):liveN;
     const ox=origin&&Number.isFinite(origin.x)?Math.floor(origin.x):0,oy=origin&&Number.isFinite(origin.y)?Math.floor(origin.y):0,
       oz=origin&&Number.isFinite(origin.z)?Math.floor(origin.z):0;
     mesh.matrix.makeTranslation(ox,oy,oz);mesh.matrixWorld.copy(mesh.matrix);

@@ -12,10 +12,10 @@ const projectedSpanPx = (tilePx: number, z = 0): number => (screenX(8, z) - scre
 
 describe('cameraFit portrait', () => {
   for (const [width, height] of [[390, 700], [366, 650], [390, 844], [320, 568], [600, 600]]) {
-    it(`${width}×${height}: the projected 8-tile span equals the width (within 1 %)`, () => {
+    it(`${width}×${height}: the projected 8-tile span is 10% wider than the screen (within 1 %)`, () => {
       const { tilePx } = cameraFit(width, height);
-      expect(projectedSpanPx(tilePx)).toBeGreaterThan(width * 0.99);
-      expect(projectedSpanPx(tilePx)).toBeLessThan(width * 1.01);
+      expect(projectedSpanPx(tilePx)).toBeGreaterThan(width * 1.1 * 0.99);
+      expect(projectedSpanPx(tilePx)).toBeLessThan(width * 1.1 * 1.01);
       expect(projectedSpanPx(tilePx, -7)).toBeCloseTo(projectedSpanPx(tilePx, 3), 6);
     });
   }
@@ -26,28 +26,28 @@ describe('cameraFit portrait', () => {
     expect(b.halfHeight).toBeGreaterThan(a.halfHeight);
   });
 
-  it('a 390 px wide phone gets 48.75 px horizontal cells', () => {
-    expect(cameraFit(390, 700).tilePx * Math.cos(YAW)).toBeCloseTo(48.75, 6);
+  it('a 390 px wide phone gets 53.625 px horizontal cells', () => {
+    expect(cameraFit(390, 700).tilePx * Math.cos(YAW)).toBeCloseTo(53.625, 6);
   });
 });
 
 describe('cameraFit landscape', () => {
-  it('keeps 15–17 rows visible instead of enlarging cells with desktop width', () => {
+  it('keeps 13.5–15.5 rows visible instead of enlarging cells with desktop width', () => {
     for (const [w,h] of [[1366,768], [1920,1080], [800,400]]) {
       const fit=cameraFit(w,h);
       const rowPitch=fit.tilePx*ROW_DEPTH*Math.sin(Math.PI/4)/Math.cos(YAW);
-      expect(h/rowPitch).toBeGreaterThan(15);
-      expect(h/rowPitch).toBeLessThan(17);
+      expect(h/rowPitch).toBeGreaterThan(13.5);
+      expect(h/rowPitch).toBeLessThan(15.5);
     }
-    expect(cameraFit(1366,768).tilePx).toBeGreaterThanOrEqual(45);
-    expect(cameraFit(1366,768).tilePx).toBeLessThanOrEqual(50);
+    expect(cameraFit(1366,768).tilePx).toBeGreaterThanOrEqual(50);
+    expect(cameraFit(1366,768).tilePx).toBeLessThanOrEqual(55);
     expect(cameraFit(1800,768).tilePx).toBe(cameraFit(1366,768).tilePx);
   });
 
   it('uses the portrait fit on square and taller screens', () => {
     const square = cameraFit(500, 500), portrait = cameraFit(500, 501);
     expect(square.tilePx).toBeCloseTo(portrait.tilePx, 9);
-    expect(cameraFit(501, 500).tilePx).toBeCloseTo(500/16, 6);
+    expect(cameraFit(501, 500).tilePx).toBeCloseTo(500*1.1/16, 6);
   });
 });
 
@@ -56,8 +56,8 @@ it('matches the measured 1.1 row-to-cell pitch of t047/t119 at a fixed screen x'
   const pitch=fit.tilePx*ROW_DEPTH*Math.sin(Math.PI/4)/Math.cos(YAW);
   expect(pitch/cell).toBeGreaterThan(1.08);
   expect(pitch/cell).toBeLessThan(1.13);
-  expect(844/pitch).toBeGreaterThan(15);
-  expect(844/pitch).toBeLessThan(17);
+  expect(844/pitch).toBeGreaterThan(13.5);
+  expect(844/pitch).toBeLessThan(15.5);
 });
 
 describe('cameraFit extents', () => {
@@ -69,9 +69,9 @@ describe('cameraFit extents', () => {
     });
   }
 
-  it('crops the nine-cell band to eight cells at the focus row on a phone', () => {
+  it('shows 8 / 1.1 cells of the nine-cell band at the focus row on a phone', () => {
     const { halfWidth } = cameraFit(390, 700);
-    expect(2 * halfWidth / Math.cos(YAW)).toBeCloseTo(8, 9);
+    expect(2 * halfWidth / Math.cos(YAW)).toBeCloseTo(8 / 1.1, 9);
   });
 
   it('survives zero and tiny viewports without NaN', () => {

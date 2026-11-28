@@ -7,15 +7,15 @@ import {mulberry32} from '../../../src/core/random';
 
 const gapsOf = (lane: RoadLane | RiverLane): number[] =>
   lane.movers.map((m, i) => (lane.movers[i + 1]?.offset ?? lane.cycle) - m.offset - m.len);
-const lanesFor = (seeds: number, rows: number): Lane[] => Array.from({length: seeds}, (_, seed) => generate(initialState(seed), rows).lanes).flat();
+const lanesFor = (seeds: number, rows: number): Lane[] => Array.from({length: seeds}, (_, seed) => generate(initialState(seed, 6), rows).lanes).flat();
 
 describe('revision six: random traffic and logs', () => {
-  it('is the revision new runs start on, and replays independently of batch sizes', () => {
-    expect(createRun(3).worldVersion).toBe(6);
-    expect(initialState(3).version).toBe(6);
+  it('is no longer the revision new runs start on, and still replays independently of batch sizes', () => {
+    expect(createRun(3).worldVersion).toBe(7);
+    expect(initialState(3).version).toBe(7);
     for (const seed of [0, 1, 11, 0xffffffff]) {
-      const all = generate(initialState(seed), 300).lanes;
-      let state = initialState(seed); const chunks: Lane[] = [];
+      const all = generate(initialState(seed, 6), 300).lanes;
+      let state = initialState(seed, 6); const chunks: Lane[] = [];
       while (chunks.length < 300) { const next = generateChunk(state); state = next.state; chunks.push(...next.lanes); }
       expect(chunks).toEqual(all);
     }
@@ -72,7 +72,7 @@ describe('revision six: random traffic and logs', () => {
     const rng = mulberry32(99);
     let pairs = 0;
     for (let seed = 0; seed < 120; seed++) {
-      const lanes = generate(initialState(seed), 300).lanes;
+      const lanes = generate(initialState(seed, 6), 300).lanes;
       for (let r = 1; r < lanes.length; r++) {
         const a = lanes[r - 1], b = lanes[r];
         if (a.kind !== 'river' || b.kind !== 'river') continue;

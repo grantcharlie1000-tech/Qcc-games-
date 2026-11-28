@@ -96,12 +96,13 @@ const module:GameModule={
    if(paused)return;if(finished())reset();
    begin();update();render();canvas.focus({preventScroll:true});
   },{signal:events.signal});
-  canvas.addEventListener('pointerdown',event=>{
-   if(paused||!event.isPrimary)return;
-   gesture={x:event.clientX,y:event.clientY,id:event.pointerId};canvas.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});
+  // Swipes start anywhere on the stage, not only on the square garden: thumbs rest below it on a tall phone.
+  available.addEventListener('pointerdown',event=>{
+   if(paused||!event.isPrimary||(event.target instanceof Element&&event.target.closest('button,a,input,select,dialog')))return;
+   gesture={x:event.clientX,y:event.clientY,id:event.pointerId};available.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});
   },{signal:events.signal});
   // Swipes turn as soon as the finger has travelled far enough; one drag can make several turns.
-  canvas.addEventListener('pointermove',event=>{
+  available.addEventListener('pointermove',event=>{
    if(!gesture||gesture.id!==event.pointerId)return;
    const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y,ax=Math.abs(dx),ay=Math.abs(dy);
    if(Math.max(ax,ay)<SWIPE_PX||Math.max(ax,ay)<1.3*Math.min(ax,ay))return;
@@ -109,9 +110,9 @@ const module:GameModule={
    action(ax>ay?dx>0?'right':'left':dy>0?'down':'up');
   },{signal:events.signal});
   const endGesture=()=>{gesture=null;};
-  canvas.addEventListener('pointerup',endGesture,{signal:events.signal});
-  canvas.addEventListener('pointercancel',endGesture,{signal:events.signal});
-  canvas.addEventListener('lostpointercapture',endGesture,{signal:events.signal});
+  available.addEventListener('pointerup',endGesture,{signal:events.signal});
+  available.addEventListener('pointercancel',endGesture,{signal:events.signal});
+  available.addEventListener('lostpointercapture',endGesture,{signal:events.signal});
   function afterModelChange(score:number,phase:string){
    if(state.score>score){
     const at=view.clock+(reduced()?0:eatDelay(state));view.eats.push({at,cell:{...state.eaten!}});view.foodBorn=at;

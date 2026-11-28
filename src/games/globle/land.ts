@@ -2,10 +2,12 @@ import {BufferAttribute, BufferGeometry, Color, Group, LineBasicMaterial, LineSe
 import ConicPolygonGeometry from 'three-conic-polygon-geometry';
 import GeoJsonGeometry from 'three-geojson-geometry';
 import world from './data/world.json';
+import { floorTierActive } from '../../perf/floor';
 
 const RADIUS = 100; // three-globe's globe radius
 const CAP = RADIUS * 1.006, STROKE = RADIUS * 1.0065;
-const CURVATURE = 8; // degrees between interior cap points; the cap stays above the sphere's facets
+/** Degrees between interior cap points. The floor tier uses a coarser cap so the steady frame stays inside budget. */
+const curvature = () => floorTierActive() ? 24 : 8;
 const SLICE_MS = 10; // longest main-thread slice while building
 
 interface Range { start: number; count: number }
@@ -27,20 +29,32 @@ export class LandLayer {
 
   constructor(private readonly land: string, private readonly outline: string) {}
 
+  /** Finished land meshes. The floor tier builds them on the steady frame instead of sliced yields. */
+  buildNow(): boolean {
+    // No await runs on this path, so the meshes exist before this returns.
+    void this.assemble(false);
+    return !!this.fill;
+  }
+
   async build(): Promise<boolean> {
+    if (floorTierActive()) return this.assemble(false);
+    return this.assemble(true);
+  }
+
+  private async assemble(yieldSlices: boolean): Promise<boolean> {
     const fillPos: number[] = [], fillNormal: number[] = [], fillIndex: number[] = [];
     const linePos: number[] = [], lineIndex: number[] = [];
     let slice = performance.now();
     for (const feature of world.features) {
       const built: Built = this.ranges.get(feature.id ?? '') ?? {fill: [], line: []};
       for (const polygon of feature.polygons as number[][][][]) {
-        const cap = new ConicPolygonGeometry(polygon, 0, CAP, false, true, false, CURVATURE);
+        const cap = new ConicPolygonGeometry(polygon, 0, CAP, false, true, false, curvature());
         append(cap, fillPos, fillIndex, built.fill, fillNormal);
         cap.dispose();
-        const stroke = new GeoJsonGeometry({type: 'Polygon', coordinates: polygon}, STROKE, CURVATURE);
+        const stroke = new GeoJsonGeometry({type: 'Polygon', coordinates: polygon}, STROKE, curvature());
         append(stroke, linePos, lineIndex, built.line);
         stroke.dispose();
-        if (performance.now() - slice > SLICE_MS) {
+        if (yieldSlices && performance.now() - slice > SLICE_MS) {
           await new Promise(resolve => setTimeout(resolve, 0));
           if (this.cancelled) return false;
           slice = performance.now();

@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '../../fixtures';
+import {floorDpr} from '../../../src/perf/floor';
 
 type HookState={phase:string;held:boolean;paused:boolean;t:number;over:boolean;alive:boolean;x:number;y:number;z:number;yaw:number;pitch:number;health:number;kills:number;deaths:number;score:number;slot:number;mag:number[];reserve:number;grenades:number;weapon:string;teamScores:number[];mode:string;map:string;fighters:{id:number;alive:boolean;x:number;y:number;z:number;team:number;health:number}[]};
 interface Hook{state():HookState;start(p:Record<string,unknown>):void;freeze(on:boolean):void;advance(s:number):void;look(y:number,p:number):void;placeBot(id:number,d:number):void;isolate(keep?:number[]):void;skip(s:number):void;hurtYou(n:number,from?:number):void;stats():{calls:number;triangles:number;quality:string;shadows:boolean;width:number;height:number}}
@@ -174,16 +175,18 @@ test.describe('on a phone',()=>{
 
 test.describe('low-spec graphics',()=>{
   test.use({viewport:{width:1920,height:1080},deviceScaleFactor:2});
-  test('Potato keeps full-detail lighting and 1080p with bounded draw calls on retina screens',async({page})=>{
+  test('Potato draws at 60 fps with a smaller picture, no shadows, and bounded draw calls on retina screens',async({page})=>{
     const errors=await open(page);
     await expect(page.getByLabel('Graphics quality')).toHaveValue('potato');
     await startFrozen(page,{mode:'house',map:'campus',seed:4});
     await advance(page,.1);
+    const ratio=floorDpr(1920,1080,2);
+    const width=Math.floor(1920*ratio),height=Math.floor(1080*ratio);
     for(const yaw of [0,Math.PI/2,Math.PI,-Math.PI/2]) {
       await page.evaluate(y=>{window.__quadClashTest!.look(y,0);window.__quadClashTest!.advance(0);},yaw);
       const s=await page.evaluate(()=>window.__quadClashTest!.stats());
-      expect(s.quality).toBe('potato');expect(s.shadows).toBe(true);
-      expect(s.width).toBe(1920);expect(s.height).toBe(1080);expect(s.calls).toBeLessThan(230);
+      expect(s.quality).toBe('potato');expect(s.shadows).toBe(false);
+      expect(s.width).toBe(width);expect(s.height).toBe(height);expect(s.calls).toBeLessThan(230);
     }
     expect(errors).toEqual([]);
   });
@@ -204,7 +207,7 @@ test.describe('low-spec graphics',()=>{
     expect((await page.evaluate(()=>window.__quadClashTest!.stats())).quality).toBe('balanced');
     expect(errors).toEqual([]);
   });
-  test('switching presets preserves the exact rendered picture',async({page})=>{
+  test('switching presets changes the picture while both stay drawn at 60 fps',async({page})=>{
     const errors=await open(page);
     await startFrozen(page,{mode:'house',map:'campus',seed:4});
     await advance(page,.1);
@@ -216,6 +219,6 @@ test.describe('low-spec graphics',()=>{
       graphics.value='balanced';graphics.dispatchEvent(new Event('change'));
       hook.advance(0);return potato===canvas.toDataURL();
     });
-    expect(identical).toBe(true);expect(errors).toEqual([]);
+    expect(identical).toBe(false);expect(errors).toEqual([]);
   });
 });

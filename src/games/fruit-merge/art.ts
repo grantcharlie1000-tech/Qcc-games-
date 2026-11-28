@@ -1,9 +1,27 @@
 import {TIERS} from './engine';
 import {christmas} from '../../festive/festive';
 import {drawOrnament} from './christmas-art';
+import {floorTierActive} from '../../perf/floor';
+const fruitSprites=new Map<string,HTMLCanvasElement>();
 /** Original vector-like fruit portraits. No downloaded images or emoji. */
 export function drawFruit(c:CanvasRenderingContext2D,tier:number,x:number,y:number,r:number,angle=0,number=false){
  if(christmas()){drawOrnament(c,tier,x,y,r,angle,number);return;}
+ if(floorTierActive()){
+  const key=`${tier}:${number?1:0}`;
+  let sprite=fruitSprites.get(key);
+  if(!sprite){
+   sprite=document.createElement('canvas');sprite.width=sprite.height=128;
+   const baked=sprite.getContext('2d');
+   if(baked)drawFruitMark(baked,tier,64,64,40,0,number);
+   fruitSprites.set(key,sprite);
+  }
+  c.save();c.translate(x,y);c.rotate(angle);
+  const d=r/40*128;c.drawImage(sprite,-d/2,-d/2,d,d);c.restore();
+  return;
+ }
+ drawFruitMark(c,tier,x,y,r,angle,number);
+}
+function drawFruitMark(c:CanvasRenderingContext2D,tier:number,x:number,y:number,r:number,angle=0,number=false){
  const t=TIERS[tier];c.save();c.translate(x,y);c.rotate(angle);c.scale(r/40,r/40);
  c.fillStyle=t.edge;c.beginPath();c.ellipse(1,4,39,39,0,0,Math.PI*2);c.fill();
  const gradient=c.createRadialGradient(-14,-18,3,8,10,50);gradient.addColorStop(0,t.color);gradient.addColorStop(.65,t.color);gradient.addColorStop(1,t.edge);

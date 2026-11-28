@@ -11,6 +11,7 @@ import { createHud, type HudView, type Marker } from './hud';
 import { createInput } from './input';
 import { MAP, inRect, roomAt, type FloorMat } from './map';
 import { GuestSession, HostSession, MAX_PLAYERS, NET_VERSION, type Session } from './net';
+import { FLOOR_DISPLAY_HZ, floorTierActive } from '../../perf/floor';
 import { QUALITIES, createScene, isQuality, type BreachScene, type QualityId, type SceneView } from './scene';
 import { actDuration, aimedPanel, interaction } from './sim';
 import { ACT, aimOf, kitOf, roleOf, weaponOf, type Intent, type Match, type Player, type SimEvent } from './state';
@@ -231,8 +232,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     last = now;
     input.frame(dt);
     if (!held && !frozen) advance(dt);
-    // The performance preset draws every other frame on a 60 Hz screen; the simulation and input do not slow down.
-    const period = 1 / QUALITIES[prefs.quality].fps;
+    // Display rate of the selected preset. The floor tier never steps below 60 Hz; Performance is 30 Hz only with the floor off.
+    const presetFps = QUALITIES[prefs.quality].fps;
+    const period = 1 / (floorTierActive() ? Math.max(presetFps, FLOOR_DISPLAY_HZ) : presetFps);
     renderCarry += interval;
     if (renderCarry >= period - 0.002 || shown !== null) { draw(Math.min(0.1, renderCarry)); drew = true; renderCarry = renderCarry >= period * 2 ? 0 : Math.max(0, renderCarry - period); }
     perfTick(now, drew, performance.now() - perfStart);

@@ -2,7 +2,7 @@
 
 ## Project skills
 
-Read the relevant skill before work in its area. Canonical skill files live in `.agents/skills/`; Claude Code has matching copies in `.claude/skills/`.
+Check for and use any and all relevant skills before and during a task. This includes the repo skills in `.agents/skills/` (and the matching Claude copies in `.claude/skills/`) and any skills available in your own environment. Read the relevant skill before work in its area.
 
 At the beginning of a project work session, load `using-superpowers` and use its relevant workflow skills as the task develops.
 
@@ -39,3 +39,19 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 - Only write tests that check real behaviour. No filler tests.
 - Do not use em dashes in anything you write.
 - Take screenshots while you work, and paste them in the chat when your run finishes.
+- Liquid Glass is see-through and floats on top of the game. Never move, shrink or band off a game, scene or page to make room for glass controls (the game dock, tab bar, menu buttons). The scene runs underneath the glass. Only things the player must read or press keep clear of it, inside the game's own layout.
+- The notch, Dynamic Island and home indicator work the same way: backgrounds and scenes run to the screen edges, and only controls and essential text keep clear of them.
+- Icons: use RuneIcons (https://www.runeicons.com/icons) as the icon source or for inspiration. The GitHub repo is https://github.com/Runeicons/runeicons. Brand logos on that site are not covered by the icon licence. Follow each brand's own rules for those.
+- When an image generation model is available, you must use dream-loop (https://github.com/achimala/dream-loop) for image and asset generation. Install it with `npx skills add achimala/dream-loop`. It first generates a target screenshot, then you build and iterate until a live screenshot matches that target. Do not copy the repo into this project. It is MIT; keep the copyright notice if you copy any of the skill.
+
+## Simple code
+
+- Write the simplest code that solves the problem. Do not add layers, options or abstractions that the task does not need.
+- Before you finish, read your change again and check that it is the best solution to the problem. If a smaller or clearer solution exists, use it.
+- Delete code that your change makes unused.
+
+## How to write to the owner
+
+- Write about 80% of the way to ASD-STE100 Simplified Technical English (the plain English in aircraft maintenance manuals).
+- Use short sentences with one idea each. Use simple, common verbs and the active voice.
+- Do not use idioms, jargon or filler.

@@ -1,9 +1,10 @@
-/** Both presets keep the same picture. Potato saves GPU work by pacing renders at 30 Hz. */
+/** Potato displays at 60 by drawing a smaller picture without shadows or heavy effects. Balanced keeps full lighting and effects, also at 60. Textures stay shared so switching preset does not rebuild them. */
+import { FLOOR_DISPLAY_HZ, FLOOR_PIXEL_CAP } from '../../perf/floor';
 export type QualityId = 'potato' | 'balanced';
-const PICTURE = {pixelCap:2,maxPixels:1920*1080,shadows:true,textureSize:2048,anisotropy:8,effects:1} as const;
+const SHARED = { textureSize: 2048, anisotropy: 8 } as const;
 export const QUALITY = {
-  potato: {...PICTURE,name:'Potato — 30 fps',fps:30},
-  balanced: {...PICTURE,name:'Balanced — 60 fps',fps:60},
+  potato: { ...SHARED, pixelCap: 1, maxPixels: FLOOR_PIXEL_CAP, shadows: false, effects: 0.35, name: 'Potato — 60 fps', fps: FLOOR_DISPLAY_HZ },
+  balanced: { ...SHARED, pixelCap: 2, maxPixels: 1920 * 1080, shadows: true, effects: 1, name: 'Balanced — 60 fps', fps: FLOOR_DISPLAY_HZ },
 } as const;
 export const isQuality = (v: unknown): v is QualityId => v === 'potato' || v === 'balanced';
 export function renderRatio(width: number,height: number,dpr: number,quality: QualityId): number {

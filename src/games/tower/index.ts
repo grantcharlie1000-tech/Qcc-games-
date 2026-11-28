@@ -30,7 +30,7 @@ const game:GameModule={
     function frame(now:number){raf=null;if(paused||disposed)return;const previous=state.phase;tick(now);if(previous!==state.phase)update();else draw();schedule();}
     function schedule(){if(!paused&&!disposed&&raf===null&&(state.phase!=='over'||(state.last&&state.time-state.last.time<1.3)))raf=requestAnimationFrame(frame);}
     function stop(){if(raf!==null)cancelAnimationFrame(raf);raf=null;}
-    function blocked(target:EventTarget|null){return !!document.querySelector('dialog[open]')||(target instanceof Element&&!!target.closest('input,textarea,select,[contenteditable]'));}
+    function blocked(target:EventTarget|null){return !!document.querySelector('dialog[open]')||(target instanceof Element&&!!target.closest('button,a,input,textarea,select,[contenteditable]'));}
     function place(){
       if(paused||disposed||state.phase!=='sliding'||blocked(null))return;
       tick(performance.now());state=drop(state);update();context.sound(state.phase==='over'?'lose':state.last?.kind==='perfect'?'success':'tap');context.announce(feedbackText);context.save(state);schedule();
@@ -38,14 +38,14 @@ const game:GameModule={
     function pointer(event:PointerEvent){if(event.isPrimary&&event.button===0&&!blocked(event.target)){event.preventDefault();canvas.focus({preventScroll:true});place();}}
     function key(event:KeyboardEvent){
       if((event.code!=='Space'&&event.code!=='Enter')||event.repeat||blocked(event.target))return;
-      // Native buttons own their keyboard activation; the stage/canvas uses this action binding.
-      if(event.target instanceof Element&&event.target.closest('button,a'))return;
+      // Native buttons own their keyboard activation (blocked() skips them); the stage/canvas uses this action binding.
       event.preventDefault();place();
     }
     function restart(){if(disposed)return;state=createTower();lastTick=performance.now();update();context.save(state);schedule();}
     function resize(){if(disposed)return;const rect=canvas.getBoundingClientRect(),ratio=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(rect.width*ratio));canvas.height=Math.max(1,Math.round(rect.height*ratio));draw();}
     const observer=new ResizeObserver(resize);observer.observe(canvas);
-    canvas.addEventListener('pointerdown',pointer);document.addEventListener('keydown',key);again.addEventListener('click',restart);
+    // The whole game area takes the tap, so the space beside the tower works on a wide screen.
+    root.addEventListener('pointerdown',pointer);document.addEventListener('keydown',key);again.addEventListener('click',restart);
     update();resize();schedule();
     return {
       pause(){if(disposed||paused)return;tick(performance.now());paused=true;stop();update();},
@@ -53,7 +53,7 @@ const game:GameModule={
       restart,
       serialize(){if(!paused&&!disposed){const phase=state.phase;tick(performance.now());if(state.phase!==phase)update();}return JSON.parse(JSON.stringify(state)) as unknown;},
       restore(data){const restored=restoreTower(data);if(!restored||disposed)return;state=restored;lastTick=performance.now();update();schedule();},
-      dispose(){if(disposed)return;disposed=true;releaseGlass();stop();observer.disconnect();canvas.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',key);again.removeEventListener('click',restart);container.replaceChildren();}
+      dispose(){if(disposed)return;disposed=true;releaseGlass();stop();observer.disconnect();root.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',key);again.removeEventListener('click',restart);container.replaceChildren();}
     };
   }
 };

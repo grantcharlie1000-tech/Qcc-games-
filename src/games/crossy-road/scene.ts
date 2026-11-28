@@ -11,18 +11,25 @@
  * the zones outside it are darkened. Orthographic camera, pitched 45° and yawed 20° (lanes fall to
  * the right on screen). */
 import * as THREE from 'three';
+import { floorDpr, floorTierActive } from '../../perf/floor';
 import {carImpact, ufoFlight} from './motion';
 import {obstacleAt, obstacleVariant, lilyAt} from './terrain';
 import {
   DEATH_TIME, DEATH_TIME_REDUCED, HOP_TIME, IDLE_LIMIT, IDLE_WARN, SAFE_LAG, SQUASH_TIME,
-  TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, ROW_DEPTH, TRAFFIC_ROW_Z, TRAIN_BASE_Y, clamp, lerp,
-  type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
+  LOG_PALETTE, ROW_DEPTH, TRAFFIC_ROW_Z, TRAIN_BASE_Y, TRAIN_SCALE, clamp, lerp,
+  type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
-import { forEachMover, forEachTrain, laneVelocity, platformAt, railWarning } from './lanes';
+import { forEachMover, forEachTrain, laneVelocity, moverCopy, platformAt, railWarning, trainCopy } from './lanes';
 import {
-  LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
+  CAR_COLORS, CONTAINER_COLORS, LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, mastGeometry, rockGeometry,
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
+import {bushGeometry, decoratedTreeGeometry, giftsGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
+import {clipFacing, viewBasis} from './view-clip';
+import {
+  CAR_MODELS, FIRE, LOCOS, PLOUGH, PROP, TRUCK_MODELS, WAGONS,
+  carLength, carModel, lilyLook, mix, propAt, trainKind, truckModel, wagonAt,
+} from './variety';
 
 // Camera ---------------------------------------------------------------------
 
@@ -31,7 +38,8 @@ const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 /** The camera's right axis and its forward axis along the ground, in world x and z. */
 const RX = Math.cos(YAW), RZ = -Math.sin(YAW), FX = -Math.sin(YAW), FZ = -Math.cos(YAW);
 /** Ground-cell framing and the player's height share when grounded. */
-const PHONE_CELLS = 8, PC_HEIGHT_UNITS = 16, PLAYER_SCREEN = 0.35;
+/** The whole view is 10% closer than the eight-cell phone and sixteen-unit landscape framing. */
+const ZOOM = 1.1, PHONE_CELLS = 8 / ZOOM, PC_HEIGHT_UNITS = 16 / ZOOM, PLAYER_SCREEN = 0.35;
 const CAMERA_DIST = 40;
 const SHAKE_TIME = 0.25, SHAKE_AMP = 0.12;
 
@@ -68,16 +76,18 @@ export function focusXTarget(playerX: number, _halfWidth: number): number {
 
 const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
-const C_WHITE = reg(0xffffff), C_GRASS = reg(0xcdd9ea, 0xc4d1e4), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
+const C_WHITE = reg(0xffffff), C_GRASS = reg(0xe9eff9, 0xdfe7f4), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
 const C_DASH = reg(0x6b6f83), C_SLEEPER = reg(0x7a5444), C_STEEL = reg(0x5b5d70), C_FOAM = reg(0xfaffff), C_RIPPLE = reg(0xb8f1ff);
 const C_WATER_EDGE = reg(0x5ac3fc);
 const C_DIRT = reg(0x633642);
-/** Winter: snow lying on tracks and the grass, green tufts poking through it, and falling flakes. */
-const C_SNOW = reg(0xe6eef8),
+/** Winter: snow lying on tracks and the grass, and falling flakes. */
+const C_SNOW = reg(0xf7faff),
   /** The track: a two-step gravel bed with speckles, tie plates, and polished rail heads. */
-  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_TUFT = reg(0x7fb24a, 0x6a9e3c), C_FLAKE = reg(0xffffff);
-const C_TRUCK = reg(...TRUCK_COLORS);
-const C_VEHICLE = reg(...VEHICLE_COLORS), C_TRAIN = reg(...TRAIN_COLORS), C_LOG = reg(...LOG_COLORS);
+  C_BED = reg(0x6a6774, 0x7d7a86), C_GRAVEL = reg(0x9c99a6, 0x4a4854), C_PLATE = reg(0x2f303a), C_RAIL_HEAD = reg(0xc3c6d6), C_WIRE = reg(0x3d4250), C_FLAKE = reg(0xffffff);
+/** Small floor details: manhole covers and reeds. */
+const C_COVER = reg(0x2c303b, 0x5b6070), C_REED = reg(0x9aa35c, 0x7a4b32);
+const C_TRUCK = reg(...TRUCK_COLORS), C_FIRE = reg(0xd0202e), C_PLOUGH = reg(0xf08a1c);
+const C_CAR = reg(...CAR_COLORS), C_TAXI = reg(0xf4d33e), C_TRAIN = reg(...TRAIN_COLORS), C_CONTAINER = reg(...CONTAINER_COLORS), C_LOG = reg(...LOG_COLORS);
 const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x3a1218), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
 /** Linear RGB triples, indexed by the constants above (times 3). */
 const PAL = (() => {
@@ -93,10 +103,23 @@ const CLEAR_COLOR = 0x2a3447;
 // Geometry constants -----------------------------------------------------------
 
 const WATER_Y = -0.12, LOG_TOP = 0.04, PAD_TOP = -0.072, LOG_BASE = -0.22, PAD_BASE = -0.125, TRAIN_Y = TRAIN_BASE_Y;
-const NOSE_LEN = 2, CARRIAGE_LEN = 2;
+/** The drawn length of a locomotive and of a wagon. */
+const PIECE_LEN = 2 * TRAIN_SCALE;
+/** The track axis in its row: nearer the middle than road traffic, so the larger train stays inside the row. */
+const TRACK_Z = 0.1;
+/** Half the depth of a car and of a lorry at scale 1, wheels and mirrors included. */
+const CAR_HALF = 0.35, TRUCK_HALF = 0.3;
+/** How much larger than its model each obstacle stands (width, height), in PROP order: three bare trees, the stump,
+ * three boulders, two pines, the Christmas tree, snowman, bush, log pile and presents. */
+const PROP_SCALE: readonly (readonly [number, number])[] = [
+  [1.25, 1.55], [1.25, 1.55], [1.25, 1.55], [1.4, 1.4], [1.25, 1.35], [1.25, 1.35], [1.25, 1.35], [1.3, 1.45], [1.3, 1.45],
+  [1.3, 1.45], [1.4, 1.4], [1.3, 1.3], [1.25, 1.25], [1.3, 1.3],
+];
 /** Track layers (tiles): the gravel bed's two steps, sleeper thickness, rail centre lines from the track axis and the
  * rail-head top, which sits just above TRAIN_BASE_Y so bogies ride on the heads. */
-const BED_LOW = 0.016, BED_TOP = 0.034, SLEEPER_H = 0.045, RAIL_GAUGE = 0.2, RAIL_TOP = 0.14;
+const BED_LOW = 0.04, BED_TOP = 0.08, SLEEPER_H = 0.05, RAIL_GAUGE = 0.36, RAIL_TOP = 0.19;
+/** The overhead line: the contact wire sits just above a raised pantograph, the catenary wire on the mast arms. */
+const WIRE_Y = 1.76, CATENARY_Y = 1.95;
 /** The signal's two lamps: offset either side of the post and their height (see signalPostGeometry). */
 const SIGNAL_LAMP_X = 0.2, SIGNAL_LAMP_Y = 1.06;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
@@ -120,6 +143,32 @@ function hash(a: number, b: number): number {
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return (h ^ (h >>> 15)) & 0x3fffffff;
+}
+
+/** Snowflake constants from `hash(i, 9001/9002)`. Built once so a frame only integrates the fall. */
+const FLAKE_SEEDS = Array.from({length: FLAKES_HIGH}, (_, i) => {
+  const h = hash(i, 9001), g = hash(i, 9002);
+  return {
+    u: (h & 1023) / 1024,
+    v: ((h >>> 10) & 1023) / 1024,
+    y0: (((h >>> 20) & 1023) / 1024) * SNOW_H,
+    speed: 0.55 + 0.5 * ((g & 255) / 255),
+    freq: 0.9 + ((g >>> 8) & 7) * 0.1,
+    size: 0.05 + 0.015 * ((g >>> 12) & 3),
+  };
+});
+
+/** One flake in world space, or null once it has passed the ground. `spanX`/`spanZ` are the column
+ * the camera keeps full of snow; the same formulas as the old per-frame hash. */
+export function fallingFlake(i: number, anim: number, spanX: number, spanZ: number, cx: number, cz: number): {x: number; y: number; z: number; size: number} | null {
+  const flake = FLAKE_SEEDS[i];
+  const sway = 0.22 * Math.sin(anim * flake.freq + i);
+  const y = SNOW_H - ((flake.y0 + anim * flake.speed) % SNOW_H) - 0.3;
+  if (y < 0.02) return null;
+  const bx = flake.u * spanX + sway + anim * 0.12, bz = flake.v * spanZ;
+  const x = cx + ((((bx - cx) % spanX) + spanX) % spanX) - spanX / 2;
+  const z = cz + ((((bz - cz) % spanZ) + spanZ) % spanZ) - spanZ / 2;
+  return {x, y, z, size: flake.size};
 }
 
 /** Height of the surface a thing at x stands on in a lane at time t: a log top, a pad top or the water. */
@@ -155,7 +204,7 @@ class Pool {
   private readonly rc = { start: 0, count: 0 };
 
   constructor(readonly cap: number, geometry: THREE.BufferGeometry, material: THREE.Material, cast: boolean,
-    shadowMaterial: THREE.ShaderMaterial, floor: number) {
+    shadowMaterial: THREE.ShaderMaterial, floor: number, shadowGeometry: THREE.BufferGeometry | null = null) {
     const mesh = new THREE.InstancedMesh(geometry, material, cap);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3);
@@ -174,16 +223,20 @@ class Pool {
     if (cast) {
       // Project the actual voxel triangles in the main pass. One stencil mark
       // unions overlapping faces/casters, so shadows never darken themselves.
-      const shadow = new THREE.InstancedMesh(geometry, shadowMaterial, cap);
+      const shadow = new THREE.InstancedMesh(shadowGeometry ?? geometry, shadowMaterial, cap);
       shadow.instanceMatrix = mesh.instanceMatrix;
       shadow.frustumCulled = false;
       shadow.matrixAutoUpdate = false;
       shadow.matrixWorldAutoUpdate = false;
       shadow.renderOrder = 1;
       shadow.count = 0;
+      // One material is shared, so a draw uploads the floor and fade only when this caster differs
+      // from the one that just drew. Consecutive trees stay on the ground plane and skip the write.
       shadow.onBeforeRender = () => {
-        shadowMaterial.uniforms.uFloor.value = this.shadowFloor;
-        shadowMaterial.uniforms.uFade.value = this.shadowOpacity;
+        const uniforms = shadowMaterial.uniforms;
+        if (uniforms.uFloor.value === this.shadowFloor && uniforms.uFade.value === this.shadowOpacity) return;
+        uniforms.uFloor.value = this.shadowFloor;
+        uniforms.uFade.value = this.shadowOpacity;
         shadowMaterial.uniformsNeedUpdate = true;
       };
       this.shadow = shadow;
@@ -289,14 +342,31 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     transparent:true,depthWrite:false,side:THREE.FrontSide,
     stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp,
   }));
-  const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, _receive = false, order = 0, floor = 0): Pool => {
-    const p = new Pool(cap, geometry, material, cast, shadowMaterial, floor);
+  const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, _receive = false, order = 0, floor = 0, shadowGeometry: THREE.BufferGeometry | null = null): Pool => {
+    const p = new Pool(cap, geometry, material, cast, shadowMaterial, floor, shadowGeometry);
     p.mesh.renderOrder = order;
     scene.add(p.mesh);
     if(p.shadow)scene.add(p.shadow);
     pools.push(p);
     return p;
   };
+  // Facing clip uses this scene's pitch, yaw and sun. Logs and wagons stretch on x, so their
+  // shadows keep any face that can point at the light across that stretch. A prop whose height
+  // scale differs from its width keeps a full shadow: that ratio changes the flattened winding.
+  const basis = viewBasis(PITCH, YAW, CAMERA_DIST, -SUN_X / SUN_Y);
+  const yaw2 = [0, Math.PI], yaw4 = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+  const lilyYaws = [-3, -2, -1, 0, 1, 2, 3].map(step => step * 0.035);
+  const sxExact: readonly [number, number] = [1, 1], sxStretch: readonly [number, number] = [1e-3, 1e3];
+  function view(source: THREE.BufferGeometry, yaws: readonly number[], cast: boolean, sx: readonly [number, number] = sxExact, clipShadow = true): {color: THREE.BufferGeometry; shadow: THREE.BufferGeometry | null} {
+    const color = clipFacing(source, basis, yaws, false);
+    const shadow = cast ? (clipShadow ? clipFacing(source, basis, yaws, true, sx) : source) : null;
+    const used = new Set<THREE.BufferGeometry>([color]);
+    if (shadow) used.add(shadow);
+    if (used.has(source)) geometries.push(source); else source.dispose();
+    if (color !== source) geometries.push(color);
+    if (shadow && shadow !== source && shadow !== color) geometries.push(shadow);
+    return {color, shadow};
+  }
 
   const lit = mat(new THREE.MeshLambertMaterial({ vertexColors: true }));
   const painted = mat(new THREE.MeshLambertMaterial({ vertexColors: true }));
@@ -314,37 +384,67 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const spotMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
   const shadeMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
 
-  const box = geo(unitBoxGeometry());
-  const carStyles: CarStyle[] = ['compact', 'sedan', 'taxi'];
+  const box = view(unitBoxGeometry(), [0], false).color;
   const merged = (parts: VehicleParts): THREE.BufferGeometry => {
-    const geometry = geo(mergeVehicle(parts));
+    const geometry = mergeVehicle(parts);
     parts.body.dispose(); parts.detail.dispose();
     return geometry;
   };
-  const train = trainGeometry(), cars = carStyles.map(style => merged(carGeometry(style))), trucks = [merged(truckGeometry(2)), merged(truckGeometry(3))];
+  const train = trainGeometry();
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
+  // The bird and the UFO stay on the full mesh: deaths tumble the bird through every face, and the UFO spins freely.
   const ground = pool(box, lit, 6400, false, true);
   const waterFx = pool(box, lit, 640);
-  const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
-  const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
-  const carBody = cars.map(g => pool(g, painted, 160, true));
-  const truckBody = trucks.map(g => pool(g, painted, 96, true));
-  const noseBody = pool(merged(train.nose), painted, 16, true);
-  const carriageBody = pool(merged(train.carriage), painted, 96, true);
+  // Scenery in PROP order: bare trees, the stump, boulders, then the zone models.
+  const props = [
+    ...[0, 1, 2, 3].map(treeGeometry), ...[0, 1, 2].map(rockGeometry), pineGeometry(false), pineGeometry(true), decoratedTreeGeometry(),
+    snowmanGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(),
+  ].map((g, i) => {
+    const yaws = i >= PROP.rock && i < PROP.rock + 3 ? yaw4 : [0];
+    const seen = view(g, yaws, true, sxExact, PROP_SCALE[i][0] === PROP_SCALE[i][1]);
+    return pool(seen.color, lit, i < PROP.stump || i === PROP.pineSmall || i === PROP.pineTall ? 320 : 160, true, false, 0, 0, seen.shadow);
+  });
+  const carBody = CAR_MODELS.map(model => {
+    const seen = view(merged(carGeometry(model)), yaw2, true);
+    return pool(seen.color, painted, 80, true, false, 0, 0, seen.shadow);
+  });
+  /** Lorries by model, then by length (2 or 3 tiles). The fire engine and the plough have no long form. */
+  const truckBody = TRUCK_MODELS.map((model, i) => ([2, 3] as const).map(len => {
+    if (len === 3 && i >= FIRE) return null;
+    const seen = view(merged(truckGeometry(len, model)), yaw2, true);
+    return pool(seen.color, painted, 48, true, false, 0, 0, seen.shadow);
+  }));
+  const locoBody = LOCOS.map(name => {
+    const seen = view(merged(train[name]), yaw2, true);
+    return pool(seen.color, painted, 16, true, false, 0, 0, seen.shadow);
+  });
+  const wagonBody = WAGONS.map(name => {
+    const seen = view(merged(train[name]), yaw2, true, sxStretch);
+    return pool(seen.color, painted, name === 'carriage' ? 96 : 48, true, false, 0, 0, seen.shadow);
+  });
   // Logs carry a paint mask: the bark takes the log colour, end grain and snow stay fixed.
-  const logs = ([2, 3, 4] as const).map(len => pool(geo(logGeometry(len)), painted, 192, true, false, 0, WATER_Y));
-  const lilies = pool(geo(lilyGeometry()), lit, 160);
-  const posts = pool(geo(signalPostGeometry()), lit, 48, true);
+  const logs = ([2, 3, 4] as const).map(len => {
+    const seen = view(logGeometry(len), [0], true, sxStretch);
+    return pool(seen.color, painted, 192, true, false, 0, WATER_Y, seen.shadow);
+  });
+  const lilies = [0, 1, 2].map(v => pool(view(lilyGeometry(v), lilyYaws, false).color, lit, 96));
+  const signalPosts = view(signalPostGeometry(), [0], true);
+  const posts = pool(signalPosts.color, lit, 48, true, false, 0, 0, signalPosts.shadow);
   const lampGeo = geo(lampGeometry());
   const lamps = pool(lampGeo, unlit, 96), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
   // Additive halos make a lit lamp bloom against the scene.
   const haloMaterial = mat(new THREE.MeshBasicMaterial({vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending}));
   const halos = pool(geo(signalHaloGeometry()), haloMaterial, 48, false, false, 6);
+  // Overhead-line masts, and a warm glow at each locomotive's head lamps with its spill on the track ahead.
+  const mastSeen = view(mastGeometry(), [0], true);
+  const masts = pool(mastSeen.color, lit, 48, true, false, 0, 0, mastSeen.shadow);
+  const lampHalos = pool(geo(signalHaloGeometry(0xffe2a0)), haloMaterial, 16, false, false, 6);
+  const lampSpills = pool(geo(signalGlowGeometry(0xffdf9a)), haloMaterial, 16, false, false, 3);
   const fx = pool(box, unlit, 96);
   const flakes = pool(box, unlit, FLAKES_HIGH, false, false, 4);
 
-  for (const p of [ground, ...trees, ...rocks, lilies, posts]) p.cached = true;
+  for (const p of [ground, ...props, ...lilies, posts, masts]) p.cached = true;
 
   // The bird and the UFO use the same pooled transforms and projected shadows.
   const playerPool = pool(geo(chickenGeometry().scale(0.78, 1, 0.78)), playerMaterial, 1, true);
@@ -389,8 +489,11 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Quality ---------------------------------------------------------------------
 
   function applyPixelRatio(): void {
-    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? resolutionCap : Math.min(resolutionCap, 1.5));
+    const device = window.devicePixelRatio || 1;
     const width = cssWidth || 1, height = cssHeight || 1;
+    const ratio = floorTierActive() && quality === 'low'
+      ? floorDpr(width, height, device)
+      : Math.min(device, quality === 'high' ? resolutionCap : Math.min(resolutionCap, 1.5));
     if (renderer.getPixelRatio() === ratio && canvas.width === Math.floor(width * ratio) && canvas.height === Math.floor(height * ratio)) return;
     renderer.setDrawingBufferSize(width, height, ratio);
   }
@@ -470,52 +573,70 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     ground.put((left+right)/2, y, zc, right-left, h, depth, 0, ci, 1);
   }
 
-  function putTree(x: number, variant: number, k: number): void {
-    trees[clamp(variant | 0, 0, 3)].put(x, 0, curZ, 1, 1, 1, 0, C_WHITE, k);
-  }
-
-  function putRock(x: number, variant: number, row: number, k: number): void {
-    const turn = (hash(row, x + 400) & 3) * (Math.PI / 2);
-    rocks[variant < 0 ? 0 : variant > 2 ? 2 : variant | 0].put(x, 0, curZ, 1, 1, 1, turn, C_WHITE, k);
+  /** A low snow drift on about one open cell in five. The ground stays clean, so obstacles and hazards read clearly. */
+  function drift(c: number, row: number): void {
+    const h = hash(row, c + 1000);
+    if (h % 5 !== 0) return;
+    const x = c + (((h >>> 4) & 15) / 15 - 0.5) * 0.5, z = curZ + (((h >>> 8) & 15) / 15 - 0.5) * 0.5 * ROW_DEPTH;
+    ground.put(x, 0, z, 0.5 + ((h >>> 14) & 3) * 0.1, 0.04, 0.3, 0, C_SNOW, 1);
   }
 
   function drawGrass(lane: GrassLane, row: number): void {
     if (!rebuildStatic) return;
     band(C_GRASS + lane.shade, -0.5, 0.5, curZ, ROW_DEPTH);
-    for(let c=Math.floor(winLo);c<=Math.ceil(winHi);c++) {
-      const o=obstacleAt(lane,c), variant=obstacleVariant(lane,c);
-      if(o==='tree')putTree(c,variant,1);
-      else if(o==='rock')putRock(c,variant,row,1);
-      else {
-        // Scattered decoration on open snow: a few grass tufts poking through, and soft drifts.
-        const h=hash(row,c+1000), kind=h&15, dx=(((h>>>4)&15)/15-0.5)*0.6, dz=(((h>>>8)&15)/15-0.5)*0.7*ROW_DEPTH;
-        if(kind===0) {
-          ground.put(c+dx,0,curZ+dz,0.07,0.1,0.07,0,C_TUFT+((h>>>12)&1),1);
-          ground.put(c+dx+0.08,0,curZ+dz+0.04,0.06,0.07,0.06,0,C_TUFT+((h>>>13)&1),1);
-        } else if(kind===1) ground.put(c+dx,0,curZ+dz,0.3+((h>>>14)&3)*0.08,0.05,0.22,0,C_SNOW,1);
-      }
+    for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) {
+      const o = obstacleAt(lane, c);
+      if (o === null) { drift(c, row); continue; }
+      const h = hash(row, c + 400), i = propAt(o, obstacleVariant(lane, c), h >>> 2);
+      // Boulders turn a quarter at a time; everything else faces the camera.
+      const turn = i >= PROP.rock && i < PROP.rock + 3 ? (h & 3) * (Math.PI / 2) : 0;
+      // The forest behind the start keeps its model size, so it does not hide the bird on row 0.
+      const wide = row < 0 ? 1 : PROP_SCALE[i][0], tall = row < 0 ? 1 : PROP_SCALE[i][1];
+      props[i].put(c, 0, curZ, wide, tall, wide, turn, C_WHITE, 1);
     }
   }
 
-  const onVehicle = (x0: number, x1: number, mover: Mover): void => {
-    const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (mover.color % VEHICLE_PALETTE);
-    // Lorries are two tiles or longer; mixed lanes (revision six) pick each car's model from its length and paint.
-    if (mover.len < 2) {
-      const style = curRoad.style ?? (mover.len < 1.5 ? 'compact' : mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
-      const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
-      carBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, len / size, 1, 1, yaw, tint, 1);
+  const onVehicle = (x0: number, x1: number, mover: Mover, index: number): void => {
+    const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI;
+    // Each vehicle keeps one look for as long as it drives: the pick comes from its lane, its mover and its copy.
+    const id = mix(curRoad.row, index, moverCopy(curRoad, mover, x0, now)), paint = id >>> 8;
+    // Lorries are two tiles or longer. A taxi lane, or a yellow wagon in a mixed lane, stays a taxi.
+    // The lane's scale makes the whole vehicle larger; it moves toward the middle of the row so it stays inside it.
+    const scale = curRoad.scale ?? 1, base = mover.len / scale;
+    if (base < 2) {
+      const taxi = curRoad.style !== undefined ? curRoad.style === 'taxi' : base >= 1.5 && mover.color === 2;
+      const i = carModel(base, taxi, id), name = CAR_MODELS[i];
+      const tint = name === 'taxi' ? C_TAXI : name === 'police' ? C_WHITE : C_CAR + paint % CAR_COLORS.length;
+      carBody[i].put(cx, 0, curZ + Math.min(TRAFFIC_ROW_Z, ROW_DEPTH / 2 - 0.02 - CAR_HALF * scale), len / carLength(name), scale, scale, yaw, tint, 1);
     } else {
-      const i = len > 2.5 ? 1 : 0, s = len / (i + 2);
-      truckBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, s, 1, 1, yaw, C_TRUCK + (mover.color % VEHICLE_PALETTE), 1);
+      const long = base > 2.5 ? 1 : 0, i = truckModel(long === 1, id);
+      const tint = i === FIRE ? C_FIRE : i === PLOUGH ? C_PLOUGH : C_TRUCK + paint % TRUCK_COLORS.length;
+      truckBody[i][long]!.put(cx, 0, curZ + Math.min(TRAFFIC_ROW_Z, ROW_DEPTH / 2 - 0.02 - TRUCK_HALF * scale), len / (long + 2), scale, scale, yaw, tint, 1);
     }
   };
 
-  function drawRoad(lane: RoadLane, ahead: Lane): void {
-    if (rebuildStatic) band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
-    if (rebuildStatic && ahead.kind === 'road') {
-      // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
-      const zb = curZ - ROW_DEPTH / 2;
-      for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
+  function drawRoad(lane: RoadLane, row: number, ahead: Lane, behind: Lane): void {
+    if (rebuildStatic) {
+      band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
+      if (ahead.kind === 'road') {
+        // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
+        const zb = curZ - ROW_DEPTH / 2;
+        for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, 1);
+      }
+      for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) {
+        // Now and then a manhole cover in the asphalt.
+        const h = hash(row, c + 5000);
+        if ((h & 31) === 0) {
+          const x = c + (((h >>> 5) & 15) / 15 - 0.5) * 0.5, z = curZ + (((h >>> 9) & 15) / 15 - 0.5) * 0.6;
+          ground.put(x, 0, z, 0.38, 0.006, 0.38, 0, C_COVER + 1, 1);
+          ground.put(x, 0, z, 0.28, 0.009, 0.28, 0, C_COVER, 1);
+        }
+        // Ploughed snow lies along a kerb that meets grass.
+        for (let side = -1; side <= 1; side += 2) if ((side < 0 ? ahead : behind).kind === 'grass') {
+          const k = hash(row * 2 + side, c + 6000), d = 0.07 + ((k >>> 2) & 3) * 0.03;
+          if ((k & 3) !== 0) ground.put(c + ((k >>> 4) & 7) * 0.06, 0, curZ + side * (ROW_DEPTH - d) / 2, 0.45 + ((k >>> 7) & 7) * 0.08, 0.016, d, 0, C_SNOW, 1);
+        }
+      }
     }
     curRoad = lane;
     curDir = lane.dir;
@@ -535,6 +656,16 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       for (let side = -1; side <= 1; side += 2) if (!isWater(side < 0 ? ahead : behind)) {
         band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * (ROW_DEPTH / 2 - 0.006), 0.012);
         band(C_RIPPLE, WATER_Y, 0.008, curZ + side * (ROW_DEPTH / 2 - 0.028), 0.025);
+        // Clumps of reeds stand in the shallows against the bank.
+        for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) {
+          const h = hash(row * 2 + side, c + 7000);
+          if ((h & 7) !== 0) continue;
+          for (let i = 0; i < 3; i++) {
+            const x = c + ((h >>> 3) & 7) * 0.08 + i * 0.08, z = curZ + side * (ROW_DEPTH / 2 - 0.07 - (i & 1) * 0.05), tall = 0.2 + ((h >>> (6 + i * 2)) & 3) * 0.05;
+            ground.put(x, WATER_Y, z, 0.035, tall, 0.035, 0, C_REED, 1);
+            if (i < 2) ground.put(x, WATER_Y + tall, z, 0.055, 0.08, 0.055, 0, C_REED + 1, 1);
+          }
+        }
       }
     }
     // A few light ripples drifting slowly, repeating every 14 tiles.
@@ -556,7 +687,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
     } else if (rebuildStatic) {
-      for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) if (lilyAt(lane,c)) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
+      for (let c = Math.floor(winLo); c <= Math.ceil(winHi); c++) if (lilyAt(lane, c)) {
+        const h = hash(row, c);
+        lilies[lilyLook(h >>> 3)].put(c, PAD_BASE, curZ, 1, 1, 1, ((h % 7) - 3) * 0.035, C_WHITE, 1);
+      }
     }
   }
 
@@ -580,16 +714,22 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function drawTrain(lane: RailLane, x0: number, x1: number): void {
-    const dir = lane.dir, yaw = dir > 0 ? 0 : Math.PI, tint = C_TRAIN + (lane.color % TRAIN_PALETTE), front = dir > 0 ? x1 : x0;
-    const nose = front - (dir * NOSE_LEN) / 2;
+    const dir = lane.dir, yaw = dir > 0 ? 0 : Math.PI, front = dir > 0 ? x1 : x0;
+    // Each train that passes is a passenger, freight or steam train in its own colour.
+    const id = mix(lane.row, trainCopy(lane, x0, now), 5), kind = trainKind(id), tint = C_TRAIN + (lane.color + (id >>> 8)) % TRAIN_COLORS.length;
+    const nose = front - (dir * PIECE_LEN) / 2;
     if (nose >= winLo - 2 && nose <= winHi + 2) {
-      noseBody.put(nose, TRAIN_Y, curZ + TRAFFIC_ROW_Z, 1, 1, 1, yaw, tint, 1);
+      locoBody[kind].put(nose, TRAIN_Y, curZ + TRACK_Z, TRAIN_SCALE, TRAIN_SCALE, TRAIN_SCALE, yaw, tint, 1);
+      lampHalos.put(front, 0.55, curZ + TRACK_Z, 1.5, 1.5, 1.5, 0, C_WHITE, 1);
+      lampSpills.put(front + dir * 1.7, RAIL_TOP + 0.01, curZ + TRACK_Z, 2.2, 1, 0.5, 0, C_WHITE, 1);
     }
-    const bodyLen = x1 - x0 - NOSE_LEN, n = Math.max(1, Math.round(bodyLen / CARRIAGE_LEN)), each = bodyLen / n, sx = each / CARRIAGE_LEN;
+    const bodyLen = x1 - x0 - PIECE_LEN, n = Math.max(1, Math.round(bodyLen / PIECE_LEN)), each = bodyLen / n, sx = each / 2;
     for (let i = 0; i < n; i++) {
-      const cc = front - dir * (NOSE_LEN + each * (i + 0.5));
+      const cc = front - dir * (PIECE_LEN + each * (i + 0.5));
       if (cc < winLo - 2 || cc > winHi + 2) continue;
-      carriageBody.put(cc, TRAIN_Y, curZ + TRAFFIC_ROW_Z, sx, 1, 1, yaw, tint, 1);
+      const h = mix(id, i), wagon = wagonAt(kind, i, h);
+      // Containers are each their own colour; other wagons take the train's.
+      wagonBody[wagon].put(cc, TRAIN_Y, curZ + TRACK_Z, sx, TRAIN_SCALE, TRAIN_SCALE, yaw, WAGONS[wagon] === 'container' ? C_CONTAINER + (h >>> 4) % CONTAINER_COLORS.length : tint, 1);
     }
   }
 
@@ -600,15 +740,19 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       band(C_SNOW, 0, 0.02, curZ - ROW_DEPTH / 2 + 0.17, 0.34);
       band(C_SNOW, 0, 0.02, curZ + ROW_DEPTH / 2 - 0.1, 0.2);
       // A raised gravel bed in two steps, so its edges catch the light like a real ballast shoulder.
-      const tz = curZ + TRAFFIC_ROW_Z;
-      band(C_BED, 0, BED_LOW, tz, 0.96);
-      band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 0.8);
+      const tz = curZ + TRACK_Z;
+      band(C_BED, 0, BED_LOW, tz, 1.12);
+      band(C_BED + 1, BED_LOW, BED_TOP - BED_LOW, tz, 1);
+      // The overhead line: a contact wire and a catenary wire, on a mast every eight tiles on the far side.
+      band(C_WIRE, WIRE_Y, 0.014, tz, 0.02);
+      band(C_WIRE, CATENARY_Y, 0.012, tz, 0.02);
+      for (let x = Math.ceil((winLo - 4.15) / 8) * 8 + 4.15; x <= winHi + 1; x += 8) masts.put(x, 0, tz - 0.7, 1, 1, 1, 0, C_WHITE, 1);
       for (let x = Math.ceil(winLo); x <= winHi; x++) {
         const h = hash(lane.row, x + 3000);
         // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
         for (const sx of [x - 0.25, x + 0.25]) {
-          ground.put(sx, BED_TOP, tz, 0.17, SLEEPER_H, 0.72, 0, C_SLEEPER, 1);
-          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.19, 0.008, 0.12, 0, C_PLATE, 1);
+          ground.put(sx, BED_TOP, tz, 0.2, SLEEPER_H, 0.94, 0, C_SLEEPER, 1);
+          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.22, 0.008, 0.14, 0, C_PLATE, 1);
         }
         // Gravel speckles between the sleepers.
         ground.put(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, 0, C_GRAVEL + ((h >>> 22) & 1), 1);
@@ -620,9 +764,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
       const foot = BED_TOP + SLEEPER_H + 0.008;
       for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) {
-        band(C_STEEL, foot, 0.008, tz + rz, 0.1);
-        band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.03, tz + rz, 0.035);
-        band(C_RAIL_HEAD, RAIL_TOP - 0.022, 0.022, tz + rz, 0.075);
+        band(C_STEEL, foot, 0.008, tz + rz, 0.12);
+        band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.038, tz + rz, 0.04);
+        band(C_RAIL_HEAD, RAIL_TOP - 0.03, 0.03, tz + rz, 0.085);
       }
     }
     curRail=lane;
@@ -642,7 +786,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     windowFor(row);
     switch (lane.kind) {
       case 'grass': drawGrass(lane, row); break;
-      case 'road': drawRoad(lane, ahead); break;
+      case 'road': drawRoad(lane, row, ahead, behind); break;
       case 'river': case 'lily': drawWater(lane, row, ahead, behind); break;
       case 'rail': drawRail(lane); break;
     }
@@ -829,18 +973,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
    * view, falling and swaying as analytic functions of `anim`. Reduced motion freezes them where they are. */
   function snowfall(): void {
     const count = low ? FLAKES_LOW : FLAKES_HIGH;
-    const W = (2 * fit.halfWidth) / RX + 6 + SNOW_H * Math.abs(FX), D = (2 * fit.halfHeight) / SIN_P + 6 + SNOW_H * -FZ;
+    const spanX = (2 * fit.halfWidth) / RX + 6 + SNOW_H * Math.abs(FX), spanZ = (2 * fit.halfHeight) / SIN_P + 6 + SNOW_H * -FZ;
     // A flake at height y appears y·cot(pitch) further ahead, so the column is centred behind the look point.
     const cx = lookX - FX * SNOW_H * 0.5, cz = lookZ - FZ * SNOW_H * 0.5;
     for (let i = 0; i < count; i++) {
-      const h = hash(i, 9001), g = hash(i, 9002);
-      const speed = 0.55 + 0.5 * ((g & 255) / 255), sway = 0.22 * Math.sin(anim * (0.9 + ((g >>> 8) & 7) * 0.1) + i);
-      const y = SNOW_H - (((((h >>> 20) & 1023) / 1024) * SNOW_H + anim * speed) % SNOW_H) - 0.3;
-      if (y < 0.02) continue;
-      const bx = ((h & 1023) / 1024) * W + sway + anim * 0.12, bz = (((h >>> 10) & 1023) / 1024) * D;
-      const x = cx + ((((bx - cx) % W) + W) % W) - W / 2, z = cz + ((((bz - cz) % D) + D) % D) - D / 2;
-      const size = 0.05 + 0.015 * ((g >>> 12) & 3);
-      flakes.put(x, y, z, size, size, size, 0, C_FLAKE, 1);
+      const flake = fallingFlake(i, anim, spanX, spanZ, cx, cz);
+      if (flake) flakes.put(flake.x, flake.y, flake.z, flake.size, flake.size, flake.size, 0, C_FLAKE, 1);
     }
   }
 

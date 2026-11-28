@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-11-16T11:52:02.402Z",
+  "method": "Matched forced-root oracle losses, metric2. Four fixed candidate seeds per human position.95% intervals from5000 contributor-cluster bootstrap resamples, descriptive only. Convenience cohorts do not establish a platform rating or a narrow Elo interval.",
+  "tiers": [
+    {
+      "tier": 500,
+      "split": "validation",
+      "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+      "baselineSourceSha256": "ee899ed7288159a009edd7f9f002db63747a38df0c8f61b37e10672f581c5871",
+      "corpusSha256": "bba02dba7483fdfe55d94a46d4a4bae16032a2cf901656956777154e1516e27c",
+      "positions": 320,
+      "games": 80,
+      "contributors": 31,
+      "humanMeanCpLoss": 101.834375,
+      "baselineMeanCpLoss": 243.16484375,
+      "candidateMeanCpLoss": 100.24140625,
+      "ratio": 0.9843572590296744,
+      "absoluteLogRatio": 0.015766379703576857,
+      "reductionFromBaselineFraction": 0.5877635734503663,
+      "contributorBootstrapDifference95Cp": [
+        -22.868303571428573,
+        18.46484375
+      ],
+      "histograms": {
+        "human": {
+          "0-10": 0.45625,
+          "10-50": 0.16875,
+          "50-100": 0.125,
+          "100-200": 0.1125,
+          "200-500": 0.078125,
+          "500-1000": 0.059375
+        },
+        "candidate": {
+          "0-10": 0.39609375,
+          "10-50": 0.1515625,
+          "50-100": 0.17265625,
+          "100-200": 0.1296875,
+          "200-500": 0.10703125,
+          "500-1000": 0.04296875
+        },
+        "baseline": {
+          "0-10": 0.1984375,
+          "10-50": 0.1296875,
+          "50-100": 0.12734375,
+          "100-200": 0.17421875,
+          "200-500": 0.17890625,
+          "500-1000": 0.19140625
+        }
+      },
+      "failures": 0
+    }
+  ]
+}

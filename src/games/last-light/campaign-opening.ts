@@ -250,7 +250,7 @@ export const OPENING_ROUTES:readonly CampaignRoute[]=[
   // through the deck; a second loose plate is the step for the jump over
   // the west well to the hatchway ladder, which comes up through the hoist
   // house floor beside the winding drums.
-  route:'24,1500,208,s;242,1400,100,l,100,1.745;352,1300,240,s;712,1300,176,s;760,1236,128,g;760,1172,128,g;352,1140,240,s;242,1040,100,l,100,1.745;24,940,208,s;72,876,128,g;72,812,128,g;352,780,240,s;602,700,100,l,80,1.745;712,620,176,s;760,556,128,g;760,492,128,g;352,460,240,s;640,412,56,c,,,0.5,12;760,364,128,g;760,300,128,g;472,300,104,s,,,,12;352,300,72,c,,,0.5,12;72,252,128,g;72,188,128,g;200,124,688,s',
+  route:'24,1500,208,s;242,1400,100,l,100,1.745;352,1300,240,s;712,1300,176,s;760,1236,128,g;760,1168,128,g;352,1140,240,s;242,1040,100,l,100,1.745;24,940,208,s;72,876,128,g;72,812,128,g;352,780,240,s;602,700,100,l,80,1.745;712,620,176,s;760,556,128,g;760,492,128,g;352,460,240,s;640,412,56,c,,,0.5,12;760,364,128,g;760,300,128,g;472,300,104,s,,,,12;352,300,72,c,,,0.5,12;72,252,128,g;72,188,128,g;200,124,688,s',
   branches:'24,1300,208,s;24,1140,208,s;352,620,240,s',memories:[0,1,2],
   stations:[[6,"Lower brake wheel"],[11,"Upper brake wheel"]],exit:.68,
   checkpoints:[2,3,6,8,11,13,16,19,22],sectors:[[0,"The lift pit"],[2,"Counterweight walk"],[4,"The ladder"],[6,"The brake room"],[8,"The west landing"],[11,"The machine room"],[13,"Under the winding gear"],[16,"The lift crown"],[17,"Over the sheaves"],[20,"The sheave deck"],[22,"The hatchway"],[24,"The hoist house"]],

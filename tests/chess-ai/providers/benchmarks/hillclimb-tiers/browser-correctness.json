@@ -1,0 +1,501 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "tests/games/chess/custom-tiers-ui.spec.ts",
+      "tests/games/chess/brook.spec.ts",
+      "--config=.omc/state/chess-tiers.playwright.config.mts",
+      "--project=chromium",
+      "--project=webkit",
+      "--workers=1",
+      "--grep",
+      "500 plays|Brook cancels",
+      "--reporter=line,json",
+      "--output=.omc/state/chess-tiers-ui-round15-results"
+    ],
+    "configFile": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\.omc\\state\\chess-tiers.playwright.config.mts",
+    "rootDir": "C:/Users/charlie/.t3/worktrees/Qcc-Game/t3-b146e022-116e70fe19f06944/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/charlie/.t3/worktrees/Qcc-Game/t3-b146e022-116e70fe19f06944/.omc/state/chess-tiers-ui-round15-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/charlie/.t3/worktrees/Qcc-Game/t3-b146e022-116e70fe19f06944/tests",
+        "testIgnore": [
+          "**/liquid-glass-score/**"
+        ],
+        "testMatch": [
+          "**/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/charlie/.t3/worktrees/Qcc-Game/t3-b146e022-116e70fe19f06944/.omc/state/chess-tiers-ui-round15-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/charlie/.t3/worktrees/Qcc-Game/t3-b146e022-116e70fe19f06944/tests",
+        "testIgnore": [
+          "**/liquid-glass-score/**"
+        ],
+        "testMatch": [
+          "**/*.spec.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\.omc\\state\\chess-tiers-ui-round15-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "chromium",
+        "testDir": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\tests",
+        "snapshotDir": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\tests",
+        "testIgnore": "**/liquid-glass-score/**",
+        "testMatch": "**/*.spec.ts",
+        "timeout": 30000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4675",
+          "trace": "retain-on-failure",
+          "screenshot": "only-on-failure",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium",
+          "channel": "chromium",
+          "headless": true,
+          "launchOptions": {
+            "executablePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+            "args": [
+              "--no-sandbox",
+              "--enable-webgl",
+              "--use-gl=angle",
+              "--use-angle=swiftshader"
+            ]
+          }
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "chromium"
+      },
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\.omc\\state\\chess-tiers-ui-round15-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "webkit",
+        "testDir": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\tests",
+        "snapshotDir": "C:\\Users\\charlie\\.t3\\worktrees\\Qcc-Game\\t3-b146e022-116e70fe19f06944\\tests",
+        "testIgnore": "**/liquid-glass-score/**",
+        "testMatch": "**/*.spec.ts",
+        "timeout": 30000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4675",
+          "trace": "retain-on-failure",
+          "screenshot": "only-on-failure",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1792,
+            "height": 1120
+          },
+          "deviceScaleFactor": 2,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "webkit"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "webkit"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --port 4675 --strictPort",
+      "url": "http://127.0.0.1:4675",
+      "reuseExistingServer": false,
+      "timeout": 180000
+    }
+  },
+  "suites": [
+    {
+      "title": "games\\chess\\brook.spec.ts",
+      "file": "games/chess/brook.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Brook cancels its actual worker and recovers inside its move allowance",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1815,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/@vite/client\",\"ms\":4821}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/node_modules/vite/dist/client/env.mjs\",\"ms\":154}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/types.ts\",\"ms\":2242}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/index.ts\",\"ms\":1272}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/manifest.ts\",\"ms\":749}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/engine.worker.ts\",\"ms\":71}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/engine.ts\",\"ms\":479}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/brook.ts\",\"ms\":22}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/vendor/chess.js\",\"ms\":26}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/perception.ts\",\"ms\":9}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/search-rules.ts\",\"ms\":24}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/engine.worker.ts?worker_file&type=module\",\"ms\":345}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-16T11:54:09.933Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "real-worker-timing",
+                      "contentType": "application/json",
+                      "body": "eyJjYW5jZWxsZWQiOiJhYm9ydGVkIiwibW9kdWxlSW1wb3J0TXMiOjY5LjE5OTk5OTk4ODA3OTA3LCJpbml0aWFsaXplTXMiOjQ2LjgwMDAwMDAxMTkyMDkzLCJyZWNvdmVyeUxlZ2FsIjp0cnVlLCJyZWNvdmVyeU1zIjo2Ni43MDAwMDAwNDc2ODM3MiwibGVnYWwiOnRydWUsIm5vcm1hbE1zIjoxMy4yOTk5OTk5NTIzMTYyODQsImVtZXJnZW5jeSI6ImxlZ2FsLW1vdmUiLCJlbWVyZ2VuY3lNcyI6MC42MDAwMDAwMjM4NDE4NTc5LCJzZXJ2ZXJQcmVwYXJhdGlvbiI6eyJtZXRob2QiOiJEZXYtc2VydmVyIGNvbXBpbGF0aW9uIG9ubHksIGJlZm9yZSBicm93c2VyIG1lYXN1cmVtZW50cy4gQ2xpZW50IG1vZHVsZSBwYXJzaW5nLCBXb3JrZXIgc3RhcnR1cCBhbmQgZmlyc3QgcmVwbGllcyByZW1haW4gbWVhc3VyZWQuIiwidG90YWxNcyI6MTAyMTQsInJlcXVlc3RzIjpbeyJwYXRoIjoiL0B2aXRlL2NsaWVudCIsIm1zIjo0ODIxfSx7InBhdGgiOiIvbm9kZV9tb2R1bGVzL3ZpdGUvZGlzdC9jbGllbnQvZW52Lm1qcyIsIm1zIjoxNTR9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvdHlwZXMudHMiLCJtcyI6MjI0Mn0seyJwYXRoIjoiL3NyYy9jaGVzcy1haS9wcm92aWRlcnMvYmVnaW5uZXIvaW5kZXgudHMiLCJtcyI6MTI3Mn0seyJwYXRoIjoiL3NyYy9jaGVzcy1haS9wcm92aWRlcnMvYmVnaW5uZXIvbWFuaWZlc3QudHMiLCJtcyI6NzQ5fSx7InBhdGgiOiIvc3JjL2NoZXNzLWFpL3Byb3ZpZGVycy9iZWdpbm5lci9lbmdpbmUud29ya2VyLnRzIiwibXMiOjcxfSx7InBhdGgiOiIvc3JjL2NoZXNzLWFpL3Byb3ZpZGVycy9iZWdpbm5lci9lbmdpbmUudHMiLCJtcyI6NDc5fSx7InBhdGgiOiIvc3JjL2NoZXNzLWFpL3Byb3ZpZGVycy9iZWdpbm5lci9icm9vay50cyIsIm1zIjoyMn0seyJwYXRoIjoiL3NyYy9jaGVzcy1haS9wcm92aWRlcnMvYmVnaW5uZXIvdmVuZG9yL2NoZXNzLmpzIiwibXMiOjI2fSx7InBhdGgiOiIvc3JjL2NoZXNzLWFpL3Byb3ZpZGVycy9iZWdpbm5lci9wZXJjZXB0aW9uLnRzIiwibXMiOjl9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL3NlYXJjaC1ydWxlcy50cyIsIm1zIjoyNH0seyJwYXRoIjoiL3NyYy9jaGVzcy1haS9wcm92aWRlcnMvYmVnaW5uZXIvZW5naW5lLndvcmtlci50cz93b3JrZXJfZmlsZSZ0eXBlPW1vZHVsZSIsIm1zIjozNDV9XX19"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9b7412c126535ac26819-798fe66a2ef4152d02f4",
+          "file": "games/chess/brook.spec.ts",
+          "line": 14,
+          "column": 1
+        },
+        {
+          "title": "Brook cancels its actual worker and recovers inside its move allowance",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1077,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/@vite/client\",\"ms\":35}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/node_modules/vite/dist/client/env.mjs\",\"ms\":5}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/types.ts\",\"ms\":3}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/index.ts\",\"ms\":6}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/manifest.ts\",\"ms\":3}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/engine.worker.ts\",\"ms\":3}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/engine.ts\",\"ms\":4}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/brook.ts\",\"ms\":3}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/vendor/chess.js\",\"ms\":160}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/perception.ts\",\"ms\":4}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/search-rules.ts\",\"ms\":3}\n"
+                    },
+                    {
+                      "text": "{\"kind\":\"dev-module-prepared\",\"path\":\"/src/chess-ai/providers/beginner/engine.worker.ts?worker_file&type=module\",\"ms\":6}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-16T11:54:55.586Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "real-worker-timing",
+                      "contentType": "application/json",
+                      "body": "eyJjYW5jZWxsZWQiOiJhYm9ydGVkIiwibW9kdWxlSW1wb3J0TXMiOjQ2LCJpbml0aWFsaXplTXMiOjUxLCJyZWNvdmVyeUxlZ2FsIjp0cnVlLCJyZWNvdmVyeU1zIjoxMzcsImxlZ2FsIjp0cnVlLCJub3JtYWxNcyI6MTksImVtZXJnZW5jeSI6ImxlZ2FsLW1vdmUiLCJlbWVyZ2VuY3lNcyI6OSwic2VydmVyUHJlcGFyYXRpb24iOnsibWV0aG9kIjoiRGV2LXNlcnZlciBjb21waWxhdGlvbiBvbmx5LCBiZWZvcmUgYnJvd3NlciBtZWFzdXJlbWVudHMuIENsaWVudCBtb2R1bGUgcGFyc2luZywgV29ya2VyIHN0YXJ0dXAgYW5kIGZpcnN0IHJlcGxpZXMgcmVtYWluIG1lYXN1cmVkLiIsInRvdGFsTXMiOjIzNywicmVxdWVzdHMiOlt7InBhdGgiOiIvQHZpdGUvY2xpZW50IiwibXMiOjM1fSx7InBhdGgiOiIvbm9kZV9tb2R1bGVzL3ZpdGUvZGlzdC9jbGllbnQvZW52Lm1qcyIsIm1zIjo1fSx7InBhdGgiOiIvc3JjL2NoZXNzLWFpL3R5cGVzLnRzIiwibXMiOjN9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL2luZGV4LnRzIiwibXMiOjZ9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL21hbmlmZXN0LnRzIiwibXMiOjN9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL2VuZ2luZS53b3JrZXIudHMiLCJtcyI6M30seyJwYXRoIjoiL3NyYy9jaGVzcy1haS9wcm92aWRlcnMvYmVnaW5uZXIvZW5naW5lLnRzIiwibXMiOjR9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL2Jyb29rLnRzIiwibXMiOjN9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL3ZlbmRvci9jaGVzcy5qcyIsIm1zIjoxNjB9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL3BlcmNlcHRpb24udHMiLCJtcyI6NH0seyJwYXRoIjoiL3NyYy9jaGVzcy1haS9wcm92aWRlcnMvYmVnaW5uZXIvc2VhcmNoLXJ1bGVzLnRzIiwibXMiOjN9LHsicGF0aCI6Ii9zcmMvY2hlc3MtYWkvcHJvdmlkZXJzL2JlZ2lubmVyL2VuZ2luZS53b3JrZXIudHM/d29ya2VyX2ZpbGUmdHlwZT1tb2R1bGUiLCJtcyI6Nn1dfX0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9b7412c126535ac26819-11a96f0e46bb2c429ba2",
+          "file": "games/chess/brook.spec.ts",
+          "line": 14,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "games\\chess\\custom-tiers-ui.spec.ts",
+      "file": "games/chess/custom-tiers-ui.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "500 plays legal moves through its worker at 1440px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 13341,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-16T11:54:22.496Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6709eb737001090c7075-7f14067561e21b3aaefc",
+          "file": "games/chess/custom-tiers-ui.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "500 plays legal moves through its worker at 390px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9430,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-16T11:54:35.854Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6709eb737001090c7075-e6bfd46d28fc054e74eb",
+          "file": "games/chess/custom-tiers-ui.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "500 plays legal moves through its worker at 1440px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10106,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-16T11:54:57.565Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6709eb737001090c7075-1d438ff7afb4f26953dd",
+          "file": "games/chess/custom-tiers-ui.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "500 plays legal moves through its worker at 390px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6000,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-16T11:55:07.684Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6709eb737001090c7075-c3a42d7a0e3041c58a92",
+          "file": "games/chess/custom-tiers-ui.spec.ts",
+          "line": 5,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-16T11:54:06.092Z",
+    "duration": 68094.394,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

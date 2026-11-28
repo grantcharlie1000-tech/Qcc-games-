@@ -1,0 +1,140 @@
+{
+  "sourceSha256": "2423b6b5c912cc93ec82f33671a903968b2879a3950698805de4ccefc2241d1e",
+  "focusedExit": 0,
+  "buildExit": 0,
+  "uiExit": 0,
+  "speedExit": 0,
+  "speedProtocol": "slow-js-vm-v1",
+  "strengthExit": 0,
+  "matchExit": 0,
+  "regressionExit": 0,
+  "vmScopedTypecheckExit": 0,
+  "council": "unanimous-provisional-after-C1",
+  "priorWholeSuite": {
+    "exit": 1,
+    "passed": 5634,
+    "failed": 17,
+    "skipped": 7,
+    "runnerErrors": 2,
+    "rerun": false
+  },
+  "rejectedSpeedAttempts": [
+    "page-only-worker-throttle",
+    "relative-wall-quota",
+    "capacity-v1",
+    "capacity-v2",
+    "worker-cdp-unsupported",
+    "vm-commandline-setup"
+  ],
+  "productionRuntime": "unverified-policy-blocked",
+  "physicalPhones": "unverified",
+  "councilReviews": [
+    {
+      "name": "gpt-6-astra",
+      "provider": "codex",
+      "link": "[All custom tiers council: GPT Astra](t3-thread://v2/cc0aa134-e0c2-492e-a2db-9c45ad0aad8a/thread:delegated-task:command%3Amcp%3Ab2941806-2208-45ef-b81e-a0830de6bf84%3Adelegate-task%3Aaecee1ff-2007-40ec-ac1e-508d480c1d17)",
+      "votes": {
+        "300": "YES",
+        "500": "YES",
+        "700": "YES",
+        "900": "YES"
+      },
+      "codeScore": 8,
+      "performanceVote": "YES for limited normal/slower-JS conclusion",
+      "condition": null
+    },
+    {
+      "name": "claude-opus-5-5",
+      "provider": "claudeAgent_claude_max",
+      "link": "[All custom tiers council: Claude Opus](t3-thread://v2/cc0aa134-e0c2-492e-a2db-9c45ad0aad8a/thread:delegated-task:command%3Amcp%3Ab2941806-2208-45ef-b81e-a0830de6bf84%3Adelegate-task%3A6b306ddf-33ab-44fb-b0d3-eeda30c400a9)",
+      "votes": {
+        "300": "YES",
+        "500": "YES",
+        "700": "YES",
+        "900": "YES after applied wording correction C1"
+      },
+      "codeScore": 8,
+      "performanceVote": "YES for limited normal/slower-JS conclusion",
+      "condition": "C1 applied; no code change or rerun requested"
+    }
+  ],
+  "strength900": {
+    "claim": "Historical mean-loss gate passed, not unqualified strength preservation. Historical evidence also informed node-budget selection.",
+    "historicalMeanLossIncreaseFraction": 0.007592099733856,
+    "fresh": {
+      "positions": 88,
+      "acceptedRerunMeanCpLoss": 55.1875,
+      "currentMeanCpLoss": 72.28977272727273,
+      "differenceCp": 17.102272727272727,
+      "gameBootstrap": {
+        "clusters": 22,
+        "resamples": 4000,
+        "seed": 732187,
+        "difference95Cp": [
+          1.0596590909090908,
+          36.07102272727273
+        ]
+      },
+      "contributorBootstrap": {
+        "clusters": 6,
+        "resamples": 4000,
+        "seed": 732187,
+        "difference95Cp": [
+          1.180921052631579,
+          36.359375
+        ]
+      },
+      "currentWork": {
+        "choices": 352,
+        "medianNodes": 1201,
+        "completedDepthCounts": {
+          "1": 1,
+          "2": 284,
+          "3": 67
+        }
+      },
+      "acceptedRerunWork": {
+        "choices": 352,
+        "medianNodes": 3840,
+        "completedDepthCounts": {
+          "1": 1,
+          "2": 110,
+          "3": 185,
+          "4": 56
+        }
+      }
+    },
+    "historical": {
+      "acceptedWork": {
+        "choices": 1408,
+        "medianNodes": 6912,
+        "completedDepthCounts": {
+          "0": 1,
+          "1": 14,
+          "2": 258,
+          "3": 1059,
+          "4": 76
+        }
+      },
+      "currentWork": {
+        "choices": 1408,
+        "medianNodes": 1201,
+        "completedDepthCounts": {
+          "1": 62,
+          "2": 1264,
+          "3": 82
+        }
+      },
+      "identicalMoves": 785,
+      "choices": 1408
+    },
+    "speedCorpus": {
+      "choices": 40,
+      "completedDepthCounts": {
+        "2": 40
+      }
+    },
+    "baseline": "Accepted historical engine was timed and device-dependent; approved median6912nodes versus1201current and3840in the newer desktop baseline rerun.",
+    "documentationCorrection": "C1 applied in verification.md, provider README and this status; Claude explicitly requires no model reruns."
+  }
+}

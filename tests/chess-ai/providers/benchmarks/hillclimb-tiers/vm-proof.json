@@ -1,0 +1,1742 @@
+{
+  "protocol": "normal-vs-jitless-worker-diagnostic-v1",
+  "generatedAt": "2026-11-16T12:16:31.743Z",
+  "method": "Same installed Chrome executable with only the requested additional --js-flags=--jitless configuration. Identical Blob dedicated Worker source, scope/URL/marker confirmed through each actual Worker CDP target. Three excluded10Mwarmup loops per Worker; five alternating normal/jitless pairs, three retained10Mloops per leg. No page throttling, job cap, providers, server, physical-phone, hardware or frequency-equivalence claim.",
+  "executablePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "iterationsPerSample": 10000000,
+  "repetitionsPerLeg": 3,
+  "warmupRepetitions": 3,
+  "workerSourceSha256": "1fe9926538d809e71876443fba6d4116abaa793e88bf5480c225282b5902c10a",
+  "cpu": "Intel(R) Core(TM) i5-7300HQ CPU @ 2.50GHz",
+  "logicalCpuCount": 4,
+  "configurations": [
+    {
+      "name": "normal",
+      "requestedArgs": [],
+      "commands": [
+        {
+          "id": 1,
+          "method": "Runtime.evaluate",
+          "params": {
+            "expression": "({marker:globalThis.__qccJitlessMarker,url:self.location.href,scope:self.constructor.name,features:{WebAssembly:typeof WebAssembly,SharedArrayBuffer:typeof SharedArrayBuffer,Atomics:typeof Atomics}})",
+            "returnByValue": true
+          },
+          "targetId": "0A7D6881D9096735B0ADD7043B3D3265",
+          "sessionId": "934F7696994EF3C128165B5D8FE646CB",
+          "transportAcknowledgement": {},
+          "rawResponse": {
+            "id": 1,
+            "result": {
+              "result": {
+                "type": "object",
+                "value": {
+                  "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+                  "url": "blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f",
+                  "scope": "DedicatedWorkerGlobalScope",
+                  "features": {
+                    "WebAssembly": "object",
+                    "SharedArrayBuffer": "undefined",
+                    "Atomics": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "warmup": [
+        {
+          "ms": 19.799999952316284,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 20.200000047683716,
+          "nodeRoundTripMs": 38.391299999999774
+        },
+        {
+          "ms": 17.69999998807907,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 18,
+          "nodeRoundTripMs": 26.93139999999994
+        },
+        {
+          "ms": 16.5,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 16.599999964237213,
+          "nodeRoundTripMs": 19.72250000000031
+        }
+      ],
+      "browserLogs": [
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":1,\"method\":\"Browser.getVersion\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":1,\"result\":{\"protocolVersion\":\"1.3\",\"product\":\"Chrome/157.0.8103.78\",\"revision\":\"@4b3d0dabb8250b6f152d2d85d79e7706e309d087\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36\",\"jsVersion\":\"15.7.112.43\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":2,\"method\":\"Target.setAutoAttach\",\"params\":{\"autoAttach\":true,\"waitForDebuggerOnStart\":true,\"flatten\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":2,\"result\":{}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":3,\"method\":\"Target.attachToBrowserTarget\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\",\"targetInfo\":{\"targetId\":\"e140a60f-ded1-4e23-9df6-8323baa95de8\",\"type\":\"browser\",\"title\":\"\",\"url\":\"\",\"attached\":true,\"canAccessOpener\":false},\"waitingForDebugger\":false}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":3,\"result\":{\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":4,\"method\":\"Target.setDiscoverTargets\",\"params\":{\"discover\":true},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":4,\"result\":{},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":5,\"method\":\"Target.createBrowserContext\",\"params\":{\"disposeOnDetach\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":5,\"result\":{\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":6,\"method\":\"Browser.setDownloadBehavior\",\"params\":{\"behavior\":\"allowAndName\",\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\",\"downloadPath\":\"C:\\\\Users\\\\charlie\\\\AppData\\\\Local\\\\Temp\\\\playwright-artifacts-YYLVPF\",\"eventsEnabled\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":6,\"result\":{}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":7,\"method\":\"Target.createTarget\",\"params\":{\"url\":\"about:blank\",\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"789BA6892740B0E1C1887BE24DB40978\",\"targetInfo\":{\"targetId\":\"D4653532DB259DA760A468DB4296A644\",\"type\":\"browser_ui\",\"title\":\"\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"},\"waitingForDebugger\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":8,\"method\":\"Runtime.runIfWaitingForDebugger\",\"sessionId\":\"789BA6892740B0E1C1887BE24DB40978\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetCreated\",\"params\":{\"targetInfo\":{\"targetId\":\"D4653532DB259DA760A468DB4296A644\",\"type\":\"browser_ui\",\"title\":\"\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\",\"targetInfo\":{\"targetId\":\"3189B5514928873CA1B036EE1E73F427\",\"type\":\"page\",\"title\":\"\",\"url\":\"about:blank\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"},\"waitingForDebugger\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":9,\"method\":\"Browser.getWindowForTarget\",\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetCreated\",\"params\":{\"targetInfo\":{\"targetId\":\"3189B5514928873CA1B036EE1E73F427\",\"type\":\"page\",\"title\":\"\",\"url\":\"about:blank\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":7,\"result\":{\"targetId\":\"3189B5514928873CA1B036EE1E73F427\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":9,\"result\":{\"windowId\":179998882,\"bounds\":{\"left\":10,\"top\":10,\"width\":780,\"height\":580,\"windowState\":\"normal\"}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":10,\"method\":\"Page.enable\",\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":11,\"method\":\"Page.getFrameTree\",\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":12,\"method\":\"Log.enable\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":13,\"method\":\"Page.setLifecycleEventsEnabled\",\"params\":{\"enabled\":true},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":14,\"method\":\"Runtime.enable\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":15,\"method\":\"Page.addScriptToEvaluateOnNewDocument\",\"params\":{\"source\":\"\",\"worldName\":\"__playwright_utility_world_page@239917b702cb430543199dedd273b9ae\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":16,\"method\":\"Network.enable\",\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":17,\"method\":\"Target.setAutoAttach\",\"params\":{\"autoAttach\":true,\"waitForDebuggerOnStart\":true,\"flatten\":true},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":18,\"method\":\"Emulation.setFocusEmulationEnabled\",\"params\":{\"enabled\":true},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":19,\"method\":\"Browser.setWindowBounds\",\"params\":{\"windowId\":179998882,\"bounds\":{\"width\":1280,\"height\":720}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":20,\"method\":\"Emulation.setDeviceMetricsOverride\",\"params\":{\"mobile\":false,\"width\":1280,\"height\":720,\"screenWidth\":1280,\"screenHeight\":720,\"deviceScaleFactor\":1,\"screenOrientation\":{\"angle\":0,\"type\":\"landscapePrimary\"}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":21,\"method\":\"Page.setFontFamilies\",\"params\":{\"fontFamilies\":{\"standard\":\"Times New Roman\",\"fixed\":\"Consolas\",\"serif\":\"Times New Roman\",\"sansSerif\":\"Arial\",\"cursive\":\"Comic Sans MS\",\"fantasy\":\"Impact\"},\"forScripts\":[{\"script\":\"cyrl\",\"fontFamilies\":{\"standard\":\"Times New Roman\",\"fixed\":\"Courier New\",\"serif\":\"Times New Roman\",\"sansSerif\":\"Arial\"}},{\"script\":\"arab\",\"fontFamilies\":{\"fixed\":\"Courier New\",\"sansSerif\":\"Segoe UI\"}},{\"script\":\"grek\",\"fontFamilies\":{\"standard\":\"Times New Roman\",\"fixed\":\"Courier New\",\"serif\":\"Times New Roman\",\"sansSerif\":\"Arial\"}},{\"script\":\"jpan\",\"fontFamilies\":{\"standard\":\",Meiryo,Yu Gothic\",\"fixed\":\"MS Gothic\",\"serif\":\",Yu Mincho,MS PMincho\",\"sansSerif\":\",Meiryo,Yu Gothic\"}},{\"script\":\"hang\",\"fontFamilies\":{\"standard\":\"Malgun Gothic\",\"fixed\":\"Gulimche\",\"serif\":\"Batang\",\"sansSerif\":\"Malgun Gothic\",\"cursive\":\"Gungsuh\"}},{\"script\":\"hans\",\"fontFamilies\":{\"standard\":\"Microsoft YaHei\",\"fixed\":\"NSimsun\",\"serif\":\"Simsun\",\"sansSerif\":\"Microsoft YaHei\",\"cursive\":\"KaiTi\"}},{\"script\":\"hant\",\"fontFamilies\":{\"standard\":\"Microsoft JhengHei\",\"fixed\":\"MingLiU\",\"serif\":\"PMingLiU\",\"sansSerif\":\"Microsoft JhengHei\",\"cursive\":\"DFKai-SB\"}}]},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":22,\"method\":\"Emulation.setEmulatedMedia\",\"params\":{\"media\":\"\",\"features\":[{\"name\":\"prefers-color-scheme\",\"value\":\"light\"},{\"name\":\"prefers-reduced-motion\",\"value\":\"no-preference\"},{\"name\":\"forced-colors\",\"value\":\"none\"},{\"name\":\"prefers-contrast\",\"value\":\"no-preference\"}]},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":23,\"method\":\"Runtime.runIfWaitingForDebugger\",\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":19,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"D4653532DB259DA760A468DB4296A644\",\"type\":\"browser_ui\",\"title\":\"chrome://omnibox-popup.top-chrome\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":8,\"result\":{},\"sessionId\":\"789BA6892740B0E1C1887BE24DB40978\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":24,\"method\":\"Target.detachFromTarget\",\"params\":{\"sessionId\":\"789BA6892740B0E1C1887BE24DB40978\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.policyUpdated\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"3189B5514928873CA1B036EE1E73F427\",\"type\":\"page\",\"title\":\"about:blank\",\"url\":\"about:blank\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStoppedLoading\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":10,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":11,\"result\":{\"frameTree\":{\"frame\":{\"id\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"F89EA4D199C14E2CE8AB84F4EAE93CCF\",\"url\":\"about:blank\",\"domainAndRegistry\":\"\",\"securityOrigin\":\"://\",\"securityOriginDetails\":{\"isLocalhost\":false},\"mimeType\":\"text/html\",\"adFrameStatus\":{\"adFrameType\":\"none\"},\"secureContextType\":\"InsecureScheme\",\"crossOriginIsolatedContextType\":\"NotIsolated\",\"gatedAPIFeatures\":[]}}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":25,\"method\":\"Page.createIsolatedWorld\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"grantUniveralAccess\":true,\"worldName\":\"__playwright_utility_world_page@239917b702cb430543199dedd273b9ae\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":12,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"F89EA4D199C14E2CE8AB84F4EAE93CCF\",\"name\":\"commit\",\"timestamp\":444210.180978},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"F89EA4D199C14E2CE8AB84F4EAE93CCF\",\"name\":\"DOMContentLoaded\",\"timestamp\":444210.181071},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"F89EA4D199C14E2CE8AB84F4EAE93CCF\",\"name\":\"load\",\"timestamp\":444210.182188},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"F89EA4D199C14E2CE8AB84F4EAE93CCF\",\"name\":\"networkAlmostIdle\",\"timestamp\":444210.18202},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"F89EA4D199C14E2CE8AB84F4EAE93CCF\",\"name\":\"networkIdle\",\"timestamp\":444210.18202},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":13,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":1,\"origin\":\"://\",\"name\":\"\",\"uniqueId\":\"-3168839431809693387.-8985075681864568461\",\"auxData\":{\"isDefault\":true,\"type\":\"default\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"}}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":14,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":15,\"result\":{\"identifier\":\"1\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":16,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":17,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":18,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameResized\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":20,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":21,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":22,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":23,\"result\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":26,\"method\":\"Page.navigate\",\"params\":{\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"referrerPolicy\":\"unsafeUrl\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.detachedFromTarget\",\"params\":{\"sessionId\":\"789BA6892740B0E1C1887BE24DB40978\",\"targetId\":\"D4653532DB259DA760A468DB4296A644\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"D4653532DB259DA760A468DB4296A644\",\"type\":\"browser_ui\",\"title\":\"Omnibox Popup\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":false,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":24,\"result\":{}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":2,\"origin\":\"://\",\"name\":\"__playwright_utility_world_page@239917b702cb430543199dedd273b9ae\",\"uniqueId\":\"-8618439610625552261.-2565572217749145875\",\"auxData\":{\"isDefault\":false,\"type\":\"isolated\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"}}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":25,\"result\":{\"executionContextId\":2},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStartedNavigating\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"navigationType\":\"differentDocument\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStartedLoading\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"documentURL\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"request\":{\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"method\":\"GET\",\"headers\":{},\"mixedContentType\":\"none\",\"initialPriority\":\"VeryHigh\",\"referrerPolicy\":\"unsafe-url\",\"isSameSite\":true},\"timestamp\":444210.259856,\"wallTime\":1794831393.032758,\"initiator\":{\"type\":\"other\"},\"redirectHasExtraInfo\":false,\"type\":\"Document\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"hasUserGesture\":false},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"timestamp\":444210.261523,\"type\":\"Document\",\"response\":{\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"status\":200,\"statusText\":\"OK\",\"headers\":{\"Content-Type\":\"text/html\"},\"mimeType\":\"text/html\",\"charset\":\"\",\"connectionReused\":false,\"connectionId\":0,\"remoteIPAddress\":\"\",\"remotePort\":0,\"fromDiskCache\":false,\"fromServiceWorker\":false,\"fromPrefetchCache\":false,\"encodedDataLength\":-1,\"protocol\":\"data\",\"alternateProtocolUsage\":\"alternativeJobWonWithoutRace\",\"securityState\":\"secure\"},\"hasExtraInfo\":false,\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":26,\"result\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"isDownload\":false},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextsCleared\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"name\":\"init\",\"timestamp\":444210.265189},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextsCleared\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameNavigated\",\"params\":{\"frame\":{\"id\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"domainAndRegistry\":\"\",\"securityOrigin\":\"://\",\"securityOriginDetails\":{\"isLocalhost\":false},\"mimeType\":\"text/html\",\"adFrameStatus\":{\"adFrameType\":\"none\"},\"secureContextType\":\"InsecureScheme\",\"crossOriginIsolatedContextType\":\"NotIsolated\",\"gatedAPIFeatures\":[]},\"type\":\"Navigation\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.policyUpdated\",\"params\":{},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"3189B5514928873CA1B036EE1E73F427\",\"type\":\"page\",\"title\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":3,\"origin\":\"://\",\"name\":\"\",\"uniqueId\":\"-7144547278176920871.-3903377684806073941\",\"auxData\":{\"isDefault\":true,\"type\":\"default\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"}}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":4,\"origin\":\"://\",\"name\":\"__playwright_utility_world_page@239917b702cb430543199dedd273b9ae\",\"uniqueId\":\"-5422252115672451225.-8237224476584782212\",\"auxData\":{\"isDefault\":false,\"type\":\"isolated\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"}}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.dataReceived\",\"params\":{\"requestId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"timestamp\":444210.269275,\"dataLength\":61,\"encodedDataLength\":0},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"timestamp\":444210.260931,\"encodedDataLength\":61,\"encodedBodyLength\":61},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.domContentEventFired\",\"params\":{\"timestamp\":444210.272898},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"name\":\"DOMContentLoaded\",\"timestamp\":444210.272898},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.loadEventFired\",\"params\":{\"timestamp\":444210.273243},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"loaderId\":\"40F3A22E349BB627CD94D2D2E1147970\",\"name\":\"load\",\"timestamp\":444210.273243},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStoppedLoading\",\"params\":{\"frameId\":\"3189B5514928873CA1B036EE1E73F427\"},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":27,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"\\n      (() => {\\n        \\n        const module = {};\\n        \\nvar __commonJS = obj => {\\n  let required = false;\\n  let result;\\n  return function __require() {\\n    if (!required) {\\n      required = true;\\n      let fn;\\n      for (const name in obj) { fn = obj[name]; break; }\\n      const module = { exports: {} };\\n      fn(module.exports, module);\\n      result = module.exports;\\n    }\\n    return result;\\n  }\\n};\\nvar __export = (target, all) => {for (var name in all) target[name] = all[name];};\\nvar __toESM = mod => ({ ...mod, 'default': mod });\\nvar __toCommonJS = mod => ({ ...mod, __esModule: true });\\n\\n\\n// packages/injected/src/utilityScript.ts\\nvar utilityScript_exports = {};\\n__export(utilityScript_exports, {\\n  UtilityScript: () => UtilityScript\\n});\\nmodule.exports = __toCommonJS(utilityScript_exports);\\n\\n// packages/isomorphic/utilityScriptSerializers.ts\\nvar kFunctionBindingPrefix = \\\"__pw_fn_\\\";\\nvar kBindingsControllerProperty = \\\"__playwright__binding__controller__\\\";\\nfunction isRegExp(obj) {\\n  try {\\n    return obj instanceof RegExp || Object.prototype.toString.call(obj) === \\\"[object RegExp]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isDate(obj) {\\n  try {\\n    return obj instanceof Date || Object.prototype.toString.call(obj) === \\\"[object Date]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isURL(obj) {\\n  try {\\n    return obj instanceof URL || Object.prototype.toString.call(obj) === \\\"[object URL]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isError(obj) {\\n  var _a;\\n  try {\\n    return obj instanceof Error || obj && ((_a = Object.getPrototypeOf(obj)) == null ? void 0 : _a.name) === \\\"Error\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isTypedArray(obj, constructor) {\\n  try {\\n    return obj instanceof constructor || Object.prototype.toString.call(obj) === `[object ${constructor.name}]`;\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isArrayBuffer(obj) {\\n  try {\\n    return obj instanceof ArrayBuffer || Object.prototype.toString.call(obj) === \\\"[object ArrayBuffer]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isMap(obj) {\\n  try {\\n    return obj instanceof Map || Object.prototype.toString.call(obj) === \\\"[object Map]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isSet(obj) {\\n  try {\\n    return obj instanceof Set || Object.prototype.toString.call(obj) === \\\"[object Set]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nvar typedArrayConstructors = {\\n  i8: Int8Array,\\n  ui8: Uint8Array,\\n  ui8c: Uint8ClampedArray,\\n  i16: Int16Array,\\n  ui16: Uint16Array,\\n  i32: Int32Array,\\n  ui32: Uint32Array,\\n  // TODO: add Float16Array once it's in baseline\\n  f32: Float32Array,\\n  f64: Float64Array,\\n  bi64: BigInt64Array,\\n  bui64: BigUint64Array\\n};\\nfunction typedArrayToBase64(array) {\\n  if (\\\"toBase64\\\" in array)\\n    return array.toBase64();\\n  const binary = Array.from(new Uint8Array(array.buffer, array.byteOffset, array.byteLength)).map((b) => String.fromCharCode(b)).join(\\\"\\\");\\n  return btoa(binary);\\n}\\nfunction base64ToTypedArray(base64, TypedArrayConstructor) {\\n  const binary = atob(base64);\\n  const bytes = new Uint8Array(binary.length);\\n  for (let i = 0; i < binary.length; i++)\\n    bytes[i] = binary.charCodeAt(i);\\n  return new TypedArrayConstructor(bytes.buffer);\\n}\\nfunction parseEvaluationResultValue(value, handles = [], refs = /* @__PURE__ */ new Map()) {\\n  if (Object.is(value, void 0))\\n    return void 0;\\n  if (typeof value === \\\"object\\\" && value) {\\n    if (\\\"ref\\\" in value)\\n      return refs.get(value.ref);\\n    if (\\\"v\\\" in value) {\\n      if (value.v === \\\"undefined\\\")\\n        return void 0;\\n      if (value.v === \\\"null\\\")\\n        return null;\\n      if (value.v === \\\"NaN\\\")\\n        return NaN;\\n      if (value.v === \\\"Infinity\\\")\\n        return Infinity;\\n      if (value.v === \\\"-Infinity\\\")\\n        return -Infinity;\\n      if (value.v === \\\"-0\\\")\\n        return -0;\\n      return void 0;\\n    }\\n    if (\\\"d\\\" in value) {\\n      return new Date(value.d);\\n    }\\n    if (\\\"u\\\" in value)\\n      return new URL(value.u);\\n    if (\\\"bi\\\" in value)\\n      return BigInt(value.bi);\\n    if (\\\"e\\\" in value) {\\n      const error = new Error(value.e.m);\\n      error.name = value.e.n;\\n      error.stack = value.e.s;\\n      return error;\\n    }\\n    if (\\\"r\\\" in value)\\n      return new RegExp(value.r.p, value.r.f);\\n    if (\\\"a\\\" in value) {\\n      const result = [];\\n      refs.set(value.id, result);\\n      for (const a of value.a)\\n        result.push(parseEvaluationResultValue(a, handles, refs));\\n      return result;\\n    }\\n    if (\\\"o\\\" in value) {\\n      const result = {};\\n      refs.set(value.id, result);\\n      for (const { k, v } of value.o) {\\n        if (k === \\\"__proto__\\\")\\n          continue;\\n        result[k] = parseEvaluationResultValue(v, handles, refs);\\n      }\\n      return result;\\n    }\\n    if (\\\"m\\\" in value) {\\n      const result = /* @__PURE__ */ new Map();\\n      refs.set(value.id, result);\\n      for (const { k, v } of value.m)\\n        result.set(parseEvaluationResultValue(k, handles, refs), parseEvaluationResultValue(v, handles, refs));\\n      return result;\\n    }\\n    if (\\\"s\\\" in value) {\\n      const result = /* @__PURE__ */ new Set();\\n      refs.set(value.id, result);\\n      for (const item of value.s)\\n        result.add(parseEvaluationResultValue(item, handles, refs));\\n      return result;\\n    }\\n    if (\\\"h\\\" in value)\\n      return handles[value.h];\\n    if (\\\"fn\\\" in value) {\\n      const name = value.fn;\\n      return (...args) => globalThis[kBindingsControllerProperty].callBinding(name, ...args);\\n    }\\n    if (\\\"ta\\\" in value)\\n      return base64ToTypedArray(value.ta.b, typedArrayConstructors[value.ta.k]);\\n    if (\\\"ab\\\" in value)\\n      return base64ToTypedArray(value.ab.b, Uint8Array).buffer;\\n  }\\n  return value;\\n}\\nfunction serializeAsCallArgument(value, handleSerializer, options = {}) {\\n  return serialize(value, handleSerializer, { visited: /* @__PURE__ */ new Map(), lastId: 0, extendedSerialization: options.extendedSerialization });\\n}\\nfunction serialize(value, handleSerializer, visitorInfo) {\\n  if (value && typeof value === \\\"object\\\") {\\n    if (typeof globalThis.Window === \\\"function\\\" && value instanceof globalThis.Window)\\n      return \\\"ref: <Window>\\\";\\n    if (typeof globalThis.Document === \\\"function\\\" && value instanceof globalThis.Document)\\n      return \\\"ref: <Document>\\\";\\n    if (typeof globalThis.Node === \\\"function\\\" && value instanceof globalThis.Node)\\n      return \\\"ref: <Node>\\\";\\n  }\\n  return innerSerialize(value, handleSerializer, visitorInfo);\\n}\\nfunction innerSerialize(value, handleSerializer, visitorInfo) {\\n  var _a;\\n  const result = handleSerializer(value);\\n  if (\\\"fallThrough\\\" in result)\\n    value = result.fallThrough;\\n  else\\n    return result;\\n  if (typeof value === \\\"symbol\\\")\\n    return { v: \\\"undefined\\\" };\\n  if (Object.is(value, void 0))\\n    return { v: \\\"undefined\\\" };\\n  if (Object.is(value, null))\\n    return { v: \\\"null\\\" };\\n  if (Object.is(value, NaN))\\n    return { v: \\\"NaN\\\" };\\n  if (Object.is(value, Infinity))\\n    return { v: \\\"Infinity\\\" };\\n  if (Object.is(value, -Infinity))\\n    return { v: \\\"-Infinity\\\" };\\n  if (Object.is(value, -0))\\n    return { v: \\\"-0\\\" };\\n  if (typeof value === \\\"boolean\\\")\\n    return value;\\n  if (typeof value === \\\"number\\\")\\n    return value;\\n  if (typeof value === \\\"string\\\")\\n    return value;\\n  if (typeof value === \\\"bigint\\\")\\n    return { bi: value.toString() };\\n  if (isError(value)) {\\n    let stack;\\n    if ((_a = value.stack) == null ? void 0 : _a.startsWith(value.name + \\\": \\\" + value.message)) {\\n      stack = value.stack;\\n    } else {\\n      stack = `${value.name}: ${value.message}\\n${value.stack}`;\\n    }\\n    return { e: { n: value.name, m: value.message, s: stack } };\\n  }\\n  if (isDate(value))\\n    return { d: value.toJSON() };\\n  if (isURL(value))\\n    return { u: value.toJSON() };\\n  if (isRegExp(value))\\n    return { r: { p: value.source, f: value.flags } };\\n  for (const [k, ctor] of Object.entries(typedArrayConstructors)) {\\n    if (isTypedArray(value, ctor))\\n      return { ta: { b: typedArrayToBase64(value), k } };\\n  }\\n  if (isArrayBuffer(value))\\n    return { ab: { b: typedArrayToBase64(new Uint8Array(value)) } };\\n  const id = visitorInfo.visited.get(value);\\n  if (id)\\n    return { ref: id };\\n  if (visitorInfo.extendedSerialization) {\\n    if (isMap(value)) {\\n      const m = [];\\n      const id2 = ++visitorInfo.lastId;\\n      visitorInfo.visited.set(value, id2);\\n      const iterator = value.entries();\\n      const next = (/* @__PURE__ */ new Map()).entries().next;\\n      while (true) {\\n        const entry = next.call(iterator);\\n        if (entry.done)\\n          break;\\n        m.push({ k: serialize(entry.value[0], handleSerializer, visitorInfo), v: serialize(entry.value[1], handleSerializer, visitorInfo) });\\n      }\\n      return { m, id: id2 };\\n    }\\n    if (isSet(value)) {\\n      const s = [];\\n      const id2 = ++visitorInfo.lastId;\\n      visitorInfo.visited.set(value, id2);\\n      const iterator = value.values();\\n      const next = (/* @__PURE__ */ new Set()).values().next;\\n      while (true) {\\n        const entry = next.call(iterator);\\n        if (entry.done)\\n          break;\\n        s.push(serialize(entry.value, handleSerializer, visitorInfo));\\n      }\\n      return { s, id: id2 };\\n    }\\n  }\\n  if (Array.isArray(value)) {\\n    const a = [];\\n    const id2 = ++visitorInfo.lastId;\\n    visitorInfo.visited.set(value, id2);\\n    for (let i = 0; i < value.length; ++i)\\n      a.push(serialize(value[i], handleSerializer, visitorInfo));\\n    return { a, id: id2 };\\n  }\\n  if (typeof value === \\\"object\\\") {\\n    const o = [];\\n    const id2 = ++visitorInfo.lastId;\\n    visitorInfo.visited.set(value, id2);\\n    for (const name of Object.keys(value)) {\\n      let item;\\n      try {\\n        item = value[name];\\n      } catch (e) {\\n        continue;\\n      }\\n      if (name === \\\"toJSON\\\" && typeof item === \\\"function\\\")\\n        o.push({ k: name, v: { o: [], id: 0 } });\\n      else\\n        o.push({ k: name, v: serialize(item, handleSerializer, visitorInfo) });\\n    }\\n    let jsonWrapper;\\n    try {\\n      if (o.length === 0 && value.toJSON && typeof value.toJSON === \\\"function\\\")\\n        jsonWrapper = { value: value.toJSON() };\\n    } catch (e) {\\n    }\\n    if (jsonWrapper)\\n      return innerSerialize(jsonWrapper.value, handleSerializer, visitorInfo);\\n    return { o, id: id2 };\\n  }\\n  if (typeof value === \\\"function\\\" && value.name.startsWith(kFunctionBindingPrefix))\\n    return { fn: value.name };\\n}\\n\\n// packages/injected/src/utilityScript.ts\\nvar UtilityScript = class {\\n  constructor(global, isUnderTest) {\\n    var _a, _b, _c, _d, _e, _f, _g, _h;\\n    this.global = global;\\n    this.isUnderTest = isUnderTest;\\n    if (global.__pwClock) {\\n      this.builtins = global.__pwClock.builtins;\\n    } else {\\n      this.builtins = {\\n        setTimeout: (_a = global.setTimeout) == null ? void 0 : _a.bind(global),\\n        clearTimeout: (_b = global.clearTimeout) == null ? void 0 : _b.bind(global),\\n        setInterval: (_c = global.setInterval) == null ? void 0 : _c.bind(global),\\n        clearInterval: (_d = global.clearInterval) == null ? void 0 : _d.bind(global),\\n        requestAnimationFrame: (_e = global.requestAnimationFrame) == null ? void 0 : _e.bind(global),\\n        cancelAnimationFrame: (_f = global.cancelAnimationFrame) == null ? void 0 : _f.bind(global),\\n        requestIdleCallback: (_g = global.requestIdleCallback) == null ? void 0 : _g.bind(global),\\n        cancelIdleCallback: (_h = global.cancelIdleCallback) == null ? void 0 : _h.bind(global),\\n        performance: global.performance,\\n        Intl: global.Intl,\\n        Date: global.Date,\\n        AbortSignal: global.AbortSignal,\\n        Temporal: global.Temporal\\n      };\\n    }\\n    if (this.isUnderTest)\\n      global.builtins = this.builtins;\\n  }\\n  evaluate(isFunction, returnByValue, expression, argCount, ...argsAndHandles) {\\n    const args = argsAndHandles.slice(0, argCount);\\n    const handles = argsAndHandles.slice(argCount);\\n    const parameters = [];\\n    for (let i = 0; i < args.length; i++)\\n      parameters[i] = parseEvaluationResultValue(args[i], handles);\\n    let result = this.global.eval(expression);\\n    if (isFunction === true) {\\n      result = result(...parameters);\\n    } else if (isFunction === false) {\\n      result = result;\\n    } else {\\n      if (typeof result === \\\"function\\\")\\n        result = result(...parameters);\\n    }\\n    return returnByValue ? this._promiseAwareJsonValueNoThrow(result) : result;\\n  }\\n  jsonValue(returnByValue, value) {\\n    if (value === void 0)\\n      return void 0;\\n    return serializeAsCallArgument(value, (value2) => ({ fallThrough: value2 }));\\n  }\\n  _promiseAwareJsonValueNoThrow(value) {\\n    const safeJson = (value2) => {\\n      try {\\n        return this.jsonValue(true, value2);\\n      } catch (e) {\\n        return void 0;\\n      }\\n    };\\n    if (value && typeof value === \\\"object\\\" && typeof value.then === \\\"function\\\") {\\n      return (async () => {\\n        const promiseValue = await value;\\n        return safeJson(promiseValue);\\n      })();\\n    }\\n    return safeJson(value);\\n  }\\n};\\n\\n        return new (module.exports.UtilityScript())(globalThis, false);\\n      })();\",\"contextId\":3},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":27,\"result\":{\"result\":{\"type\":\"object\",\"className\":\"UtilityScript\",\"description\":\"UtilityScript\",\"objectId\":\"7999631814785334566.3.1\"}},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":28,\"method\":\"Runtime.callFunctionOn\",\"params\":{\"functionDeclaration\":\"(utilityScript, ...args) => utilityScript.evaluate(...args)\",\"objectId\":\"7999631814785334566.3.1\",\"arguments\":[{\"objectId\":\"7999631814785334566.3.1\"},{\"value\":true},{\"value\":true},{\"value\":\"async({source,marker})=>{\\n    const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'})),worker=new Worker(url,{name:marker});globalThis.__qccJitlessProbe={worker,url};\\n    const ready=await new Promise((resolve,reject)=>{\\n      const timer=setTimeout(()=>reject(Error('Dedicated Worker creation timed out')),10000);\\n      worker.onmessage=event=>{clearTimeout(timer);resolve(event.data);};worker.onerror=event=>{clearTimeout(timer);reject(Error(event.message));};\\n      worker.postMessage({type:'init',marker});\\n    });\\n    return {blobURL:url,ready};\\n  }\"},{\"value\":1},{\"value\":{\"o\":[{\"k\":\"source\",\"v\":\"self.onmessage=({data})=>{if(data.type==='init'){self.__qccJitlessMarker=data.marker;self.postMessage({type:'ready',marker:data.marker,url:self.location.href,scope:self.constructor.name,features:{WebAssembly:typeof WebAssembly,SharedArrayBuffer:typeof SharedArrayBuffer,Atomics:typeof Atomics}});return;}let checksum=123;const started=performance.now();for(let i=0;i<data.iterations;i++)checksum=Math.imul(checksum^i,1664525)+1013904223|0;self.postMessage({ms:performance.now()-started,checksum,iterations:data.iterations,marker:self.__qccJitlessMarker});};\"},{\"k\":\"marker\",\"v\":\"qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d\"}],\"id\":1}}],\"returnByValue\":true,\"awaitPromise\":true,\"userGesture\":true},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetCreated\",\"params\":{\"targetInfo\":{\"targetId\":\"0A7D6881D9096735B0ADD7043B3D3265\",\"type\":\"worker\",\"title\":\"\",\"url\":\"\",\"attached\":false,\"parentId\":\"3189B5514928873CA1B036EE1E73F427\",\"canAccessOpener\":false,\"parentFrameId\":\"3189B5514928873CA1B036EE1E73F427\",\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"0A7D6881D9096735B0ADD7043B3D3265\",\"loaderId\":\"\",\"documentURL\":\"blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f\",\"request\":{\"url\":\"blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f\",\"method\":\"GET\",\"headers\":{\"Accept\":\"*/*\"},\"initialPriority\":\"VeryLow\",\"referrerPolicy\":\"strict-origin-when-cross-origin\"},\"timestamp\":444210.363501,\"wallTime\":1794831393.1364,\"initiator\":{\"type\":\"other\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\"},\"redirectHasExtraInfo\":false,\"type\":\"Script\",\"frameId\":\"3189B5514928873CA1B036EE1E73F427\",\"hasUserGesture\":false},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"0A7D6881D9096735B0ADD7043B3D3265\",\"type\":\"worker\",\"title\":\"qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d\",\"url\":\"blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f\",\"attached\":true,\"parentId\":\"3189B5514928873CA1B036EE1E73F427\",\"canAccessOpener\":false,\"parentFrameId\":\"3189B5514928873CA1B036EE1E73F427\",\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"}},\"sessionId\":\"E1FC4FF06D85ECCC523D096E32951C13\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"50AC3B828CE8BAB5C48FCC5266BFF1BF\",\"targetInfo\":{\"targetId\":\"0A7D6881D9096735B0ADD7043B3D3265\",\"type\":\"worker\",\"title\":\"qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d\",\"url\":\"blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f\",\"attached\":true,\"parentId\":\"3189B5514928873CA1B036EE1E73F427\",\"canAccessOpener\":false,\"parentFrameId\":\"3189B5514928873CA1B036EE1E73F427\",\"browserContextId\":\"80555D2F4A6308D7C7A7868058A0DEFF\"},\"waitingForDebugger\":true},\"sessionId\":\"EAEFBAE1630EC420F5F217D228C3C747\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":29,\"method\":\"Runtime.enable\",\"sessionId\":\"50AC3B828CE8BAB5C48FCC5266BFF1BF\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":30,\"method\":\"Network.enable\",\"sessionId\":\"50AC3B828CE8BAB5C48FCC5266BFF1BF\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":31,\"method\":\"Runtime.runIfWaitingForDebugger\",\"sessionId\":\"50AC3B828CE8BAB5C48FCC5266BFF1BF\"}"
+        }
+      ],
+      "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+      "browserRootPid": 30008,
+      "actualLaunchArgs": [
+        "C:/Program Files/Google/Chrome/Application/chrome.exe",
+        "--disable-field-trial-config",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-back-forward-cache",
+        "--disable-breakpad",
+        "--disable-client-side-phishing-detection",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-component-update",
+        "--no-default-browser-check",
+        "--disable-default-apps",
+        "--disable-dev-shm-usage",
+        "--disable-edgeupdater",
+        "--disable-extensions",
+        "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+        "--enable-features=CDPScreenshotNewSurface",
+        "--allow-pre-commit-input",
+        "--disable-hang-monitor",
+        "--disable-ipc-flooding-protection",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-renderer-backgrounding",
+        "--disable-updater-scheduler",
+        "--force-color-profile=srgb",
+        "--metrics-recording-only",
+        "--no-first-run",
+        "--password-store=basic",
+        "--use-mock-keychain",
+        "--no-service-autorun",
+        "--export-tagged-pdf",
+        "--disable-search-engine-choice-screen",
+        "--unsafely-disable-devtools-self-xss-warnings",
+        "--edge-skip-compat-layer-relaunch",
+        "--disable-infobars",
+        "--disable-search-engine-choice-screen",
+        "--disable-sync",
+        "--enable-unsafe-swiftshader",
+        "--headless",
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+        "--no-sandbox",
+        "--user-data-dir=C:\\Users\\charlie\\AppData\\Local\\Temp\\playwright_chromiumdev_profile-61dfMA",
+        "--remote-debugging-pipe",
+        "--no-startup-window"
+      ],
+      "browserVersion": "157.0.8103.78",
+      "workerReady": {
+        "blobURL": "blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f",
+        "ready": {
+          "type": "ready",
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "url": "blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f",
+          "scope": "DedicatedWorkerGlobalScope",
+          "features": {
+            "WebAssembly": "object",
+            "SharedArrayBuffer": "undefined",
+            "Atomics": "object"
+          }
+        }
+      },
+      "matchingWorkerTargets": [
+        {
+          "targetId": "0A7D6881D9096735B0ADD7043B3D3265",
+          "type": "worker",
+          "title": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "url": "blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f",
+          "attached": true,
+          "parentId": "3189B5514928873CA1B036EE1E73F427",
+          "canAccessOpener": false,
+          "parentFrameId": "3189B5514928873CA1B036EE1E73F427",
+          "browserContextId": "80555D2F4A6308D7C7A7868058A0DEFF"
+        }
+      ],
+      "workerAttachment": {
+        "targetId": "0A7D6881D9096735B0ADD7043B3D3265",
+        "sessionId": "934F7696994EF3C128165B5D8FE646CB",
+        "flatten": false
+      },
+      "workerRuntimeIdentity": {
+        "result": {
+          "type": "object",
+          "value": {
+            "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+            "url": "blob:null/7eef4d7d-5514-4a8d-b672-e2feb37ef00f",
+            "scope": "DedicatedWorkerGlobalScope",
+            "features": {
+              "WebAssembly": "object",
+              "SharedArrayBuffer": "undefined",
+              "Atomics": "object"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "jitless",
+      "requestedArgs": [
+        "--js-flags=--jitless"
+      ],
+      "commands": [
+        {
+          "id": 1,
+          "method": "Runtime.evaluate",
+          "params": {
+            "expression": "({marker:globalThis.__qccJitlessMarker,url:self.location.href,scope:self.constructor.name,features:{WebAssembly:typeof WebAssembly,SharedArrayBuffer:typeof SharedArrayBuffer,Atomics:typeof Atomics}})",
+            "returnByValue": true
+          },
+          "targetId": "A9A72837A8535713174D46C1D0468329",
+          "sessionId": "4441C175D2AA9A0413103AF3DA758BB3",
+          "transportAcknowledgement": {},
+          "rawResponse": {
+            "id": 1,
+            "result": {
+              "result": {
+                "type": "object",
+                "value": {
+                  "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+                  "url": "blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644",
+                  "scope": "DedicatedWorkerGlobalScope",
+                  "features": {
+                    "WebAssembly": "undefined",
+                    "SharedArrayBuffer": "undefined",
+                    "Atomics": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "warmup": [
+        {
+          "ms": 1390.8999999761581,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1391.800000011921,
+          "nodeRoundTripMs": 1405.9419000000003
+        },
+        {
+          "ms": 1384.6000000238419,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1384.800000011921,
+          "nodeRoundTripMs": 1392.6080000000002
+        },
+        {
+          "ms": 1163.3999999761581,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1163.6000000238419,
+          "nodeRoundTripMs": 1173.2086
+        }
+      ],
+      "browserLogs": [
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":1,\"method\":\"Browser.getVersion\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":1,\"result\":{\"protocolVersion\":\"1.3\",\"product\":\"Chrome/157.0.8103.78\",\"revision\":\"@4b3d0dabb8250b6f152d2d85d79e7706e309d087\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36\",\"jsVersion\":\"15.7.112.43\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":2,\"method\":\"Target.setAutoAttach\",\"params\":{\"autoAttach\":true,\"waitForDebuggerOnStart\":true,\"flatten\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":2,\"result\":{}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":3,\"method\":\"Target.attachToBrowserTarget\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\",\"targetInfo\":{\"targetId\":\"a8224a42-04b4-4f40-909d-1cdd98eb26fc\",\"type\":\"browser\",\"title\":\"\",\"url\":\"\",\"attached\":true,\"canAccessOpener\":false},\"waitingForDebugger\":false}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":3,\"result\":{\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":4,\"method\":\"Target.setDiscoverTargets\",\"params\":{\"discover\":true},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":4,\"result\":{},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":5,\"method\":\"Target.createBrowserContext\",\"params\":{\"disposeOnDetach\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":5,\"result\":{\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":6,\"method\":\"Browser.setDownloadBehavior\",\"params\":{\"behavior\":\"allowAndName\",\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\",\"downloadPath\":\"C:\\\\Users\\\\charlie\\\\AppData\\\\Local\\\\Temp\\\\playwright-artifacts-Vo5hcr\",\"eventsEnabled\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":6,\"result\":{}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":7,\"method\":\"Target.createTarget\",\"params\":{\"url\":\"about:blank\",\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"40001F2CDDF16F32300FF0AFB0D84B65\",\"targetInfo\":{\"targetId\":\"010DD432629EBC8A825052C5EB56BDB4\",\"type\":\"browser_ui\",\"title\":\"\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"},\"waitingForDebugger\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":8,\"method\":\"Runtime.runIfWaitingForDebugger\",\"sessionId\":\"40001F2CDDF16F32300FF0AFB0D84B65\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetCreated\",\"params\":{\"targetInfo\":{\"targetId\":\"010DD432629EBC8A825052C5EB56BDB4\",\"type\":\"browser_ui\",\"title\":\"\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\",\"targetInfo\":{\"targetId\":\"30094F2F6B47D628E8233603D2348690\",\"type\":\"page\",\"title\":\"\",\"url\":\"about:blank\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"},\"waitingForDebugger\":true}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":9,\"method\":\"Browser.getWindowForTarget\",\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetCreated\",\"params\":{\"targetInfo\":{\"targetId\":\"30094F2F6B47D628E8233603D2348690\",\"type\":\"page\",\"title\":\"\",\"url\":\"about:blank\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":7,\"result\":{\"targetId\":\"30094F2F6B47D628E8233603D2348690\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":9,\"result\":{\"windowId\":1707231780,\"bounds\":{\"left\":10,\"top\":10,\"width\":780,\"height\":580,\"windowState\":\"normal\"}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":10,\"method\":\"Page.enable\",\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":11,\"method\":\"Page.getFrameTree\",\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":12,\"method\":\"Log.enable\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":13,\"method\":\"Page.setLifecycleEventsEnabled\",\"params\":{\"enabled\":true},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":14,\"method\":\"Runtime.enable\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":15,\"method\":\"Page.addScriptToEvaluateOnNewDocument\",\"params\":{\"source\":\"\",\"worldName\":\"__playwright_utility_world_page@16a8b321ff5886ee1aaf3a8dba6439c4\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":16,\"method\":\"Network.enable\",\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":17,\"method\":\"Target.setAutoAttach\",\"params\":{\"autoAttach\":true,\"waitForDebuggerOnStart\":true,\"flatten\":true},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":18,\"method\":\"Emulation.setFocusEmulationEnabled\",\"params\":{\"enabled\":true},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":19,\"method\":\"Browser.setWindowBounds\",\"params\":{\"windowId\":1707231780,\"bounds\":{\"width\":1280,\"height\":720}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":20,\"method\":\"Emulation.setDeviceMetricsOverride\",\"params\":{\"mobile\":false,\"width\":1280,\"height\":720,\"screenWidth\":1280,\"screenHeight\":720,\"deviceScaleFactor\":1,\"screenOrientation\":{\"angle\":0,\"type\":\"landscapePrimary\"}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":21,\"method\":\"Page.setFontFamilies\",\"params\":{\"fontFamilies\":{\"standard\":\"Times New Roman\",\"fixed\":\"Consolas\",\"serif\":\"Times New Roman\",\"sansSerif\":\"Arial\",\"cursive\":\"Comic Sans MS\",\"fantasy\":\"Impact\"},\"forScripts\":[{\"script\":\"cyrl\",\"fontFamilies\":{\"standard\":\"Times New Roman\",\"fixed\":\"Courier New\",\"serif\":\"Times New Roman\",\"sansSerif\":\"Arial\"}},{\"script\":\"arab\",\"fontFamilies\":{\"fixed\":\"Courier New\",\"sansSerif\":\"Segoe UI\"}},{\"script\":\"grek\",\"fontFamilies\":{\"standard\":\"Times New Roman\",\"fixed\":\"Courier New\",\"serif\":\"Times New Roman\",\"sansSerif\":\"Arial\"}},{\"script\":\"jpan\",\"fontFamilies\":{\"standard\":\",Meiryo,Yu Gothic\",\"fixed\":\"MS Gothic\",\"serif\":\",Yu Mincho,MS PMincho\",\"sansSerif\":\",Meiryo,Yu Gothic\"}},{\"script\":\"hang\",\"fontFamilies\":{\"standard\":\"Malgun Gothic\",\"fixed\":\"Gulimche\",\"serif\":\"Batang\",\"sansSerif\":\"Malgun Gothic\",\"cursive\":\"Gungsuh\"}},{\"script\":\"hans\",\"fontFamilies\":{\"standard\":\"Microsoft YaHei\",\"fixed\":\"NSimsun\",\"serif\":\"Simsun\",\"sansSerif\":\"Microsoft YaHei\",\"cursive\":\"KaiTi\"}},{\"script\":\"hant\",\"fontFamilies\":{\"standard\":\"Microsoft JhengHei\",\"fixed\":\"MingLiU\",\"serif\":\"PMingLiU\",\"sansSerif\":\"Microsoft JhengHei\",\"cursive\":\"DFKai-SB\"}}]},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":22,\"method\":\"Emulation.setEmulatedMedia\",\"params\":{\"media\":\"\",\"features\":[{\"name\":\"prefers-color-scheme\",\"value\":\"light\"},{\"name\":\"prefers-reduced-motion\",\"value\":\"no-preference\"},{\"name\":\"forced-colors\",\"value\":\"none\"},{\"name\":\"prefers-contrast\",\"value\":\"no-preference\"}]},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":23,\"method\":\"Runtime.runIfWaitingForDebugger\",\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":19,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"010DD432629EBC8A825052C5EB56BDB4\",\"type\":\"browser_ui\",\"title\":\"chrome://omnibox-popup.top-chrome\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":8,\"result\":{},\"sessionId\":\"40001F2CDDF16F32300FF0AFB0D84B65\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":24,\"method\":\"Target.detachFromTarget\",\"params\":{\"sessionId\":\"40001F2CDDF16F32300FF0AFB0D84B65\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.policyUpdated\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"30094F2F6B47D628E8233603D2348690\",\"type\":\"page\",\"title\":\"about:blank\",\"url\":\"about:blank\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStoppedLoading\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":10,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":11,\"result\":{\"frameTree\":{\"frame\":{\"id\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"7A93E19C136643158AE3B7E17D36288D\",\"url\":\"about:blank\",\"domainAndRegistry\":\"\",\"securityOrigin\":\"://\",\"securityOriginDetails\":{\"isLocalhost\":false},\"mimeType\":\"text/html\",\"adFrameStatus\":{\"adFrameType\":\"none\"},\"secureContextType\":\"InsecureScheme\",\"crossOriginIsolatedContextType\":\"NotIsolated\",\"gatedAPIFeatures\":[]}}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":25,\"method\":\"Page.createIsolatedWorld\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"grantUniveralAccess\":true,\"worldName\":\"__playwright_utility_world_page@16a8b321ff5886ee1aaf3a8dba6439c4\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":12,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"7A93E19C136643158AE3B7E17D36288D\",\"name\":\"commit\",\"timestamp\":444211.280126},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"7A93E19C136643158AE3B7E17D36288D\",\"name\":\"DOMContentLoaded\",\"timestamp\":444211.280233},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"7A93E19C136643158AE3B7E17D36288D\",\"name\":\"load\",\"timestamp\":444211.281338},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"7A93E19C136643158AE3B7E17D36288D\",\"name\":\"networkAlmostIdle\",\"timestamp\":444211.281175},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"7A93E19C136643158AE3B7E17D36288D\",\"name\":\"networkIdle\",\"timestamp\":444211.281175},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":13,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":1,\"origin\":\"://\",\"name\":\"\",\"uniqueId\":\"-1663234820447233408.7943596292945771158\",\"auxData\":{\"isDefault\":true,\"type\":\"default\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\"}}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":14,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":15,\"result\":{\"identifier\":\"1\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":16,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":17,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":18,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameResized\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":20,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":21,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":22,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":23,\"result\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":26,\"method\":\"Page.navigate\",\"params\":{\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"referrerPolicy\":\"unsafeUrl\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.detachedFromTarget\",\"params\":{\"sessionId\":\"40001F2CDDF16F32300FF0AFB0D84B65\",\"targetId\":\"010DD432629EBC8A825052C5EB56BDB4\"}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"010DD432629EBC8A825052C5EB56BDB4\",\"type\":\"browser_ui\",\"title\":\"Omnibox Popup\",\"url\":\"chrome://omnibox-popup.top-chrome/\",\"attached\":false,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":24,\"result\":{}}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":2,\"origin\":\"://\",\"name\":\"__playwright_utility_world_page@16a8b321ff5886ee1aaf3a8dba6439c4\",\"uniqueId\":\"5344291125208758118.7140618091948527973\",\"auxData\":{\"isDefault\":false,\"type\":\"isolated\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\"}}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":25,\"result\":{\"executionContextId\":2},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStartedNavigating\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"navigationType\":\"differentDocument\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStartedLoading\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"documentURL\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"request\":{\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"method\":\"GET\",\"headers\":{},\"mixedContentType\":\"none\",\"initialPriority\":\"VeryHigh\",\"referrerPolicy\":\"unsafe-url\",\"isSameSite\":true},\"timestamp\":444211.367237,\"wallTime\":1794831394.140139,\"initiator\":{\"type\":\"other\"},\"redirectHasExtraInfo\":false,\"type\":\"Document\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"hasUserGesture\":false},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"timestamp\":444211.369004,\"type\":\"Document\",\"response\":{\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"status\":200,\"statusText\":\"OK\",\"headers\":{\"Content-Type\":\"text/html\"},\"mimeType\":\"text/html\",\"charset\":\"\",\"connectionReused\":false,\"connectionId\":0,\"remoteIPAddress\":\"\",\"remotePort\":0,\"fromDiskCache\":false,\"fromServiceWorker\":false,\"fromPrefetchCache\":false,\"encodedDataLength\":-1,\"protocol\":\"data\",\"alternateProtocolUsage\":\"alternativeJobWonWithoutRace\",\"securityState\":\"secure\"},\"hasExtraInfo\":false,\"frameId\":\"30094F2F6B47D628E8233603D2348690\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":26,\"result\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"isDownload\":false},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextsCleared\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"name\":\"init\",\"timestamp\":444211.374729},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextsCleared\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameNavigated\",\"params\":{\"frame\":{\"id\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"domainAndRegistry\":\"\",\"securityOrigin\":\"://\",\"securityOriginDetails\":{\"isLocalhost\":false},\"mimeType\":\"text/html\",\"adFrameStatus\":{\"adFrameType\":\"none\"},\"secureContextType\":\"InsecureScheme\",\"crossOriginIsolatedContextType\":\"NotIsolated\",\"gatedAPIFeatures\":[]},\"type\":\"Navigation\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.policyUpdated\",\"params\":{},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"30094F2F6B47D628E8233603D2348690\",\"type\":\"page\",\"title\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\",\"attached\":true,\"canAccessOpener\":false,\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":3,\"origin\":\"://\",\"name\":\"\",\"uniqueId\":\"-4292018535921172084.-6195400595640413142\",\"auxData\":{\"isDefault\":true,\"type\":\"default\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\"}}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"id\":4,\"origin\":\"://\",\"name\":\"__playwright_utility_world_page@16a8b321ff5886ee1aaf3a8dba6439c4\",\"uniqueId\":\"1154044543062827290.2020991929985368884\",\"auxData\":{\"isDefault\":false,\"type\":\"isolated\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\"}}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.dataReceived\",\"params\":{\"requestId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"timestamp\":444211.378702,\"dataLength\":61,\"encodedDataLength\":0},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"timestamp\":444211.368446,\"encodedDataLength\":61,\"encodedBodyLength\":61},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.domContentEventFired\",\"params\":{\"timestamp\":444211.381385},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"name\":\"DOMContentLoaded\",\"timestamp\":444211.381385},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.loadEventFired\",\"params\":{\"timestamp\":444211.381781},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.lifecycleEvent\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"loaderId\":\"0A7F5388B564D454DFDCEE205E4BAEC1\",\"name\":\"load\",\"timestamp\":444211.381781},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Page.frameStoppedLoading\",\"params\":{\"frameId\":\"30094F2F6B47D628E8233603D2348690\"},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":27,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"\\n      (() => {\\n        \\n        const module = {};\\n        \\nvar __commonJS = obj => {\\n  let required = false;\\n  let result;\\n  return function __require() {\\n    if (!required) {\\n      required = true;\\n      let fn;\\n      for (const name in obj) { fn = obj[name]; break; }\\n      const module = { exports: {} };\\n      fn(module.exports, module);\\n      result = module.exports;\\n    }\\n    return result;\\n  }\\n};\\nvar __export = (target, all) => {for (var name in all) target[name] = all[name];};\\nvar __toESM = mod => ({ ...mod, 'default': mod });\\nvar __toCommonJS = mod => ({ ...mod, __esModule: true });\\n\\n\\n// packages/injected/src/utilityScript.ts\\nvar utilityScript_exports = {};\\n__export(utilityScript_exports, {\\n  UtilityScript: () => UtilityScript\\n});\\nmodule.exports = __toCommonJS(utilityScript_exports);\\n\\n// packages/isomorphic/utilityScriptSerializers.ts\\nvar kFunctionBindingPrefix = \\\"__pw_fn_\\\";\\nvar kBindingsControllerProperty = \\\"__playwright__binding__controller__\\\";\\nfunction isRegExp(obj) {\\n  try {\\n    return obj instanceof RegExp || Object.prototype.toString.call(obj) === \\\"[object RegExp]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isDate(obj) {\\n  try {\\n    return obj instanceof Date || Object.prototype.toString.call(obj) === \\\"[object Date]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isURL(obj) {\\n  try {\\n    return obj instanceof URL || Object.prototype.toString.call(obj) === \\\"[object URL]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isError(obj) {\\n  var _a;\\n  try {\\n    return obj instanceof Error || obj && ((_a = Object.getPrototypeOf(obj)) == null ? void 0 : _a.name) === \\\"Error\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isTypedArray(obj, constructor) {\\n  try {\\n    return obj instanceof constructor || Object.prototype.toString.call(obj) === `[object ${constructor.name}]`;\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isArrayBuffer(obj) {\\n  try {\\n    return obj instanceof ArrayBuffer || Object.prototype.toString.call(obj) === \\\"[object ArrayBuffer]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isMap(obj) {\\n  try {\\n    return obj instanceof Map || Object.prototype.toString.call(obj) === \\\"[object Map]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nfunction isSet(obj) {\\n  try {\\n    return obj instanceof Set || Object.prototype.toString.call(obj) === \\\"[object Set]\\\";\\n  } catch (error) {\\n    return false;\\n  }\\n}\\nvar typedArrayConstructors = {\\n  i8: Int8Array,\\n  ui8: Uint8Array,\\n  ui8c: Uint8ClampedArray,\\n  i16: Int16Array,\\n  ui16: Uint16Array,\\n  i32: Int32Array,\\n  ui32: Uint32Array,\\n  // TODO: add Float16Array once it's in baseline\\n  f32: Float32Array,\\n  f64: Float64Array,\\n  bi64: BigInt64Array,\\n  bui64: BigUint64Array\\n};\\nfunction typedArrayToBase64(array) {\\n  if (\\\"toBase64\\\" in array)\\n    return array.toBase64();\\n  const binary = Array.from(new Uint8Array(array.buffer, array.byteOffset, array.byteLength)).map((b) => String.fromCharCode(b)).join(\\\"\\\");\\n  return btoa(binary);\\n}\\nfunction base64ToTypedArray(base64, TypedArrayConstructor) {\\n  const binary = atob(base64);\\n  const bytes = new Uint8Array(binary.length);\\n  for (let i = 0; i < binary.length; i++)\\n    bytes[i] = binary.charCodeAt(i);\\n  return new TypedArrayConstructor(bytes.buffer);\\n}\\nfunction parseEvaluationResultValue(value, handles = [], refs = /* @__PURE__ */ new Map()) {\\n  if (Object.is(value, void 0))\\n    return void 0;\\n  if (typeof value === \\\"object\\\" && value) {\\n    if (\\\"ref\\\" in value)\\n      return refs.get(value.ref);\\n    if (\\\"v\\\" in value) {\\n      if (value.v === \\\"undefined\\\")\\n        return void 0;\\n      if (value.v === \\\"null\\\")\\n        return null;\\n      if (value.v === \\\"NaN\\\")\\n        return NaN;\\n      if (value.v === \\\"Infinity\\\")\\n        return Infinity;\\n      if (value.v === \\\"-Infinity\\\")\\n        return -Infinity;\\n      if (value.v === \\\"-0\\\")\\n        return -0;\\n      return void 0;\\n    }\\n    if (\\\"d\\\" in value) {\\n      return new Date(value.d);\\n    }\\n    if (\\\"u\\\" in value)\\n      return new URL(value.u);\\n    if (\\\"bi\\\" in value)\\n      return BigInt(value.bi);\\n    if (\\\"e\\\" in value) {\\n      const error = new Error(value.e.m);\\n      error.name = value.e.n;\\n      error.stack = value.e.s;\\n      return error;\\n    }\\n    if (\\\"r\\\" in value)\\n      return new RegExp(value.r.p, value.r.f);\\n    if (\\\"a\\\" in value) {\\n      const result = [];\\n      refs.set(value.id, result);\\n      for (const a of value.a)\\n        result.push(parseEvaluationResultValue(a, handles, refs));\\n      return result;\\n    }\\n    if (\\\"o\\\" in value) {\\n      const result = {};\\n      refs.set(value.id, result);\\n      for (const { k, v } of value.o) {\\n        if (k === \\\"__proto__\\\")\\n          continue;\\n        result[k] = parseEvaluationResultValue(v, handles, refs);\\n      }\\n      return result;\\n    }\\n    if (\\\"m\\\" in value) {\\n      const result = /* @__PURE__ */ new Map();\\n      refs.set(value.id, result);\\n      for (const { k, v } of value.m)\\n        result.set(parseEvaluationResultValue(k, handles, refs), parseEvaluationResultValue(v, handles, refs));\\n      return result;\\n    }\\n    if (\\\"s\\\" in value) {\\n      const result = /* @__PURE__ */ new Set();\\n      refs.set(value.id, result);\\n      for (const item of value.s)\\n        result.add(parseEvaluationResultValue(item, handles, refs));\\n      return result;\\n    }\\n    if (\\\"h\\\" in value)\\n      return handles[value.h];\\n    if (\\\"fn\\\" in value) {\\n      const name = value.fn;\\n      return (...args) => globalThis[kBindingsControllerProperty].callBinding(name, ...args);\\n    }\\n    if (\\\"ta\\\" in value)\\n      return base64ToTypedArray(value.ta.b, typedArrayConstructors[value.ta.k]);\\n    if (\\\"ab\\\" in value)\\n      return base64ToTypedArray(value.ab.b, Uint8Array).buffer;\\n  }\\n  return value;\\n}\\nfunction serializeAsCallArgument(value, handleSerializer, options = {}) {\\n  return serialize(value, handleSerializer, { visited: /* @__PURE__ */ new Map(), lastId: 0, extendedSerialization: options.extendedSerialization });\\n}\\nfunction serialize(value, handleSerializer, visitorInfo) {\\n  if (value && typeof value === \\\"object\\\") {\\n    if (typeof globalThis.Window === \\\"function\\\" && value instanceof globalThis.Window)\\n      return \\\"ref: <Window>\\\";\\n    if (typeof globalThis.Document === \\\"function\\\" && value instanceof globalThis.Document)\\n      return \\\"ref: <Document>\\\";\\n    if (typeof globalThis.Node === \\\"function\\\" && value instanceof globalThis.Node)\\n      return \\\"ref: <Node>\\\";\\n  }\\n  return innerSerialize(value, handleSerializer, visitorInfo);\\n}\\nfunction innerSerialize(value, handleSerializer, visitorInfo) {\\n  var _a;\\n  const result = handleSerializer(value);\\n  if (\\\"fallThrough\\\" in result)\\n    value = result.fallThrough;\\n  else\\n    return result;\\n  if (typeof value === \\\"symbol\\\")\\n    return { v: \\\"undefined\\\" };\\n  if (Object.is(value, void 0))\\n    return { v: \\\"undefined\\\" };\\n  if (Object.is(value, null))\\n    return { v: \\\"null\\\" };\\n  if (Object.is(value, NaN))\\n    return { v: \\\"NaN\\\" };\\n  if (Object.is(value, Infinity))\\n    return { v: \\\"Infinity\\\" };\\n  if (Object.is(value, -Infinity))\\n    return { v: \\\"-Infinity\\\" };\\n  if (Object.is(value, -0))\\n    return { v: \\\"-0\\\" };\\n  if (typeof value === \\\"boolean\\\")\\n    return value;\\n  if (typeof value === \\\"number\\\")\\n    return value;\\n  if (typeof value === \\\"string\\\")\\n    return value;\\n  if (typeof value === \\\"bigint\\\")\\n    return { bi: value.toString() };\\n  if (isError(value)) {\\n    let stack;\\n    if ((_a = value.stack) == null ? void 0 : _a.startsWith(value.name + \\\": \\\" + value.message)) {\\n      stack = value.stack;\\n    } else {\\n      stack = `${value.name}: ${value.message}\\n${value.stack}`;\\n    }\\n    return { e: { n: value.name, m: value.message, s: stack } };\\n  }\\n  if (isDate(value))\\n    return { d: value.toJSON() };\\n  if (isURL(value))\\n    return { u: value.toJSON() };\\n  if (isRegExp(value))\\n    return { r: { p: value.source, f: value.flags } };\\n  for (const [k, ctor] of Object.entries(typedArrayConstructors)) {\\n    if (isTypedArray(value, ctor))\\n      return { ta: { b: typedArrayToBase64(value), k } };\\n  }\\n  if (isArrayBuffer(value))\\n    return { ab: { b: typedArrayToBase64(new Uint8Array(value)) } };\\n  const id = visitorInfo.visited.get(value);\\n  if (id)\\n    return { ref: id };\\n  if (visitorInfo.extendedSerialization) {\\n    if (isMap(value)) {\\n      const m = [];\\n      const id2 = ++visitorInfo.lastId;\\n      visitorInfo.visited.set(value, id2);\\n      const iterator = value.entries();\\n      const next = (/* @__PURE__ */ new Map()).entries().next;\\n      while (true) {\\n        const entry = next.call(iterator);\\n        if (entry.done)\\n          break;\\n        m.push({ k: serialize(entry.value[0], handleSerializer, visitorInfo), v: serialize(entry.value[1], handleSerializer, visitorInfo) });\\n      }\\n      return { m, id: id2 };\\n    }\\n    if (isSet(value)) {\\n      const s = [];\\n      const id2 = ++visitorInfo.lastId;\\n      visitorInfo.visited.set(value, id2);\\n      const iterator = value.values();\\n      const next = (/* @__PURE__ */ new Set()).values().next;\\n      while (true) {\\n        const entry = next.call(iterator);\\n        if (entry.done)\\n          break;\\n        s.push(serialize(entry.value, handleSerializer, visitorInfo));\\n      }\\n      return { s, id: id2 };\\n    }\\n  }\\n  if (Array.isArray(value)) {\\n    const a = [];\\n    const id2 = ++visitorInfo.lastId;\\n    visitorInfo.visited.set(value, id2);\\n    for (let i = 0; i < value.length; ++i)\\n      a.push(serialize(value[i], handleSerializer, visitorInfo));\\n    return { a, id: id2 };\\n  }\\n  if (typeof value === \\\"object\\\") {\\n    const o = [];\\n    const id2 = ++visitorInfo.lastId;\\n    visitorInfo.visited.set(value, id2);\\n    for (const name of Object.keys(value)) {\\n      let item;\\n      try {\\n        item = value[name];\\n      } catch (e) {\\n        continue;\\n      }\\n      if (name === \\\"toJSON\\\" && typeof item === \\\"function\\\")\\n        o.push({ k: name, v: { o: [], id: 0 } });\\n      else\\n        o.push({ k: name, v: serialize(item, handleSerializer, visitorInfo) });\\n    }\\n    let jsonWrapper;\\n    try {\\n      if (o.length === 0 && value.toJSON && typeof value.toJSON === \\\"function\\\")\\n        jsonWrapper = { value: value.toJSON() };\\n    } catch (e) {\\n    }\\n    if (jsonWrapper)\\n      return innerSerialize(jsonWrapper.value, handleSerializer, visitorInfo);\\n    return { o, id: id2 };\\n  }\\n  if (typeof value === \\\"function\\\" && value.name.startsWith(kFunctionBindingPrefix))\\n    return { fn: value.name };\\n}\\n\\n// packages/injected/src/utilityScript.ts\\nvar UtilityScript = class {\\n  constructor(global, isUnderTest) {\\n    var _a, _b, _c, _d, _e, _f, _g, _h;\\n    this.global = global;\\n    this.isUnderTest = isUnderTest;\\n    if (global.__pwClock) {\\n      this.builtins = global.__pwClock.builtins;\\n    } else {\\n      this.builtins = {\\n        setTimeout: (_a = global.setTimeout) == null ? void 0 : _a.bind(global),\\n        clearTimeout: (_b = global.clearTimeout) == null ? void 0 : _b.bind(global),\\n        setInterval: (_c = global.setInterval) == null ? void 0 : _c.bind(global),\\n        clearInterval: (_d = global.clearInterval) == null ? void 0 : _d.bind(global),\\n        requestAnimationFrame: (_e = global.requestAnimationFrame) == null ? void 0 : _e.bind(global),\\n        cancelAnimationFrame: (_f = global.cancelAnimationFrame) == null ? void 0 : _f.bind(global),\\n        requestIdleCallback: (_g = global.requestIdleCallback) == null ? void 0 : _g.bind(global),\\n        cancelIdleCallback: (_h = global.cancelIdleCallback) == null ? void 0 : _h.bind(global),\\n        performance: global.performance,\\n        Intl: global.Intl,\\n        Date: global.Date,\\n        AbortSignal: global.AbortSignal,\\n        Temporal: global.Temporal\\n      };\\n    }\\n    if (this.isUnderTest)\\n      global.builtins = this.builtins;\\n  }\\n  evaluate(isFunction, returnByValue, expression, argCount, ...argsAndHandles) {\\n    const args = argsAndHandles.slice(0, argCount);\\n    const handles = argsAndHandles.slice(argCount);\\n    const parameters = [];\\n    for (let i = 0; i < args.length; i++)\\n      parameters[i] = parseEvaluationResultValue(args[i], handles);\\n    let result = this.global.eval(expression);\\n    if (isFunction === true) {\\n      result = result(...parameters);\\n    } else if (isFunction === false) {\\n      result = result;\\n    } else {\\n      if (typeof result === \\\"function\\\")\\n        result = result(...parameters);\\n    }\\n    return returnByValue ? this._promiseAwareJsonValueNoThrow(result) : result;\\n  }\\n  jsonValue(returnByValue, value) {\\n    if (value === void 0)\\n      return void 0;\\n    return serializeAsCallArgument(value, (value2) => ({ fallThrough: value2 }));\\n  }\\n  _promiseAwareJsonValueNoThrow(value) {\\n    const safeJson = (value2) => {\\n      try {\\n        return this.jsonValue(true, value2);\\n      } catch (e) {\\n        return void 0;\\n      }\\n    };\\n    if (value && typeof value === \\\"object\\\" && typeof value.then === \\\"function\\\") {\\n      return (async () => {\\n        const promiseValue = await value;\\n        return safeJson(promiseValue);\\n      })();\\n    }\\n    return safeJson(value);\\n  }\\n};\\n\\n        return new (module.exports.UtilityScript())(globalThis, false);\\n      })();\",\"contextId\":3},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"id\":27,\"result\":{\"result\":{\"type\":\"object\",\"className\":\"UtilityScript\",\"description\":\"UtilityScript\",\"objectId\":\"3483363207367274024.3.1\"}},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":28,\"method\":\"Runtime.callFunctionOn\",\"params\":{\"functionDeclaration\":\"(utilityScript, ...args) => utilityScript.evaluate(...args)\",\"objectId\":\"3483363207367274024.3.1\",\"arguments\":[{\"objectId\":\"3483363207367274024.3.1\"},{\"value\":true},{\"value\":true},{\"value\":\"async({source,marker})=>{\\n    const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'})),worker=new Worker(url,{name:marker});globalThis.__qccJitlessProbe={worker,url};\\n    const ready=await new Promise((resolve,reject)=>{\\n      const timer=setTimeout(()=>reject(Error('Dedicated Worker creation timed out')),10000);\\n      worker.onmessage=event=>{clearTimeout(timer);resolve(event.data);};worker.onerror=event=>{clearTimeout(timer);reject(Error(event.message));};\\n      worker.postMessage({type:'init',marker});\\n    });\\n    return {blobURL:url,ready};\\n  }\"},{\"value\":1},{\"value\":{\"o\":[{\"k\":\"source\",\"v\":\"self.onmessage=({data})=>{if(data.type==='init'){self.__qccJitlessMarker=data.marker;self.postMessage({type:'ready',marker:data.marker,url:self.location.href,scope:self.constructor.name,features:{WebAssembly:typeof WebAssembly,SharedArrayBuffer:typeof SharedArrayBuffer,Atomics:typeof Atomics}});return;}let checksum=123;const started=performance.now();for(let i=0;i<data.iterations;i++)checksum=Math.imul(checksum^i,1664525)+1013904223|0;self.postMessage({ms:performance.now()-started,checksum,iterations:data.iterations,marker:self.__qccJitlessMarker});};\"},{\"k\":\"marker\",\"v\":\"qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e\"}],\"id\":1}}],\"returnByValue\":true,\"awaitPromise\":true,\"userGesture\":true},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetCreated\",\"params\":{\"targetInfo\":{\"targetId\":\"A9A72837A8535713174D46C1D0468329\",\"type\":\"worker\",\"title\":\"\",\"url\":\"\",\"attached\":false,\"parentId\":\"30094F2F6B47D628E8233603D2348690\",\"canAccessOpener\":false,\"parentFrameId\":\"30094F2F6B47D628E8233603D2348690\",\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"A9A72837A8535713174D46C1D0468329\",\"loaderId\":\"\",\"documentURL\":\"blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644\",\"request\":{\"url\":\"blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644\",\"method\":\"GET\",\"headers\":{\"Accept\":\"*/*\"},\"initialPriority\":\"VeryLow\",\"referrerPolicy\":\"strict-origin-when-cross-origin\"},\"timestamp\":444211.469714,\"wallTime\":1794831394.242616,\"initiator\":{\"type\":\"other\",\"url\":\"data:text/html,<title>Normal and jitless dedicated Worker diagnostic</title>\"},\"redirectHasExtraInfo\":false,\"type\":\"Script\",\"frameId\":\"30094F2F6B47D628E8233603D2348690\",\"hasUserGesture\":false},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.targetInfoChanged\",\"params\":{\"targetInfo\":{\"targetId\":\"A9A72837A8535713174D46C1D0468329\",\"type\":\"worker\",\"title\":\"qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e\",\"url\":\"blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644\",\"attached\":true,\"parentId\":\"30094F2F6B47D628E8233603D2348690\",\"canAccessOpener\":false,\"parentFrameId\":\"30094F2F6B47D628E8233603D2348690\",\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"}},\"sessionId\":\"1DDE36EB6C2EE7C8A02C880D643B7ED2\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "◀ RECV {\"method\":\"Target.attachedToTarget\",\"params\":{\"sessionId\":\"43F99B91391144D9090CCCCF9AFC463A\",\"targetInfo\":{\"targetId\":\"A9A72837A8535713174D46C1D0468329\",\"type\":\"worker\",\"title\":\"qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e\",\"url\":\"blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644\",\"attached\":true,\"parentId\":\"30094F2F6B47D628E8233603D2348690\",\"canAccessOpener\":false,\"parentFrameId\":\"30094F2F6B47D628E8233603D2348690\",\"browserContextId\":\"F4FD4587F32834B78D0821954CDA1903\"},\"waitingForDebugger\":true},\"sessionId\":\"DC9D74F3EC62908B8F024A7420421A7A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":29,\"method\":\"Runtime.enable\",\"sessionId\":\"43F99B91391144D9090CCCCF9AFC463A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":30,\"method\":\"Network.enable\",\"sessionId\":\"43F99B91391144D9090CCCCF9AFC463A\"}"
+        },
+        {
+          "name": "protocol",
+          "severity": "verbose",
+          "message": "SEND ► {\"id\":31,\"method\":\"Runtime.runIfWaitingForDebugger\",\"sessionId\":\"43F99B91391144D9090CCCCF9AFC463A\"}"
+        }
+      ],
+      "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+      "browserRootPid": 34396,
+      "actualLaunchArgs": [
+        "C:/Program Files/Google/Chrome/Application/chrome.exe",
+        "--disable-field-trial-config",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-back-forward-cache",
+        "--disable-breakpad",
+        "--disable-client-side-phishing-detection",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-component-update",
+        "--no-default-browser-check",
+        "--disable-default-apps",
+        "--disable-dev-shm-usage",
+        "--disable-edgeupdater",
+        "--disable-extensions",
+        "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+        "--enable-features=CDPScreenshotNewSurface",
+        "--allow-pre-commit-input",
+        "--disable-hang-monitor",
+        "--disable-ipc-flooding-protection",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-renderer-backgrounding",
+        "--disable-updater-scheduler",
+        "--force-color-profile=srgb",
+        "--metrics-recording-only",
+        "--no-first-run",
+        "--password-store=basic",
+        "--use-mock-keychain",
+        "--no-service-autorun",
+        "--export-tagged-pdf",
+        "--disable-search-engine-choice-screen",
+        "--unsafely-disable-devtools-self-xss-warnings",
+        "--edge-skip-compat-layer-relaunch",
+        "--disable-infobars",
+        "--disable-search-engine-choice-screen",
+        "--disable-sync",
+        "--enable-unsafe-swiftshader",
+        "--headless",
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+        "--no-sandbox",
+        "--js-flags=--jitless",
+        "--user-data-dir=C:\\Users\\charlie\\AppData\\Local\\Temp\\playwright_chromiumdev_profile-UEzG9H",
+        "--remote-debugging-pipe",
+        "--no-startup-window"
+      ],
+      "browserVersion": "157.0.8103.78",
+      "workerReady": {
+        "blobURL": "blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644",
+        "ready": {
+          "type": "ready",
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "url": "blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644",
+          "scope": "DedicatedWorkerGlobalScope",
+          "features": {
+            "WebAssembly": "undefined",
+            "SharedArrayBuffer": "undefined",
+            "Atomics": "object"
+          }
+        }
+      },
+      "matchingWorkerTargets": [
+        {
+          "targetId": "A9A72837A8535713174D46C1D0468329",
+          "type": "worker",
+          "title": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "url": "blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644",
+          "attached": true,
+          "parentId": "30094F2F6B47D628E8233603D2348690",
+          "canAccessOpener": false,
+          "parentFrameId": "30094F2F6B47D628E8233603D2348690",
+          "browserContextId": "F4FD4587F32834B78D0821954CDA1903"
+        }
+      ],
+      "workerAttachment": {
+        "targetId": "A9A72837A8535713174D46C1D0468329",
+        "sessionId": "4441C175D2AA9A0413103AF3DA758BB3",
+        "flatten": false
+      },
+      "workerRuntimeIdentity": {
+        "result": {
+          "type": "object",
+          "value": {
+            "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+            "url": "blob:null/31ed4329-3e7d-4741-9d68-ee4783c41644",
+            "scope": "DedicatedWorkerGlobalScope",
+            "features": {
+              "WebAssembly": "undefined",
+              "SharedArrayBuffer": "undefined",
+              "Atomics": "object"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "legs": [
+    {
+      "repeat": 0,
+      "configuration": "normal",
+      "samples": [
+        {
+          "ms": 16.900000035762787,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 17.100000023841858,
+          "nodeRoundTripMs": 23.61989999999969
+        },
+        {
+          "ms": 21.399999976158142,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 21.80000001192093,
+          "nodeRoundTripMs": 28.048499999999876
+        },
+        {
+          "ms": 17,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 17.100000023841858,
+          "nodeRoundTripMs": 24.493099999999686
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 76.46000000000004,
+        "busyFraction": 1
+      },
+      "medianMs": 17
+    },
+    {
+      "repeat": 0,
+      "configuration": "jitless",
+      "samples": [
+        {
+          "ms": 1049.4000000357628,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1049.699999988079,
+          "nodeRoundTripMs": 1057.520300000001
+        },
+        {
+          "ms": 1413.300000011921,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1413.5,
+          "nodeRoundTripMs": 1435.9566999999988
+        },
+        {
+          "ms": 1349.6000000238419,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1349.9000000357628,
+          "nodeRoundTripMs": 1432.3356999999996
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 3926.0123999999996,
+        "busyFraction": 0.9989829646580218
+      },
+      "medianMs": 1349.6000000238419
+    },
+    {
+      "repeat": 1,
+      "configuration": "jitless",
+      "samples": [
+        {
+          "ms": 1206.300000011921,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1206.9000000357628,
+          "nodeRoundTripMs": 1213.9489000000012
+        },
+        {
+          "ms": 1096.3999999761581,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1096.699999988079,
+          "nodeRoundTripMs": 1099.8045999999995
+        },
+        {
+          "ms": 1470.5,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1470.699999988079,
+          "nodeRoundTripMs": 1476.1428000000014
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 3790.0733999999993,
+        "busyFraction": 1
+      },
+      "medianMs": 1206.300000011921
+    },
+    {
+      "repeat": 1,
+      "configuration": "normal",
+      "samples": [
+        {
+          "ms": 20.80000001192093,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 21.19999998807907,
+          "nodeRoundTripMs": 34.6867000000002
+        },
+        {
+          "ms": 41.89999997615814,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 42.10000002384186,
+          "nodeRoundTripMs": 53.69130000000041
+        },
+        {
+          "ms": 20.599999964237213,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 20.80000001192093,
+          "nodeRoundTripMs": 51.03440000000046
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 139.6237000000001,
+        "busyFraction": 1
+      },
+      "medianMs": 20.80000001192093
+    },
+    {
+      "repeat": 2,
+      "configuration": "normal",
+      "samples": [
+        {
+          "ms": 20.69999998807907,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 21,
+          "nodeRoundTripMs": 47.46270000000004
+        },
+        {
+          "ms": 44.40000003576279,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 44.69999998807907,
+          "nodeRoundTripMs": 48.54210000000057
+        },
+        {
+          "ms": 20.400000035762787,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 20.599999964237213,
+          "nodeRoundTripMs": 24.955299999999625
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 121.19789999999921,
+        "busyFraction": 1
+      },
+      "medianMs": 20.69999998807907
+    },
+    {
+      "repeat": 2,
+      "configuration": "jitless",
+      "samples": [
+        {
+          "ms": 1348.9000000357628,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1349.199999988079,
+          "nodeRoundTripMs": 1353.4890999999989
+        },
+        {
+          "ms": 979.8000000119209,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 979.8999999761581,
+          "nodeRoundTripMs": 985.7566999999981
+        },
+        {
+          "ms": 986,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 986.1999999880791,
+          "nodeRoundTripMs": 989.6427999999978
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 3329.0902000000006,
+        "busyFraction": 0.9988054352695237
+      },
+      "medianMs": 986
+    },
+    {
+      "repeat": 3,
+      "configuration": "jitless",
+      "samples": [
+        {
+          "ms": 1217.699999988079,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1217.9000000357628,
+          "nodeRoundTripMs": 1227.8253000000004
+        },
+        {
+          "ms": 1560.4000000357628,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1561.199999988079,
+          "nodeRoundTripMs": 1585.9484000000011
+        },
+        {
+          "ms": 1141.5999999642372,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1141.800000011921,
+          "nodeRoundTripMs": 1145.6620000000003
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 3959.6467999999986,
+        "busyFraction": 1
+      },
+      "medianMs": 1217.699999988079
+    },
+    {
+      "repeat": 3,
+      "configuration": "normal",
+      "samples": [
+        {
+          "ms": 16.5,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 16.700000047683716,
+          "nodeRoundTripMs": 19.48899999999776
+        },
+        {
+          "ms": 20.80000001192093,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 21,
+          "nodeRoundTripMs": 24.03269999999975
+        },
+        {
+          "ms": 18.400000035762787,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 18.69999998807907,
+          "nodeRoundTripMs": 22.218000000000757
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 65.90130000000136,
+        "busyFraction": 1
+      },
+      "medianMs": 18.400000035762787
+    },
+    {
+      "repeat": 4,
+      "configuration": "normal",
+      "samples": [
+        {
+          "ms": 17.299999952316284,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 17.600000023841858,
+          "nodeRoundTripMs": 19.896099999998114
+        },
+        {
+          "ms": 16.5,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 16.80000001192093,
+          "nodeRoundTripMs": 39.819900000002235
+        },
+        {
+          "ms": 20.19999998807907,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-8a6685e7-7820-4af0-add8-d92a4596689d",
+          "pageRoundTripMs": 20.399999976158142,
+          "nodeRoundTripMs": 24.349600000001374
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 84.23600000000079,
+        "busyFraction": 1
+      },
+      "medianMs": 17.299999952316284
+    },
+    {
+      "repeat": 4,
+      "configuration": "jitless",
+      "samples": [
+        {
+          "ms": 978,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 978.2999999523163,
+          "nodeRoundTripMs": 980.7208000000028
+        },
+        {
+          "ms": 1353.300000011921,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 1353.6000000238419,
+          "nodeRoundTripMs": 1356.1685999999972
+        },
+        {
+          "ms": 847.8000000119209,
+          "checksum": -1990145925,
+          "iterations": 10000000,
+          "marker": "qcc-jitless-proof-07a012e3-bc0a-4019-ac7e-a6a568cf462e",
+          "pageRoundTripMs": 847.8999999761581,
+          "nodeRoundTripMs": 850.9115999999995
+        }
+      ],
+      "errors": [],
+      "hostLoad": {
+        "wallMs": 3187.9848999999995,
+        "busyFraction": 0.9574683150610372
+      },
+      "medianMs": 978
+    }
+  ],
+  "errorCount": 0,
+  "cleanup": [
+    {
+      "configuration": "normal",
+      "workerSessionDetached": true,
+      "workerTerminated": true,
+      "browserSessionDetached": true,
+      "browserExited": true,
+      "errors": []
+    },
+    {
+      "configuration": "jitless",
+      "workerSessionDetached": true,
+      "workerTerminated": true,
+      "browserSessionDetached": true,
+      "browserExited": true,
+      "errors": []
+    }
+  ],
+  "pairedSlowdown": {
+    "pairedRatios": [
+      79.3882352955201,
+      57.99519227502713,
+      47.63285026897719,
+      66.17934769681094,
+      56.531792063332134
+    ],
+    "median": 57.99519227502713,
+    "min": 47.63285026897719,
+    "max": 79.3882352955201
+  },
+  "usefulSlowerRuntime": true,
+  "status": "useful-slower-JS-runtime-verified",
+  "successfulWork": {
+    "retainedSamples": 30,
+    "retainedIterations": 300000000,
+    "retainedChecksumCount": 1,
+    "warmupSamples": 6
+  },
+  "cleanupSucceeded": true,
+  "totalWallMs": 25655.1176
+}

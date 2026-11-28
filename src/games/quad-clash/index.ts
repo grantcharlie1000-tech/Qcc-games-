@@ -9,7 +9,8 @@ import { enemies, eyeY, lookAt, viewDir, weaponOf, wrapAngle, type Intent, type 
 import { rayBox, raySphere, rayWorld } from './physics';
 import { BODY, HITBOX } from './config';
 import { createScene, type ClashScene, type SceneView } from './scene';
-import { QUALITY, RenderPacer, isQuality, type QualityId } from './performance';
+import { FLOOR_DISPLAY_HZ } from '../../perf/floor';
+import { RenderPacer, isQuality, type QualityId } from './performance';
 import { createHud } from './hud';
 import { createInput } from './input';
 import { createSfx } from './audio';
@@ -45,7 +46,7 @@ const TEMPLATE = `<canvas class="qc-canvas" tabindex="0" aria-label="Quad Clash 
     <p class="qc-choice-note qc-mode-note"></p>
     <fieldset class="qc-choice qc-maps"><legend>Arena</legend></fieldset>
     <fieldset class="qc-choice qc-skills"><legend>Bots</legend></fieldset>
-    <label class="qc-quality"><span>Graphics</span><select aria-label="Graphics quality"><option value="potato">Potato — 30 fps</option><option value="balanced">Balanced — 60 fps</option></select></label>
+    <label class="qc-quality"><span>Graphics</span><select aria-label="Graphics quality"><option value="potato">Potato — 60 fps</option><option value="balanced">Balanced — 60 fps</option></select></label>
     <label class="qc-sens"><span>Look speed</span><input type="range" min="0.4" max="2.2" step="0.1" value="1"><output>1.0×</output></label>
     <div class="qc-actions"><button type="button" class="game-button qc-play"><span class="qc-play-icon" aria-hidden="true"></span>Play</button></div>
     <p class="qc-help"></p>
@@ -174,7 +175,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       r.checked = (r.name === 'qc-mode' && r.value === prefs.mode) || (r.name === 'qc-map' && r.value === prefs.map) || (r.name === 'qc-skill' && r.value === prefs.difficulty) || (r.name === 'qc-gun' && r.value === prefs.primary);
     }
     graphics.value=prefs.quality;
-    graphics.title=prefs.quality==='potato'?'Full detail with a 30 fps render target to save GPU work.':'The same detail with a 60 fps render target.';
+    graphics.title=prefs.quality==='potato'?'A smaller picture without shadows or heavy effects, still drawn at 60 fps.':'Full lighting and effects, drawn at 60 fps.';
     sens.value = String(prefs.sens); sensOut.textContent = `${prefs.sens.toFixed(1)}×`;
     showGun(prefs.primary);
     q('.qc-mode-note').textContent = `${MODES[prefs.mode].blurb} ${getMap(prefs.map).blurb}`;
@@ -280,8 +281,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     last = now;
     input.frame(dt);
     if (phase === 'playing' && !held && !frozen && !m.over) advance(dt);
-    // Keep input and fixed-step simulation responsive; cap GPU work independently.
-    const elapsed=pacer.next(interval,phase==='menu'?15:QUALITY[prefs.quality].fps);
+    // Simulation stays on the fixed step. Menu and play both draw at 60; potato saves work in the picture, not by skipping frames.
+    const elapsed=pacer.next(interval,FLOOR_DISPLAY_HZ);
     if(elapsed>0)draw(elapsed);
     if (active()) frameId = requestAnimationFrame(loop);
   }

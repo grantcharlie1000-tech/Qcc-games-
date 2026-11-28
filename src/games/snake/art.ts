@@ -3,6 +3,7 @@ import {pendingEat,buildSpine,bulge,bulgePositions,blink,chompScale,deathFx,EAT_
 import {headPose} from './head';
 import {christmas} from '../../festive/festive';
 import {drawBauble,drawSantaHat,drawSnowflake,XMAS} from '../../festive/art';
+import {floorDpr,floorTierActive} from '../../perf/floor';
 const FESTIVE_FOOD=[XMAS.red,XMAS.gold,XMAS.green,'#2f7fd1'] as const;
 const BOARD=480, CELL=BOARD/SIZE, HALF=CELL/2;
 export const TUBE=.8*CELL, HEAD_R=.46*CELL, FOOD_R=.33*CELL;
@@ -29,7 +30,9 @@ function strokeSpine(g:CanvasRenderingContext2D,spine:Spine,widths:number[],extr
 export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeView,reduced:boolean,spine=buildSpine(state)){
  const g=canvas.getContext('2d')!;
  const display=canvas.getBoundingClientRect().width||BOARD;
- const pixels=Math.max(1,Math.round(display*Math.min(2,window.devicePixelRatio||1)));
+ const device=window.devicePixelRatio||1;
+ const ratio=floorTierActive()?floorDpr(display,display,device):Math.min(2,device);
+ const pixels=Math.max(1,Math.round(display*ratio));
  if(canvas.width!==pixels||canvas.height!==pixels)canvas.width=canvas.height=pixels;
  const fx=deathFx(view,state,reduced);
  g.setTransform(pixels/BOARD,0,0,pixels/BOARD,0,0);
@@ -41,11 +44,17 @@ export function drawGarden(canvas:HTMLCanvasElement,state:SnakeState,view:SnakeV
  const grass=g.createLinearGradient(0,0,BOARD,BOARD);
  grass.addColorStop(0,xmas?'#f7fafd':'#c8de94');grass.addColorStop(1,xmas?'#dbe7f2':'#a4c976');
  g.fillStyle=grass;g.fillRect(-8,-8,BOARD+16,BOARD+16);
- for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){g.fillStyle=(x+y)%2?(xmas?'#ffffff40':'#ffffff0b'):(xmas?'#5b86b014':'#3664260a');g.fillRect(x*CELL,y*CELL,CELL,CELL);}
- if(xmas){for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90)drawSnowflake(g,x,y,5,'#8fb3cf',.45);}
+ // One fill per checker colour. The cells are the same squares as before.
+ const dark=xmas?'#5b86b014':'#3664260a',light=xmas?'#ffffff40':'#ffffff0b';
+ g.beginPath();for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)if((x+y)%2===0)g.rect(x*CELL,y*CELL,CELL,CELL);
+ g.fillStyle=dark;g.fill();
+ g.beginPath();for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)if((x+y)%2)g.rect(x*CELL,y*CELL,CELL,CELL);
+ g.fillStyle=light;g.fill();
+ if(xmas){g.beginPath();for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90)drawSnowflake(g,x,y,5,'#8fb3cf',.45);}
  else{
-  g.strokeStyle='#5b843a29';g.lineWidth=1.4;g.lineCap='round';
-  for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90){g.beginPath();g.moveTo(x,y+4);g.quadraticCurveTo(x-5,y,x-3,y-4);g.moveTo(x,y+4);g.quadraticCurveTo(x+3,y+1,x+4,y-2);g.stroke();}
+  g.strokeStyle='#5b843a29';g.lineWidth=1.4;g.lineCap='round';g.beginPath();
+  for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90){g.moveTo(x,y+4);g.quadraticCurveTo(x-5,y,x-3,y-4);g.moveTo(x,y+4);g.quadraticCurveTo(x+3,y+1,x+4,y-2);}
+  g.stroke();
  }
  // Apple (or bauble) with a springy pop-in.
  // Until the drawn head reaches an apple the model already ate, keep showing that apple.
