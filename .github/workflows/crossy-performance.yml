@@ -69,8 +69,10 @@ jobs:
         run: |
           git worktree add --detach "$RUNNER_TEMP/crossy-base" "$BASE_SHA"
           ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/crossy-base/node_modules"
-          (cd "$RUNNER_TEMP/crossy-base" && npm run build)
-          npm run build
+          # The site bundle is what the preview profiles. npm run build also typechecks
+          # unpublished Iron Meridian research tests, which main does not have fixtures for.
+          (cd "$RUNNER_TEMP/crossy-base" && npx vite build)
+          npx vite build
       - name: Alternate three production runs on the same runner
         run: |
           mkdir -p "$GITHUB_WORKSPACE/crossy-benchmark"
