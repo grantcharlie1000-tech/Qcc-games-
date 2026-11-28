@@ -141,3 +141,65 @@ test('HUD preserves its sampled appearance without copying or reading the Crossy
   expect(changed/(a.length/4)).toBeLessThan(.001);
   expect(errors).toEqual([]);
 });
+
+test('fast buffered hops keep the late-game score and the visible terrain across a cache rebuild', async ({page}) => {
+  test.setTimeout(60_000);
+  const errors = await openGame(page, {viewport: {width: 390, height: 844}});
+  await page.evaluate(() => {
+    const h = window.__crossyRoadTest!;
+    h.restore({v:1,worldVersion:6,seed:11,t:90,phase:'running',row:600,x:4,fromRow:600,fromX:4,
+      hop:-1,hopDir:'up',facing:'up',queued:null,maxRow:600,lastProgress:90,safeLine:596,started:true,death:null});
+    h.forceLanes(Array.from({length:80}, (_, i) => {
+      const row=595+i;
+      // A deterministic nonlethal route with real static props next to the path.
+      const obstacles=Array(9).fill(null), blocked=Array(9).fill(false);
+      if (row%2) { obstacles[6]='tree'; blocked[6]=true; }
+      return {kind:'grass',row,shade:(row%2) as 0|1,blocked,obstacles,variant:Array(9).fill(0),edge:Array(12).fill(null)};
+    }));
+  });
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
+  await page.evaluate(() => {
+    const h=window.__crossyRoadTest!;
+    const native=requestAnimationFrame.bind(window);
+    let clock=performance.now(), frames=0;
+    window.requestAnimationFrame=callback=>native(()=>{
+      h.hop('up');
+      clock+=40;
+      callback(clock);
+      if (++frames===85) {
+        window.requestAnimationFrame=native;
+        h.freeze(true);
+        document.querySelector('.crossy-road')!.setAttribute('data-late-run-done','');
+      }
+    });
+    h.freeze(false);
+  });
+  await page.waitForFunction(() => document.querySelector('.crossy-road')?.hasAttribute('data-late-run-done'));
+  const result = await page.evaluate(() => {
+    const h=window.__crossyRoadTest!, state=h.state();
+    const canvas=document.querySelector<HTMLCanvasElement>('.hw-canvas')!, copy=document.createElement('canvas');
+    copy.width=canvas.width;copy.height=canvas.height;
+    const ctx=copy.getContext('2d',{willReadFrequently:true})!;
+    const capture=()=>{
+      ctx.drawImage(canvas,0,0);
+      return ctx.getImageData(0,0,copy.width,copy.height).data;
+    };
+    h.forceLanes([]);
+    const cached=capture();
+    // Replace the currently visible lane with an identical copy to invalidate
+    // the padded cache, without moving the camera or advancing any animation.
+    h.forceLanes(h.lanes(state.row,state.row));
+    const rebuilt=capture();
+    let pixels=0;
+    for(let i=0;i<cached.length;i+=4){
+      if(Math.max(Math.abs(cached[i]-rebuilt[i]),Math.abs(cached[i+1]-rebuilt[i+1]),Math.abs(cached[i+2]-rebuilt[i+2]))>8) pixels++;
+    }
+    return {phase:state.phase, score:state.score, fraction:pixels/(cached.length/4), image:copy.toDataURL()};
+  });
+  expect(result.phase).toBe('running');
+  expect(result.score).toBeGreaterThan(620);
+  await expect(page.locator('.game-hud-item strong')).toHaveText(String(result.score));
+  expect(result.fraction).toBeLessThan(.001);
+  expect(errors).toEqual([]);
+  await test.info().attach('late-game-crossy-road',{body:Buffer.from(result.image.split(',')[1],'base64'),contentType:'image/png'});
+});

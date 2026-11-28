@@ -20,6 +20,8 @@ import {formatClock,formatRuntime,initials} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
+import {sendMovieFailureReport} from './failure-report';
+import type {MovieFailureReason,MovieFailureStage} from './failure-report';
 import {moviePopularity,POPULARITY_ENDPOINT,parsePopularIds} from './popularity';
 import type {AttemptState,SupervisorEvents} from './playback';
 const base=import.meta.env.BASE_URL;
@@ -158,6 +160,11 @@ export class MoviesView {
  // The playback session of the title on screen. Its supervisor is stopped by stopVideo, pause and dispose.
  private supervisor?:PlaybackSupervisor;
  private supervisorKey='';
+ // One anonymous failure report per playback attempt, with no user control or identification.
+ private reportedAttempt=false;
+ private lastAttemptStage:MovieFailureStage='connecting';
+ private pendingFailureReason?:MovieFailureReason;
+ private noPlaybackTimer?:ReturnType<typeof setTimeout>;
  // The saved position a provider frame starts from, and whether its Resumed pill has shown for the current attempt.
  private frameStart=0;
  private lifeShown=false;
@@ -875,7 +882,8 @@ export class MoviesView {
   const finder=trigger?finderFor(trigger):undefined;
   const finish=(accepted:boolean)=>{
    this.dismissWarning();
-   if(accepted){this.suspended=false;proceed();}else {cancel();if(reopenDrawer&&drawer?.isConnected)openSheet(drawer);(trigger?.isConnected?trigger:finder?.(this.root)[0])?.focus({preventScroll:true});}
+   if(accepted){this.suspended=false;proceed();}
+   else {cancel();if(reopenDrawer&&drawer?.isConnected)openSheet(drawer);(trigger?.isConnected?trigger:finder?.(this.root)[0])?.focus({preventScroll:true});}
   };
   back.addEventListener('click',()=>finish(false));forward.addEventListener('click',()=>finish(true));
   dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
@@ -1093,6 +1101,7 @@ export class MoviesView {
   const retry=document.createElement('button');retry.className='ui-btn secondary small';retry.textContent='Retry title';retry.dataset.action='retry-title';notice.append(' ',retry);
  }
  private bindPlayer(){
+  this.reportedAttempt=false;
   moviePopularity.reset();
   this.ended=false;this.frameDuration=undefined;this.frameReported=false;this.videoReported=false;
   this.video=this.root.querySelector('video')??undefined;
@@ -1109,18 +1118,25 @@ export class MoviesView {
    // A seek to the saved position also fires timeupdate while the video is paused, so only playback counts as a report.
    video.addEventListener('timeupdate',()=>{if(this.video!==video)return;moviePopularity.sample(t.id,video.currentTime,performance.now(),!video.paused&&!video.seeking&&!this.suspended&&!document.hidden&&!this.root.closest('[inert]'));if(!video.paused)this.videoReported=true;this.rearm(video.currentTime,video.duration);if(this.videoReported&&!this.ended&&Date.now()-this.lastSave>5000)this.saveProgress(video.currentTime);});
    video.addEventListener('pause',()=>{if(this.video===video&&this.videoPlayed(video))this.saveProgress(video.currentTime);});
-   video.addEventListener('error',()=>{if(this.video!==video)return;const status=this.root.querySelector('#movies-player-status');if(status)status.textContent='The local file could not be played.';});
+   video.addEventListener('error',()=>{if(this.video!==video)return;this.reportMovieFailure('local-media-error','loaded');const status=this.root.querySelector('#movies-player-status');if(status)status.textContent='The local file could not be played.';});
   }
   if(this.frame&&this.providerId)this.bindAttempt(this.frame,this.providerId);
-  else this.endSession();
+  else{
+   if(this.frame?.classList.contains('movies-archive-frame')){
+    const archive=this.frame;
+    archive.addEventListener('error',()=>{if(this.frame===archive)this.reportMovieFailure('archive-frame-error','connecting');});
+   }
+   this.endSession();
+  }
   if(this.suspended||document.hidden)this.pause();
  }
   // A ready or a progress report is a sign of life for the supervisor. Only the frame's own window can send one, so the page's own messages do not count.
  private providerMessage=(event:MessageEvent)=>{
   if(!this.frame||!this.providerId||event.source!==this.frame.contentWindow)return;
   const signal=providerSignal(this.providerId,event.origin,event.data);if(!signal)return;
-  if(signal.kind==='ready'){this.supervisor?.message('ready');return;}
+  if(signal.kind==='ready'){this.supervisor?.message('ready');if(this.supervisor?.state==='ready')this.watchNoPlayback();return;}
   this.frameReported=true;
+  this.clearNoPlaybackTimer();
   this.supervisor?.message('progress');
   if(signal.kind==='ended'){this.episodeEnded();return;}
   // The native FrameXTV player reports an advancing clock. Unsupported nested players
@@ -1169,7 +1185,7 @@ export class MoviesView {
   primary.replaceWith(fresh);if(focused)fresh.focus({preventScroll:true});
  }
  // A provider frame that our frame-src policy blocks fails its live attempt. The listener only reads the event.
- private violation=(event:SecurityPolicyViolationEvent)=>{if(event.effectiveDirective==='frame-src')this.supervisor?.violation();};
+ private violation=(event:SecurityPolicyViolationEvent)=>{if(event.effectiveDirective==='frame-src'&&this.frame?.classList.contains('movies-provider-frame')){this.pendingFailureReason='frame-csp-blocked';this.supervisor?.violation();}};
  private click=(event:MouseEvent)=>{
   const control=(event.target as Element).closest<HTMLElement>('a,button');
   const play=control?.dataset.playRoute??(control?.dataset.play?titleHash(control.dataset.play)+'/play':control?.getAttribute('href'));
@@ -1227,18 +1243,24 @@ export class MoviesView {
  }
  private supervisorEvents():SupervisorEvents{
   return {
-   status:state=>this.attemptStatus(state),
-   exhausted:()=>this.exhaust(),
+   status:state=>{if(state==='connecting'||state==='loaded'||state==='ready'||state==='playing')this.lastAttemptStage=state;this.attemptStatus(state);},
+   exhausted:()=>{
+    const reason=this.pendingFailureReason??(this.lastAttemptStage==='connecting'?'frame-load-timeout':'frame-ready-timeout');
+    this.reportMovieFailure(reason,this.lastAttemptStage);
+    this.exhaust();
+   },
    working:provider=>this.storage.setProvider(provider),
   };
  }
  // A provider frame starts an attempt in the playback session. Its load and its messages drive the supervisor, which reports back here.
  private bindAttempt(frame:HTMLIFrameElement,provider:StreamProviderId){
+  this.clearNoPlaybackTimer();this.reportedAttempt=false;this.pendingFailureReason=undefined;this.lastAttemptStage='connecting';
   const key=this.progressKey;
   let supervisor=this.supervisor;
   if(!supervisor||this.supervisorKey!==key){supervisor?.stop();supervisor=new PlaybackSupervisor(key,this.supervisorEvents());this.supervisor=supervisor;this.supervisorKey=key;}
   this.frameStart=this.storage.data.progress[key]??0;this.lifeShown=false;
   frame.addEventListener('load',()=>{if(this.frame===frame){moviePopularity.reset();this.supervisor?.loaded();}});
+  frame.addEventListener('error',()=>{if(this.frame===frame){this.pendingFailureReason='frame-error';this.supervisor?.violation();}});
   supervisor.start(provider);
  }
  // A loaded provider page takes its own clicks; a ready or playing frame may show its resume pill.
@@ -1246,6 +1268,22 @@ export class MoviesView {
   const overlay=this.root.querySelector<HTMLElement>('.movies-connecting');
   if(overlay)overlay.hidden=state!=='connecting';
   if(state==='ready'||state==='playing')this.showLife();
+ }
+ // A ready iframe may still fail to fetch its video. This is only a suspected stall,
+ // not proof of DNS filtering, and is silently reported as an operational failure.
+ private watchNoPlayback(){
+  if(this.reportedAttempt||this.noPlaybackTimer)return;
+  this.noPlaybackTimer=setTimeout(()=>{
+   this.noPlaybackTimer=undefined;
+   if(this.frame&&this.supervisor?.state==='ready'&&!this.suspended&&!document.hidden)
+    this.reportMovieFailure('no-playback-after-ready','ready');
+  },30000);
+ }
+ private clearNoPlaybackTimer(){clearTimeout(this.noPlaybackTimer);this.noPlaybackTimer=undefined;}
+ private reportMovieFailure(reason:MovieFailureReason,stage:MovieFailureStage){
+  if(this.reportedAttempt||this.disposed)return;
+  this.reportedAttempt=true;this.clearNoPlaybackTimer();
+  void sendMovieFailureReport(reason,stage,navigator.onLine);
  }
  // The Resumed pill waits for the first sign of life.
  private showLife(){
@@ -1412,6 +1450,6 @@ export class MoviesView {
  // Takes the stream and the local video off the screen during a redraw.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.keepPlaying=false;if(this.pipWindow){const win=this.pipWindow;this.pipWindow=undefined;win.close();}this.nativeFullscreen=false;this.releaseFullscreenEscape();this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
- private endSession(){moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
+ private endSession(){this.clearNoPlaybackTimer();moviePopularity.reset();this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.disposeStorage();moviePopularity.stop();this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

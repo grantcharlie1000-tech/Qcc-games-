@@ -4,6 +4,8 @@ Movies & TV opens from the Movies, TV Shows and My list tabs on the glass island
 
 Screenshots of each screen are at the end of this page.
 
+Automatic failure-only movie diagnostics are documented in [Movie failure reports](MOVIE_FAILURE_REPORTS.md), including their D1 storage, migration, retention and privacy limitations. There are no reporting controls on the watch page; they cannot observe individual requests inside an external player.
+
 ## Provider and privacy model
 
 The user explicitly authorized ordinary provider and image requests, and asked that streaming stay enabled. The initial zero-contact requirement therefore no longer describes this implementation.

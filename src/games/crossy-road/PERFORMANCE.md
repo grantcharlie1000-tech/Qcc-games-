@@ -42,3 +42,32 @@ Local Chromium IPC remained prohibited even after an approved escalated attempt,
 - An earlier unconstrained full-suite run had 4,683 passes and one unrelated `tests/social/server.test.ts` pagination timeout at its 5-second limit. The complete two-worker rerun above passed without changing that test.
 - Independent review found no blocking production defect. Its camera-stability concern in the screenshot test was corrected by resetting to a frozen seeded view before either capture.
 - Browser tests were discovered successfully (74 focused Chromium cases). Local execution is blocked as described above; the focused CI browser results are recorded separately above.
+
+## Terrain during rapid runs
+
+The first static terrain cache rebuilt every pool when any integer culling bound changed. A forward hop moves the isometric camera diagonally relative to its lanes, so these bounds can shift several times within one hop. Rail sleepers and ground details then shift together in the instance buffer even though the terrain itself has not changed.
+
+The static cache now extends two rows forward and one tile to either side of the existing camera guard. Tiles, trees, rocks, lily pads and signal posts are reused while the normal view fits within that cache. If the padded view fills a static pool, the renderer falls back to the original bounds. Moving hazards, effects, controls, gameplay and quality settings are unchanged.
+
+Ground strips and small terrain details are opaque, have positive scales, never rotate or cast shadows, and the orthographic camera always sees them from above, +X and +Z. Their pool now uses the corresponding three faces with the same vertices, normals and tints. This halves the indices for each ground box and offsets the additional offscreen cache fringe. Other geometry and shadow casters keep all their original faces.
+
+Each sweep renders 840 deterministic frames representing 120 rapid forward hops, with world revision 6 and seed 11 or 74. The real scene runs with only the WebGL submission boundary mocked. Bytes are computed from changed ground-matrix ranges. Values below compare untouched main with the final candidate, across both seeds per row and viewport.
+
+| Starting row | Viewport | Frames dirtying matrix, before → after | Total ground-matrix bytes reduced | P95 ground bytes/frame reduced | Mean submitted triangles reduced |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 0 | 390×844 | 344–348 → 58 | 58–60% | 19–30% | 0.5% |
+| 0 | 1366×768 | 550–551 → 58 | 81% | 31–39% | 1.6–2.0% |
+| 240 | 390×844 | 343–344 → 58 | 59–60% | 25–37% | 3.2–4.7% |
+| 240 | 1366×768 | 549–556 → 58 | 81% | 25–33% | 5.5–6.9% |
+| 600 | 390×844 | 347–352 → 58 | 58–59% | 7–15% | 2.2–4.6% |
+| 600 | 1366×768 | 558–574 → 58 | 81–82% | 18–23% | 4.4–7.0% |
+
+P99 upload changes ranged from 8% lower to 14% higher. The largest individual upload rose by up to 27%, and some early-run triangle peaks rose by up to 8%; lower mean work does not mean every frame is cheaper. The projected-shadow regression checks the viewport edges during progression and shifts of the floating origin. A browser regression runs a seeded buffered-hop sequence from row 600, checks the score, and compares visible terrain before and after invalidating the cache. These are submission counts, not GPU timings or a claim about device FPS.
+
+To reproduce the deterministic figures:
+
+```sh
+CROSSY_RESOURCE_REPORT=/tmp/crossy-terrain.json npx vitest run tests/games/crossy-road/scene-budget.test.ts -t 'rapid run'
+```
+
+The baseline loaded unchanged `scene.ts` from `383f8d04` as a sibling module using `CROSSY_BASELINE_SCENE`. The regression is expected to fail on that baseline.
