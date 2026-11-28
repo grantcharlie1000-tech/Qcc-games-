@@ -14,11 +14,11 @@
  * gaps are bounded by roadGapMin/riverGapMax, rail periods leave quiet time, and adjacent log rows are checked with logBridgeOk. */
 import {
   CAR_LENGTH, COLS, CURRENT_WORLD, LOG_SLIP, logGapCap, EDGE_COLS, HOP_TIME, LOG_PALETTE, MOVERS, RAIL_PERIOD_MIN, SAFE_ROWS, START_COL, TRAIN_MAX, TRAIN_MIN, TRAIN_PALETTE, TRAIN_SPEED,
-  VEHICLE_PALETTE, clamp, difficulty, lerp, riverGapMax, roadGapMin,
+  VEHICLE_PALETTE, VEHICLE_SCALE, clamp, difficulty, lerp, riverGapMax, roadGapMin,
   type WorldVersion, type GrassLane, type Lane, type LaneKind, type LilyLane, type Mover, type Obstacle, type RailLane, type RiverLane, type RoadLane,
 } from './config';
 import { platformAt } from './lanes';
-import {seededObstacle, terrainHash} from './terrain';
+import {bankObstacle, seededObstacle, terrainHash} from './terrain';
 import { mulberry32 } from '../../core/random';
 
 type Rng = () => number;
@@ -124,12 +124,13 @@ export function repairGrass(obstacles: Obstacle[], reach: readonly boolean[]): b
 }
 
 /** Chunk 0 keeps columns 2-6 clear and puts an obstacle on each of columns 0, 1, 7, 8 with p 0.35. */
-function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: WorldVersion, seed = 0, clearing = false): { lane: GrassLane; reach: boolean[] } {
+function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: WorldVersion, seed = 0, clearing = false, detour?: 'below' | 'above'): { lane: GrassLane; reach: boolean[] } {
   if (version >= 5) {
-    const obstacles = Array.from({length: COLS}, (_, c) => clearing ? null : seededObstacle(seed, row, c));
+    const dense = version >= 7;
+    const obstacles = Array.from({length: COLS}, (_, c) => !clearing ? seededObstacle(seed, row, c, dense) : detour ? bankObstacle(seed, row, c, detour) : null);
     const next = repairGrass(obstacles, reach);
     const variant = Array.from({length: COLS}, (_, c) => {const h=terrainHash(seed,row,c);return h%10===0?3:h%3;});
-    return {lane:{kind:'grass',row,shade:shadeOf(row),seed,clearing,obstacles,blocked:obstacles.map(o=>o!==null),variant,edge:[]},reach:next};
+    return {lane:{kind:'grass',row,shade:shadeOf(row),seed,clearing,...(dense?{dense}:{}),...(detour?{detour}:{}),obstacles,blocked:obstacles.map(o=>o!==null),variant,edge:[]},reach:next};
   }
   const density = lerp(0.10, 0.30, difficulty(row));
   const obstacles = new Array<Obstacle>(COLS), variant = new Array<number>(COLS);
@@ -175,7 +176,7 @@ const ROAD_REPEAT_MIN = 36;
 /** Revision six traffic: every lane mixes compacts, wagons, taxis and lorries in their own colours, with six to ten
  * vehicles per repeat (a repeat is far wider than any screen) and gaps that range from tight convoys to long breathers.
  * Every gap still respects roadGapMin, so a standing player always gets CROSS_WINDOW seconds. */
-function roadRowV6(row: number, rng: Rng, dir: Heading): RoadLane {
+function roadRowV6(row: number, rng: Rng, dir: Heading, scale = 1): RoadLane {
   const d = difficulty(row);
   const speed = lerp(1.5, 4.5, d) * (0.75 + 0.5 * rng());
   const count = 6 + Math.floor(rng() * 5);
@@ -186,12 +187,12 @@ function roadRowV6(row: number, rng: Rng, dir: Heading): RoadLane {
   for (let i = 0; i < count || (span < ROAD_REPEAT_MIN && i < 14); i++) {
     if (rng() < truckChance) {
       trucks++;
-      lens.push(rng() < 0.55 ? 2 : 3);
+      lens.push(scale * (rng() < 0.55 ? 2 : 3));
       colors.push(Math.floor(rng() * VEHICLE_PALETTE));
     } else {
       const u = rng();
       // Compact (1.2), wagon (1.8) or taxi (1.8, always yellow).
-      lens.push(u < 0.4 ? 1.2 : 1.8);
+      lens.push(scale * (u < 0.4 ? 1.2 : 1.8));
       colors.push(u >= 0.82 ? 2 : CAR_PAINTS[Math.floor(rng() * CAR_PAINTS.length)]);
     }
     // A quarter of the gaps bunch vehicles into convoys; the rest spread out with a long tail.
@@ -200,11 +201,11 @@ function roadRowV6(row: number, rng: Rng, dir: Heading): RoadLane {
     span += lens[i] + gaps[i];
   }
   const { movers, cycle } = layout(lens, gaps, colors);
-  return { kind: 'road', row, dir, speed, vehicle: trucks * 2 > count ? 'truck' : 'car', cycle, phase: rng() * cycle, movers };
+  return { kind: 'road', row, dir, speed, vehicle: trucks * 2 > count ? 'truck' : 'car', cycle, phase: rng() * cycle, movers, ...(scale === 1 ? {} : {scale}) };
 }
 
 function roadRow(row: number, rng: Rng, dir: Heading, version: WorldVersion): RoadLane {
-  if (version >= 6) return roadRowV6(row, rng, dir);
+  if (version >= 6) return roadRowV6(row, rng, dir, version >= 7 ? VEHICLE_SCALE : 1);
   const d = difficulty(row);
   const speed = lerp(1.5, 4.5, d) * jitter(rng);
   const truck = rng() < lerp(0.2, 0.4, d);
@@ -431,7 +432,9 @@ export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState
   let reach: readonly boolean[] = state.reach;
   if (kind === 'grass') {
     for (let i = 0; i < n; i++) {
-      const out = grassRow(start + i, rng, safe, reach, version, state.seed, version>=5 && i===0);
+      // Revision seven puts scenery on the bank where there is a way round it: back over a road, or through the next grass row.
+      const detour = version >= 7 && i === 0 && !safe ? (state.prevKind === 'road' ? 'below' : n > 1 ? 'above' : undefined) : undefined;
+      const out = grassRow(start + i, rng, safe, reach, version, state.seed, version>=5 && i===0, detour);
       lanes.push(out.lane);
       reach = out.reach;
     }

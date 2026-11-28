@@ -194,7 +194,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       const lane = world.lane(row), death = run.death;
       if (lane.kind !== 'road') return 'Hit by a car';
       const hit = death !== null ? vehicleAt(lane, death.x, death.t) : null;
-      return (hit !== null ? hit.len >= 2 : lane.vehicle === 'truck') ? 'Hit by a truck' : 'Hit by a car';
+      return (hit !== null ? hit.len >= 2 * (lane.scale ?? 1) : lane.vehicle === 'truck') ? 'Hit by a truck' : 'Hit by a car';
     }
     return { train: 'Hit by a train', water: 'Fell in the river', swept: 'Carried away on a log', 'ufo-idle': 'Beamed up by a UFO for waiting too long', 'ufo-behind': 'Beamed up by a UFO for falling behind' }[cause];
   }

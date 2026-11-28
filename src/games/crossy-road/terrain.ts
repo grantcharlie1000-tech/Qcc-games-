@@ -16,18 +16,30 @@ export function corridor(seed: number, column: number): boolean {
   return column === first || column === first + 1;
 }
 
-export function seededObstacle(seed: number, row: number, column: number): Obstacle {
+/** Revision seven (`dense`) fills the ground with scenery from the first rows. */
+export function seededObstacle(seed: number, row: number, column: number, dense = false): Obstacle {
   if (row < 0) return 'tree';
   if (corridor(seed, column) || (row < 5 && column >= 2 && column <= 6)) return null;
+  const h = terrainHash(seed, row, column), d = difficulty(row);
+  if ((h & 65535) / 65536 >= (dense ? .36 + .14 * d : .12 + .28 * d)) return null;
+  return (h >>> 16) % 10 < 7 ? 'tree' : 'rock';
+}
+
+/** Revision seven: scenery on the connecting bank, only where the player can walk round it. `below` means the
+ * lane before the bank is a road, which is open everywhere. `above` means the next row is grass, and an obstacle
+ * stands only under three open cells of that row. The corridors stay open. */
+export function bankObstacle(seed: number, row: number, column: number, detour: 'below' | 'above'): Obstacle {
+  if (corridor(seed, column)) return null;
   const h = terrainHash(seed, row, column);
-  if ((h & 65535) / 65536 >= .12 + .28 * difficulty(row)) return null;
+  if ((h & 65535) / 65536 >= .3) return null;
+  if (detour === 'above') for (let c = column - 1; c <= column + 1; c++) if (seededObstacle(seed, row + 1, c, true) !== null) return null;
   return (h >>> 16) % 10 < 7 ? 'tree' : 'rock';
 }
 
 export function obstacleAt(lane: GrassLane, column: number): Obstacle {
-  if (lane.clearing) return null;
+  if (lane.clearing && !lane.detour) return null;
   if (column >= 0 && column < COLS) return lane.obstacles[column] ?? null;
-  if (lane.seed !== undefined) return seededObstacle(lane.seed, lane.row, column);
+  if (lane.seed !== undefined) return lane.detour ? bankObstacle(lane.seed, lane.row, column, lane.detour) : seededObstacle(lane.seed, lane.row, column, lane.dense);
   // Legacy/custom rows keep their supplied decoration. Empty custom rows stay open.
   const edge = column < 0 ? column + EDGE_COLS : column - 3;
   if (edge >= 0 && edge < 2 * EDGE_COLS) return lane.edge[edge] ?? null;

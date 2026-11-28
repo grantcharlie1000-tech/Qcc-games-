@@ -18,7 +18,7 @@ test('crisp directional shadows keep the reference contrast without an offscreen
     copy.width=canvas.width;copy.height=canvas.height;
     const ctx=copy.getContext('2d')!;ctx.drawImage(canvas,0,0);
     // Independently project ground points under the 45° / 20° camera at row zero.
-    const pitch=Math.PI/4,yaw=20*Math.PI/180,tile=390/(8*Math.cos(yaw)),dpr=canvas.width/390;
+    const pitch=Math.PI/4,yaw=20*Math.PI/180,tile=390*1.1/(8*Math.cos(yaw)),dpr=canvas.width/390;
     const pixel=(x:number)=>{
       const z=-2*1.38,sx=195+tile*((x-4)*Math.cos(yaw)-z*Math.sin(yaw));
       const sy=844*.65+tile*Math.sin(pitch)*((x-4)*Math.sin(yaw)+z*Math.cos(yaw));
