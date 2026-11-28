@@ -27,8 +27,11 @@ export class Projector {
   line(a:Vec,b:Vec,color:string,width:number){
     const c=this.c;c.beginPath();c.moveTo(...this.point(a));c.lineTo(...this.point(b));c.strokeStyle=color;c.lineWidth=width;c.stroke();
   }
+  private readonly discBuf:Vec[]=Array.from({length:20},():Vec=>[0,0,0]);
   disc(x:number,y:number,z:number,r:number,color:string,rz=r){
-    this.path(Array.from({length:56},(_,i):Vec=>[x+r*Math.cos(i*TAU/56),y,z+rz*Math.sin(i*TAU/56)]),color);
+    const buf=this.discBuf,n=buf.length;
+    for(let i=0;i<n;i++){const a=i*TAU/n,v=buf[i];v[0]=x+r*Math.cos(a);v[1]=y;v[2]=z+rz*Math.sin(a);}
+    this.path(buf,color);
   }
   box(x:number,y:number,z:number,wx:number,hy:number,dz:number,top:string,front:string,side:string){
     const l=x-wx/2,r=x+wx/2,b=z-dz/2,f=z+dz/2,t=y+hy;
@@ -42,18 +45,23 @@ export class Court {
   private cache=document.createElement('canvas');
   private painter!:Projector;
   private sizeKey='';
+  private cssW=0;
+  private cssH=0;
   private course=0;
   private observer:ResizeObserver;
   private last:{pucks:readonly Puck[]; seat:number; shot:Shot|null;tail:readonly Puck[]}={pucks:[],seat:0,shot:null,tail:[]};
   constructor(readonly canvas:HTMLCanvasElement,private theme:Theme,private scenery?:PaintWorld){
-    this.observer=new ResizeObserver(()=>this.draw(this.last.pucks,this.last.seat,this.last.shot,this.last.tail));
+    if(canvas.dataset)canvas.dataset.glassInk='textured';
+    this.observer=new ResizeObserver(()=>{this.cssW=canvas.clientWidth;this.cssH=canvas.clientHeight;this.draw(this.last.pucks,this.last.seat,this.last.shot,this.last.tail);});
     this.observer.observe(canvas);
   }
   setTheme(theme:Theme){this.theme=theme;this.sizeKey='';this.draw(this.last.pucks,this.last.seat,this.last.shot);}
   setCourse(index:number){if(this.course!==index){this.course=index;this.sizeKey='';}}
   draw(pucks:readonly Puck[],seat:number,shot:Shot|null,tail:readonly Puck[]=[]){
     this.last={pucks,seat,shot,tail};
-    const {canvas}=this,w=canvas.clientWidth,h=canvas.clientHeight;
+    const {canvas}=this;
+    if(!this.cssW||!this.cssH){this.cssW=canvas.clientWidth;this.cssH=canvas.clientHeight;}
+    const w=this.cssW,h=this.cssH;
     if(!w||!h)return;
     const raw=Math.min(devicePixelRatio||1,2);
     const dpr=floorTierActive()?floorDpr(w,h,raw):raw,key=[w,h,dpr,this.theme,floorTierActive()?1:0].join('/');

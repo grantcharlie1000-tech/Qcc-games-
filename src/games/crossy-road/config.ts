@@ -105,6 +105,8 @@ export interface SceneFrame {
   ufoWarn: boolean;
   /** Contact-down squash before a tap/swipe direction is committed. */
   pressed?: boolean;
+  /** Fractional seconds in [0, STEP) ahead of `state.t` for smooth high-Hz rendering. */
+  renderOffset?: number;
 }
 export interface SceneStats { calls: number; triangles: number; geometries: number; textures: number; programs: number; quality: Quality }
 export interface CrossyRoadScene {

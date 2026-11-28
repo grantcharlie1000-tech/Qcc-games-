@@ -89,7 +89,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let guest: GuestSession | null = null, room: Room | null = null, offRoom: (() => void) | null = null;
   const session = (): Session => guest ?? host;
   let paused = false, held = false, disposed = false, lost = false, frozen = false;
-  let frameId = 0, last = 0, acc = 0, shown: Layer = null, watch = -1, prevX = 0, prevZ = 0, wantLock = false, renderCarry = 0;
+  let frameId = 0, last = 0, acc = 0, shown: Layer = null, watch = -1, prevX = 0, prevZ = 0, wantLock = false, renderCarry = 0, viewHeight = canvas.clientHeight || 720;
   let promptAt = 0, prompt = '', crumbleAt = 0, beepAt = 0, levelText = '', lastPhase = '';
   const stepAcc: number[] = [], workAcc: number[] = [];
 
@@ -445,7 +445,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     let gap = 8;
     if (me && me.alive) {
       const d = weaponOf(m, me), spread = d.hip + (d.ads - d.hip) * me.adsT + d.moveSpread * Math.min(1, me.pace) * (1 - 0.5 * me.adsT) + me.bloom * (1 - 0.6 * me.adsT) - (me.crouching ? d.hip * 0.2 * (1 - me.adsT) : 0);
-      gap = Math.tan(Math.max(0, spread)) / Math.tan(32 * Math.PI / 180) * canvas.clientHeight / 2 + 3;
+      gap = Math.tan(Math.max(0, spread)) / Math.tan(32 * Math.PI / 180) * viewHeight / 2 + 3;
     }
     let mates = !me;
     if (me) for (const p of m.players) if (p.alive && p.squad === me.squad) { mates = true; break; }
@@ -482,6 +482,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (disposed || lost) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w < 1 || h < 1) return;
+    viewHeight = h;
     scene.resize(w, h);
     if (!frameId) draw(0);
   };

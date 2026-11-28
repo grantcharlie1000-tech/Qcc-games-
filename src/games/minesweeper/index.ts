@@ -17,6 +17,8 @@ const game:GameModule={
   let board=create('beginner',newSeed()),stats=emptyStats(),paused=false,disposed=false,assisted=false,practice=false,flagMode=false,focus=0,size=matchMedia('(max-width: 480px)').matches?Math.max(32,Math.min(44,Math.floor((innerWidth-32)/9))):58;
   let sound=false,longPress=true,last=performance.now(),history:Board[]=[],hinted:number|null=null;
   const events=new AbortController();
+  const reducedMotionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+  let ticker=0,lastDisabled:boolean|null=null;
   const root=document.createElement('section');root.className='ms';root.setAttribute('aria-label','Minefield');
   root.innerHTML=`<div class="ms-toolbar"><label class="ms-field"><span>Difficulty</span><select class="ms-level" aria-label="Difficulty"><option value="beginner">Easy · 9 × 9</option><option value="intermediate">Medium · 16 × 16</option><option value="expert">Hard · 30 × 16</option></select></label><div class="ms-instrument"><span>Flags left</span><strong class="ms-count">10</strong></div><div class="ms-instrument"><span>Time</span><strong class="ms-time" aria-label="Elapsed time">00:00</strong></div><div class="ms-tools"></div></div>
    <div class="ms-frame"><div class="ms-scroll" tabindex="-1" aria-label="Minefield: drag to pan, pinch to zoom"><div class="ms-board" role="grid" aria-label="Minesweeper board" aria-describedby="ms-instructions"></div></div></div>
@@ -53,7 +55,8 @@ const game:GameModule={
    }grid.style.setProperty('--ms-size',`${size}px`);scroll.scrollLeft=0;scroll.scrollTop=0;
   }
   function render(){
-   const {width,mines}=LEVELS[board.level],safe=board.revealed.filter((v,i)=>v&&board.cells[i]!==-1).length,total=board.cells.length-mines,ended=board.status==='won'||board.status==='lost';
+   const {width,mines}=LEVELS[board.level],safe=board.revealed.filter((v,i)=>v&&board.cells[i]!==-1).length,total=board.cells.length-mines,ended=board.status==='won'||board.status==='lost',disabled=paused||ended,disabledChanged=lastDisabled!==disabled;
+   lastDisabled=disabled;
    buttons.forEach((button,i)=>{
     const open=board.revealed[i],mine=board.status==='lost'&&board.cells[i]===-1,wrong=board.status==='lost'&&board.flags[i]&&board.cells[i]!==-1;
     const state=mine?'mine':open?'open':board.flags[i]?'flagged':'hidden';
@@ -61,10 +64,11 @@ const game:GameModule={
     if(button.dataset.visual!==visual){button.dataset.visual=visual;button.dataset.state=state;
      button.className=`ms-tile ms-n${open?board.cells[i]:0}${i===board.exploded?' ms-exploded':''}${wrong?' ms-wrong':''}${(Math.floor(i/width)+i%width)%2?' ms-alternate':''}`;
      if(mine)button.innerHTML=image(i===board.exploded&&christmas()?'exploded':'mine');else if(board.flags[i])button.innerHTML=`${image('flag')}${wrong?'<span class="ms-cross" aria-hidden="true">×</span>':''}`;else button.textContent=open&&board.cells[i]>0?String(board.cells[i]):'';
+     const label=mine?(i===board.exploded?'Triggered mine':'Mine'):open?(board.cells[i]>0?`${board.cells[i]} adjacent mines`:'Empty'):board.flags[i]?(wrong?'Incorrect flag':'Flagged'):'Covered';
+     button.setAttribute('aria-label',`Row ${Math.floor(i/width)+1}, column ${i%width+1}: ${label}`);
     }
     button.classList.toggle('ms-hinted',hinted===i);
-    const label=mine?(i===board.exploded?'Triggered mine':'Mine'):open?(board.cells[i]>0?`${board.cells[i]} adjacent mines`:'Empty'):board.flags[i]?(wrong?'Incorrect flag':'Flagged'):'Covered';
-    button.setAttribute('aria-label',`Row ${Math.floor(i/width)+1}, column ${i%width+1}: ${label}`);button.setAttribute('aria-disabled',String(paused||ended));
+    if(disabledChanged)button.setAttribute('aria-disabled',String(disabled));
    });
    root.dataset.status=board.status;root.dataset.paused=String(paused);grid.inert=paused;scroll.setAttribute('aria-hidden',String(paused));
    $('.ms-count').textContent=String(mines-board.flags.filter(Boolean).length);
@@ -76,26 +80,31 @@ const game:GameModule={
    $('.ms-badge').hidden=!assisted;$('.ms-badge').textContent=practice?'Practice · assisted':'Assisted · restored field';$<HTMLInputElement>('.ms-practice').checked=practice;$<HTMLInputElement>('.ms-sound').checked=sound;$<HTMLInputElement>('.ms-longpress').checked=longPress;
    $<HTMLButtonElement>('.ms-hint').disabled=!practice||board.status!=='playing';$<HTMLButtonElement>('.ms-undo').disabled=!practice||!history.length;
    levelSelect.value=board.level;$('.ms-mode').setAttribute('aria-pressed',String(flagMode));$('.ms-reveal-mode').setAttribute('aria-pressed',String(!flagMode));$('.ms-scale').textContent=`${Math.round(size/44*100)}%`;
-   context.setLevel(LABELS[board.level]);context.setStatus(`${safe} of ${total} safe cells revealed.`);clock();
+   context.setLevel(LABELS[board.level]);context.setStatus(`${safe} of ${total} safe cells revealed.`);clock();syncTicker();
+  }
+  function syncTicker(){
+   const active=!disposed&&!paused&&board.status==='playing';
+   if(active&&!ticker)ticker=window.setInterval(()=>{if(!disposed){syncTime();clock();}},200);
+   else if(!active&&ticker){clearInterval(ticker);ticker=0;}
   }
   function animate(i:number,before:boolean[],wasFlag:boolean,keyboard:boolean){
-   if(keyboard||context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+   if(keyboard||context.settings.reducedMotion||reducedMotionQuery.matches)return;
    const width=LEVELS[board.level].width;
    buttons.forEach((button,j)=>{if(board.revealed[j]&&!before[j]){const distance=Math.max(Math.abs(j%width-i%width),Math.abs(Math.floor(j/width)-Math.floor(i/width)));button.animate([{opacity:.45,transform:'scale(.96)'},{opacity:1,transform:'scale(1)'}],{duration:180,delay:Math.min(distance*12,100),easing:'cubic-bezier(.23,1,.32,1)'});}});
    if(board.flags[i]&&!wasFlag)buttons[i].firstElementChild?.animate([{transform:'translateY(-18%) rotate(-12deg)',opacity:.5},{transform:'translateY(0) rotate(0)',opacity:1}],{duration:180,easing:'cubic-bezier(.23,1,.32,1)'});
   }
   function action(i:number,kind:'reveal'|'flag'|'chord',keyboard=false){
    if(paused||disposed)return;
-   syncTime();const before=structuredClone(board),wasFlag=board.flags[i];
+   syncTime();const before=practice?structuredClone(board):null,beforeStatus=board.status,beforeRevealed=before?before.revealed:board.revealed.slice(),wasFlag=board.flags[i];
    const changed=kind==='flag'?flag(board,i):kind==='chord'||board.revealed[i]?chord(board,i):reveal(board,i);
    if(!changed){if(kind!=='flag'&&board.revealed[i]&&board.cells[i]>0)context.announce('Chord needs the same number of adjacent flags. Incorrect flags can cause a loss.');return;}
-   if(practice){history.push(before);if(history.length>80)history.shift();}
-   if(before.status==='ready'&&board.status!=='ready'){last=performance.now();recordStart(stats,board.level,assisted);}
-   if(before.status==='playing')board.elapsedMs=Math.min(31536000000,board.elapsedMs+Math.max(0,performance.now()-last));
+   if(practice&&before){history.push(before);if(history.length>80)history.shift();}
+   if(beforeStatus==='ready'&&board.status!=='ready'){last=performance.now();recordStart(stats,board.level,assisted);}
+   if(beforeStatus==='playing')board.elapsedMs=Math.min(31536000000,board.elapsedMs+Math.max(0,performance.now()-last));
    last=performance.now();hinted=null;$('.ms-hint-message').textContent='';
    const ended=board.status==='won'||board.status==='lost';
    if(ended){if(board.status==='won'){recordWin(stats,board.level,board.elapsedMs,assisted);const score=competitiveScore(board,assisted);if(score){context.submitRecord?.(rankingKey(board.level),score);context.submitRecord?.('minesweeper-score',winScore(board,assisted));}}context.announce(board.status==='won'?(assisted?'Field cleared. Unranked win.':`Field cleared. Score ${winScore(board,assisted).toLocaleString()}.`):'Mine found. The triggered mine is red; incorrect flags are crossed out.');}
-   render();animate(i,before.revealed,wasFlag,keyboard);save();playSound(sound,ended?(board.status==='won'?'success':'lose'):'tap');
+   render();animate(i,beforeRevealed,wasFlag,keyboard);save();playSound(sound,ended?(board.status==='won'?'success':'lose'):'tap');
   }
   function target(e:Event):number|null {const t=(e.target as Element).closest<HTMLButtonElement>('.ms-tile');return t&&grid.contains(t)?Number(t.dataset.index):null;}
   function setFocus(i:number,move=false){if(!buttons[i])return;buttons[focus].tabIndex=-1;focus=i;buttons[focus].tabIndex=0;if(move)buttons[focus].focus();}
@@ -112,7 +121,7 @@ const game:GameModule={
   // consumes the gesture; compatibility clicks never activate a second action.
   const pointers=new Map<number,{x:number;y:number}>();
   let press:{id:number;i:number|null;x:number;y:number;left:number;top:number;consumed:boolean}|undefined,hold:number|undefined;
-  let pinch:{distance:number;size:number;x:number;y:number;contentX:number;contentY:number}|undefined;
+  let pinch:{distance:number;size:number;x:number;y:number;contentX:number;contentY:number;left:number;top:number}|undefined;
   function cancelGestures(){clearTimeout(hold);press=undefined;pinch=undefined;pointers.clear();}
   function setSize(next:number){size=Math.max(32,Math.min(64,Math.round(next)));grid.style.setProperty('--ms-size',`${size}px`);$('.ms-scale').textContent=`${Math.round(size/44*100)}%`;}
   scroll.addEventListener('pointerdown',e=>{
@@ -122,11 +131,11 @@ const game:GameModule={
    scroll.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
    if(pointers.size===1){press={id:e.pointerId,i:target(e),x:e.clientX,y:e.clientY,left:scroll.scrollLeft,top:scroll.scrollTop,consumed:false};
     if(touch&&longPress&&press.i!==null){const gesture=press;hold=window.setTimeout(()=>{if(press===gesture&&!gesture.consumed){gesture.consumed=true;action(gesture.i!,'flag');}},480);}
-   }else{clearTimeout(hold);if(press)press.consumed=true;const [a,b]=[...pointers.values()],box=scroll.getBoundingClientRect(),x=(a.x+b.x)/2-box.left,y=(a.y+b.y)/2-box.top;pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),size,x,y,contentX:scroll.scrollLeft+x,contentY:scroll.scrollTop+y};}
+   }else{clearTimeout(hold);if(press)press.consumed=true;const [a,b]=[...pointers.values()],box=scroll.getBoundingClientRect(),x=(a.x+b.x)/2-box.left,y=(a.y+b.y)/2-box.top;pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),size,x,y,contentX:scroll.scrollLeft+x,contentY:scroll.scrollTop+y,left:box.left,top:box.top};}
   },{signal:events.signal});
   scroll.addEventListener('pointermove',e=>{
    if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-   if(pinch&&pointers.size>=2){const [a,b]=[...pointers.values()],box=scroll.getBoundingClientRect();setSize(pinch.size*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.distance));scroll.scrollLeft=pinch.contentX*size/pinch.size-((a.x+b.x)/2-box.left);scroll.scrollTop=pinch.contentY*size/pinch.size-((a.y+b.y)/2-box.top);}
+   if(pinch&&pointers.size>=2){const [a,b]=[...pointers.values()];setSize(pinch.size*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.distance));scroll.scrollLeft=pinch.contentX*size/pinch.size-((a.x+b.x)/2-pinch.left);scroll.scrollTop=pinch.contentY*size/pinch.size-((a.y+b.y)/2-pinch.top);}
    else if(press?.id===e.pointerId){const dx=e.clientX-press.x,dy=e.clientY-press.y;if(Math.hypot(dx,dy)>8){clearTimeout(hold);press.consumed=true;}if(press.consumed){scroll.scrollLeft=press.left-dx;scroll.scrollTop=press.top-dy;}}
   },{signal:events.signal});
   scroll.addEventListener('pointerup',e=>{
@@ -160,11 +169,10 @@ const game:GameModule={
   menu.addEventListener('cancel',event=>{event.preventDefault();closeMenu();},{signal:events.signal});
   menu.addEventListener('click',event=>{if(event.target===menu){const rect=menu.getBoundingClientRect(),e=event as MouseEvent;if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)closeMenu();}},{signal:events.signal});
   $('.ms-close').addEventListener('click',()=>closeMenu(),{signal:events.signal});$('.ms-return').addEventListener('click',()=>closeMenu(),{signal:events.signal});
-  const ticker=window.setInterval(()=>{if(!disposed){syncTime();clock();}},200);
   build();render();
   return {openMenu,dismissMenu:()=>closeMenu(),pause(){syncTime();paused=true;cancelGestures();render();},resume(){paused=false;last=performance.now();render();},restart,serialize:snapshot,
-   restore(data){const restored=restoreBoard(data);if(!restored)return;board=restored;const saved=data as {cellSize?:number;practice?:boolean;assisted?:boolean;stats?:unknown;sound?:boolean;longPress?:boolean};practice=saved.practice===true;assisted=practice||saved.assisted===true||(restored.first!==null&&saved.assisted!==false);stats=readStats(saved.stats);sound=saved.sound===true;longPress=saved.longPress!==false;if(typeof saved.cellSize==='number'&&Number.isFinite(saved.cellSize))size=Math.max(32,Math.min(64,saved.cellSize));history=[];hinted=null;last=performance.now();build();render();},
-   dispose(){disposed=true;closeMenu(false);events.abort();cancelGestures();clearInterval(ticker);for(const {node,marker} of moved)marker.replaceWith(node);root.remove();}
+   restore(data){const restored=restoreBoard(data);if(!restored)return;board=restored;const saved=data as {cellSize?:number;practice?:boolean;assisted?:boolean;stats?:unknown;sound?:boolean;longPress?:boolean};practice=saved.practice===true;assisted=practice||saved.assisted===true||(restored.first!==null&&saved.assisted!==false);stats=readStats(saved.stats);sound=saved.sound===true;longPress=saved.longPress!==false;if(typeof saved.cellSize==='number'&&Number.isFinite(saved.cellSize))size=Math.max(32,Math.min(64,saved.cellSize));history=[];hinted=null;last=performance.now();lastDisabled=null;build();render();},
+   dispose(){disposed=true;closeMenu(false);events.abort();cancelGestures();clearInterval(ticker);ticker=0;for(const {node,marker} of moved)marker.replaceWith(node);root.remove();}
   };
  }
 };

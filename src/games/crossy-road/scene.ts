@@ -25,7 +25,7 @@ import {
   signalGlowGeometry, signalHaloGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
 import {bushGeometry, decoratedTreeGeometry, giftsGeometry, logPileGeometry, pineGeometry, snowmanGeometry} from './props';
-import {clipFacing, viewBasis} from './view-clip';
+import {clipFacing, shadowSilhouette, viewBasis} from './view-clip';
 import {
   CAR_MODELS, FIRE, LOCOS, PLOUGH, PROP, TRUCK_MODELS, WAGONS,
   carLength, carModel, lilyLook, mix, propAt, trainKind, truckModel, wagonAt,
@@ -37,6 +37,10 @@ const PITCH = (45 * Math.PI) / 180, YAW = (20 * Math.PI) / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 /** The camera's right axis and its forward axis along the ground, in world x and z. */
 const RX = Math.cos(YAW), RZ = -Math.sin(YAW), FX = -Math.sin(YAW), FZ = -Math.cos(YAW);
+/** Screen-vertical projection coefficients for ground points: sy = -(SY_X*dx + SY_Z*dz). */
+const SY_X = -FX * SIN_P, SY_Z = -FZ * SIN_P;
+/** Vertical frustum padding (screen units) so tall props/masts below and projected shadows above never clip. */
+const VIEW_PAD_TOP = 2.5, VIEW_PAD_BOT = 3.2;
 /** Ground-cell framing and the player's height share when grounded. */
 /** The whole view is 10% closer than the eight-cell phone and sixteen-unit landscape framing. */
 const ZOOM = 1.1, PHONE_CELLS = 8 / ZOOM, PC_HEIGHT_UNITS = 16 / ZOOM, PLAYER_SCREEN = 0.35;
@@ -125,9 +129,10 @@ const SIGNAL_LAMP_X = 0.2, SIGNAL_LAMP_Y = 1.06;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
 const MARGIN = 2;
 const MAX_ROWS = 64;
-// Cache just beyond the existing culling guard so routine camera motion does not
-// shift every static instance slot. Animated rows still use the exact view window.
-const STATIC_ROWS_AHEAD = 2, STATIC_COLUMNS = 1;
+// The camera eases forward for a few rows after each hop. Four rows of slack
+// keep that motion inside the cache. One extra column is the sideways guard.
+// Animated rows still use the exact window.
+const STATIC_ROWS_AHEAD = 4, STATIC_COLUMNS = 1;
 /** Falling snow: flakes per quality tier, and the height of the column they fall through (tiles). */
 const FLAKES_HIGH = 220, FLAKES_LOW = 90, SNOW_H = 7;
 const YAWS: Readonly<Record<Dir, number>> = { up: 0, down: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 };
@@ -162,8 +167,16 @@ const FLAKE_SEEDS = Array.from({length: FLAKES_HIGH}, (_, i) => {
 });
 
 /** One flake in world space, or null once it has passed the ground. `spanX`/`spanZ` are the column
- * the camera keeps full of snow; the same formulas as the old per-frame hash. */
-export function fallingFlake(i: number, anim: number, spanX: number, spanZ: number, cx: number, cz: number): {x: number; y: number; z: number; size: number} | null {
+ * the camera keeps full of snow; pass `out` to avoid per-frame object allocations. */
+export function fallingFlake(
+  i: number,
+  anim: number,
+  spanX: number,
+  spanZ: number,
+  cx: number,
+  cz: number,
+  out?: { x: number; y: number; z: number; size: number },
+): { x: number; y: number; z: number; size: number } | null {
   const flake = FLAKE_SEEDS[i];
   const sway = 0.22 * Math.sin(anim * flake.freq + i);
   const y = SNOW_H - ((flake.y0 + anim * flake.speed) % SNOW_H) - 0.3;
@@ -171,7 +184,8 @@ export function fallingFlake(i: number, anim: number, spanX: number, spanZ: numb
   const bx = flake.u * spanX + sway + anim * 0.12, bz = flake.v * spanZ;
   const x = cx + ((((bx - cx) % spanX) + spanX) % spanX) - spanX / 2;
   const z = cz + ((((bz - cz) % spanZ) + spanZ) % spanZ) - spanZ / 2;
-  return {x, y, z, size: flake.size};
+  if (out) { out.x = x; out.y = y; out.z = z; out.size = flake.size; return out; }
+  return { x, y, z, size: flake.size };
 }
 
 /** Height of the surface a thing at x stands on in a lane at time t: a log top, a pad top or the water. */
@@ -313,6 +327,8 @@ function keepRange(attribute: THREE.BufferAttribute, range: { start: number; cou
 
 /** Throws when a WebGL renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: { quality?: Quality } = {}): CrossyRoadScene {
+  // Antialiasing is chosen when the context is created. The floor opens on the low
+  // detail path, and switching to High cannot turn smoothing on after that.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true, powerPreference: 'high-performance' });
   renderer.setClearColor(CLEAR_COLOR);
   renderer.shadowMap.enabled = false;
@@ -361,11 +377,21 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const yaw2 = [0, Math.PI], yaw4 = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
   const lilyYaws = [-3, -2, -1, 0, 1, 2, 3].map(step => step * 0.035);
   const sxExact: readonly [number, number] = [1, 1], sxStretch: readonly [number, number] = [1e-3, 1e3];
-  function view(source: THREE.BufferGeometry, yaws: readonly number[], cast: boolean, sx: readonly [number, number] = sxExact, clipShadow = true): {color: THREE.BufferGeometry; shadow: THREE.BufferGeometry | null} {
-    const color = clipFacing(source, basis, yaws, false);
-    const shadow = cast ? (clipShadow ? clipFacing(source, basis, yaws, true, sx) : source) : null;
+  function view(
+    source: THREE.BufferGeometry,
+    yaws: readonly number[],
+    cast: boolean,
+    sx: readonly [number, number] = sxExact,
+    shadowTiers = 0,
+    sy: readonly [number, number] = sxExact,
+    sz: readonly [number, number] = sxExact,
+  ): {color: THREE.BufferGeometry; shadow: THREE.BufferGeometry | null} {
+    const color = clipFacing(source, basis, yaws, false, sx, sy, sz);
+    const hull = cast && shadowTiers > 0 ? shadowSilhouette(source, shadowTiers) : source;
+    const shadow = cast ? clipFacing(hull, basis, yaws, true, sx, sy, sz) : null;
     const used = new Set<THREE.BufferGeometry>([color]);
     if (shadow) used.add(shadow);
+    if (hull !== source && !used.has(hull)) hull.dispose();
     if (used.has(source)) geometries.push(source); else source.dispose();
     if (color !== source) geometries.push(color);
     if (shadow && shadow !== source && shadow !== color) geometries.push(shadow);
@@ -407,34 +433,36 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     snowmanGeometry(), bushGeometry(), logPileGeometry(), giftsGeometry(),
   ].map((g, i) => {
     const yaws = i >= PROP.rock && i < PROP.rock + 3 ? yaw4 : [0];
-    const seen = view(g, yaws, true, sxExact, PROP_SCALE[i][0] === PROP_SCALE[i][1]);
+    const [w, h] = PROP_SCALE[i];
+    const tallProp = i < PROP.stump || i === PROP.pineSmall || i === PROP.pineTall || i === PROP.decorated || i === PROP.snowman;
+    const seen = view(g, yaws, true, [1, w], tallProp ? 3 : 1, [1, h], [1, w]);
     return pool(seen.color, lit, i < PROP.stump || i === PROP.pineSmall || i === PROP.pineTall ? 320 : 160, true, false, 0, 0, seen.shadow);
   });
   const carBody = CAR_MODELS.map(model => {
-    const seen = view(merged(carGeometry(model)), yaw2, true);
+    const seen = view(merged(carGeometry(model)), yaw2, true, sxStretch, 2);
     return pool(seen.color, painted, 80, true, false, 0, 0, seen.shadow);
   });
   /** Lorries by model, then by length (2 or 3 tiles). The fire engine and the plough have no long form. */
   const truckBody = TRUCK_MODELS.map((model, i) => ([2, 3] as const).map(len => {
     if (len === 3 && i >= FIRE) return null;
-    const seen = view(merged(truckGeometry(len, model)), yaw2, true);
+    const seen = view(merged(truckGeometry(len, model)), yaw2, true, sxStretch, 2);
     return pool(seen.color, painted, 48, true, false, 0, 0, seen.shadow);
   }));
   const locoBody = LOCOS.map(name => {
-    const seen = view(merged(train[name]), yaw2, true);
+    const seen = view(merged(train[name]), yaw2, true, sxExact, 2);
     return pool(seen.color, painted, 16, true, false, 0, 0, seen.shadow);
   });
   const wagonBody = WAGONS.map(name => {
-    const seen = view(merged(train[name]), yaw2, true, sxStretch);
+    const seen = view(merged(train[name]), yaw2, true, sxStretch, 2);
     return pool(seen.color, painted, name === 'carriage' ? 96 : 48, true, false, 0, 0, seen.shadow);
   });
   // Logs carry a paint mask: the bark takes the log colour, end grain and snow stay fixed.
   const logs = ([2, 3, 4] as const).map(len => {
-    const seen = view(logGeometry(len), [0], true, sxStretch);
+    const seen = view(logGeometry(len), [0], true, sxStretch, 1);
     return pool(seen.color, painted, 192, true, false, 0, WATER_Y, seen.shadow);
   });
   const lilies = [0, 1, 2].map(v => pool(view(lilyGeometry(v), lilyYaws, false).color, lit, 96));
-  const signalPosts = view(signalPostGeometry(), [0], true);
+  const signalPosts = view(signalPostGeometry(), [0], true, sxExact, 3);
   const posts = pool(signalPosts.color, lit, 48, true, false, 0, 0, signalPosts.shadow);
   const lampGeo = geo(lampGeometry());
   const lamps = pool(lampGeo, unlit, 96), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
@@ -442,7 +470,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const haloMaterial = mat(new THREE.MeshBasicMaterial({vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending}));
   const halos = pool(geo(signalHaloGeometry()), haloMaterial, 48, false, false, 6);
   // Overhead-line masts, and a warm glow at each locomotive's head lamps with its spill on the track ahead.
-  const mastSeen = view(mastGeometry(), [0], true);
+  const mastSeen = view(mastGeometry(), [0], true, sxExact, 3);
   const masts = pool(mastSeen.color, lit, 48, true, false, 0, 0, mastSeen.shadow);
   const lampHalos = pool(geo(signalHaloGeometry(0xffe2a0)), haloMaterial, 16, false, false, 6);
   const lampSpills = pool(geo(signalGlowGeometry(0xffdf9a)), haloMaterial, 16, false, false, 3);
@@ -476,7 +504,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   let staticRowLo = 0, staticRowHi = -1, staticOrigin = NaN;
   let staticPass = false, padStatic = true;
   /** The frame being drawn. */
-  let now = 0, anim = 0, reduced = false, colorBlind = false;
+  let now = 0, anim = 0, renderOffset = 0, reduced = false, colorBlind = false;
+  const flakeScratch = { x: 0, y: 0, z: 0, size: 0 };
   /** The row being drawn: its z and the world x window that can be on screen. */
   let curZ = 0, winLo = 0, winHi = 0, curDir = 1;
   let curRoad = null as unknown as RoadLane;
@@ -513,6 +542,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     quality = next;
     low = next === 'low';
     stats.quality = next;
+    staticOrigin = NaN;
     applyPixelRatio();
   }
 
@@ -539,12 +569,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       focusRow = stepFocusRow(focusRow, targetRow, frame.dt);
       focusX += (targetX - focusX) * smoothing(frame.dt);
     }
-    renderOriginX = Math.floor(focusX / 32) * 32;
+    renderOriginX = Math.round(focusX / 64) * 64 || 0;
     // Shake: a short decaying wobble on car and train deaths, never under reduced motion.
     shakeX = 0; shakeY = 0;
     const death = state.death;
     if (!reduced && death !== null && (death.cause === 'car' || death.cause === 'train')) {
-      const age = state.t - death.t;
+      const age = now - death.t;
       if (age >= 0 && age < SHAKE_TIME) {
         const a = SHAKE_AMP * (1 - age / SHAKE_TIME) * (1 - age / SHAKE_TIME);
         shakeX = a * Math.sin(age * 90); shakeY = a * Math.cos(age * 73 + 1.3);
@@ -563,12 +593,23 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   }
 
-  /** Sets the row being drawn and the x window of objects that can be on screen on it. */
-  function windowFor(row: number): void {
+  /** Sets the row being drawn and the x window of objects that can be on screen on it.
+   * Intersects left/right and top/bottom orthographic frustum planes so off-screen corner rows emit nothing.
+   * When `aheadRows > 0`, returns the exact envelope covering forward travel by `aheadRows` rows so cached
+   * static terrain stays valid without premature rebuilds. */
+  function windowFor(row: number, aheadRows = 0): void {
     curZ = -row * ROW_DEPTH;
-    const off = (curZ - lookZ) * RZ;
-    winLo = Math.floor(lookX + (-fit.halfWidth - off) / RX - MARGIN);
-    winHi = Math.ceil(lookX + (fit.halfWidth - off) / RX + MARGIN);
+    const dz0 = curZ - lookZ;
+    const dz1 = dz0 + aheadRows * ROW_DEPTH;
+    const rxLo = lookX + (-fit.halfWidth - dz0 * RZ) / RX;
+    const rxHi = lookX + (fit.halfWidth - dz1 * RZ) / RX;
+    const ryLo = lookX + (-fit.halfHeight - VIEW_PAD_TOP - dz1 * SY_Z) / SY_X;
+    const ryHi = lookX + (fit.halfHeight + VIEW_PAD_BOT - dz0 * SY_Z) / SY_X;
+    const lo = Math.max(rxLo, ryLo);
+    const hi = Math.min(rxHi, ryHi);
+    if (lo > hi) { winLo = 1; winHi = 0; return; }
+    winLo = Math.floor(lo - MARGIN);
+    winHi = Math.ceil(hi + MARGIN);
   }
 
   // Lane drawing --------------------------------------------------------------------
@@ -767,21 +808,28 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       for (let x = Math.ceil((winLo - 4.15) / 8) * 8 + 4.15; x <= winHi + 1; x += 8) masts.put(x, 0, tz - 0.7, 1, 1, 1, 0, C_WHITE, 1);
       for (let x = Math.ceil(winLo); x <= winHi; x++) {
         const h = hash(lane.row, x + 3000);
-        // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails.
-        for (const sx of [x - 0.25, x + 0.25]) {
+        // Chunky sleepers every half tile on the bed, each with a dark tie plate under both rails in high quality.
+        for (let s = 0; s < 2; s++) {
+          const sx = x + (s === 0 ? -0.25 : 0.25);
           ground.put(sx, BED_TOP, tz, 0.2, SLEEPER_H, 0.94, 0, C_SLEEPER, 1);
-          for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) ground.put(sx, BED_TOP + SLEEPER_H, tz + rz, 0.22, 0.008, 0.14, 0, C_PLATE, 1);
+          if (!low) {
+            ground.put(sx, BED_TOP + SLEEPER_H, tz - RAIL_GAUGE, 0.22, 0.008, 0.14, 0, C_PLATE, 1);
+            ground.put(sx, BED_TOP + SLEEPER_H, tz + RAIL_GAUGE, 0.22, 0.008, 0.14, 0, C_PLATE, 1);
+          }
         }
-        // Gravel speckles between the sleepers.
-        putGround(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, C_GRAVEL + ((h >>> 22) & 1));
-        putGround(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, C_GRAVEL + ((h >>> 29) & 1));
+        // Gravel speckles between the sleepers (high quality only).
+        if (!low) {
+          putGround(x + 0.02 + ((h >>> 16) & 3) * 0.03, BED_TOP, tz + (((h >>> 18) & 15) / 15 - 0.5) * 0.6, 0.06, 0.012, 0.05, C_GRAVEL + ((h >>> 22) & 1));
+          putGround(x + 0.5 + ((h >>> 23) & 3) * 0.02, BED_TOP, tz + (((h >>> 25) & 15) / 15 - 0.5) * 0.6, 0.05, 0.01, 0.06, C_GRAVEL + ((h >>> 29) & 1));
+        }
         // Snow settles on most sleepers and drifts between some of them.
         if ((h & 3) !== 0) putGround(x + 0.25, BED_TOP + SLEEPER_H, tz + (((h >>> 2) & 7) - 3.5) * 0.02, 0.15, 0.016, 0.22 + ((h >>> 5) & 3) * 0.05, C_SNOW);
         if (((h >>> 8) & 3) === 0) putGround(x + 0.5, BED_TOP, tz + (((h >>> 10) & 7) - 3.5) * 0.04, 0.26 + ((h >>> 13) & 3) * 0.08, 0.025, 0.16, C_SNOW);
       }
       // Each rail: a wide foot, a narrow web and a polished head standing on the plates.
       const foot = BED_TOP + SLEEPER_H + 0.008;
-      for (const rz of [-RAIL_GAUGE, RAIL_GAUGE]) {
+      for (let side = -1; side <= 1; side += 2) {
+        const rz = side * RAIL_GAUGE;
         band(C_STEEL, foot, 0.008, tz + rz, 0.12);
         band(C_STEEL, foot + 0.008, RAIL_TOP - foot - 0.038, tz + rz, 0.04);
         band(C_RAIL_HEAD, RAIL_TOP - 0.03, 0.03, tz + rz, 0.085);
@@ -840,17 +888,18 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Player and deaths ------------------------------------------------------------------
 
   function alive(frame: SceneFrame): void {
-    const state = frame.state, pose = frame.pose, world = frame.world, t = state.death?.t ?? state.t, hopping = state.hop >= 0;
+    const state = frame.state, pose = frame.pose, world = frame.world, t = state.death?.t ?? now, hopping = state.hop >= 0;
+    const hopT = hopping ? (state.death === null ? state.hop + renderOffset : state.hop) : -1;
     // Hop progress from the state's own clock, so the squash and the surface follow the hop whatever pose.progress means.
-    const p = hopping ? clamp(state.hop / HOP_TIME, 0, 1) : 1;
-    if (hopping) groundY = lerp(surfaceAt(world.lane(state.fromRow), state.fromX, t - state.hop), surfaceAt(world.lane(state.row), state.x, t), p);
+    const p = hopping ? clamp(hopT / HOP_TIME, 0, 1) : 1;
+    if (hopping) groundY = lerp(surfaceAt(world.lane(state.fromRow), state.fromX, t - hopT), surfaceAt(world.lane(state.row), state.x, t), p);
     else groundY = surfaceAt(world.lane(state.row), pose.x, t);
     pX = pose.x; pZ = -pose.z * ROW_DEPTH; pY = groundY + pose.lift; pYaw = YAWS[pose.facing];
     if (reduced) return;
     let sy = 1;
     if (hopping) {
       // Squash at take-off, stretch in the air, back to 1 on landing.
-      sy = (state.hop < SQUASH_TIME ? lerp(0.8, 1, state.hop / SQUASH_TIME) : 1) + 0.18 * Math.sin(Math.PI * p);
+      sy = (hopT < SQUASH_TIME ? lerp(0.8, 1, hopT / SQUASH_TIME) : 1) + 0.18 * Math.sin(Math.PI * p);
     } else {
       const land = t - state.landedAt, bonk = t - state.bonkAt;
       if(frame.pressed) sy=0.8;
@@ -949,7 +998,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         anchorX = pX; anchorZ = pZ; anchorY = pY; anchorYaw = pYaw;
         pSX = pSY = pSZ = 1;
       }
-      dying(frame, death, Math.max(0, state.t - death.t));
+      dying(frame, death, Math.max(0, now - death.t));
     }
     if (pShow) {
       // The bird's transform: scale, a yaw for its facing, and a world-axis tumble on top for deaths.
@@ -995,7 +1044,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     // A flake at height y appears y·cot(pitch) further ahead, so the column is centred behind the look point.
     const cx = lookX - FX * SNOW_H * 0.5, cz = lookZ - FZ * SNOW_H * 0.5;
     for (let i = 0; i < count; i++) {
-      const flake = fallingFlake(i, anim, spanX, spanZ, cx, cz);
+      const flake = fallingFlake(i, anim, spanX, spanZ, cx, cz, flakeScratch);
       if (flake) flakes.put(flake.x, flake.y, flake.z, flake.size, flake.size, flake.size, 0, C_FLAKE, 1);
     }
   }
@@ -1005,16 +1054,24 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function render(frame: SceneFrame): void {
     if (disposed) return;
     const state = frame.state, world = frame.world;
-    now = state.t;
+    renderOffset = state.phase !== 'over' ? (frame.renderOffset ?? 0) : 0;
+    now = state.t + renderOffset;
     reduced = frame.reducedMotion;
     colorBlind = frame.colorBlind;
     anim = reduced ? 0 : now;
     aim(frame);
-    if (!retainsStatic(world)) rebuildTerrain(world);
+    if (!retainsStatic(world)) {
+      // A hop is 120 ms. Rebuilding the whole static world in the middle of it
+      // is the hitch. The cache already covers the rows this hop can reach.
+      const hopping = state.hop >= 0 && state.death === null;
+      const covered = renderOriginX === staticOrigin && rowLo >= staticRowLo && rowHi <= staticRowHi;
+      if (!hopping || !covered) rebuildTerrain(world);
+    }
     for (const p of pools) if (!p.cached) p.begin(renderOriginX);
     for (let row = rowLo; row <= rowHi; row++) {
       const i = row - staticRowLo + 1;
       windowFor(row);
+      if (winLo > winHi) continue;
       drawRow(cachedLanes[i]!, row, cachedLanes[i + 1]!, cachedLanes[i - 1]!);
     }
     actors(frame);
@@ -1039,6 +1096,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       if (cachedLanes[i + 1] !== world.lane(row)) return false;
       if (row < rowLo || row > rowHi) continue;
       windowFor(row);
+      if (winLo > winHi) continue;
       if (winLo < staticWindows[i * 2] || winHi > staticWindows[i * 2 + 1]) return false;
     }
     return true;
@@ -1052,9 +1110,15 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     for (let row = staticRowLo - 1; row <= staticRowHi + 1; row++) cachedLanes[row - staticRowLo + 1] = world.lane(row);
     for (const p of pools) if (p.cached) p.begin(renderOriginX);
     staticPass = true;
+    const aheadRows = padStatic ? STATIC_ROWS_AHEAD : 0;
     for (let row = staticRowLo; row <= staticRowHi; row++) {
       const i = row - staticRowLo;
-      windowFor(row);
+      windowFor(row, aheadRows);
+      if (winLo > winHi) {
+        staticWindows[i * 2] = 1e9;
+        staticWindows[i * 2 + 1] = -1e9;
+        continue;
+      }
       staticWindows[i * 2] = winLo -= columns;
       staticWindows[i * 2 + 1] = winHi += columns;
       drawRow(cachedLanes[i + 1]!, row, cachedLanes[i + 2]!, cachedLanes[i]!);

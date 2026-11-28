@@ -41,7 +41,10 @@ export class CornClicker {
   private readonly sfx=new Sfx();
   private readonly guard:TabGuard;
   private paused=false;private passive=false;private disposed=false;private pausedAt=0;
-  private raf=0;private heartbeat=0;private saveTimer=0;
+  private raf=0;private uiTimer=0;private heartbeat=0;private saveTimer=0;
+  private readonly narrowQuery=matchMedia('(max-width: 899px)');
+  private readonly reducedQuery=matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly coarseQuery=matchMedia('(pointer: coarse)');
   private amount:BuyAmount=1;
   private tipsRequested=false;
   private top:Top='cob';private sub:Sub='farm';
@@ -124,13 +127,24 @@ export class CornClicker {
   // ───────────────────────── Lifecycle (GameInstance) ─────────────────────────
   private start(){
     if(this.disposed||this.paused||this.passive)return;
-    cancelAnimationFrame(this.raf);clearInterval(this.heartbeat);
-    const frame=()=>{this.frame();this.raf=requestAnimationFrame(frame);};
-    this.raf=requestAnimationFrame(frame);
+    cancelAnimationFrame(this.raf);clearInterval(this.uiTimer);clearInterval(this.heartbeat);
+    this.raf=0;
+    this.uiTimer=window.setInterval(()=>this.frame(),100);
     // Keeps production and autosave moving when frames are throttled (occluded windows).
     this.heartbeat=window.setInterval(()=>this.simulate(),1000);
+    if(this.game.s.golden.onScreen)this.ensureGoldenRaf();
   }
-  private stop(){cancelAnimationFrame(this.raf);clearInterval(this.heartbeat);this.raf=0;this.heartbeat=0;}
+  private ensureGoldenRaf(){
+    if(this.raf||this.disposed||this.paused||this.passive||!this.game.s.golden.onScreen)return;
+    const step=()=>{
+      this.raf=0;
+      if(this.disposed||this.paused||this.passive||!this.game.s.golden.onScreen)return;
+      this.simulate();this.updateGolden();
+      if(this.game.s.golden.onScreen)this.raf=requestAnimationFrame(step);
+    };
+    this.raf=requestAnimationFrame(step);
+  }
+  private stop(){cancelAnimationFrame(this.raf);clearInterval(this.uiTimer);clearInterval(this.heartbeat);this.raf=0;this.uiTimer=0;this.heartbeat=0;}
   pause(){
     if(this.paused||this.disposed)return;
     if(!this.passive){this.simulate();this.flushSave();}
@@ -263,6 +277,7 @@ export class CornClicker {
     this.simulate();
     const now=performance.now();
     this.updateGolden();
+    if(this.game.s.golden.onScreen)this.ensureGoldenRaf();
     if(now-this.lastUi<100)return;
     this.lastUi=now;
     this.updateCounters();this.updateBuffs();this.updateShop();
@@ -281,7 +296,7 @@ export class CornClicker {
   }
   /** A middle-column section is hidden when it is not the selected sub-tab (or the farm column is off-screen on a phone). */
   private isHidden(sub:Sub){return this.sub!==sub||this.narrow()&&this.top!=='farm';}
-  private narrow(){return this.root.clientWidth<900;}
+  private narrow(){return this.narrowQuery.matches;}
   private style():NumberStyle {return this.game.s.options.numbers;}
   private f(value:Big|number,decimals=false){return format(value,this.style(),decimals);}
 
@@ -433,7 +448,7 @@ export class CornClicker {
     this.updateCounters();
   }
   private calm():boolean {
-    return this.game.s.options.reducedMotion||this.ctx.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return this.game.s.options.reducedMotion||this.ctx.settings.reducedMotion||this.reducedQuery.matches;
   }
   private squash(){
     const body=this.el.cob.querySelector('img');if(!body)return;
@@ -523,7 +538,7 @@ export class CornClicker {
     button.style.left=`${g.x*100}%`;button.style.top=`${g.y*100}%`;
     button.style.setProperty('--life',String(Math.max(0,g.life/g.maxLife)));
     button.classList.toggle('cc-fading',g.life<3);
-    const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left${matchMedia('(pointer: coarse)').matches?'':', or press G'})`;
+    const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left${this.coarseQuery.matches?'':', or press G'})`;
     if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
   }
   private collectGolden(){

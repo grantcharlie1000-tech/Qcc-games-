@@ -140,6 +140,7 @@ function clearBox(){
 /** A finger may pan this target: a control, a dialog, or an element that actually overflows. */
 export function elementAllowsTouchScroll(target:EventTarget|null):boolean {
   if(!(target instanceof Element))return false;
+  if(target.tagName==='CANVAS'||target.id==='game-stage')return false;
   if(target.closest('input, textarea, select, dialog, button, a, summary, label, [contenteditable="true"]'))return true;
   let node:Element|null=target;
   while(node&&node!==document.documentElement){

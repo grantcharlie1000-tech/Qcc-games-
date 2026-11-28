@@ -6,7 +6,7 @@
 body:has(.game-view[data-game-id=minesweeper]) .lb-sidebar{bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + 2px)}
 @media(max-height:480px){.lb-sidebar{bottom:calc(max(4px,env(safe-area-inset-bottom,0px)) + 2px)}}
 .lb-sidebar[hidden],.lb-sidebar [hidden]{display:none!important}
-.lb-sidebar:not(.open){width:auto;padding:4px}
+.lb-sidebar:not(.open){width:auto;padding:4px;-webkit-backdrop-filter:blur(8px) saturate(1.2);backdrop-filter:blur(8px) saturate(1.2)}
 .lb-sidebar button{font:inherit;color:#fff;cursor:pointer}
 .lb-toggle{display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:8px 10px}
 .lb-toggle svg,.lb-heading svg{width:20px;height:20px;flex:none;color:#fff}

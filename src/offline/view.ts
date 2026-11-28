@@ -8,6 +8,7 @@ import './style.css';
 
 // Games whose online rooms need the network. Their local modes play offline.
 const ONLINE_MODES=new Set<GameId>(['pool','blockcraft','drift-club','breachline','chess']);
+const GAMES_BY_ID=new Map(games.map(g=>[g.id,g]));
 const LABEL:Record<Status['state'],string>={none:'',queued:'Waiting',downloading:'Downloading',ready:'Downloaded',update:'Update needed',failed:'Failed'};
 const icon=(d:string)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICON={download:icon('<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>'),play:icon('<path d="m8 5 11 7-11 7z"/>'),remove:icon('<path d="M5 7h14M10 7V5h4v2m-7 0 1 12h8l1-12"/>'),retry:icon('<path d="M4 5v6h6M4 11a8 8 0 1 1 2 6"/>'),stop:icon('<path d="M7 7h10v10H7z"/>')};
@@ -31,7 +32,7 @@ ${Downloads.supported()?`<div class="dl-actions"><button type="button" class="ga
   dispose(){this.stop();this.root.removeEventListener('click',this.click);}
 
   private row(id:GameId):string{
-    const game=games.find(g=>g.id===id)!;
+    const game=GAMES_BY_ID.get(id)!;
     return `<li class="dl-row" data-game="${id}"><img src="${artUrl(id)}" alt="" width="64" height="82" loading="lazy" decoding="async"><div class="dl-info"><strong>${game.title}</strong><span class="dl-meta"></span>${ONLINE_MODES.has(id)?'<span class="dl-meta dl-hint">Online rooms need internet</span>':''}<progress max="1" value="0" hidden></progress></div><div class="dl-buttons"></div></li>`;
   }
   private paint(){
@@ -58,8 +59,8 @@ ${Downloads.supported()?`<div class="dl-actions"><button type="button" class="ga
     meta.title=status.message??'';
     if(status.message&&status.state!=='ready')meta.textContent+=` · ${status.message}`;
     const bar=row.querySelector('progress')!;bar.hidden=status.state!=='downloading';bar.value=status.total?status.done/status.total:0;
-    bar.setAttribute('aria-label',`${games.find(g=>g.id===id)!.title} download`);
-    const title=games.find(g=>g.id===id)!.title;
+    const title=GAMES_BY_ID.get(id)!.title;
+    bar.setAttribute('aria-label',`${title} download`);
     const button=(action:string,label:string,svg:string,primary=false)=>`<button type="button" class="dl-button${primary?' primary':''}" data-dl="${action}" aria-label="${label} ${title}">${svg}<span>${label}</span></button>`;
     const buttons=row.querySelector<HTMLElement>('.dl-buttons')!;
     const html=status.state==='ready'?button('play','Play',ICON.play,true)+button('remove','Delete',ICON.remove)

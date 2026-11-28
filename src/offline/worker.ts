@@ -12,6 +12,8 @@ export async function registerWorker(onUpdate:()=>void):Promise<void>{
   const base=new URL(import.meta.env.BASE_URL,location.href);
   try{registration=await navigator.serviceWorker.register(new URL('sw.js',base),{scope:base.href,updateViaCache:'none'});}
   catch{return;}
+  // Chromium resolves a blocked registration as undefined instead of rejecting.
+  if(!registration)return;
   const watch=(worker:ServiceWorker|null)=>worker?.addEventListener('statechange',()=>{if(worker.state==='installed'&&updateWaiting())onUpdate();});
   registration.addEventListener('updatefound',()=>watch(registration!.installing));
   watch(registration.installing);

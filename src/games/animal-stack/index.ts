@@ -7,6 +7,7 @@ import { animalSvg, artBox } from './art';
 import { AnimalGesture } from './input';
 import { frameCamera } from './framing';
 import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
+import {floorDpr,floorTierActive} from '../../perf/floor';
 import './style.css';
 import './christmas.css';
 import { christmas } from '../../festive/festive';
@@ -17,7 +18,7 @@ const module:GameModule={
  id:'animal-stack',title:'Animal Stack',cover:'game-art/animal-stack/cover.svg',
  rules:'Drag only the waiting animal left or right. A short tap rotates it 45°. Press DROP, Space or Enter to release. A/D or Left/Right move; Q/E rotate. Wait for each animal to settle. Each animal connected to the platform and still for half a second earns 100 points, plus 2 points per centimetre of your best tower height. Whole animals can tip and tumble. An animal falling off ends the run. Balance 40 animals to complete the stack.',
  mount(container,context){
-  container.innerHTML='<div class="animal-stack"><canvas tabindex="0" aria-label="Animal Stack. Drag the waiting animal horizontally; tap to rotate 45°. Press DROP or Space to release."></canvas><div class="animal-stack__bubble" hidden aria-hidden="true"></div><button class="animal-stack__drop" data-drop>DROP</button><p class="animal-stack__status" role="status"></p></div>';
+  container.innerHTML='<div class="animal-stack"><canvas data-glass-ink="textured" tabindex="0" aria-label="Animal Stack. Drag the waiting animal horizontally; tap to rotate 45°. Press DROP or Space to release."></canvas><div class="animal-stack__bubble" hidden aria-hidden="true"></div><button class="animal-stack__drop" data-drop>DROP</button><p class="animal-stack__status" role="status"></p></div>';
   const root=container.firstElementChild as HTMLElement,canvas=root.querySelector('canvas')!,draw=canvas.getContext('2d')!,dropButton=root.querySelector<HTMLButtonElement>('[data-drop]')!,bubble=root.querySelector<HTMLElement>('.animal-stack__bubble')!,status=root.querySelector<HTMLElement>('.animal-stack__status')!;
   const hud=mountCompactHud(container);
   let world=new AnimalWorld(),paused=false,disposed=false,raf:number|null=null,last=0,accumulator=0,camera=0,previousScore=-1,previousEnd=false,lastUI='',bubbleUntil=0,heldAimAt=0;
@@ -28,11 +29,13 @@ const module:GameModule={
   const xmas=christmas(),spriteSvg=xmas?festiveAnimalSvg:animalSvg,spriteBox=xmas?festiveBox:artBox;
   const sprites={} as Record<Kind,HTMLImageElement>;
   for(const kind of KINDS){const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(spriteSvg(kind));sprites[kind]=image;}
-  let scale=1,left=0,top=0,ratio=1;
-  function resize(){const box=canvas.getBoundingClientRect();ratio=Math.min(2,devicePixelRatio||1);canvas.width=Math.max(1,Math.round(box.width*ratio));canvas.height=Math.max(1,Math.round(box.height*ratio));scale=Math.min(box.width/WIDTH,box.height/HEIGHT);left=(box.width-WIDTH*scale)/2;top=box.height*.73-FLOOR*scale;clearPointer();if(paused)render();}
+  let scale=1,left=0,top=0,ratio=1,lastTick=-1,lastBodyAngle=NaN,lastBodyBottom=NaN;
+  function resize(){const box=canvas.getBoundingClientRect();const device=devicePixelRatio||1;ratio=floorTierActive()?floorDpr(box.width,box.height,device):Math.min(2,device);canvas.width=Math.max(1,Math.round(box.width*ratio));canvas.height=Math.max(1,Math.round(box.height*ratio));scale=Math.min(box.width/WIDTH,box.height/HEIGHT);left=(box.width-WIDTH*scale)/2;top=box.height*.73-FLOOR*scale;clearPointer();if(paused||world.over||world.complete)render();}
   function sync(){
-   root.dataset.tick=String(world.tick);
-   const lastAnimal=world.animals.at(-1);root.dataset.bodyAngle=String(lastAnimal?.body.angle??0);root.dataset.bodyBottom=String(lastAnimal?.body.bounds.max.y??0);
+   if(lastTick!==world.tick){lastTick=world.tick;root.dataset.tick=String(world.tick);}
+   const lastAnimal=world.animals.at(-1);const bodyAngle=lastAnimal?.body.angle??0,bodyBottom=lastAnimal?.body.bounds.max.y??0;
+   if(lastBodyAngle!==bodyAngle){lastBodyAngle=bodyAngle;root.dataset.bodyAngle=String(bodyAngle);}
+   if(lastBodyBottom!==bodyBottom){lastBodyBottom=bodyBottom;root.dataset.bodyBottom=String(bodyBottom);}
    const signature=[world.animals.length,world.supportedCount,world.height,world.ready,world.aimX,world.rotation,world.score,world.over,world.complete,paused,world.nextKind,colliderOverlay].join('|');if(signature===lastUI)return;lastUI=signature;
    Object.assign(root.dataset,{count:String(world.animals.length),balanced:String(world.supportedCount),ready:String(world.ready),aim:String(Math.round(world.aimX)),angle:String(world.rotation),over:String(world.over),next:world.nextKind,colliders:String(colliderOverlay),rotationAdaptation:'45deg'});
    dropButton.disabled=paused||!world.ready;dropButton.textContent='DROP';dropButton.setAttribute('aria-label',`Drop ${ANIMALS[world.nextKind].name}`);
@@ -81,7 +84,7 @@ const module:GameModule={
   canvas.addEventListener('pointercancel',clearInput,options);canvas.addEventListener('lostpointercapture',()=>gesture.clear(),options);window.addEventListener('blur',clearInput,options);dropButton.addEventListener('click',drop,options);
   container.addEventListener('keydown',e=>{const target=e.target as HTMLElement;if(paused||disposed||target.matches('input,textarea,select,button')||document.querySelector('dialog[open]')||e.altKey||e.ctrlKey||e.metaKey)return;const key=e.key.toLowerCase();if(key==='escape'){clearInput();return;}if(!['arrowleft','arrowright','a','d','q','e',' ','enter','c'].includes(key))return;e.preventDefault();if(key===' '||key==='enter'){releaseKey(e);return;}if(e.repeat||keys.has(key))return;keys.add(key);if(key==='c'){colliderOverlay=!colliderOverlay;sync();return;}if(key==='q'||key==='e'){rotate(key==='q'?-1:1);return;}if(world.ready)world.aim(world.aimX+(['arrowleft','a'].includes(key)?-10:10));heldAimAt=performance.now()+180;sync();},options);
   window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()),options);
-  function schedule(){if(!disposed&&!paused&&raf===null)raf=requestAnimationFrame(frame);}
+  function schedule(){if(!disposed&&!paused&&raf===null&&(!(world.over||world.complete)||performance.now()<bubbleUntil))raf=requestAnimationFrame(frame);}
   function frame(time:number){
    raf=null;if(disposed||paused)return;if(!last)last=time;const elapsed=Math.min(80,time-last);last=time;
    if(world.ready&&time>=heldAimAt){const direction=Number(keys.has('arrowright')||keys.has('d'))-Number(keys.has('arrowleft')||keys.has('a'));if(direction)world.aim(world.aimX+direction*elapsed*.13);}
@@ -91,9 +94,9 @@ const module:GameModule={
   return {
    pause(){if(disposed||paused)return;paused=true;clearInput();accumulator=0;last=0;if(raf!==null){cancelAnimationFrame(raf);raf=null;}sync();},
    resume(){if(disposed||!paused)return;paused=false;last=0;accumulator=0;sync();schedule();},
-   restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();context.save(world.snapshot());},
+   restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();else schedule();context.save(world.snapshot());},
    serialize(){return world.snapshot();},
-   restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
+   restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused||world.over||world.complete)render();else schedule();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
    dispose(){disposed=true;releaseGlass();clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();hud.dispose();world.dispose();container.replaceChildren();},
   };
  },

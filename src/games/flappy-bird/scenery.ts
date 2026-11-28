@@ -72,11 +72,11 @@ const REEDS=[
  '...llll...',
  '....ll....',
 ];
-interface Layers {far:HTMLCanvasElement;middle:HTMLCanvasElement;near:HTMLCanvasElement}
+interface Layers {sky:HTMLCanvasElement;sun:HTMLCanvasElement;clouds:HTMLCanvasElement;far:HTMLCanvasElement;middle:HTMLCanvasElement;near:HTMLCanvasElement}
 const cache=new Map<boolean,Layers>();
-function layer(draw:(ctx:CanvasRenderingContext2D)=>void){
- const canvas=document.createElement('canvas');canvas.width=TILE;canvas.height=HEIGHT;
- draw(canvas.getContext('2d')!);return canvas;
+function layer(draw:(ctx:CanvasRenderingContext2D)=>void,width=TILE,height=HEIGHT){
+ const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+ const ctx=canvas.getContext('2d');if(ctx)draw(ctx);return canvas;
 }
 function rect(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,color:string){ctx.fillStyle=color;ctx.fillRect(x,y,w,h);}
 function ridge(ctx:CanvasRenderingContext2D,points:readonly number[],color:string,snow:boolean){
@@ -120,6 +120,32 @@ function snowbank(ctx:CanvasRenderingContext2D,y:number,color:string){
  for(let x=0;x<TILE;x+=4){const top=y+edge[(x/4)%edge.length]!;rect(ctx,x,top,4,456-top,color);}
 }
 function buildLayers(winter:boolean):Layers{
+ const sky=layer(ctx=>{
+  const colors=winter?
+   ['#192940','#1d2e46','#23354d','#293c55','#30435d','#374b65','#3e536d','#465b76','#4e647e','#586e87','#62798f','#6c8397','#768d9f','#8197a7','#8ca1ae','#97aab4']:
+   ['#9a8b9e','#a191a2','#aa98a5','#b39fa8','#bca6aa','#c5adad','#ceb4af','#d7bbb0','#dfc1b1','#e6c7b2','#edcdb3','#f2d2b5','#f5d6b8','#f8dabc','#fadfc2','#fbe3c9'];
+  for(let i=0;i<colors.length;i++){
+   rect(ctx,0,i*34,TILE,34,colors[i]!);
+   if(i>0)for(let x=0;x<TILE;x+=8)rect(ctx,x+(i%2)*4,i*34,2,2,colors[i-1]!);
+  }
+  if(winter)for(const [x,y] of [[26,38],[78,104],[146,52],[218,136],[290,76],[366,24],[438,118],[524,58],[618,142],[690,34],[786,96],[894,52],[972,126]]){
+   rect(ctx,x!,y!,2,2,'#bbcbd3');
+   if(x!%3===0){rect(ctx,x!-2,y!,6,2,'#b9cbd5');rect(ctx,x!,y!-2,2,6,'#b9cbd5');}
+  }
+ });
+ const sun=layer(ctx=>{
+  const spans=[4,7,9,10,11,12,13,13,14,14,14,14,14,14,14,14,14,13,13,12,11,10,9,7,4];
+  for(let row=0;row<spans.length;row++){
+   const half=spans[row]!*2;
+   rect(ctx,32-half,32+row*2-24,half*2,2,winter?'#f3e7c2':'#ffe5a8');
+  }
+  if(winter){rect(ctx,40,20,8,4,'#d7cdb6');rect(ctx,20,38,6,6,'#d7cdb6');rect(ctx,36,46,4,2,'#d7cdb6');}
+  else for(const y of [42,50,56])rect(ctx,2,y,60,2,'#e9beb0');
+ },64,64);
+ const clouds=layer(ctx=>{
+  const cloudPalette=winter?{h:'#4a657e',H:'#67839a',m:'#3d5774'}:{h:'#efcfbb',H:'#fff1d1',m:'#dfb9af'};
+  for(const [x,y] of [[72,58],[318,94],[604,76],[870,186]])stamp(ctx,CLOUD,cloudPalette,x!,y!);
+ });
  const far=layer(ctx=>{
   ridge(ctx,RANGES[0],winter?'#607b9a':'#b3a2a6',winter);
   ridge(ctx,RANGES[1],winter?'#405f7d':'#7c9190',false);
@@ -167,7 +193,7 @@ function buildLayers(winter:boolean):Layers{
    }
   }
  });
- return {far,middle,near};
+ return {sky,sun,clouds,far,middle,near};
 }
 function repeat(ctx:CanvasRenderingContext2D,canvas:HTMLCanvasElement,width:number,drift:number){
  const offset=((drift%TILE)+TILE)%TILE;
@@ -175,33 +201,18 @@ function repeat(ctx:CanvasRenderingContext2D,canvas:HTMLCanvasElement,width:numb
 }
 export function drawScenery(ctx:CanvasRenderingContext2D,width:number,distance:number,time:number,winter:boolean,reduced:boolean){
  let layers=cache.get(winter);if(!layers){layers=buildLayers(winter);cache.set(winter,layers);}
- const colors=winter?
-  ['#192940','#1d2e46','#23354d','#293c55','#30435d','#374b65','#3e536d','#465b76','#4e647e','#586e87','#62798f','#6c8397','#768d9f','#8197a7','#8ca1ae','#97aab4']:
-  ['#9a8b9e','#a191a2','#aa98a5','#b39fa8','#bca6aa','#c5adad','#ceb4af','#d7bbb0','#dfc1b1','#e6c7b2','#edcdb3','#f2d2b5','#f5d6b8','#f8dabc','#fadfc2','#fbe3c9'];
- for(let i=0;i<colors.length;i++){
-  rect(ctx,0,i*34,width,34,colors[i]!);
-  if(i>0)for(let x=0;x<width;x+=8)rect(ctx,x+(i%2)*4,i*34,2,2,colors[i-1]!);
- }
- if(winter)for(const [x,y] of [[26,38],[78,104],[146,52],[218,136],[290,76],[366,24],[438,118],[524,58],[618,142],[690,34],[786,96],[894,52],[972,126]]){
-  const sx=x!%width;rect(ctx,sx,y!,2,2,'#bbcbd3');
-  if(x!%3===0){rect(ctx,sx-2,y!,6,2,'#b9cbd5');rect(ctx,sx,y!-2,2,6,'#b9cbd5');}
- }
+ for(let x=0;x<width;x+=TILE)ctx.drawImage(layers.sky,x,0);
  const sunX=Math.round(width*.78/2)*2,sunY=winter?90:130;
- const spans=[4,7,9,10,11,12,13,13,14,14,14,14,14,14,14,14,14,13,13,12,11,10,9,7,4];
- for(let row=0;row<spans.length;row++){
-  const half=spans[row]!*2;
-  rect(ctx,sunX-half,sunY+row*2-24,half*2,2,winter?'#f3e7c2':'#ffe5a8');
- }
- if(winter){rect(ctx,sunX+8,sunY-12,8,4,'#d7cdb6');rect(ctx,sunX-12,sunY+6,6,6,'#d7cdb6');rect(ctx,sunX+4,sunY+14,4,2,'#d7cdb6');}
- else for(const y of [140,148,154])rect(ctx,sunX-30,y,60,2,'#e9beb0');
+ ctx.drawImage(layers.sun,sunX-32,sunY-32);
  const drift=reduced?0:distance;
- const cloudPalette=winter?{h:'#4a657e',H:'#67839a',m:'#3d5774'}:{h:'#efcfbb',H:'#fff1d1',m:'#dfb9af'};
- const cloudOffset=drift*.055;
- for(let tile=-1;tile<=Math.ceil(width/TILE);tile++)for(const [x,y] of [[72,58],[318,94],[604,76],[870,186]])stamp(ctx,CLOUD,cloudPalette,tile*TILE+x!-cloudOffset%TILE,y!);
+ repeat(ctx,layers.clouds,width,drift*.055);
  repeat(ctx,layers.far,width,drift*.09);repeat(ctx,layers.middle,width,drift*.2);repeat(ctx,layers.near,width,drift*.36);
  // A small stepped reflection moves independently of the hand-painted shore.
+ ctx.fillStyle=winter?'#91a7b5':'#b8b280';
+ ctx.beginPath();
  for(let row=0;row<6;row++){
   const w=16+row*4,x=sunX-w/2+(reduced?0:Math.round(Math.sin(time+row)*2)*2);
-  rect(ctx,x,460+row*6,w,2,winter?'#91a7b5':'#b8b280');
+  ctx.rect(x,460+row*6,w,2);
  }
+ ctx.fill();
 }

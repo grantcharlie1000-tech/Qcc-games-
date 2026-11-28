@@ -26,6 +26,7 @@ function slab(ctx:CanvasRenderingContext2D,b:Block,level:number,camera:number,li
   ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1;ctx.stroke();
   ctx.restore();
 }
+const staticCache=new WeakMap<HTMLCanvasElement,{canvas:HTMLCanvasElement;key:string}>();
 export function renderTower(canvas:HTMLCanvasElement,s:TowerState,reduced:boolean,paused:boolean){
   const ctx=canvas.getContext('2d');if(!ctx)return;
   ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.clearRect(0,0,W,H);
@@ -33,16 +34,29 @@ export function renderTower(canvas:HTMLCanvasElement,s:TowerState,reduced:boolea
   const progress=s.phase==='settling'?Math.min(1,s.phaseElapsed/.2):1;
   const camera=Math.max(0,height-5)*UNIT-(height>5&&s.phase==='settling'&&!reduced?UNIT*(1-progress)**3:0);
   const xmas=christmas();
-  ctx.fillStyle=xmas?'rgba(40,60,100,.22)':'rgba(60,42,88,.15)';ctx.beginPath();ctx.ellipse(200,425+camera,108,25,0,0,Math.PI*2);ctx.fill();
-  // Original floating stone plinth.
-  const a=project(-68,-68,0,camera),b=project(68,-68,0,camera),c=project(68,68,0,camera),d=project(-68,68,0,camera);
-  for(const p of [a,b,c,d])p[1]+=UNIT+2;
-  // At Christmas the same plinth is a block of packed snow.
-  path(ctx,[d,c,[c[0],c[1]+20],[d[0],d[1]+20]],xmas?'#9fb3cf':'#665b84');
-  path(ctx,[b,c,[c[0],c[1]+20],[b[0],b[1]+20]],xmas?'#7e93b3':'#514e73');path(ctx,[a,b,c,d],xmas?'#f2f7fd':'#c1b9d6');
-  for(let i=Math.max(0,height-22);i<=height;i++){
-    const lift=i===height&&s.phase==='settling'&&!reduced?22*(1-progress)**3:0;
-    slab(ctx,s.blocks[i],i,camera,lift);
+  const drawBase=(target:CanvasRenderingContext2D,upTo:number)=>{
+    target.fillStyle=xmas?'rgba(40,60,100,.22)':'rgba(60,42,88,.15)';target.beginPath();target.ellipse(200,425+camera,108,25,0,0,Math.PI*2);target.fill();
+    const a=project(-68,-68,0,camera),b=project(68,-68,0,camera),c=project(68,68,0,camera),d=project(-68,68,0,camera);
+    for(const p of [a,b,c,d])p[1]+=UNIT+2;
+    path(target,[d,c,[c[0],c[1]+20],[d[0],d[1]+20]],xmas?'#9fb3cf':'#665b84');
+    path(target,[b,c,[c[0],c[1]+20],[b[0],b[1]+20]],xmas?'#7e93b3':'#514e73');path(target,[a,b,c,d],xmas?'#f2f7fd':'#c1b9d6');
+    for(let i=Math.max(0,height-22);i<=upTo;i++)slab(target,s.blocks[i],i,camera,0);
+  };
+  if(s.phase!=='settling'){
+    const top=s.blocks[height];
+    const key=`${canvas.width}x${canvas.height}:${height}:${camera.toFixed(2)}:${xmas?1:0}:${top.x.toFixed(2)},${top.z.toFixed(2)},${top.w.toFixed(2)},${top.d.toFixed(2)}`;
+    let entry=staticCache.get(canvas);
+    if(!entry){entry={canvas:document.createElement('canvas'),key:''};staticCache.set(canvas,entry);}
+    if(entry.key!==key){
+      entry.key=key;entry.canvas.width=canvas.width;entry.canvas.height=canvas.height;
+      const bctx=entry.canvas.getContext('2d');
+      if(bctx){bctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);bctx.clearRect(0,0,W,H);drawBase(bctx,height);}
+    }
+    ctx.drawImage(entry.canvas,0,0,W,H);
+  }else{
+    drawBase(ctx,height-1);
+    const lift=!reduced?22*(1-progress)**3:0;
+    slab(ctx,s.blocks[height],height,camera,lift);
   }
   if(s.last){
     const age=s.time-s.last.time;
@@ -61,7 +75,6 @@ export function renderTower(canvas:HTMLCanvasElement,s:TowerState,reduced:boolea
     const moving=movingBlock(s);slab(ctx,moving,height+1,camera,22);
     const point=project(moving.x,moving.z,height+1,camera);ctx.fillStyle='#fff6dc';ctx.beginPath();ctx.arc(point[0],point[1]-22,3,0,Math.PI*2);ctx.fill();
   }
-  ctx.font='800 12px Arcade, sans-serif';ctx.textAlign='left';ctx.fillStyle='#4f496e';
-  ctx.font='12px system-ui, sans-serif';ctx.fillStyle=xmas?'#e6eef8':'#534a6a';
+  ctx.textAlign='left';ctx.font='12px system-ui, sans-serif';ctx.fillStyle=xmas?'#e6eef8':'#534a6a';
   ctx.fillText(paused?'PAUSED':s.phase==='over'?'YOUR TOWER':s.phase==='settling'?'NICE LANDING':s.motion.axis==='x'?'NEXT SLAB  ↗':'NEXT SLAB  ↖',21,49);
 }

@@ -221,9 +221,10 @@ export function countingCanvas(cssWidth: number, cssHeight: number): HTMLCanvasE
 }
 
 /** Counts visible meshes, lines, points, and sprites on a Three.js object. */
-export function countThreeScene(root: { traverse: (fn: (object: unknown) => void) => void }): { draws: number; triangles: number } {
+export function countThreeScene(root: { traverse: (fn: (object: unknown) => void) => void; traverseVisible?: (fn: (object: unknown) => void) => void }): { draws: number; triangles: number } {
   let draws = 0, triangles = 0;
-  root.traverse(object => {
+  const walk = root.traverseVisible ? root.traverseVisible.bind(root) : root.traverse.bind(root);
+  walk(object => {
     const mesh = object as {
       visible?: boolean;
       isMesh?: boolean;
@@ -290,16 +291,19 @@ export function driveQueuedFrame(arm: () => void, timestamp = 16.67): void {
 /** Minimal canvas object for a Three.js renderer constructor. */
 export function glCanvas(cssWidth: number, cssHeight: number): HTMLCanvasElement {
   const canvas = {
+    tagName: 'CANVAS',
     width: cssWidth,
     height: cssHeight,
     clientWidth: cssWidth,
     clientHeight: cssHeight,
     style: {} as CSSStyleDeclaration,
+    dataset: {} as DOMStringMap,
     addEventListener() {},
     removeEventListener() {},
     setAttribute() {},
     getAttribute() { return null; },
     getContext() { return null; },
+    focus() {},
     getBoundingClientRect() {
       return { x: 0, y: 0, left: 0, top: 0, right: cssWidth, bottom: cssHeight, width: cssWidth, height: cssHeight, toJSON() { return {}; } };
     },

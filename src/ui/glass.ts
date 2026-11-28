@@ -97,7 +97,11 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
 // more than one device pixel per CSS px the bend is as fine as the screen. The feImage stretches it over the box either way. Only a browser
 // can encode the PNG, so this is outside the unit tests. With no 2D context there is no map, and the empty string tells the caller to leave
 // the lens out, rather than bend with an all-zero map.
+const lensPngCache=new Map<string,string>();
 export function lensPng(width:number,height:number,density=1,arcade=false,margin=LENS_MARGIN):string{
+  const key=`${width}x${height}@${density}:${arcade?1:0}:${margin}`;
+  const hit=lensPngCache.get(key);
+  if(hit!==undefined)return hit;
   try{
   const canvas=document.createElement('canvas');
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
@@ -105,7 +109,12 @@ export function lensPng(width:number,height:number,density=1,arcade=false,margin
   const context=canvas.getContext('2d');
   if(!context)return '';
   context.putImageData(new ImageData(lensField(width,height,margin,arcade?ARCADE_LENS_BEVEL:LENS_BEVEL,arcade?ARCADE_LENS_BEND:LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
-  return canvas.toDataURL('image/png');
+  const url=canvas.toDataURL('image/png');
+  if(url){
+    if(lensPngCache.size>=32)lensPngCache.delete(lensPngCache.keys().next().value!);
+    lensPngCache.set(key,url);
+  }
+  return url;
   }catch{return '';}
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
@@ -218,9 +227,6 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const edge=document.createElement('div');
   edge.className='ui-scroll-edge';
   edge.setAttribute('aria-hidden','true');
-  const dragStyle=document.createElement('style');
-  dragStyle.textContent='.ui-tabbar[data-glass-dragging]::after{transition:scale 140ms var(--ease-out),opacity 120ms var(--ease)!important}';
-  document.head.append(dragStyle);
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
@@ -386,7 +392,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(svgMode)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
     else bar.style.removeProperty('--ui-glass-filter');
   };
-  const live=bindWebglLens(bar,active=>{if(disposed)return;webgl=active;paint();});
+  const live=bindWebglLens(bar,active=>{if(disposed)return;const was=webgl;webgl=active;paint();if(was&&!active&&mode==='backdrop'&&!ready)rebuild();});
   // Stretch the decoded field inside the current bounded lens while its box
   // morphs. Re-encoding a DPR3 PNG on every ResizeObserver notification was
   // blocking scrolling; only the settled shape needs a fresh ray field.
@@ -398,6 +404,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
   // keeps its last map. Only the backdrop has a map.
   const rebuild=()=>{
+    if(webgl)return;
     const width=bar.offsetWidth+2*margin,height=bar.offsetHeight+2*margin,density=lensDensity(window.devicePixelRatio);
     if(mode!=='backdrop'||!bar.offsetWidth||!bar.offsetHeight)return;
     // A cancelled morph can return to the cached PNG's size. Its live SVG
@@ -512,7 +519,6 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       stopSettle(false);
       clearClickGuard();
       bar.removeAttribute('data-glass-dragging');
-      dragStyle.remove();
       stretch?.cancel();
       live.dispose();
       lens.remove();

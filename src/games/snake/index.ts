@@ -11,30 +11,31 @@ const module:GameModule={
  id:'snake',title:'Snake',cover:'game-art/snake/cover.svg',
  rules:'Steer with the arrow keys, WASD or swipes; the first direction starts the run. The snake moves one square every 0.135 seconds. Up to three turns are buffered, and a turn pressed just after the head passes a square still turns at that square. Eat apples for 10 points; each one adds a segment. Hitting a wall or your own body ends the run, though the snake pauses for one beat against an obstacle so a quick turn can still save it. Your tail moves out of the way as you advance, unless you have just eaten. Fill the whole 16 by 16 garden to win. Pause freezes play and animation.',
  mount(container,context){
-  container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas><div class="snake-card"><strong>Apple appetite</strong><p hidden></p><button class="game-button snake-start">Start slithering</button></div></div></div>`;
+  container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" data-glass-ink="textured" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas><div class="snake-card"><strong>Apple appetite</strong><p hidden></p><button class="game-button snake-start">Start slithering</button></div></div></div>`;
   const root=container.querySelector<HTMLElement>('.snake-game')!;
   const canvas=root.querySelector<HTMLCanvasElement>('canvas')!;
   const card=root.querySelector<HTMLElement>('.snake-card')!,heading=card.querySelector('strong')!,message=card.querySelector('p')!,start=card.querySelector<HTMLButtonElement>('button')!;
   const available=container.parentElement!;
   const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
   let state=createState(),view:SnakeView=createView(),paused=false,disposed=false,frame:number|null=null,last:number|null=null;
-  let best=context.highScore,revealed=true;
+  let best=context.highScore,revealed=true,displayWidth=480,lastReduced:boolean|null=null,lastAria='';
   const events=new AbortController();
   let gesture:{x:number;y:number;id:number}|null=null;
   const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
   type PaintInputs=readonly [boolean,boolean,boolean,number,number,FontFaceSetLoadStatus|'unavailable'];
   let painted:PaintInputs|null=null;
   function paintInputs():PaintInputs{
-   return [reduced(),context.settings.colorBlind,christmas(),canvas.getBoundingClientRect().width,window.devicePixelRatio||1,document.fonts?.status??'unavailable'];
+   return [reduced(),context.settings.colorBlind,christmas(),displayWidth,window.devicePixelRatio||1,document.fonts?.status??'unavailable'];
   }
-  function render(){
+  function render(spine=buildSpine(state)){
    const reduce=reduced();
-   root.dataset.reducedMotion=String(reduce);
-   drawGarden(canvas,state,view,reduce);
+   if(lastReduced!==reduce){lastReduced=reduce;root.dataset.reducedMotion=String(reduce);}
+   drawGarden(canvas,state,view,reduce,spine,displayWidth);
    painted=paused?paintInputs():null;
    notifyGlassFrame(canvas);
    const h=state.body[0];
-   canvas.setAttribute('aria-label',`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${length(state)}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Use arrows, WASD or swipe.`);
+   const aria=`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${length(state)}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Use arrows, WASD or swipe.`;
+   if(lastAria!==aria){lastAria=aria;canvas.setAttribute('aria-label',aria);}
   }
   const repaintPaused=()=>{if(paused&&!disposed)render();};
   motionQuery.addEventListener('change',repaintPaused,{signal:events.signal});
@@ -44,6 +45,7 @@ const module:GameModule={
   function resize(){
    if(disposed)return;
    const size=Math.max(1,Math.min(728,available.clientWidth,available.clientHeight));
+   displayWidth=size;
    root.style.setProperty('--snake-board-size',`${size}px`);
    render();
   }
@@ -134,15 +136,16 @@ const module:GameModule={
   let lastFrame:number|null=null;
   function loop(now:number){
    if(disposed)return;
+   let spine:ReturnType<typeof buildSpine>|undefined;
    if(!paused){
     const dt=lastFrame===null?0:Math.min(100,Math.max(0,now-lastFrame));
     advanceTo(now);
-    const spine=buildSpine(state);tickView(view,state,spine.head,spine.tangent,dt,reduced());
+    spine=buildSpine(state);tickView(view,state,spine.head,spine.tangent,dt,reduced());
     if(!revealed&&cardDue())update();
    }
    lastFrame=paused?null:now;
    const inputs=paused?paintInputs():null;
-   if(!paused||painted===null||inputs?.some((value,index)=>value!==painted?.[index]))render();
+   if(!paused||painted===null||inputs?.some((value,index)=>value!==painted?.[index]))render(spine);
    frame=requestAnimationFrame(loop);
   }
   update();resize();frame=requestAnimationFrame(loop);

@@ -19,7 +19,7 @@ const module: GameModule = {
   id: 'claimline', title: 'Claimline', cover: 'game-art/claimline/cover.svg', rules: RULES,
   mount(container, context) {
     const root = document.createElement('div'); root.className = 'cl-game';
-    root.innerHTML = `<canvas class="cl-canvas" tabindex="0" role="img" aria-label="Claimline arena. Move the mouse, use arrow keys or WASD, or drag on a touchscreen to steer. Leave your land to lay a trail and return to claim. P pauses."></canvas>
+    root.innerHTML = `<canvas class="cl-canvas" data-glass-ink="textured" tabindex="0" role="img" aria-label="Claimline arena. Move the mouse, use arrow keys or WASD, or drag on a touchscreen to steer. Leave your land to lay a trail and return to claim. P pauses."></canvas>
       <div class="cl-share" aria-label="Your land"><span class="cl-share-label">Your land</span><strong class="cl-share-value">0.00%</strong><div class="cl-share-bar" aria-hidden="true"><i></i></div></div>
       <aside class="cl-ranking" aria-label="Match ranking"><ol></ol></aside>
       <div class="cl-stick" hidden aria-hidden="true"><i class="cl-stick-knob"></i></div>
@@ -64,6 +64,7 @@ const module: GameModule = {
       const rect = root.getBoundingClientRect();
       renderer.resize(rect.width, rect.height);
       dirty = true;
+      schedule();
     }
     const observer = new ResizeObserver(resize); observer.observe(root);
     window.addEventListener('resize', resize, { signal });
@@ -161,9 +162,13 @@ const module: GameModule = {
       if (t !== undefined && human.alive) human.target = t;
     }
 
+    function schedule() {
+      if (!frame && !disposed) frame = requestAnimationFrame(loop);
+    }
+
     function loop(now: number) {
+      frame = 0;
       if (disposed) return;
-      frame = requestAnimationFrame(loop);
       const running = !paused && world.phase === 'running';
       if (running) {
         const before = world.phase;
@@ -185,13 +190,14 @@ const module: GameModule = {
           dirty = false;
         }
       }
+      if ((!paused && (world.phase === 'running' || dirty || now < animateUntil)) || (paused && dirty)) schedule();
     }
 
     function reset(newSeed = true) {
       const seed = newSeed ? (world.seed + 0x9e3779b9) >>> 0 : world.seed;
       world = createWorld(seed);
       savedRun = false; last = null; milestone = 0; lastScore = -1;
-      clearInput(); renderOverlay(); update(0, true); dirty = true; persist();
+      clearInput(); renderOverlay(); update(0, true); dirty = true; persist(); schedule();
     }
 
     function begin() {
@@ -199,7 +205,7 @@ const module: GameModule = {
       if (world.phase === 'over') reset();
       if (world.phase === 'ready') startWorld(world);
       savedRun = false; last = null; clearInput();
-      renderOverlay(); update(0, true); persist(); dirty = true;
+      renderOverlay(); update(0, true); persist(); dirty = true; schedule();
       context.sound('tap'); canvas.focus({ preventScroll: true });
     }
     startButton.addEventListener('click', begin, { signal });
@@ -213,11 +219,11 @@ const module: GameModule = {
     document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); }, { signal });
 
     resize(); renderOverlay(); update(0, true);
-    frame = requestAnimationFrame(loop);
+    schedule();
 
     return {
-      pause() { paused = true; last = null; clearInput(); renderOverlay(); dirty = true; update(0, true); },
-      resume() { paused = false; last = null; clearInput(); renderOverlay(); dirty = true; update(0, true); },
+      pause() { paused = true; last = null; clearInput(); renderOverlay(); dirty = true; update(0, true); schedule(); },
+      resume() { paused = false; last = null; clearInput(); renderOverlay(); dirty = true; update(0, true); schedule(); },
       restart() { reset(); },
       serialize() { return snapshot(world); },
       restore(data) {
@@ -227,10 +233,10 @@ const module: GameModule = {
         savedRun = world.phase === 'running' || (world.phase === 'ready' && world.tick > 0);
         if (savedRun) world.phase = 'ready';
         milestone = Math.floor(leaderboardScore(world) / 1000); lastScore = -1; last = null;
-        clearInput(); renderOverlay(); update(0, true); dirty = true;
+        clearInput(); renderOverlay(); update(0, true); dirty = true; schedule();
       },
       dispose() {
-        disposed = true; clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove();
+        disposed = true; clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); frame = 0; root.remove();
       },
     };
   },

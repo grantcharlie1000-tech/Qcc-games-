@@ -23,6 +23,7 @@ export class SantaView implements AppView {
   private observer:IntersectionObserver|undefined;
   private disposed=false;
   private refsHtml='';
+  private infoKey='';
   private readonly page:HTMLElement;
 
   constructor(root:HTMLElement,private deps:{reducedMotion:()=>boolean}){
@@ -144,6 +145,10 @@ export class SantaView implements AppView {
   }
 
   private renderInfo(dep:number,config:ReturnType<typeof time.current>['config'],fromFile:boolean,now:SantaPhase){
+    const clock=time.clockInfo();
+    const key=`${dep}|${config.season}|${config.status}|${config.updated}|${fromFile?1:0}|${now}|${clock.source}|${Math.round(clock.deviceOffsetMs/60000)}`;
+    if(key===this.infoKey)return;
+    this.infoKey=key;
     const estimated=config.status==='estimated';
     const set=(name:string,text:string)=>{const el=this.field(name);if(el.textContent!==text)el.textContent=text;};
     set('season',String(config.season));
@@ -159,7 +164,6 @@ export class SantaView implements AppView {
       :`Santa leaves the North Pole on ${localWhen(dep)} your time (${utcWhen(dep)}).`);
     const centre=config.references.filter(ref=>ref.kind==='tracking-centre'&&ref.utc);
     set('norad',centre.length?`Not the same thing: NORAD’s tracking centre has its own opening times. If NORAD keeps its usual schedule, ${centre.map(ref=>`${ref.label.replace(/\s*\(.*\)$/,'')} at ${localShort(Date.parse(ref.utc!))}`).join(', and ')} (your time). Those are when NORAD starts tracking, not when Santa leaves.`:'');
-    const clock=time.clockInfo();
     set('clock',clock.source==='server'
       ?`Everyone sees the same countdown: it runs on QCC’s server clock, not your device’s.${Math.abs(clock.deviceOffsetMs)>=60000?` Your device clock is ${offsetText(clock.deviceOffsetMs)}, and we have corrected for it.`:''}`
       :'We could not reach QCC’s server clock, so this countdown is using your device’s clock. Refresh when you are online for the most accurate time.');

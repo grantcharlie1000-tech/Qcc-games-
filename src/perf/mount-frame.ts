@@ -63,8 +63,10 @@ export function paintProduced(root: HTMLElement, layout: Layout): number {
 
 export interface FrameSession {
   meter: FrameMeter;
+  /** True when at least one animation frame callback is currently queued. */
+  hasQueued(): boolean;
   /** Runs one queued animation frame. The timestamp only drives the step. */
-  drive(): boolean;
+  drive(timestamp?: number): boolean;
   restore(): void;
 }
 
@@ -188,14 +190,19 @@ export function openSession(webgl2?: (meter: FrameMeter) => unknown): FrameSessi
     restores.push(() => Object.defineProperty(proto, name, desc));
   }
 
+  let clock = 0;
   return {
     meter,
-    drive() {
+    hasQueued() {
+      return queue.size > 0;
+    },
+    drive(timestamp?: number) {
       if (!queue.size) return false;
       const id = Math.max(...queue.keys());
       const callback = queue.get(id);
       queue.clear();
-      callback?.(16.67);
+      clock = timestamp ?? clock + 16.67;
+      callback?.(clock);
       return true;
     },
     restore() {
@@ -285,10 +292,18 @@ export function collectMounted(module: GameModule, layout: Layout, heavy?: (host
     heavy?.(host, instance);
     const sync = session.meter.snapshot();
     session.meter.reset();
-    const ran = session.drive();
-    const frame = session.meter.snapshot();
+    const ranFirst = session.drive(16.67);
+    let frame = session.meter.snapshot();
+    // Many loops set `last = now` on the first callback and only step dt > 0 on
+    // the second. When another frame is queued, score that steady second frame.
+    if (ranFirst && session.hasQueued()) {
+      session.meter.reset();
+      session.drive(33.34);
+      const steady = session.meter.snapshot();
+      if (steady.draws + steady.fillPixels + steady.triangles > 0) frame = steady;
+    }
     const painted = frame.draws + frame.fillPixels + frame.triangles;
-    const snap = ran && painted > 0 ? frame : sync;
+    const snap = ranFirst && painted > 0 ? frame : sync;
     snap.fillPixels += paintProduced(host, layout);
     return snap;
   } finally {

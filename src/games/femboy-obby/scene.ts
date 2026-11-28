@@ -219,7 +219,8 @@ const KENNEY: Partial<Record<Decor['kind'], string>> = {
 const KENNEY_SCALE: Partial<Record<Decor['kind'], number>> = { tree: 2.2, cane: 2.2, gift: 3.5, sleigh: 2.4, snowman: 2.2 };
 
 export function createScene(canvas: HTMLCanvasElement, course: Course): FrostScene {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+  if (canvas.dataset) canvas.dataset.glassInk = 'textured';
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !floorTierActive(), powerPreference: 'high-performance', stencil: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
@@ -311,6 +312,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
 
   // Hazards.
   const hazardMat = own(new THREE.MeshLambertMaterial({ map: stripeTex }));
+  const sweeperRingMat = own(new THREE.MeshBasicMaterial({ color: PAL.ink, transparent: true, opacity: 0.28, depthWrite: false }));
   const sweepers = course.sweepers.map(w => {
     const g = new THREE.Group();
     g.position.set(w.x, w.y, w.z);
@@ -326,7 +328,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       for (const ap of armParts) { ap.rotateY(turn); parts.push(ap); }
     }
     g.add(new THREE.Mesh(own(mergeAll(parts)), vc));
-    const ring = new THREE.Mesh(own(new THREE.RingGeometry(w.length - 0.12, w.length + 0.12, 48)), own(new THREE.MeshBasicMaterial({ color: PAL.ink, transparent: true, opacity: 0.28, depthWrite: false })));
+    const ring = new THREE.Mesh(own(new THREE.RingGeometry(w.length - 0.12, w.length + 0.12, 48)), sweeperRingMat);
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(w.x, (w.floor ?? w.y - 0.8) + 0.01, w.z);
     scene.add(g, ring);
@@ -523,6 +525,8 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
   interface P { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; spin: number }
   const sparkPool: P[] = Array.from({ length: SPARKS }, () => ({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, spin: 0 }));
   const confettiPool: P[] = Array.from({ length: CONFETTI }, () => ({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, spin: 0 }));
+  let sparksActive = false, confettiActive = false;
+  sparks.visible = false; confetti.visible = false;
   scene.add(sparks, confetti);
   const SNOW = 260;
   const snowPos = new Float32Array(SNOW * 3);
@@ -705,22 +709,28 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     valley.position.set(camera.position.x, course.killY[Math.max(0, Math.min(course.killY.length - 1, v.stage))] - 10, camera.position.z);
 
     // Effects.
-    let si = 0, sparkLive = false;
-    for (const p of sparkPool) {
-      if (p.life > 0) { sparkLive = true; p.life -= v.dt; p.vy -= 6 * v.dt; p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; }
-      m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.life * 8, 0)), s3.setScalar(p.life > 0 ? Math.min(1, p.life * 2) : 0));
-      sparks.setMatrixAt(si++, m4);
+    if (sparksActive) {
+      let si = 0, sparkLive = false;
+      for (const p of sparkPool) {
+        if (p.life > 0) { sparkLive = true; p.life -= v.dt; p.vy -= 6 * v.dt; p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; }
+        m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.life * 8, 0)), s3.setScalar(p.life > 0 ? Math.min(1, p.life * 2) : 0));
+        sparks.setMatrixAt(si++, m4);
+      }
+      sparksActive = sparkLive;
+      sparks.visible = sparkLive;
+      sparks.instanceMatrix.needsUpdate = sparkLive;
     }
-    sparks.visible = sparkLive;
-    sparks.instanceMatrix.needsUpdate = sparkLive;
-    let ci = 0, confettiLive = false;
-    for (const p of confettiPool) {
-      if (p.life > 0) { confettiLive = true; p.life -= v.dt; p.vy = Math.max(-2.5, p.vy - 9 * v.dt); p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; p.spin += v.dt * 6; }
-      m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.spin * 0.7, 0)), s3.setScalar(p.life > 0 ? 1 : 0));
-      confetti.setMatrixAt(ci++, m4);
+    if (confettiActive) {
+      let ci = 0, confettiLive = false;
+      for (const p of confettiPool) {
+        if (p.life > 0) { confettiLive = true; p.life -= v.dt; p.vy = Math.max(-2.5, p.vy - 9 * v.dt); p.x += p.vx * v.dt; p.y += p.vy * v.dt; p.z += p.vz * v.dt; p.spin += v.dt * 6; }
+        m4.compose(v3.set(p.x, p.y, p.z), q.setFromEuler(eu.set(p.spin, p.spin * 0.7, 0)), s3.setScalar(p.life > 0 ? 1 : 0));
+        confetti.setMatrixAt(ci++, m4);
+      }
+      confettiActive = confettiLive;
+      confetti.visible = confettiLive;
+      confetti.instanceMatrix.needsUpdate = confettiLive;
     }
-    confetti.visible = confettiLive;
-    confetti.instanceMatrix.needsUpdate = confettiLive;
     snow.visible = !v.reduced && !lowQuality;
     if (snow.visible) {
       snow.position.set(Math.round(camera.position.x / 50) * 50, camera.position.y - 10, Math.round(camera.position.z / 50) * 50);
@@ -753,7 +763,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
       camera.aspect = aspect;
       camera.fov = aspect < 0.8 ? 70 : 60;
       camera.updateProjectionMatrix();
-      stats.width = w; stats.height = h; stats.ratio = ratio;
+      stats.width = canvas.width; stats.height = canvas.height; stats.ratio = ratio;
     },
     render: draw,
     repaint() { if (lastView) draw({ ...lastView, dt: 0 }); },
@@ -762,6 +772,7 @@ export function createScene(canvas: HTMLCanvasElement, course: Course): FrostSce
     snapCamera() { snap = true; },
     burst(kind, x, y, z) {
       if (kind === 'checkpoint') { glow.push({ index: 0, t: 0.28 }); }
+      if (kind === 'finish') confettiActive = true; else sparksActive = true;
       const pool = kind === 'finish' ? confettiPool : sparkPool, count = kind === 'finish' ? CONFETTI : kind === 'star' ? 10 : 8;
       let k = 0;
       for (const p of pool) {

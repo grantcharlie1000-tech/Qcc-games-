@@ -52,9 +52,13 @@ export function suppressNavigationUnderSheets():void{
     hidden=next;
   };
   const observer=new MutationObserver(records=>{
-    if(records.some(record=>record.type==='childList'
-      ? [...record.addedNodes,...record.removedNodes].some(node=>node instanceof Element&&(node.matches(`${PANELS},${CHROME}`)||node.querySelector(`${PANELS},${CHROME}`)))
-      : record.target instanceof Element&&(record.target.matches(PANELS)||record.target.querySelector(PANELS))))sync();
+    if(records.some(record=>{
+      if(record.type==='childList')return [...record.addedNodes,...record.removedNodes].some(node=>node instanceof Element&&(node.matches(`${PANELS},${CHROME}`)||node.querySelector(`${PANELS},${CHROME}`)));
+      if(!(record.target instanceof Element))return false;
+      if(record.target.matches(PANELS))return true;
+      if(record.target.closest('#game-stage'))return false;
+      return !!record.target.querySelector(PANELS);
+    }))sync();
   });
   observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open','hidden','aria-hidden','role','class','style']});
   for(const event of ['transitionend','transitioncancel','animationend','close'])document.addEventListener(event,e=>{

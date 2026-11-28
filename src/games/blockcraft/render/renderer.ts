@@ -144,6 +144,7 @@ const OVERLAYS=new Set(['water','lava','hurt','fire','portal']);
 
 export function createRenderer(game:Game):RenderService{
   const canvas=game.canvas;
+  if(canvas.dataset)canvas.dataset.glassInk='textured';
   const renderer=new THREE.WebGLRenderer({canvas,antialias:false,alpha:false,stencil:false,powerPreference:'high-performance'});
   renderer.shadowMap.enabled=false;
   const resolutionCap=()=>{
@@ -190,10 +191,11 @@ export function createRenderer(game:Game):RenderService{
     for(const mesh of render.meshes){chunkGroup.remove(mesh);mesh.geometry.setIndex(null);mesh.geometry.dispose();}
     render.meshes.length=0;
   }
+  const drawSize=new THREE.Vector2();
   function applySize(){
     const w=canvas.clientWidth,h=canvas.clientHeight;if(w<1||h<1)return;
     renderer.setPixelRatio(scale);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
-    const size=renderer.getDrawingBufferSize(new THREE.Vector2());blockOverlay.resize(size.x,size.y,camera.near);
+    const size=renderer.getDrawingBufferSize(drawSize);blockOverlay.resize(size.x,size.y,camera.near);
   }
   const resize=new ResizeObserver(applySize);resize.observe(canvas);
   // Adaptive resolution keeps the frame time near budget on slow GPUs.

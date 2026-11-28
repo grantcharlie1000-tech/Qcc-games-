@@ -573,7 +573,7 @@ export class MoviesView {
   // An unfiltered section falls back to bundled titles only; loaded Home rails
   // join search results. Compare the titles actually rendered in either grid.
   const gridTitles=simple?filtered:this.catalog.titles.filter(t=>t.kind===this.kind);
-  return {head,body,gridKey:JSON.stringify(gridTitles)};
+  return {head,body,gridKey:gridTitles.map(t=>`${t.id}:${t.kind}`).join(',')};
  }
  // Redraws a browse page's title block and results in place. The header, the island and the filter bar stay as they are, so the search
  // field keeps its node, its focus and its caret while the reader types.

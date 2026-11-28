@@ -16,7 +16,7 @@ const module: GameModule = {
   rules: 'Independent browser adaptation. A continuous arena against 18 named LOCAL BOTS. Move your mouse or trackpad pointer to steer; no click is needed. On touchscreens, put your thumb anywhere in the lower-left area: the thumb stick appears under it and steers in any direction. Hold arrows or WASD (diagonals too) to turn toward that direction; tap for small nudges, release to hold your heading. You always move forward and turn in a smooth curve.\n\nEvery new snake, including you at the start, is protected for 3 seconds and looks pale while it lasts: it cannot be defeated by bodies or head-on contact, and its own body cannot defeat anyone. The rim still counts.\n\nGlowing pellets near your head are drawn into it and count when they arrive. Eat to gain mass and grow your real following body. Keep eating to grow beyond 600; very large coils gain length more gradually. Hold Space or the Boost button (right thumb on touchscreens) for 1.7× speed, spending 6 mass per second and leaving collectible food behind. Boost stops at 20 mass.\n\nYour head touching another snake’s body or the glowing arena rim ends your run. Head-on collisions defeat both snakes, regardless of size. Crossing your own body is safe. Defeated snakes leave their mass as collectible pellet trails. Bots eat, grow, avoid hazards, die and respawn away from you. Ranking uses actual current mass.\n\nP pauses. Escape opens your study chapter through the arcade. Pause freezes the whole arena. Saved runs wait for Continue arena. Restart begins a fresh run; your best mass stays on this device. No networking or online players.',
   mount(container, context) {
     const root = document.createElement('div'); root.className = 'nc-game';
-    root.innerHTML = `<canvas class="nc-canvas" tabindex="0" role="img" aria-label="Slither.io arena. Move the pointer without clicking, use the thumb stick on touch, or hold arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
+    root.innerHTML = `<canvas class="nc-canvas" data-glass-ink="textured" tabindex="0" role="img" aria-label="Slither.io arena. Move the pointer without clicking, use the thumb stick on touch, or hold arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
       <div class="nc-score" aria-label="Current mass in Classic mode"><span class="nc-difficulty">CLASSIC</span><strong class="nc-mass">30</strong></div>
       <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING</h2><ol></ol><div class="nc-you" hidden></div></aside>
       <div class="nc-bottom"><button class="nc-boost arcade-glass game-glass" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons glass-ink" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note"></small></button></div>`;
@@ -49,6 +49,29 @@ const module: GameModule = {
     let boostId: number | null = null, stickHold: number | undefined;
     let best = context.highScore;
     const keyboard = new KeyboardSteering(), frameCosts: number[] = [];
+    type RankRow = { el: HTMLElement; place: HTMLElement; dot: HTMLElement; name: HTMLElement; val: HTMLElement };
+    const makeRow = (tag: 'li' | 'div'): RankRow => {
+      const el = document.createElement(tag);
+      const place = document.createElement('span'); place.className = 'nc-place';
+      const dot = document.createElement('i'); dot.setAttribute('aria-hidden', 'true');
+      const name = document.createElement('span'); name.className = 'nc-name';
+      const val = document.createElement('strong');
+      el.append(place, dot, name, val);
+      return { el, place, dot, name, val };
+    };
+    const boardRows: RankRow[] = [];
+    const youRow = makeRow('div');
+    you.append(youRow.place, youRow.dot, youRow.name, youRow.val);
+    const writeRow = (r: RankRow, name: string, value: number, rank: number, color: string, isYou: boolean) => {
+      const floored = String(Math.floor(value)), compact = compactMass(value), rankText = String(rank);
+      if (r.el.style.color !== color) r.el.style.color = color;
+      if (r.el.classList.contains('is-you') !== isYou) r.el.classList.toggle('is-you', isYou);
+      if (r.place.textContent !== rankText) r.place.textContent = rankText;
+      if (r.dot.style.background !== color) r.dot.style.background = color;
+      if (r.name.textContent !== name) r.name.textContent = name;
+      if (r.val.textContent !== compact) r.val.textContent = compact;
+      if (r.val.getAttribute('aria-label') !== floored) { r.val.setAttribute('aria-label', floored); r.val.title = floored; }
+    };
     if (matchMedia('(pointer: coarse)').matches) useTouchLayout();
     function clearInput() {
       if (touchId !== null && canvas.hasPointerCapture(touchId)) canvas.releasePointerCapture(touchId);
@@ -82,15 +105,22 @@ const module: GameModule = {
       const limit = renderer.view.width < 600 || renderer.view.height < 600 ? 5 : 10;
       rankPanel.hidden=state.phase!=='running';
       const entries = ranks.slice(0, limit);
-      const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong aria-label="${Math.floor(value)}" title="${Math.floor(value)}">${compactMass(value)}</strong>`;
-      // Names and colors are fixed local constants, never data from storage or the network.
-      board.innerHTML = entries.map((snake, i) => `<li style="color:${skinFor(snake.id,snake.color).primary}"${snake.id === 0 ? ' class="is-you"' : ''}>${row(snake.name, snake.mass, i + 1, skinFor(snake.id,snake.color).primary)}</li>`).join('');
-      you.hidden = place <= limit; you.innerHTML = row('YOU', player.mass, place, skinFor(0,player.color).primary);
+      while (boardRows.length < entries.length) { const r = makeRow('li'); boardRows.push(r); board.append(r.el); }
+      for (let i = 0; i < boardRows.length; i++) {
+        const r = boardRows[i], snake = entries[i];
+        if (!snake) { r.el.hidden = true; continue; }
+        r.el.hidden = false;
+        writeRow(r, snake.name, snake.mass, i + 1, skinFor(snake.id, snake.color).primary, snake.id === 0);
+      }
+      you.hidden = place <= limit;
+      if (!you.hidden) writeRow(youRow, 'YOU', player.mass, place, skinFor(0, player.color).primary, false);
+      let trails = 0;
+      for (let i = 0; i < state.food.length; i++) if (state.food[i].trail) trails++;
       root.dataset.phase = state.phase; root.dataset.tick = String(state.ticks); root.dataset.mass = player.mass.toFixed(3);
       root.dataset.x = player.x.toFixed(3); root.dataset.y = player.y.toFixed(3); root.dataset.angle = player.angle.toFixed(4);
       root.dataset.reducedMotion = String(!!context.settings.reducedMotion);
       root.dataset.immune = String(player.immune); root.dataset.stick = stick.active ? 'active' : stick.element.hidden ? 'hidden' : 'idle';
-      root.dataset.boosting = String(player.boosting); root.dataset.trails = String(state.food.filter(food => food.trail).length);
+      root.dataset.boosting = String(player.boosting); root.dataset.trails = String(trails);
       root.dataset.rank = String(place); root.dataset.eaten = String(state.eaten); root.dataset.defeated = String(state.defeated);
       boost.disabled = paused || state.phase !== 'running'; boost.setAttribute('aria-pressed', String(player.boosting));
       boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Low mass' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : '';

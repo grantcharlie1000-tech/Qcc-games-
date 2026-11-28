@@ -69,8 +69,25 @@ jobs:
         run: |
           git worktree add --detach "$RUNNER_TEMP/crossy-base" "$BASE_SHA"
           ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/crossy-base/node_modules"
-          (cd "$RUNNER_TEMP/crossy-base" && npm run build)
-          npm run build
+          # The site bundle is what the preview profiles. npm run build also typechecks
+          # unpublished Iron Meridian research tests, which main does not have fixtures for.
+          # main calls addEventListener on a service-worker registration that Chromium
+          # leaves undefined when Playwright blocks workers. That page error rejects
+          # the sample. Give the base the same guard as this branch.
+          python3 - <<'PY'
+          from os import environ
+          from pathlib import Path
+          path = Path(environ["RUNNER_TEMP"]) / "crossy-base" / "src" / "offline" / "worker.ts"
+          file = path.read_text()
+          guard = "if(!registration)return;"
+          if guard not in file:
+              needle = "catch{return;}\n"
+              if needle not in file:
+                  raise SystemExit("Could not guard service worker registration")
+              path.write_text(file.replace(needle, needle + "  " + guard + "\n", 1))
+          PY
+          (cd "$RUNNER_TEMP/crossy-base" && npx vite build)
+          npx vite build
       - name: Alternate three production runs on the same runner
         run: |
           mkdir -p "$GITHUB_WORKSPACE/crossy-benchmark"

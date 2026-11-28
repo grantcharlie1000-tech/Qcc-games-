@@ -1,5 +1,6 @@
 import Globe, {type GlobeInstance} from 'globe.gl';
 import {MeshPhongMaterial, Vector3, type PerspectiveCamera} from 'three';
+import {floorDpr, floorTierActive} from '../../perf/floor';
 import {registerGlassFrameSource,notifyGlassFrame} from '../../ui/glass-frame-source';
 import {christmas} from '../../festive/festive';
 import world from './data/world.json';
@@ -47,7 +48,7 @@ export class GlobeView {
     const festive = christmas();
     this.globe = new Globe(host, {
       animateIn: false, waitForGlobeReady: false,
-      rendererConfig: {antialias: !lowDensity, alpha: festive, powerPreference: 'low-power', preserveDrawingBuffer: false}
+      rendererConfig: {antialias: !lowDensity && !floorTierActive(), alpha: festive, powerPreference: 'low-power', preserveDrawingBuffer: false}
     });
     this.globe
       .backgroundColor(festive ? 'rgba(0,0,0,0)' : '#0d1726')
@@ -78,6 +79,7 @@ export class GlobeView {
     for (const type of ['pointerdown', 'wheel', 'touchstart'] as const) host.addEventListener(type, () => {this.takeControl(); this.wake();}, {passive: true, signal});
     host.addEventListener('keydown', event => this.key(event), {signal});
     const renderer = this.globe.renderer(), canvas = renderer.domElement;
+    if (canvas.dataset) canvas.dataset.glassInk = 'textured';
     const render = renderer.render;
     // globe.gl owns the animation/composer loop. Observe this renderer's final
     // screen pass after it returns, while its non-preserved buffer is available.
@@ -214,7 +216,9 @@ export class GlobeView {
   private fit(): void {
     const width = this.host.clientWidth, height = this.host.clientHeight;
     if (!width || !height || this.disposed) return;
-    const ratio = Math.max(0.75, Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(MAX_PIXELS / (width * height))));
+    const device = window.devicePixelRatio || 1;
+    let ratio = Math.max(0.75, Math.min(device, 1.5, Math.sqrt(MAX_PIXELS / (width * height))));
+    if (floorTierActive()) ratio = Math.min(ratio, floorDpr(width, height, device));
     const renderer = this.globe.renderer();
     if (renderer.getPixelRatio() !== ratio) {renderer.setPixelRatio(ratio); this.globe.postProcessingComposer().setPixelRatio(ratio);}
     this.globe.width(width).height(height);

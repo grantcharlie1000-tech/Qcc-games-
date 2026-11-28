@@ -76,6 +76,7 @@ export async function createNativeMapView(
   onChange: () => void,
   signal: AbortSignal,
 ): Promise<NativeMapView> {
+  if (canvas.dataset) canvas.dataset.glassInk = 'textured';
   const context = canvas.getContext('2d', { alpha: false });
   if (!context) throw new Error('Canvas 2D is unavailable.');
   const drawing: CanvasRenderingContext2D = context;
@@ -105,7 +106,8 @@ export async function createNativeMapView(
   mapContext.putImageData(image, 0, 0);
   const events = new AbortController();
   let viewWidth = 1, viewHeight = 1, scale = 1, offsetX = 0, offsetY = 0;
-  let paused = false, disposed = false;
+  let paused = false, disposed = false, drawRaf = 0;
+  let canvasRect: DOMRect | null = null;
   let selection: NativeMapSelection | undefined;
   const states = new Map(input.states.map(state => [state.id, state]));
   const pointers = new Map<number, { x: number; y: number }>();
@@ -135,10 +137,13 @@ export async function createNativeMapView(
     offsetY = viewHeight / 2 - Math.max(0, Math.min(height, camera.y)) * scale;
     constrain(); draw();
   }
+  function scheduleDraw() {
+    if (!drawRaf && !disposed) drawRaf = requestAnimationFrame(() => { drawRaf = 0; draw(); });
+  }
   function resize() {
     const camera = serialize();
-    const rect = canvas.getBoundingClientRect();
-    viewWidth = Math.max(1, rect.width); viewHeight = Math.max(1, rect.height);
+    canvasRect = canvas.getBoundingClientRect();
+    viewWidth = Math.max(1, canvasRect.width); viewHeight = Math.max(1, canvasRect.height);
     const ratio = nativeMapPixelRatio(viewWidth, viewHeight);
     canvas.width = Math.max(1, Math.round(viewWidth * ratio));
     canvas.height = Math.max(1, Math.round(viewHeight * ratio));
@@ -161,7 +166,7 @@ export async function createNativeMapView(
     onSelection(selection); draw();
   }
   const point = (event: PointerEvent | MouseEvent) => {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRect ?? (canvasRect = canvas.getBoundingClientRect());
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   function currentGesture() {
@@ -171,6 +176,7 @@ export async function createNativeMapView(
   const options = { signal: events.signal };
   canvas.addEventListener('pointerdown', event => {
     if (paused || disposed || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    canvasRect = canvas.getBoundingClientRect();
     canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(event.pointerId); pointers.set(event.pointerId, point(event));
     if (pointers.size === 1) { origin = point(event); moved = false; }
@@ -190,7 +196,7 @@ export async function createNativeMapView(
       offsetX += next.x - previous.x; offsetY += next.y - previous.y;
       if (Math.hypot(next.x - origin.x, next.y - origin.y) > 6) moved = true;
     }
-    constrain(); draw();
+    constrain(); scheduleDraw();
   }, options);
   function endPointer(event: PointerEvent, cancelled = false) {
     if (!pointers.has(event.pointerId)) return;
@@ -230,7 +236,7 @@ export async function createNativeMapView(
   }
   function dispose() {
     if (disposed) return;
-    disposed = true; events.abort(); observer.disconnect(); clearPointers();
+    disposed = true; if (drawRaf) { cancelAnimationFrame(drawRaf); drawRaf = 0; } events.abort(); observer.disconnect(); clearPointers();
     mapImage.width = mapImage.height = 0; world = undefined; states.clear();
   }
   const observer = new ResizeObserver(resize);

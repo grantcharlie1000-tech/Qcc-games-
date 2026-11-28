@@ -43,11 +43,13 @@ export class ChunkStreamer{
   private centre={cx:0,cz:0,view:5};
   /** Online host: other players' positions, kept generated, lit and simulated within `view` chunks of each. */
   private extra:{cx:number;cz:number;view:number}[]=[];
+  private centreList:{cx:number;cz:number;view:number}[]=[this.centre];
   setCentre(x:number,z:number,view:number){const c=this.centre;c.cx=Math.floor(x/CS);c.cz=Math.floor(z/CS);c.view=view;}
   setExtraCentres(points:readonly {x:number;z:number}[],view:number){
     this.extra=points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.z)).slice(0,8).map(p=>({cx:Math.floor(p.x/CS),cz:Math.floor(p.z/CS),view}));
+    this.centreList=this.extra.length?[this.centre,...this.extra]:[this.centre];
   }
-  private centres(){return this.extra.length?[this.centre,...this.extra]:[this.centre];}
+  private centres(){return this.centreList;}
   private inRange(cx:number,cz:number,extra:number){
     for(const c of this.centres()){const r=c.view+extra;if((cx-c.cx)**2+(cz-c.cz)**2<=r*r)return true;}
     return false;

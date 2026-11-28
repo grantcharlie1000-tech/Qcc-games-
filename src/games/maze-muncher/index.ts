@@ -81,16 +81,21 @@ const module: GameModule = {
       while (carry >= TICK_MS) {carry -= TICK_MS; react(step(state));}
       if (state.score !== score || (state.fright > 0) !== fright || state.level !== level || state.lives !== spareLives) update();
     }
+    const activePhase = () => state.phase !== 'ready' && state.phase !== 'over';
+    function schedule() {
+      if (frameId === null && !disposed && !paused && activePhase()) frameId = requestAnimationFrame(loop);
+    }
     function loop(now: number) {
-      // A paused game draws nothing new; resume() restarts the loop.
-      if (disposed || paused) {frameId = null; return;}
+      // A paused or idle game draws nothing new; begin() or resume() restarts the loop.
+      frameId = null;
+      if (disposed || paused || !activePhase()) return;
       advance(now);
       render();
-      frameId = requestAnimationFrame(loop);
+      schedule();
     }
     function begin() {
       if (paused || disposed) return;
-      if (start(state)) {context.sound('tap'); update(); render();}
+      if (start(state)) {context.sound('tap'); update(); render(); schedule();}
     }
     function action(dir: Dir) {
       if (paused || disposed || state.phase === 'over') return;
@@ -126,21 +131,21 @@ const module: GameModule = {
     root.addEventListener('lostpointercapture', endGesture, {signal: events.signal});
 
     update(); resize(); render();
-    frameId = requestAnimationFrame(loop);
+    schedule();
     return {
       // The shell offers this hook before Escape opens Study, and on backgrounding.
       // Pause idempotently through the shell so its overlay and saved state agree.
       dismissMenu() {context.setPaused?.(true); return true;},
-      pause() {paused = true; last = null; gesture = null; update(); render();},
-      resume() {paused = false; last = null; update(); if (frameId === null && !disposed) frameId = requestAnimationFrame(loop);},
-      restart() {state = createState(Date.now() | 0); last = null; carry = 0; update(); render(); persist();},
+      pause() {paused = true; last = null; gesture = null; if (frameId !== null) {cancelAnimationFrame(frameId); frameId = null;} update(); render();},
+      resume() {paused = false; last = null; update(); schedule();},
+      restart() {state = createState(Date.now() | 0); last = null; carry = 0; if (frameId !== null) {cancelAnimationFrame(frameId); frameId = null;} update(); render(); persist();},
       serialize() {return JSON.parse(JSON.stringify(state)) as unknown;},
       restore(data) {
         const valid = restoreState(data);
         if (!valid) return;
         // A run saved mid-maze resumes with a fresh "READY!" countdown so nobody is caught off guard.
         if (valid.phase === 'playing') {valid.phase = 'intro'; valid.timer = 120;}
-        state = valid; last = null; carry = 0; update(); render();
+        state = valid; last = null; carry = 0; update(); render(); schedule();
       },
       dispose() {disposed = true; events.abort(); observer.disconnect(); lives.remove(); if (frameId !== null) cancelAnimationFrame(frameId); container.replaceChildren();}
     };

@@ -92,7 +92,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   // The arcade's adaptive text ink samples a game canvas by drawing it into a 2D canvas and reading the pixels back
   // every 140 ms. For a WebGL game that is a full GPU stall each time (149 ms of every frame in the profile). Marked
   // textured, the HUD takes the fixed white ink with a halo and the canvas is never read back.
-  canvas.dataset.glassInk = 'textured';
+  if (canvas.dataset) canvas.dataset.glassInk = 'textured';
   // No antialias buffer on the canvas: the post chain multisamples its own target, and the canvas only takes the composite.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, alpha: false });
   renderer.shadowMap.enabled = false;
@@ -772,8 +772,9 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
   /** A reinforcement going up: while a defender works on a wall, the plate rises from the floor over the action's
    * duration (fast at first, settling at the top), drawn from the same geometry the finished plate will have. */
   const deploys = new Map<number, PanelView>();
+  const liveDeploys = new Set<number>();
   function updateDeploys(m: Match) {
-    const live = new Set<number>();
+    liveDeploys.clear();
     for (const pl of m.players) {
       // A barricade being nailed up: its start (its completion arrives as the shared 'panel' event).
       if (pl.alive && pl.act === ACT.barricade && pl.actTarget >= 0 && !barricading.has(pl.id)) { barricading.add(pl.id); const b = m.world.panels[pl.actTarget]; if (b) { const c = panelPoint(b, b.u0 + b.cols * CELL / 2, 1); fort('barricade', 'start', c.x, c.y, c.z); } }
@@ -781,7 +782,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       if (!pl.alive || pl.act !== ACT.reinforce || pl.actTarget < 0) continue;
       const panel = m.world.panels[pl.actTarget];
       if (!panel || panel.reinforced) continue;
-      live.add(panel.id);
+      liveDeploys.add(panel.id);
       let v = deploys.get(panel.id);
       if (!v) {
         v = new PanelView({ ...panel, reinforced: true, version: panel.version + 1 }, bake, panelMats, art?.panelLook(panel.id) ?? null);
@@ -797,7 +798,7 @@ export function createScene(canvas: HTMLCanvasElement, initial: QualityId): Brea
       v.mesh.position.set(panel.axis === 'x' ? mid * (1 - sx) : 0, 0, panel.axis === 'z' ? mid * (1 - sx) : 0);
       v.mesh.updateMatrix();
     }
-    for (const [id, v] of deploys) if (!live.has(id)) {
+    for (const [id, v] of deploys) if (!liveDeploys.has(id)) {
       // Done (or abandoned): when the wall is now reinforced, the anchors fire into floor and ceiling.
       const panel = m.world.panels[id];
       unfolding.delete(id);
